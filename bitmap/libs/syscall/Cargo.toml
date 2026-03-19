@@ -1,0 +1,80 @@
+# Copyright(c) The Maintainers of Nanvix.
+# Licensed under the MIT License.
+
+[package]
+name = "syscall"
+version.workspace = true
+license-file.workspace = true
+edition.workspace = true
+authors.workspace = true
+description = "System Call Library"
+homepage.workspace = true
+
+[lib]
+crate-type = ["lib"]
+
+[dependencies]
+arch = { workspace = true }
+sys = { workspace = true }
+config = { workspace = true }
+cfg-if = { workspace = true }
+elf = { workspace = true, optional = true, features = ["relocation"] }
+goblin = { workspace = true, optional = true, features = [
+    "elf32",
+    "elf64",
+    "endian_fd",
+    "mach32",
+    "mach64",
+] }
+libc_stdlib = { workspace = true, optional = true }
+nvx = { workspace = true, optional = true }
+spin = { workspace = true, features = ["lazy", "once", "spin_mutex"] }
+static_assert = { workspace = true }
+syslog = { workspace = true, default-features = true, optional = true }
+sysalloc = { workspace = true, optional = true }
+sysapi = { workspace = true }
+type-safe = { workspace = true }
+alloc = { version = "1.0.1", optional = true, package = "rustc-std-workspace-alloc" }
+core = { version = "1.0.1", optional = true, package = "rustc-std-workspace-core" }
+compiler_builtins = { workspace = true, optional = true }
+
+[features]
+default = ["syscall"]
+# Enable this, if this library is to be used as a static library.
+staticlib = ["dep:libc_stdlib"]
+syscall = ["dep:sysalloc", "dep:syslog", "sys/kcall"]
+std = []
+dlfcn = ["dep:sysalloc", "dep:elf", "dep:goblin"]
+rustc-dep-of-std = [
+    "core",
+    "alloc",
+    "sigaction",
+    "arch/rustc-dep-of-std",
+    "libc_stdlib/rustc-dep-of-std",
+    "cfg-if/rustc-dep-of-std",
+    "compiler_builtins/rustc-dep-of-std",
+    "config/rustc-dep-of-std",
+    "nvx/rustc-dep-of-std",
+    "sys/rustc-dep-of-std",
+    "static_assert/rustc-dep-of-std",
+    "sysapi/rustc-dep-of-std",
+    "sysalloc/rustc-dep-of-std",
+    "syslog/rustc-dep-of-std",
+    "type-safe/rustc-dep-of-std",
+    "spin/rustc-dep-of-std",
+]
+standalone = ["dep:nvx", "nvx/standalone", "dep:sysalloc"]
+
+# TODO (#798): remove this feature flag once the signal module is stable.
+sigaction = []
+
+# Logging
+error = ["syslog/error"]
+trace = ["syslog/trace"]
+debug = ["syslog/debug"]
+info = ["syslog/info"]
+warn = ["syslog/warn"]
+panic = ["syslog/panic"]
+
+[lints]
+workspace = true

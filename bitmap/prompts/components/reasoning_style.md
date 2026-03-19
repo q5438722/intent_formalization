@@ -1,0 +1,1 @@
+Think step by step. Break down the problem, analyze each function, and reason about the correctness properties before writing specifications.
