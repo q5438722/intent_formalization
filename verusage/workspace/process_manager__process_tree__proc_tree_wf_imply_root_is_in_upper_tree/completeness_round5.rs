@@ -1,0 +1,397 @@
+use vstd::prelude::*;
+use vstd::simple_pptr::*;
+
+fn main() {}
+
+verus!{
+
+pub type IOid = usize;
+pub type ThreadPtr = usize;
+pub type ProcPtr = usize;
+pub type ContainerPtr = usize;
+pub type Pcid = usize;
+pub type SLLIndex = i32;
+pub type PagePerm4k = PointsTo<[u8; PAGE_SZ_4k]>;
+pub type PagePerm2m = PointsTo<[u8; PAGE_SZ_2m]>;
+pub type PagePerm1g = PointsTo<[u8; PAGE_SZ_1g]>;
+
+pub const MAX_NUM_THREADS_PER_PROC: usize = 128;
+pub const PAGE_SZ_4k: usize = 1usize << 12;
+pub const PAGE_SZ_2m: usize = 1usize << 21;
+pub const PAGE_SZ_1g: usize = 1usize << 30;
+pub const PROC_CHILD_LIST_LEN: usize = 10;
+
+#[derive(Debug)]
+pub struct Node<T> {
+    pub value: Option<T>,
+    pub next: SLLIndex,
+    pub prev: SLLIndex,
+}
+
+#[verifier::reject_recursive_types(T)]
+pub struct StaticLinkedList<T, const N: usize> {
+    pub ar: [Node<T>; N],
+    pub spec_seq: Ghost<Seq<T>>,
+    pub value_list: Ghost<Seq<SLLIndex>>,
+    pub value_list_head: SLLIndex,
+    pub value_list_tail: SLLIndex,
+    pub value_list_len: usize,
+    pub free_list: Ghost<Seq<SLLIndex>>,
+    pub free_list_head: SLLIndex,
+    pub free_list_tail: SLLIndex,
+    pub free_list_len: usize,
+    pub size: usize,
+    pub arr_seq: Ghost<Seq<Node<T>>>,
+}
+
+impl<T, const N: usize> StaticLinkedList<T, N> {
+    pub open spec fn spec_len(&self) -> usize {
+        self@.len() as usize
+    }
+
+    #[verifier::external_body]
+    #[verifier(when_used_as_spec(spec_len))]
+    pub fn len(&self) -> (l: usize)
+        ensures
+            l == self.value_list_len,
+            self.wf() ==> l == self.len(),
+            self.wf() ==> l == self@.len(),
+    {
+        unimplemented!()
+    }
+
+    pub open spec fn unique(&self) -> bool {
+        forall|i: int, j: int|
+            #![trigger self.spec_seq@[i], self.spec_seq@[j]]
+            0 <= i < self.len() && 0 <= j < self.len() && i != j ==> self.spec_seq@[i]
+                != self.spec_seq@[j]
+    }
+
+    pub open spec fn view(&self) -> Seq<T> {
+        self.spec_seq@
+    }
+
+    #[verifier::external_body]
+    pub closed spec fn get_node_ref(&self, v: T) -> SLLIndex
+        recommends
+            self.wf(),
+            self@.contains(v),
+    {
+        unimplemented!()
+    }
+
+    #[verifier::external_body]
+    pub closed spec fn wf(&self) -> bool {
+        unimplemented!()
+    }
+}
+
+pub struct Process {
+    pub owning_container: ContainerPtr,
+    pub rev_ptr: SLLIndex,
+    pub pcid: Pcid,
+    pub ioid: Option<IOid>,
+    pub owned_threads: StaticLinkedList<ThreadPtr, MAX_NUM_THREADS_PER_PROC>,
+    pub parent: Option<ProcPtr>,
+    pub parent_rev_ptr: Option<SLLIndex>,
+    pub children: StaticLinkedList<ProcPtr, PROC_CHILD_LIST_LEN>,
+    pub uppertree_seq: Ghost<Seq<ProcPtr>>,
+    pub subtree_set: Ghost<Set<ProcPtr>>,
+    pub depth: usize,
+    pub dmd_paging_mode: DemandPagingMode,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum DemandPagingMode {
+    NoDMDPG,
+    DirectParentPrc,
+    AllParentProc,
+    AllParentContainer,
+}
+
+pub open spec fn proc_perms_wf(proc_perms: Map<ProcPtr, PointsTo<Process>>) -> bool {
+    &&& forall|p_ptr: ProcPtr|
+        #![trigger proc_perms.dom().contains(p_ptr)]
+        proc_perms.dom().contains(p_ptr) ==> proc_perms[p_ptr].is_init()
+    &&& forall|p_ptr: ProcPtr|
+        #![trigger proc_perms.dom().contains(p_ptr)]
+        proc_perms.dom().contains(p_ptr) ==> proc_perms[p_ptr].addr() == p_ptr
+    &&& forall|p_ptr: ProcPtr|
+        #![trigger proc_perms.dom().contains(p_ptr)]
+        proc_perms.dom().contains(p_ptr) ==> proc_perms[p_ptr].value().children.wf()
+    &&& forall|p_ptr: ProcPtr|
+        #![trigger proc_perms.dom().contains(p_ptr)]
+        proc_perms.dom().contains(p_ptr) ==> proc_perms[p_ptr].value().children.unique()
+    &&& forall|p_ptr: ProcPtr|
+        #![trigger proc_perms.dom().contains(p_ptr)]
+        proc_perms.dom().contains(p_ptr)
+            ==> proc_perms[p_ptr].value().uppertree_seq@.no_duplicates()
+    &&& forall|p_ptr: ProcPtr|
+        #![trigger proc_perms.dom().contains(p_ptr)]
+        proc_perms.dom().contains(p_ptr) ==> proc_perms[p_ptr].value().children@.contains(p_ptr)
+            == false
+    &&& forall|p_ptr: ProcPtr|
+        #![trigger proc_perms.dom().contains(p_ptr)]
+        proc_perms.dom().contains(p_ptr) ==> proc_perms[p_ptr].value().subtree_set@.finite()
+    &&& forall|p_ptr: ProcPtr|
+        #![trigger proc_perms.dom().contains(p_ptr)]
+        proc_perms.dom().contains(p_ptr) ==> proc_perms[p_ptr].value().uppertree_seq@.len()
+            == proc_perms[p_ptr].value().depth
+}
+
+pub open spec fn proc_tree_dom_subset_of_proc_dom(
+    proc_tree_dom: Set<ProcPtr>,
+    proc_perms: Map<ProcPtr, PointsTo<Process>>,
+) -> bool {
+    &&& forall|p_ptr: ProcPtr|
+        #![trigger proc_tree_dom.contains(p_ptr)]
+        proc_tree_dom.contains(p_ptr) ==> proc_perms.dom().contains(p_ptr)
+}
+
+pub closed spec fn proc_root_wf(
+    root_proc: ProcPtr,
+    proc_tree_dom: Set<ProcPtr>,
+    proc_perms: Map<ProcPtr, PointsTo<Process>>,
+) -> bool {
+    &&& proc_tree_dom.contains(root_proc)
+    &&& proc_perms[root_proc].value().depth == 0
+    &&& forall|p_ptr: ProcPtr|
+        #![trigger proc_tree_dom.contains(p_ptr)]
+        proc_tree_dom.contains(p_ptr) && p_ptr != root_proc ==> proc_perms[p_ptr].value().depth != 0
+    &&& forall|p_ptr: ProcPtr|
+        #![trigger proc_tree_dom.contains(p_ptr)]
+        proc_tree_dom.contains(p_ptr) && p_ptr != root_proc
+            ==> proc_perms[p_ptr].value().parent.is_Some()
+}
+
+pub closed spec fn proc_childern_parent_wf(
+    root_proc: ProcPtr,
+    proc_tree_dom: Set<ProcPtr>,
+    proc_perms: Map<ProcPtr, PointsTo<Process>>,
+) -> bool {
+    &&& forall|p_ptr: ProcPtr, child_p_ptr: ProcPtr|
+        #![trigger proc_perms[p_ptr].value().children@.contains(child_p_ptr)]
+        proc_tree_dom.contains(p_ptr) && proc_perms[p_ptr].value().children@.contains(child_p_ptr)
+            ==> proc_tree_dom.contains(child_p_ptr)
+            && proc_perms[child_p_ptr].value().parent.unwrap() == p_ptr
+            && proc_perms[child_p_ptr].value().depth == proc_perms[p_ptr].value().depth + 1
+    &&& forall|p_ptr: ProcPtr|
+        #![trigger proc_tree_dom.contains(p_ptr)]
+        proc_tree_dom.contains(p_ptr) && proc_perms[p_ptr].value().parent.is_Some()
+            ==> proc_tree_dom.contains(proc_perms[p_ptr].value().parent.unwrap())
+            && proc_perms[proc_perms[p_ptr].value().parent.unwrap()].value().children@.contains(
+            p_ptr,
+        )
+}
+
+pub closed spec fn procs_linkedlist_wf(
+    root_proc: ProcPtr,
+    proc_tree_dom: Set<ProcPtr>,
+    proc_perms: Map<ProcPtr, PointsTo<Process>>,
+) -> bool {
+    &&& forall|p_ptr: ProcPtr|
+        #![trigger proc_tree_dom.contains(proc_perms[p_ptr].value().parent.unwrap())]
+        proc_tree_dom.contains(p_ptr) && p_ptr != root_proc
+            ==> proc_perms[p_ptr].value().parent.is_Some() && proc_tree_dom.contains(
+            proc_perms[p_ptr].value().parent.unwrap(),
+        )
+    &&& forall|p_ptr: ProcPtr|
+        #![trigger proc_tree_dom.contains(p_ptr)]
+        proc_tree_dom.contains(p_ptr) && p_ptr != root_proc
+            ==> proc_perms[p_ptr].value().parent_rev_ptr.is_Some()
+            && proc_perms[proc_perms[p_ptr].value().parent.unwrap()].value().children@.contains(
+            p_ptr,
+        ) && proc_perms[proc_perms[p_ptr].value().parent.unwrap()].value().children.get_node_ref(p_ptr)
+        ==
+        proc_perms[p_ptr].value().parent_rev_ptr.unwrap()
+}
+
+pub closed spec fn proc_childern_depth_wf(
+    root_proc: ProcPtr,
+    proc_tree_dom: Set<ProcPtr>,
+    proc_perms: Map<ProcPtr, PointsTo<Process>>,
+) -> bool {
+    &&& forall|p_ptr: ProcPtr|
+        #![trigger proc_tree_dom.contains(p_ptr)]
+        proc_tree_dom.contains(p_ptr) && p_ptr != root_proc
+            ==> proc_perms[p_ptr].value().uppertree_seq@[proc_perms[p_ptr].value().depth - 1]
+            == proc_perms[p_ptr].value().parent.unwrap()
+}
+
+pub closed spec fn proc_subtree_set_wf(
+    root_proc: ProcPtr,
+    proc_tree_dom: Set<ProcPtr>,
+    proc_perms: Map<ProcPtr, PointsTo<Process>>,
+) -> bool {
+    &&& forall|p_ptr: ProcPtr, sub_p_ptr: ProcPtr|
+        #![trigger proc_perms[p_ptr].value().subtree_set@.contains(sub_p_ptr)]
+        proc_tree_dom.contains(p_ptr) && proc_perms[p_ptr].value().subtree_set@.contains(sub_p_ptr)
+            ==> proc_tree_dom.contains(sub_p_ptr)
+            && proc_perms[sub_p_ptr].value().uppertree_seq@.len() > proc_perms[p_ptr].value().depth
+            && proc_perms[sub_p_ptr].value().uppertree_seq@[proc_perms[p_ptr].value().depth as int]
+            == p_ptr
+}
+
+pub closed spec fn proc_uppertree_seq_wf(
+    root_proc: ProcPtr,
+    proc_tree_dom: Set<ProcPtr>,
+    proc_perms: Map<ProcPtr, PointsTo<Process>>,
+) -> bool {
+    &&& forall|p_ptr: ProcPtr, u_ptr: ProcPtr|
+        #![trigger proc_perms[p_ptr].value().uppertree_seq@.contains(u_ptr)]
+        proc_tree_dom.contains(p_ptr) && proc_perms[p_ptr].value().uppertree_seq@.contains(u_ptr)
+            ==> proc_tree_dom.contains(u_ptr)
+            && proc_perms[p_ptr].value().uppertree_seq@[proc_perms[u_ptr].value().depth as int]
+            == u_ptr && proc_perms[u_ptr].value().depth
+            == proc_perms[p_ptr].value().uppertree_seq@.index_of(u_ptr)
+            && proc_perms[u_ptr].value().subtree_set@.contains(p_ptr)
+            && proc_perms[u_ptr].value().uppertree_seq@
+            =~= proc_perms[p_ptr].value().uppertree_seq@.subrange(
+            0,
+            proc_perms[u_ptr].value().depth as int,
+        )
+}
+
+pub closed spec fn proc_subtree_set_exclusive(
+    root_proc: ProcPtr,
+    proc_tree_dom: Set<ProcPtr>,
+    proc_perms: Map<ProcPtr, PointsTo<Process>>,
+) -> bool {
+    &&& forall|p_ptr: ProcPtr, sub_p_ptr: ProcPtr|
+        #![trigger proc_perms[p_ptr].value().subtree_set@.contains(sub_p_ptr), proc_perms[sub_p_ptr].value().uppertree_seq@.contains(p_ptr)]
+        proc_tree_dom.contains(p_ptr) && proc_tree_dom.contains(sub_p_ptr) ==> (
+        proc_perms[p_ptr].value().subtree_set@.contains(sub_p_ptr)
+            == proc_perms[sub_p_ptr].value().uppertree_seq@.contains(p_ptr))
+}
+
+pub open spec fn proc_tree_wf(
+    root_proc: ProcPtr,
+    proc_tree_dom: Set<ProcPtr>,
+    proc_perms: Map<ProcPtr, PointsTo<Process>>,
+) -> bool {
+    &&& proc_root_wf(root_proc, proc_tree_dom, proc_perms)
+    &&& proc_childern_parent_wf(root_proc, proc_tree_dom, proc_perms)
+    &&& procs_linkedlist_wf(root_proc, proc_tree_dom, proc_perms)
+    &&& proc_childern_depth_wf(root_proc, proc_tree_dom, proc_perms)
+    &&& proc_subtree_set_wf(root_proc, proc_tree_dom, proc_perms)
+    &&& proc_uppertree_seq_wf(root_proc, proc_tree_dom, proc_perms)
+    &&& proc_subtree_set_exclusive(root_proc, proc_tree_dom, proc_perms)
+}
+
+    #[verifier::spinoff_prover]
+pub proof fn proc_tree_wf_imply_root_is_in_upper_tree(
+    root_proc: ProcPtr,
+    proc_tree_dom: Set<ProcPtr>,
+    proc_perms: Map<ProcPtr, PointsTo<Process>>,
+)
+    requires
+        proc_tree_dom_subset_of_proc_dom(proc_tree_dom, proc_perms),
+        proc_perms_wf(proc_perms),
+        proc_tree_wf(root_proc, proc_tree_dom, proc_perms),
+    ensures
+         forall|p_ptr: ProcPtr|
+            #![auto]
+            proc_tree_dom.contains(p_ptr) && proc_perms[p_ptr].value().depth != 0
+            ==>
+            proc_perms[p_ptr].value().uppertree_seq@[0] == root_proc,
+{
+    assert(
+        forall|p_ptr: ProcPtr|
+            #![auto]
+            proc_tree_dom.contains(p_ptr) && proc_perms[p_ptr].value().depth != 0
+            ==>
+            proc_perms[p_ptr].value().uppertree_seq@.contains(proc_perms[p_ptr].value().uppertree_seq@[0])
+    );
+}
+
+// ==================== COMPLETENESS ROUND 5 ====================
+// Cross-function misuse & edge cases: chain results incorrectly, test out-of-range,
+// assert unguaranteed relationships.
+// Each test should FAIL (verification error).
+
+// Test 5a: Call the lemma with a different "root" than what's in proc_tree_wf
+// Use two different root candidates; the lemma only works with the actual root
+proof fn test_wrong_root(
+    root_proc: ProcPtr,
+    fake_root: ProcPtr,
+    proc_tree_dom: Set<ProcPtr>,
+    proc_perms: Map<ProcPtr, PointsTo<Process>>,
+    p_ptr: ProcPtr,
+)
+    requires
+        proc_tree_dom_subset_of_proc_dom(proc_tree_dom, proc_perms),
+        proc_perms_wf(proc_perms),
+        proc_tree_wf(root_proc, proc_tree_dom, proc_perms),
+        proc_tree_dom.contains(p_ptr),
+        proc_perms[p_ptr].value().depth != 0,
+        fake_root != root_proc,
+        proc_tree_dom.contains(fake_root),
+{
+    // Call with real root but assert using fake_root
+    proc_tree_wf_imply_root_is_in_upper_tree(root_proc, proc_tree_dom, proc_perms);
+    // Wrong: the result should be root_proc, not fake_root
+    assert(proc_perms[p_ptr].value().uppertree_seq@[0] == fake_root);
+}
+
+// Test 5b: Assert a relationship between two arbitrary processes' uppertree_seqs
+// that isn't guaranteed (e.g., they share more than just position 0)
+proof fn test_unguaranteed_shared_ancestry(
+    root_proc: ProcPtr,
+    proc_tree_dom: Set<ProcPtr>,
+    proc_perms: Map<ProcPtr, PointsTo<Process>>,
+    p1: ProcPtr,
+    p2: ProcPtr,
+)
+    requires
+        proc_tree_dom_subset_of_proc_dom(proc_tree_dom, proc_perms),
+        proc_perms_wf(proc_perms),
+        proc_tree_wf(root_proc, proc_tree_dom, proc_perms),
+        proc_tree_dom.contains(p1),
+        proc_tree_dom.contains(p2),
+        proc_perms[p1].value().depth > 1,
+        proc_perms[p2].value().depth > 1,
+        p1 != p2,
+{
+    proc_tree_wf_imply_root_is_in_upper_tree(root_proc, proc_tree_dom, proc_perms);
+    // Wrong: the lemma doesn't guarantee that position 1 is the same for both processes
+    assert(proc_perms[p1].value().uppertree_seq@[1] == proc_perms[p2].value().uppertree_seq@[1]);
+}
+
+// Test 5c: Assert a process not in proc_tree_dom also has root at position 0
+proof fn test_process_outside_domain(
+    root_proc: ProcPtr,
+    proc_tree_dom: Set<ProcPtr>,
+    proc_perms: Map<ProcPtr, PointsTo<Process>>,
+    outside_ptr: ProcPtr,
+)
+    requires
+        proc_tree_dom_subset_of_proc_dom(proc_tree_dom, proc_perms),
+        proc_perms_wf(proc_perms),
+        proc_tree_wf(root_proc, proc_tree_dom, proc_perms),
+        !proc_tree_dom.contains(outside_ptr),
+        proc_perms.dom().contains(outside_ptr),
+        proc_perms[outside_ptr].value().depth != 0,
+{
+    proc_tree_wf_imply_root_is_in_upper_tree(root_proc, proc_tree_dom, proc_perms);
+    // Wrong: outside_ptr is not in proc_tree_dom, so the postcondition doesn't apply
+    assert(proc_perms[outside_ptr].value().uppertree_seq@[0] == root_proc);
+}
+
+// Test 5d: Assert root_proc's depth is not 0 (contradicts proc_root_wf)
+proof fn test_root_has_nonzero_depth(
+    root_proc: ProcPtr,
+    proc_tree_dom: Set<ProcPtr>,
+    proc_perms: Map<ProcPtr, PointsTo<Process>>,
+)
+    requires
+        proc_tree_dom_subset_of_proc_dom(proc_tree_dom, proc_perms),
+        proc_perms_wf(proc_perms),
+        proc_tree_wf(root_proc, proc_tree_dom, proc_perms),
+{
+    proc_tree_wf_imply_root_is_in_upper_tree(root_proc, proc_tree_dom, proc_perms);
+    // Wrong: the root has depth 0 by proc_root_wf, so depth != 0 is false
+    assert(proc_perms[root_proc].value().depth != 0);
+}
+
+
+}
