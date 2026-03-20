@@ -38,7 +38,7 @@ import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 
-from .adapters import BitmapAdapter, VeruSAGEAdapter, CaseAdapter
+from .adapters import BitmapAdapter, VeruSAGEAdapter, VeruSAGEFileAdapter, CaseAdapter
 from .adapters.base import Task
 from .verus_runner import run_verus_on_source, VerificationResult
 
@@ -231,6 +231,12 @@ def run_pipeline(args: argparse.Namespace) -> None:
             start=args.start,
             end=args.end,
         )
+    elif args.case == "verusage_files":
+        adapter = VeruSAGEFileAdapter(
+            source_dir=args.source_dir,
+            start=args.start,
+            end=args.end,
+        )
     else:
         raise ValueError(f"Unknown case: {args.case}")
 
@@ -299,7 +305,7 @@ def main():
         description="Evaluate spec quality using generated Verus tests.")
 
     p.add_argument("--case", type=str, required=True,
-                   choices=["bitmap", "verusage"])
+                   choices=["bitmap", "verusage", "verusage_files"])
 
     # Bitmap.
     p.add_argument("--project_dir", type=str, default="./bitmap")
@@ -308,6 +314,10 @@ def main():
     # VeruSAGE.
     p.add_argument("--tasks_jsonl", type=str, default=None)
     p.add_argument("--language_path", type=str, default=None)
+
+    # VeruSAGE-files.
+    p.add_argument("--source_dir", type=str, default=None,
+                   help="Root of source-projects tree (for verusage_files case)")
 
     # Inputs.
     p.add_argument("--test_results", type=str, required=True,

@@ -7,7 +7,7 @@ Research project using LLMs to generate and evaluate formal specifications for t
 | Case | Description | Layout |
 |------|-------------|--------|
 | **Bitmap** | Bitmap allocator from the Nanvix OS | Multi-file: `lib.rs`, `lib.spec.rs`, `lib.proof.rs`, `lib.test.rs` |
-| **VeruSAGE** | 849-task benchmark (single-file Verus programs) | JSONL, one `.rs` file per task |
+| **VeruSAGE** | 849-task benchmark (single-file Verus programs) | JSONL or file-based (848 `.rs` files across 9 projects) |
 
 ## Repository Structure
 
@@ -25,13 +25,22 @@ Research project using LLMs to generate and evaluate formal specifications for t
 ├── framework/                  # Test generation & spec quality framework
 │   ├── test_gen.py             # Generate verified test functions via LLM
 │   ├── spec_checker.py         # Evaluate spec quality using tests
+│   ├── workspace_evaluator.py  # Evaluate pre-generated workspace results
 │   ├── verus_runner.py         # Verus verifier wrapper
 │   ├── adapters/
 │   │   ├── base.py             # CaseAdapter interface + data classes
 │   │   ├── bitmap.py           # Bitmap multi-file adapter
-│   │   └── verusage.py         # VeruSAGE single-file adapter
+│   │   ├── verusage.py         # VeruSAGE JSONL adapter
+│   │   └── verusage_files.py   # VeruSAGE file-based adapter
 │   └── prompts/
-│       └── test_gen_template.md
+│       ├── test_gen_template.md
+│       └── test_gen_structured.md
+│
+├── verusage/                   # VeruSAGE file-based tasks + workspace
+│   ├── source-projects/        # 848 .rs task files (9 projects)
+│   ├── workspace/              # 58 pre-generated test results
+│   ├── prompts/                # Prompt templates
+│   └── verus/                  # Local Verus binary
 │
 └── CLAUDE.md                   # Guidance for Claude Code
 ```
@@ -96,7 +105,7 @@ python -m framework test_gen \
   --timeout 600
 ```
 
-Generate test functions for VeruSAGE tasks:
+Generate test functions for VeruSAGE tasks (JSONL):
 
 ```bash
 python -m framework test_gen \
@@ -109,7 +118,30 @@ python -m framework test_gen \
   --max_workers 4
 ```
 
-Output: `<output_dir>/<model>/test_gen_results.jsonl` — one line per task with `task_id`, `test_code`, etc.
+Generate test functions for VeruSAGE tasks (file-based):
+
+```bash
+python -m framework test_gen \
+  --case verusage_files \
+  --source_dir verusage/source-projects \
+  --output_dir ./output/test_gen/ \
+  --models claude-opus-4.6 \
+  --num_tests 3 \
+  --max_workers 4
+```
+
+Generate structured tests (correctness + 5 completeness rounds):
+
+```bash
+python -m framework test_gen \
+  --case verusage_files \
+  --source_dir verusage/source-projects \
+  --output_dir ./output/test_gen/ \
+  --structured \
+  --models claude-opus-4.6
+```
+
+Output: `<output_dir>/<model>/test_gen_results.jsonl` — one line per task with `task_id`, `test_code`, etc. In structured mode, also writes per-task folders with `correctness_tests.rs` and `completeness_round{1-5}.rs`.
 
 ### Step 2: Evaluate Spec Quality
 
@@ -137,23 +169,39 @@ python -m framework spec_checker \
 
 Output: `<output_dir>/spec_quality_report.jsonl` — per-task quality scores.
 
+### Step 3: Evaluate Pre-Generated Workspace Results
+
+If you have pre-generated workspace results (e.g., from `verusage/workspace/`):
+
+```bash
+python -m framework workspace_eval \
+  --workspace_dir verusage/workspace \
+  --verus_bin verusage/verus/verus \
+  --output_dir ./output/workspace_eval/
+```
+
+Output: `<output_dir>/workspace_eval_results.jsonl` — per-task correctness/completeness verification status.
+
 ### Adapter Pattern
 
-The framework uses adapters to handle the two case studies uniformly:
+The framework uses adapters to handle different project layouts uniformly:
 
 | Adapter | `iter_tasks()` | `build_verifiable_source()` |
 |---------|---------------|----------------------------|
 | `BitmapAdapter` | Yields one task per public function in `lib.rs` | Injects tests into `lib.test.rs` before `} // verus!` |
 | `VeruSAGEAdapter` | Reads JSONL, yields one task per line | Injects tests into the `verus! {}` block of the single `.rs` file |
+| `VeruSAGEFileAdapter` | Walks `source-projects/*/verified/**/*.rs` | Same injection as `VeruSAGEAdapter` |
 
-Both adapters implement the `CaseAdapter` interface from `framework/adapters/base.py`.
+All adapters implement the `CaseAdapter` interface from `framework/adapters/base.py`.
 
 ### Key Data Classes
 
 - **`Task`** — one unit of work: `task_id`, `target_function`, `source_code`, and optional `source_no_spec` / `generated_spec`
 - **`FunctionInfo`** — metadata about a Verus function: name, signature, specs, body
+- **`StructuredTestResult`** — structured test output: `correctness_tests` + `completeness_rounds` (dict of 5 rounds)
 - **`VerificationResult`** — parsed Verus output: `verified`, `errors`, `success`, `summary`
 - **`SpecQualityReport`** — evaluation result: `valid_tests`, `passed_tests`, `quality_score`
+- **`WorkspaceTaskReport`** — workspace evaluation: correctness pass/fail + per-round completeness status
 
 ## Spec Generation (existing pipeline)
 

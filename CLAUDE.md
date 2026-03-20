@@ -57,16 +57,32 @@ python -m framework test_gen \
   --case bitmap --project_dir ./bitmap --variant bitmap_new \
   --output_dir /path/to/output/ --num_tests 5
 
-# Generate verified test functions for VeruSAGE:
+# Generate verified test functions for VeruSAGE (JSONL):
 python -m framework test_gen \
   --case verusage --tasks_jsonl /path/to/tasks.jsonl \
   --output_dir /path/to/output/ --num_tests 3
+
+# Generate verified test functions for VeruSAGE (file-based):
+python -m framework test_gen \
+  --case verusage_files --source_dir verusage/source-projects \
+  --output_dir /path/to/output/ --num_tests 3
+
+# Generate structured tests (correctness + 5 completeness rounds):
+python -m framework test_gen \
+  --case verusage_files --source_dir verusage/source-projects \
+  --output_dir /path/to/output/ --structured
 
 # Evaluate spec quality using generated tests:
 python -m framework spec_checker \
   --case verusage --tasks_jsonl /path/to/tasks.jsonl \
   --test_results /path/to/test_gen_results.jsonl \
   --spec_results /path/to/spec_gen_results.jsonl \
+  --output_dir /path/to/eval/
+
+# Evaluate pre-generated workspace results:
+python -m framework workspace_eval \
+  --workspace_dir verusage/workspace \
+  --verus_bin verusage/verus/verus \
   --output_dir /path/to/eval/
 ```
 
@@ -108,14 +124,22 @@ The framework evaluates LLM-generated specs by generating verified test function
 
 **Pipeline:** Source → (adapter) → LLM generates tests → inject into source → Verus verifies → quality score
 
-- **`framework/adapters/base.py`** — `CaseAdapter` abstract interface: `iter_tasks()`, `build_verifiable_source()`, `write_test_file()`
+- **`framework/adapters/base.py`** — `CaseAdapter` abstract interface + data classes (`Task`, `FunctionInfo`, `StructuredTestResult`)
 - **`framework/adapters/bitmap.py`** — Adapter for multi-file Bitmap project (injects tests into `lib.test.rs`)
-- **`framework/adapters/verusage.py`** — Adapter for single-file VeruSAGE tasks (injects tests into `verus! {}` block)
-- **`framework/test_gen.py`** — LLM-based test generation orchestrator (parallel, resumable, JSONL output)
+- **`framework/adapters/verusage.py`** — Adapter for JSONL-based VeruSAGE tasks (injects tests into `verus! {}` block)
+- **`framework/adapters/verusage_files.py`** — Adapter for file-based VeruSAGE tasks (walks `source-projects/*/verified/`)
+- **`framework/test_gen.py`** — LLM-based test generation orchestrator (parallel, resumable, JSONL output); supports `--structured` mode for correctness + completeness round generation
 - **`framework/spec_checker.py`** — Spec quality evaluator: validates tests against ground-truth, then scores generated specs
+- **`framework/workspace_evaluator.py`** — Evaluates pre-generated workspace results (correctness + 5 completeness rounds) by running Verus
 - **`framework/verus_runner.py`** — Verus binary wrapper with result parsing
 
 **Spec quality scoring:** A test is "valid" if it verifies with the ground-truth spec. Quality score = (valid tests passing with generated spec) / (total valid tests). Score of 1.0 means the generated spec is indistinguishable from ground truth (by these tests).
+
+### VeruSAGE File-Based Layout (`verusage/`)
+- **`verusage/source-projects/<project>/verified/<category>/<file>.rs`** — 848 individual task files across 9 source projects
+- **`verusage/workspace/<task_id>/`** — Pre-generated results with `correctness_tests.rs` + `completeness_round{1-5}.rs`
+- **`verusage/prompts/`** — Prompt templates for structured test generation
+- **`verusage/verus/`** — Local Verus binary for verification
 
 ## Verification
 

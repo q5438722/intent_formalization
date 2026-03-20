@@ -36,6 +36,17 @@ class Task:
     extra: dict = field(default_factory=dict)   # adapter-specific metadata
 
 
+@dataclass
+class StructuredTestResult:
+    """Result of structured (correctness + completeness) test generation."""
+    task_id: str
+    target_function: str
+    model: str
+    correctness_tests: str = ""
+    completeness_rounds: dict[int, str] = field(default_factory=dict)  # {1: code, ..., 5: code}
+    error: str = ""
+
+
 class CaseAdapter(ABC):
     """Interface that every case-study adapter must implement."""
 
