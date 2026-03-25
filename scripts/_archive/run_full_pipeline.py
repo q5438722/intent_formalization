@@ -73,6 +73,7 @@ For EACH candidate, output in this EXACT format (parseable):
 NAME: <short_snake_case_name>
 TARGET_FN: <name of the exec function being tested>
 TYPE: behavioral | boundary | logical
+SOURCE: spec_only
 CODE:
 ```verus
 proof fn phi_<n>_<snake_name>(<params>)
@@ -95,6 +96,56 @@ IMPORTANT:
 - Do NOT wrap in verus!{} — the proof fn will be inserted inside an existing verus!{} block
 - Keep proof bodies SHORT — rely on Verus's SMT solver
 - If there are multiple exec functions, spread your tests across them
+"""
+
+BODY_AWARE_PROMPT = """You are a spec incompleteness detector for Verus (Rust verification).
+
+You are given:
+1. A Verus source file with type/spec definitions
+2. EXECUTABLE functions with their full body AND their specification (requires/ensures)
+
+Your job: find properties that the function body guarantees but the specification DOES NOT express.
+These are spec *incompleteness* gaps — the function does something useful that callers can't rely on
+because the spec doesn't promise it.
+
+Strategy:
+- Read the function body carefully. What does it actually compute/guarantee?
+- Compare with the ensures clause. What's missing?
+- Focus on behavioral intent: if a human reads the body, what would they expect the spec to say?
+- Look for comments like "not strictly needed", TODO, FIXME near specs — these are developer-acknowledged gaps
+
+Generate candidates in three dimensions:
+- **Behavioral**: Body guarantees a semantic property (e.g., monotonicity, completeness, forward progress) not in ensures
+- **Boundary**: Body handles edge cases (empty input, zero, overflow) but spec doesn't distinguish them
+- **Logical**: Body maintains relationships between outputs (e.g., result.start + result.count <= bound) not stated
+
+For EACH candidate, output in this EXACT format:
+
+===PHI_START===
+NAME: <short_snake_case_name>
+TARGET_FN: <name of the exec function being tested>
+TYPE: behavioral | boundary | logical
+SOURCE: body_aware
+CODE:
+```verus
+proof fn phi_<n>_<snake_name>(<params>)
+    requires
+        <preconditions from the spec>,
+    ensures
+        <the property that body guarantees but spec doesn't>,
+{
+}
+```
+REASON: <what the body does that the spec doesn't capture>
+===PHI_END===
+
+IMPORTANT:
+- Generate EXACTLY 5 candidates
+- Each proof fn must be SELF-CONTAINED
+- Use types/functions/traits defined in the source file
+- Do NOT add new `use` statements or `mod` declarations
+- Do NOT wrap in verus!{} — will be inserted inside existing verus!{} block
+- Focus on what's MISSING from the spec, not what's wrong with the body
 """
 
 CRITIC_PROMPT = """You are a spec consistency critic for Verus.
@@ -264,6 +315,7 @@ def parse_phi_blocks(text: str) -> list:
         block = match.group(1).strip()
         name_m = re.search(r'NAME:\s*(.+)', block)
         type_m = re.search(r'TYPE:\s*(.+)', block)
+        source_m = re.search(r'SOURCE:\s*(.+)', block)
         code_m = re.search(r'```(?:verus|rust)?\s*\n(.*?)```', block, re.DOTALL)
         reason_m = re.search(r'REASON:\s*(.+)', block)
 
@@ -271,6 +323,7 @@ def parse_phi_blocks(text: str) -> list:
             blocks.append({
                 "name": name_m.group(1).strip(),
                 "type": type_m.group(1).strip() if type_m else "unknown",
+                "source": source_m.group(1).strip() if source_m else "spec_only",
                 "code": code_m.group(1).strip(),
                 "reason": reason_m.group(1).strip() if reason_m else "",
             })
@@ -312,6 +365,56 @@ def build_entailment_file(source_text: str, phi_code: str) -> str:
     return source_text[:last_brace] + "\n\n// === Entailment query ===\n" + phi_code + "\n\n}\n"
 
 
+def strip_spec(source_text: str) -> str:
+    """Strip requires/ensures clauses from exec functions to test if φ is a tautology.
+
+    Replaces requires/ensures blocks on exec functions with 'requires true, ensures true,'.
+    This is conservative: if φ still verifies without the spec, it's spec-independent.
+    """
+    import re as _re
+    lines = source_text.split('\n')
+    result = []
+    i = 0
+    in_spec_block = False
+    brace_depth = 0
+
+    while i < len(lines):
+        line = lines[i]
+        stripped = line.strip()
+
+        # Detect start of requires/ensures on exec functions
+        # We replace any requires/ensures clause content with 'true'
+        if not in_spec_block and stripped in ('requires', 'ensures'):
+            # Check if next non-empty lines are spec clauses (indented conditions)
+            # Replace the clause block with 'true,'
+            result.append(line)  # keep the keyword
+            i += 1
+            # Skip all indented condition lines until we hit another keyword or fn body
+            added_true = False
+            while i < len(lines):
+                next_stripped = lines[i].strip()
+                # Stop at: next keyword, opening brace, empty line followed by non-spec
+                if next_stripped in ('requires', 'ensures', 'recommends', 'decreases', '{', '}', ''):
+                    break
+                if next_stripped.startswith('//'):
+                    result.append(lines[i])  # keep comments
+                    i += 1
+                    continue
+                if not added_true:
+                    # Replace first condition line with 'true,'
+                    indent = len(lines[i]) - len(lines[i].lstrip())
+                    result.append(' ' * indent + 'true,')
+                    added_true = True
+                # Skip remaining condition lines
+                i += 1
+            continue
+
+        result.append(line)
+        i += 1
+
+    return '\n'.join(result)
+
+
 def process_one_file(source_path: Path) -> dict:
     """Run the full pipeline for one file."""
     task_name = task_name_for(source_path)
@@ -345,8 +448,8 @@ def process_one_file(source_path: Path) -> dict:
     (task_dir / "exec_functions.json").write_text(json.dumps(
         [{"name": f["name"], "code_len": len(f["code"])} for f in exec_fns], indent=2))
 
-    # Step 1: Generator — focused on exec functions
-    print(f"  [gen] {task_name} ({len(exec_fns)} exec fns)")
+    # Step 1a: Spec-only generator
+    print(f"  [gen-1a] {task_name} ({len(exec_fns)} exec fns) — spec-only")
     spec_text = extract_spec_portion(source_text)
     exec_fn_section = "\n\n## Executable Functions to Test:\n\n"
     for fn in exec_fns:
@@ -356,9 +459,27 @@ def process_one_file(source_path: Path) -> dict:
         GENERATOR_PROMPT,
         f"Source file (spec-relevant portions):\n\n```rust\n{spec_text}\n```\n\n{exec_fn_section}\n\nGenerate 5 candidate undesirable properties targeting ONLY the exec functions listed above."
     )
-    (task_dir / "generator_raw.txt").write_text(gen_response)
+    (task_dir / "generator_1a_raw.txt").write_text(gen_response)
+    phis_1a = parse_phi_blocks(gen_response)
 
-    phis = parse_phi_blocks(gen_response)
+    # Step 1b: Body-aware generator
+    print(f"  [gen-1b] {task_name} — body-aware")
+    body_section = "\n\n## Executable Functions (with body):\n\n"
+    for fn in exec_fns:
+        body_section += f"### `{fn['name']}`\n```verus\n{fn['code']}\n```\n\n"
+
+    gen_response_body = call_llm(
+        BODY_AWARE_PROMPT,
+        f"Source file (spec-relevant portions):\n\n```rust\n{spec_text}\n```\n\n{body_section}\n\nGenerate 5 candidate properties that the body guarantees but the spec does NOT express."
+    )
+    (task_dir / "generator_1b_raw.txt").write_text(gen_response_body)
+    phis_1b = parse_phi_blocks(gen_response_body)
+
+    # Merge both sets
+    phis = phis_1a + phis_1b
+    result["phis_1a"] = len(phis_1a)
+    result["phis_1b"] = len(phis_1b)
+
     if not phis:
         result["status"] = "NO_PHIS_GENERATED"
         result["generator_error"] = gen_response[:500]
@@ -367,6 +488,13 @@ def process_one_file(source_path: Path) -> dict:
         return result
 
     result["phis_generated"] = len(phis)
+    # Backward compat: also save combined raw
+    (task_dir / "generator_raw.txt").write_text(
+        f"=== Step 1a (spec-only): {len(phis_1a)} φ ===\n" +
+        (task_dir / "generator_1a_raw.txt").read_text() +
+        f"\n\n=== Step 1b (body-aware): {len(phis_1b)} φ ===\n" +
+        (task_dir / "generator_1b_raw.txt").read_text()
+    )
 
     # Step 2: Entailment check for each phi
     print(f"  [ent] {task_name} — {len(phis)} candidates")
@@ -397,12 +525,43 @@ def process_one_file(source_path: Path) -> dict:
         print(f"  [skip] {task_name} — no φ verified")
         return result
 
-    # Step 3: Critic
-    print(f"  [crit] {task_name} — {len(verified_phis)} verified")
+    # Step 3a: Tautology check — remove spec and re-verify
+    print(f"  [taut] {task_name} — checking {len(verified_phis)} verified φ")
+    non_tautological = []
+    for phi in verified_phis:
+        try:
+            stripped_source = strip_spec(source_text)
+            test_code = build_entailment_file(stripped_source, phi["code"])
+            test_file = task_dir / f"taut_{phi['name']}.rs"
+            test_file.write_text(test_code)
+            check = run_verus(test_file, timeout=120)
+            phi["tautology"] = check["success"]
+            if check["success"]:
+                print(f"    [taut] {phi['name']} — TAUTOLOGY (FP)")
+            else:
+                non_tautological.append(phi)
+        except Exception as e:
+            # If stripping fails, keep the phi (conservative)
+            phi["tautology"] = False
+            phi["tautology_error"] = str(e)
+            non_tautological.append(phi)
+
+    result["tautologies_filtered"] = len(verified_phis) - len(non_tautological)
+
+    if not non_tautological:
+        result["status"] = "ALL_TAUTOLOGICAL"
+        result["true_positives"] = 0
+        result["false_positives"] = 0
+        write_summary_md(task_dir, result, phis, [])
+        print(f"  [skip] {task_name} — all φ tautological")
+        return result
+
+    # Step 3b: LLM Critic (ghost/exec check + spec relevance + verdict)
+    print(f"  [crit] {task_name} — {len(non_tautological)} non-tautological")
     phi_descriptions = ""
-    for i, phi in enumerate(verified_phis):
+    for i, phi in enumerate(non_tautological):
         phi_descriptions += f"\n### φ: {phi['name']}\n"
-        phi_descriptions += f"Type: {phi['type']}\n"
+        phi_descriptions += f"Type: {phi['type']} | Source: {phi.get('source', 'spec_only')}\n"
         phi_descriptions += f"```verus\n{phi['code']}\n```\n"
         phi_descriptions += f"Reason flagged: {phi['reason']}\n"
 

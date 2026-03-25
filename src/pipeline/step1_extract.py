@@ -2,18 +2,18 @@
 """
 Step 1: Extract executable functions from all baseline-valid VeruSage files.
 
-Outputs: workspace_v3/exec_functions.json
-  { "file_path": str, "task_name": str, "exec_functions": [{"name": str, "code": str}], "all_stats": {...} }
+Outputs: <workspace>/exec_functions.json
 
-Skips files with no exec functions (excluding main).
+Usage:
+  python3 step1_extract.py [--workspace DIR]
 """
 
+import argparse
 import json
 import sys
 from pathlib import Path
 
 BASE = Path.home() / "intent_formalization"
-WORKSPACE = BASE / "verusage" / "workspace_v3"
 VERUS_SO = str(BASE / "verus.so")
 VERUSAGE = BASE / "verusage" / "source-projects"
 
@@ -35,10 +35,42 @@ def extract_fn_name(decl_node) -> str:
     return 'unknown'
 
 
+def extract_from_file(fpath: Path) -> dict | None:
+    """Extract exec function info from a single source file. Returns entry dict or None."""
+    vp = verus_parser(VERUS_SO)
+    source_text = fpath.read_text()
+    tree = vp.parser.parse(bytes(source_text, 'utf-8')).root_node
+    exec_fns = vp.extract_exec_functions(tree, skip_external=True)
+
+    exec_info = []
+    for decl in exec_fns:
+        name = extract_fn_name(decl)
+        if name == 'main':
+            continue
+        exec_info.append({"name": name, "code": decl.text.decode()})
+
+    if not exec_info:
+        return None
+
+    return {
+        "file_path": str(fpath),
+        "task_name": fpath.stem,
+        "exec_functions": exec_info,
+    }
+
+
 def main():
+    parser = argparse.ArgumentParser(description="Step 1: Extract exec functions")
+    parser.add_argument("--workspace", type=str, default=str(BASE / "verusage" / "workspace_v4"))
+    args = parser.parse_args()
+
+    workspace = Path(args.workspace)
     vp = verus_parser(VERUS_SO)
 
-    valid_file = WORKSPACE / "baseline_valid.json"
+    valid_file = workspace / "baseline_valid.json"
+    if not valid_file.exists():
+        # Fall back to v3's baseline
+        valid_file = BASE / "verusage" / "workspace_v3" / "baseline_valid.json"
     files = [Path(f) for f in json.loads(valid_file.read_text())]
     print(f"Scanning {len(files)} baseline-valid files...")
 
@@ -87,8 +119,8 @@ def main():
             print(f"  [{i+1}/{len(files)}] {len(results)} with exec, {skipped} skipped")
 
     # Save
-    WORKSPACE.mkdir(parents=True, exist_ok=True)
-    out_path = WORKSPACE / "exec_functions.json"
+    workspace.mkdir(parents=True, exist_ok=True)
+    out_path = workspace / "exec_functions.json"
     out_path.write_text(json.dumps(results, indent=2))
 
     print(f"\nDone: {len(results)} files with exec functions, {skipped} skipped")

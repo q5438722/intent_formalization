@@ -2,12 +2,12 @@
 """
 Step 3: Run Verus entailment check on each candidate φ.
 
-Reads:  workspace_v3/<task_name>/candidates.json + original.rs
-Writes: workspace_v3/<task_name>/phi_<n>_<name>.rs  (test files)
-        workspace_v3/<task_name>/entailment_results.json
+Reads:  workspace/<task_name>/candidates.json + original.rs
+Writes: workspace/<task_name>/phi_<n>_<name>.rs  (test files)
+        workspace/<task_name>/entailment_results.json
 
 Usage:
-  python3 step3_entailment.py [--limit N] [--offset N] [--timeout SECS]
+  python3 step3_entailment.py [--limit N] [--offset N] [--timeout SECS] [--workspace DIR]
 """
 
 import argparse
@@ -16,21 +16,12 @@ import sys
 from pathlib import Path
 
 BASE = Path.home() / "intent_formalization"
-WORKSPACE = BASE / "verusage" / "workspace_v3"
-VERUS_BINARY = str(BASE / "verus" / "verus")
 
 sys.path.insert(0, str(BASE / "src" / "utils"))
 from verus import run_verus
+from pipeline_common import build_entailment_file
 
-
-def build_entailment_file(source_text: str, phi_code: str) -> str:
-    """Insert φ proof fn before the final closing brace of verus!{} block."""
-    last_brace = source_text.rstrip().rfind('}')
-    if last_brace == -1:
-        raise ValueError("Cannot find closing brace")
-    return (source_text[:last_brace] +
-            "\n\n// === Entailment query ===\n" +
-            phi_code + "\n\n}\n")
+VERUS_BINARY = str(Path.home() / ".verus" / "verus-x86" / "verus")
 
 
 def process_one(task_dir: Path, verus_timeout: int) -> dict:
@@ -46,7 +37,6 @@ def process_one(task_dir: Path, verus_timeout: int) -> dict:
         return {"task": task_dir.name, "status": "no_candidates"}
 
     source_text = original_file.read_text()
-
     results = []
     verified_count = 0
 
@@ -55,6 +45,7 @@ def process_one(task_dir: Path, verus_timeout: int) -> dict:
             "name": phi["name"],
             "target_fn": phi.get("target_fn", ""),
             "type": phi.get("type", ""),
+            "source": phi.get("source", "spec_only"),
             "reason": phi.get("reason", ""),
         }
 
@@ -88,15 +79,16 @@ def process_one(task_dir: Path, verus_timeout: int) -> dict:
 
 
 def main():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="Step 3: Verus entailment check")
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--offset", type=int, default=0)
     parser.add_argument("--timeout", type=int, default=120, help="Verus timeout per file")
+    parser.add_argument("--workspace", type=str, default=str(BASE / "verusage" / "workspace_v4"))
     args = parser.parse_args()
 
-    # Find task dirs that have candidates.json but no entailment_results.json
+    workspace = Path(args.workspace)
     task_dirs = sorted([
-        d for d in WORKSPACE.iterdir()
+        d for d in workspace.iterdir()
         if d.is_dir()
         and (d / "candidates.json").exists()
         and not (d / "entailment_results.json").exists()
@@ -115,7 +107,10 @@ def main():
             r = process_one(task_dir, args.timeout)
             v = r.get("verified", 0)
             total_verified += v
-            print(f"  {r['verified']}/{r['total']} verified" if r["status"] == "ok" else f"  {r['status']}")
+            if r["status"] == "ok":
+                print(f"  {r['verified']}/{r['total']} verified")
+            else:
+                print(f"  {r['status']}")
         except Exception as e:
             print(f"  [error] {e}")
 

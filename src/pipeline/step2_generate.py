@@ -2,32 +2,38 @@
 """
 Step 2: Generate test candidates (φ) for each file's exec functions.
 
-Reads:  workspace_v3/exec_functions.json
-Writes: workspace_v3/<task_name>/original.rs
-        workspace_v3/<task_name>/exec_functions.json
-        workspace_v3/<task_name>/generator_raw.txt
-        workspace_v3/<task_name>/candidates.json
+Two sub-steps:
+  2a: Spec-only generation — adversarial properties from requires/ensures
+  2b: Body-aware generation — properties the body guarantees but spec doesn't
+
+Reads:  workspace/<task_name>/original.rs + exec_functions.json (or global exec_functions.json)
+Writes: workspace/<task_name>/generator_1a_raw.txt
+        workspace/<task_name>/generator_1b_raw.txt
+        workspace/<task_name>/candidates.json
 
 Usage:
-  python3 step2_generate.py [--limit N] [--offset N] [--model MODEL]
+  python3 step2_generate.py [--limit N] [--offset N] [--model MODEL] [--workspace DIR]
 """
 
 import argparse
 import json
-import os
-import re
 import shutil
 import sys
 import time
 from pathlib import Path
 
 BASE = Path.home() / "intent_formalization"
-WORKSPACE = BASE / "verusage" / "workspace_v3"
 
 sys.path.insert(0, str(BASE / "src" / "utils"))
 from llm import LLMClient
+from pipeline_common import extract_spec_portion, parse_phi_blocks
 
-GENERATOR_PROMPT = """You are a spec consistency query generator for Verus (Rust verification).
+
+# ---------------------------------------------------------------------------
+# Prompts
+# ---------------------------------------------------------------------------
+
+SPEC_ONLY_PROMPT = """You are a spec consistency query generator for Verus (Rust verification).
 
 You are given a Verus source file and a list of EXECUTABLE functions (not spec/proof functions).
 Your job: generate candidate "undesirable properties" targeting ONLY these executable functions' specifications (requires/ensures).
@@ -38,6 +44,7 @@ For EACH candidate, output in this EXACT format:
 NAME: <short_snake_case_name>
 TARGET_FN: <name of the exec function being tested>
 TYPE: behavioral | boundary | logical
+SOURCE: spec_only
 CODE:
 ```verus
 proof fn phi_<n>_<snake_name>(<params>)
@@ -46,14 +53,13 @@ proof fn phi_<n>_<snake_name>(<params>)
     ensures
         <the undesirable property>,
 {
-    // proof body (can be empty)
 }
 ```
 REASON: <one line why this would be undesirable if entailed>
 ===PHI_END===
 
 RULES:
-- Generate EXACTLY 5 candidates, all targeting the listed exec functions
+- Generate AT LEAST 5 candidates (more is better), all targeting the listed exec functions
 - Each proof fn will be appended inside the existing verus!{} block
 - Use types/functions/traits from the source file
 - Do NOT add new `use`/`mod` statements or wrap in verus!{}
@@ -62,100 +68,120 @@ RULES:
 """
 
 
-def parse_phi_blocks(text: str) -> list:
-    blocks = []
-    pattern = r'===PHI_START===(.*?)===PHI_END==='
-    for match in re.finditer(pattern, text, re.DOTALL):
-        block = match.group(1).strip()
-        name_m = re.search(r'NAME:\s*(.+)', block)
-        target_m = re.search(r'TARGET_FN:\s*(.+)', block)
-        type_m = re.search(r'TYPE:\s*(.+)', block)
-        code_m = re.search(r'```(?:verus|rust)?\s*\n(.*?)```', block, re.DOTALL)
-        reason_m = re.search(r'REASON:\s*(.+)', block)
+BODY_AWARE_PROMPT = """You are a spec incompleteness detector for Verus (Rust verification).
 
-        if name_m and code_m:
-            blocks.append({
-                "name": name_m.group(1).strip(),
-                "target_fn": target_m.group(1).strip() if target_m else "",
-                "type": type_m.group(1).strip() if type_m else "unknown",
-                "code": code_m.group(1).strip(),
-                "reason": reason_m.group(1).strip() if reason_m else "",
-            })
-    return blocks
+You are given a Verus source file and EXECUTABLE functions with their full body AND specification.
+Your job: find properties that the function body guarantees but the specification DOES NOT express.
+These are spec *incompleteness* gaps — the function does something useful that callers can't rely on
+because the spec doesn't promise it.
 
+Strategy:
+- Read the function body carefully. What does it actually compute/guarantee?
+- Compare with the ensures clause. What's missing?
+- Focus on behavioral intent: if a human reads the body, what would they expect the spec to say?
+- Look for comments like "not strictly needed", TODO, FIXME near specs — developer-acknowledged gaps
 
-def extract_spec_portion(source_text: str, max_lines: int = 400) -> str:
-    """For large files, extract spec-relevant portions."""
-    lines = source_text.split('\n')
-    if len(lines) <= max_lines:
-        return source_text
+Generate candidates in three dimensions:
+- **Behavioral**: Body guarantees a semantic property (e.g., monotonicity, completeness, forward progress) not in ensures
+- **Boundary**: Body handles edge cases (empty input, zero, overflow) but spec doesn't distinguish them
+- **Logical**: Body maintains relationships between outputs (e.g., result.start + result.count <= bound) not stated
 
-    spec_keywords = ['requires', 'ensures', 'invariant', 'recommends', 'spec fn',
-                     'proof fn', 'decreases', 'open spec', 'closed spec',
-                     'pub proof', 'pub open spec', 'pub closed spec',
-                     'pub fn', 'fn ', 'struct ', 'impl ', 'trait ', 'enum ']
-    important = set()
-    for i, line in enumerate(lines):
-        low = line.lower().strip()
-        if any(kw in low for kw in spec_keywords):
-            for j in range(max(0, i - 3), min(len(lines), i + 8)):
-                important.add(j)
+For EACH candidate, output in this EXACT format:
 
-    # Always include first 30 and last 5 lines
-    for i in range(min(30, len(lines))):
-        important.add(i)
-    for i in range(max(0, len(lines) - 5), len(lines)):
-        important.add(i)
+===PHI_START===
+NAME: <short_snake_case_name>
+TARGET_FN: <name of the exec function being tested>
+TYPE: behavioral | boundary | logical
+SOURCE: body_aware
+CODE:
+```verus
+proof fn phi_<n>_<snake_name>(<params>)
+    requires
+        <preconditions from the spec>,
+    ensures
+        <the property that body guarantees but spec doesn't>,
+{
+}
+```
+REASON: <what the body does that the spec doesn't capture>
+===PHI_END===
 
-    selected = sorted(important)[:max_lines]
-    result = []
-    prev = -2
-    for i in selected:
-        if i > prev + 1:
-            result.append(f"// ... (lines {prev+2}-{i-1} omitted) ...")
-        result.append(lines[i])
-        prev = i
-    return '\n'.join(result)
+RULES:
+- Generate AT LEAST 5 candidates (more is better)
+- Each proof fn will be appended inside the existing verus!{} block
+- Use types/functions/traits from the source file
+- Do NOT add new `use`/`mod` statements or wrap in verus!{}
+- Focus on what's MISSING from the spec, not what's wrong with the body
+"""
 
 
-def process_one(entry: dict, llm: LLMClient, model: str) -> dict:
+# ---------------------------------------------------------------------------
+# Sub-steps
+# ---------------------------------------------------------------------------
+
+def generate_spec_only(llm: LLMClient, model: str, spec_text: str, exec_section: str) -> tuple[str, list]:
+    """Step 2a: Generate φ from spec alone."""
+    user_prompt = (
+        f"Source file (spec-relevant portions):\n\n```rust\n{spec_text}\n```\n"
+        f"{exec_section}\n"
+        f"Generate at least 5 candidate undesirable properties targeting ONLY the exec functions listed above."
+    )
+    try:
+        resp = llm.chat(SPEC_ONLY_PROMPT, user_prompt, model=model)
+        raw = resp.content
+    except Exception as e:
+        raw = f"ERROR: {e}"
+    return raw, parse_phi_blocks(raw)
+
+
+def generate_body_aware(llm: LLMClient, model: str, spec_text: str, exec_section: str) -> tuple[str, list]:
+    """Step 2b: Generate φ from body vs spec comparison."""
+    user_prompt = (
+        f"Source file (spec-relevant portions):\n\n```rust\n{spec_text}\n```\n"
+        f"{exec_section}\n"
+        f"Generate at least 5 candidate properties that the body guarantees but the spec does NOT express."
+    )
+    try:
+        resp = llm.chat(BODY_AWARE_PROMPT, user_prompt, model=model)
+        raw = resp.content
+    except Exception as e:
+        raw = f"ERROR: {e}"
+    return raw, parse_phi_blocks(raw)
+
+
+# ---------------------------------------------------------------------------
+# Task processing
+# ---------------------------------------------------------------------------
+
+def process_one(entry: dict, llm: LLMClient, model: str, workspace: Path) -> dict:
     """Generate candidates for one file."""
     task_name = entry["task_name"]
     fpath = Path(entry["file_path"])
-    task_dir = WORKSPACE / task_name
+    task_dir = workspace / task_name
     task_dir.mkdir(parents=True, exist_ok=True)
 
     source_text = fpath.read_text()
-
-    # Save originals
     shutil.copy2(fpath, task_dir / "original.rs")
     (task_dir / "exec_functions.json").write_text(
         json.dumps(entry["exec_functions"], indent=2))
 
-    # Build prompt
     spec_text = extract_spec_portion(source_text)
     exec_section = "\n\n## Executable Functions to Test:\n\n"
     for fn in entry["exec_functions"]:
         exec_section += f"### `{fn['name']}`\n```verus\n{fn['code']}\n```\n\n"
 
-    user_prompt = (
-        f"Source file (spec-relevant portions):\n\n```rust\n{spec_text}\n```\n"
-        f"{exec_section}\n"
-        f"Generate 5 candidate undesirable properties targeting ONLY the exec functions listed above."
-    )
+    # Step 2a: Spec-only
+    print(f"  [2a] {task_name} ({len(entry['exec_functions'])} exec fns) — spec-only")
+    raw_1a, candidates_1a = generate_spec_only(llm, model, spec_text, exec_section)
+    (task_dir / "generator_1a_raw.txt").write_text(raw_1a)
 
-    # Call LLM
-    print(f"  [gen] {task_name} ({len(entry['exec_functions'])} exec fns)")
-    try:
-        resp = llm.chat(GENERATOR_PROMPT, user_prompt, model=model)
-        raw_text = resp.content
-    except Exception as e:
-        raw_text = f"ERROR: {e}"
+    # Step 2b: Body-aware
+    print(f"  [2b] {task_name} — body-aware")
+    raw_1b, candidates_1b = generate_body_aware(llm, model, spec_text, exec_section)
+    (task_dir / "generator_1b_raw.txt").write_text(raw_1b)
 
-    (task_dir / "generator_raw.txt").write_text(raw_text)
-
-    # Parse
-    candidates = parse_phi_blocks(raw_text)
+    # Merge
+    candidates = candidates_1a + candidates_1b
     (task_dir / "candidates.json").write_text(json.dumps(candidates, indent=2))
 
     status = "ok" if candidates else "no_candidates"
@@ -165,23 +191,32 @@ def process_one(entry: dict, llm: LLMClient, model: str) -> dict:
     return {
         "task_name": task_name,
         "candidates": len(candidates),
+        "candidates_2a": len(candidates_1a),
+        "candidates_2b": len(candidates_1b),
         "status": status,
     }
 
 
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
 def main():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="Step 2: Generate φ candidates (spec-only + body-aware)")
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--offset", type=int, default=0)
     parser.add_argument("--model", type=str, default="claude-opus-4.6")
+    parser.add_argument("--workspace", type=str, default=str(BASE / "verusage" / "workspace_v4"))
     args = parser.parse_args()
 
-    entries = json.loads((WORKSPACE / "exec_functions.json").read_text())
+    workspace = Path(args.workspace)
+    entries = json.loads((workspace / "exec_functions.json").read_text())
     entries = entries[args.offset:]
     if args.limit:
         entries = entries[:args.limit]
 
     print(f"Step 2: Generating candidates for {len(entries)} files (model={args.model})")
+    print(f"  Workspace: {workspace}")
 
     llm = LLMClient(timeout=300)
     results = []
@@ -189,18 +224,18 @@ def main():
     for i, entry in enumerate(entries):
         print(f"\n[{i+1}/{len(entries)}]")
         try:
-            r = process_one(entry, llm, args.model)
+            r = process_one(entry, llm, args.model, workspace)
             results.append(r)
         except Exception as e:
             print(f"  [error] {entry['task_name']}: {e}")
             results.append({"task_name": entry["task_name"], "status": "error", "error": str(e)})
 
-    # Summary
     ok = sum(1 for r in results if r["status"] == "ok")
-    print(f"\n=== Done: {ok}/{len(results)} with candidates ===")
+    total_2a = sum(r.get("candidates_2a", 0) for r in results)
+    total_2b = sum(r.get("candidates_2b", 0) for r in results)
+    print(f"\n=== Done: {ok}/{len(results)} with candidates ({total_2a} spec-only + {total_2b} body-aware) ===")
 
-    # Save progress
-    progress_file = WORKSPACE / "step2_progress.json"
+    progress_file = workspace / "step2_progress.json"
     existing = json.loads(progress_file.read_text()) if progress_file.exists() else []
     existing.extend(results)
     progress_file.write_text(json.dumps(existing, indent=2))
