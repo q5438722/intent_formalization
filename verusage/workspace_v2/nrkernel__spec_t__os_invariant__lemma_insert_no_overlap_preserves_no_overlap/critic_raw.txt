@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: inflight_vmem_region_size_zero_on_failed_unmap
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `inflight_vmem_region` for `UnmapOpDone { result: Err(()) }` computes `size = if result is Ok { ... } else { 0 }`, yielding 0. This is intentional — a failed unmap didn't find a mapping, so there's no region to protect. Correct by design.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: no_overlap_vmem_allows_idle_duplicates
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `no_overlap_vmem_values` quantifies over non-Idle states only (`!state1.is_idle() && !state2.is_idle()`). When all cores are Idle, the antecedent is never satisfied, making the invariant vacuously true. This is correct — the invariant should hold trivially at initialization.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: unique_corestates_ignores_idle
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `unique_CoreStates` guards with `!map[core].is_idle()`, so Idle cores skip the uniqueness check entirely. Multiple cores being Idle is expected and correct — uniqueness only matters for active operations.
+===VERDICT_END===
+
+===SUMMARY===
+All three candidates are false positives. Zero-size regions for failed unmaps, vacuous truth of no-overlap for all-Idle states, and uniqueness skipping Idle cores are all intentional design choices that correctly handle the base/initialization case and error paths.
+===END_SUMMARY===

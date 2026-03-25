@@ -1,0 +1,47 @@
+[
+  {
+    "name": "external_body_forward_direction",
+    "type": "logical",
+    "code": "proof fn phi_1_external_body_forward_direction(s: Seq<int>, pred: spec_fn(int) -> bool)\n    requires\n        s.filter(pred).len() == 0,\n    ensures\n        forall |e: int| #![auto] s.contains(e) ==> !pred(e),\n{\n    empty_filter_implies_seq_pred_false_on_all_elements(s, pred);\n}",
+    "reason": "empty_filter_implies_seq_pred_false_on_all_elements is external_body \u2014 unverified axiom asserting empty filter implies pred false on all elements",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "external_body_reverse_direction",
+    "type": "logical",
+    "code": "proof fn phi_2_external_body_reverse_direction(s: Seq<int>, pred: spec_fn(int) -> bool)\n    requires\n        forall |e: int| #![auto] s.contains(e) ==> !pred(e),\n    ensures\n        s.filter(pred).len() == 0,\n{\n    seq_pred_false_on_all_elements_implies_empty_filter(s, pred);\n}",
+    "reason": "seq_pred_false_on_all_elements_implies_empty_filter is external_body \u2014 unverified axiom asserting pred false on all elements implies empty filter",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "biconditional_instantiation",
+    "type": "behavioral",
+    "code": "proof fn phi_3_biconditional_instantiation(s: Seq<int>, pred: spec_fn(int) -> bool, e: int)\n    requires\n        s.filter(pred).len() == 0,\n        s.contains(e),\n    ensures\n        !pred(e),\n{\n    empty_filter_implies_seq_pred_false_on_all_elements(s, pred);\n}",
+    "reason": "tests specific element instantiation of the external_body axiom \u2014 if the axiom is too strong this could derive contradictions",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "singleton_true_filter_nonempty",
+    "type": "boundary",
+    "code": "proof fn phi_4_singleton_true_filter_nonempty(v: int, pred: spec_fn(int) -> bool)\n    requires\n        pred(v),\n    ensures\n        seq![v].filter(pred).len() > 0,\n{\n    reveal(Seq::filter);\n}",
+    "reason": "singleton with pred true should have nonempty filter \u2014 tests that external_body axioms don't contradict filter's definition",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "filter_false_empty",
+    "type": "boundary",
+    "code": "proof fn phi_5_filter_false_empty(s: Seq<int>)\n    ensures\n        s.filter(|x: int| false).len() == 0,\n    decreases s.len(),\n{\n    reveal(Seq::filter);\n    if s.len() != 0 {\n        phi_5_filter_false_empty(s.drop_last());\n    }\n}",
+    "reason": "always-false predicate should yield empty filter \u2014 tests consistency between external_body axioms and filter's definition",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

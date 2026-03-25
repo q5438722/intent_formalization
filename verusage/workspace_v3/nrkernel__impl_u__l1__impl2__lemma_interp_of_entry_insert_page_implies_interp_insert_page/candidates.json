@@ -1,0 +1,37 @@
+[
+  {
+    "name": "empty_arch_satisfies_inv",
+    "target_fn": "Arch::inv",
+    "type": "boundary",
+    "code": "proof fn phi_1_empty_arch_satisfies_inv()\n    ensures\n        (Arch { layers: seq![] }).inv(),\n{\n}",
+    "reason": "An architecture with zero layers should not satisfy inv, as it represents no valid page table structure"
+  },
+  {
+    "name": "entry_base_zero_neq_base",
+    "target_fn": "Arch::entry_base",
+    "type": "behavioral",
+    "code": "proof fn phi_2_entry_base_zero_neq_base(arch: Arch, layer: nat, base: nat)\n    requires\n        arch.inv(),\n        layer < arch.layers.len(),\n    ensures\n        arch.entry_base(layer, base, 0) != base,\n{\n}",
+    "reason": "The base address of the first entry (idx=0) should equal the directory base; inequality would mean a gap or offset error"
+  },
+  {
+    "name": "update_changes_layer",
+    "target_fn": "Directory::update",
+    "type": "behavioral",
+    "code": "proof fn phi_3_update_changes_layer(d: Directory, n: nat, e: NodeEntry)\n    requires\n        d.inv(),\n        n < d.num_entries(),\n    ensures\n        d.update(n, e).layer != d.layer,\n{\n}",
+    "reason": "Updating a single entry should preserve the directory's layer; a change would corrupt the tree structure"
+  },
+  {
+    "name": "degenerate_arch_satisfies_inv",
+    "target_fn": "Arch::inv",
+    "type": "boundary",
+    "code": "proof fn phi_4_degenerate_arch_satisfies_inv()\n    ensures\n        (Arch { layers: seq![ArchLayer { entry_size: 1 as nat, num_entries: 1 as nat }] }).inv(),\n{\n}",
+    "reason": "An architecture with entry_size=1 byte and a single entry per layer is nonsensical for page tables and should be rejected by inv"
+  },
+  {
+    "name": "all_invalid_implies_nonempty_interp",
+    "target_fn": "Directory::interp",
+    "type": "logical",
+    "code": "proof fn phi_5_all_invalid_implies_nonempty_interp(d: Directory)\n    requires\n        d.inv(),\n        forall|i: nat| i < d.entries.len() ==> d.entries[i as int] is Invalid,\n    ensures\n        exists|k: nat| d.interp().contains_key(k),\n{\n}",
+    "reason": "A directory whose entries are all Invalid should have an empty interpretation; a non-empty map would mean phantom mappings"
+  }
+]

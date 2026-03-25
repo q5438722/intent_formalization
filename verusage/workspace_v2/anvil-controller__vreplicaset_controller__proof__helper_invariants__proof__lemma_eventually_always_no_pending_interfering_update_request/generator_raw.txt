@@ -1,0 +1,80 @@
+===PHI_START===
+NAME: marshal_preserves_integrity_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_marshal_preserves_integrity_external_body(obj: ConfigMapView)
+    ensures
+        ConfigMapView::unmarshal(obj.marshal()) is Ok,
+        obj == ConfigMapView::unmarshal(obj.marshal())->Ok_0,
+{
+    ConfigMapView::marshal_preserves_integrity();
+}
+```
+REASON: marshal_preserves_integrity is external_body — unverified roundtrip assumption for all ResourceView implementors
+===PHI_END===
+
+===PHI_START===
+NAME: update_request_key_kind_from_obj
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_update_request_key_kind_from_obj(req: UpdateRequest)
+    ensures
+        req.key().kind == req.obj.kind,
+{
+}
+```
+REASON: UpdateRequest::key() takes kind from obj rather than a separate field — a mismatched obj.kind silently changes the key's kind
+===PHI_END===
+
+===PHI_START===
+NAME: update_status_request_key_kind_from_obj
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_update_status_request_key_kind_from_obj(req: UpdateStatusRequest)
+    ensures
+        req.key().kind == req.obj.kind,
+{
+}
+```
+REASON: Same issue as UpdateRequest — UpdateStatusRequest::key() derives kind from obj instead of independent field
+===PHI_END===
+
+===PHI_START===
+NAME: reconcile_id_allocator_monotonic_unbounded
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_reconcile_id_allocator_monotonic_unbounded(alloc: ReconcileIdAllocator)
+    ensures
+        alloc.allocate().1 < alloc.allocate().0.allocate().1,
+{
+}
+```
+REASON: ReconcileId is nat with no upper bound — allocator can grow unboundedly with no overflow or exhaustion check
+===PHI_END===
+
+===PHI_START===
+NAME: object_ref_ignores_uid
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_object_ref_ignores_uid(o1: DynamicObjectView, o2: DynamicObjectView)
+    requires
+        o1.kind == o2.kind,
+        o1.metadata.name == o2.metadata.name,
+        o1.metadata.namespace == o2.metadata.namespace,
+        o1.metadata.uid != o2.metadata.uid,
+    ensures
+        ({
+            let r1 = ObjectRef { kind: o1.kind, name: o1.metadata.name->0, namespace: o1.metadata.namespace->0 };
+            let r2 = ObjectRef { kind: o2.kind, name: o2.metadata.name->0, namespace: o2.metadata.namespace->0 };
+            r1 == r2
+        }),
+{
+}
+```
+REASON: ObjectRef identity ignores UID — two objects with different UIDs but same name/namespace/kind are indistinguishable by ObjectRef
+===PHI_END===

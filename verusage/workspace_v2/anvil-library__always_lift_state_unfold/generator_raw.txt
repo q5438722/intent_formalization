@@ -1,0 +1,83 @@
+===PHI_START===
+NAME: always_unfold_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_always_unfold_intensional_bridge(ex: Execution<int>, p: TempPred<int>, i: nat)
+    requires
+        always(p).satisfied_by(ex),
+    ensures
+        p.satisfied_by(ex.suffix(i)),
+{
+    always_unfold::<int>(ex, p);
+}
+```
+REASON: always_unfold is external_body bridging the forall inside always's TempPred::new closure and a bare forall in the ensures — intensionally distinct formulations equated without proof
+===PHI_END===
+
+===PHI_START===
+NAME: lift_state_suffix_head_equivalence
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_lift_state_suffix_head_equivalence(ex: Execution<int>, p: StatePred<int>, i: nat)
+    requires
+        always(lift_state(p)).satisfied_by(ex),
+    ensures
+        p((ex.nat_to_state)(i)),
+{
+    always_lift_state_unfold::<int>(ex, p);
+}
+```
+REASON: ex.suffix(i).head() evaluates via a nested closure |j| f(j+i) at j=0, which should equal f(i) but requires the SMT solver to resolve through the closure — if this verifies, the axiom chain silently resolves the intensional gap
+===PHI_END===
+
+===PHI_START===
+NAME: always_lift_state_at_zero
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_always_lift_state_at_zero(ex: Execution<int>, p: StatePred<int>)
+    requires
+        always(lift_state(p)).satisfied_by(ex),
+    ensures
+        p(ex.head()),
+{
+    always_lift_state_unfold::<int>(ex, p);
+}
+```
+REASON: accessing suffix(0).head() should equal ex.head() but suffix(0) creates a new closure |i| f(i+0) intensionally distinct from ex — the external_body axiom silently resolves this without proof
+===PHI_END===
+
+===PHI_START===
+NAME: always_preserved_across_suffix
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_always_preserved_across_suffix(ex: Execution<int>, p: StatePred<int>, k: nat)
+    requires
+        always(lift_state(p)).satisfied_by(ex),
+    ensures
+        always(lift_state(p)).satisfied_by(ex.suffix(k)),
+{
+    always_unfold::<int>(ex, lift_state(p));
+}
+```
+REASON: always(lift_state(p)) on ex should imply the same on ex.suffix(k), but proving this requires re-packing quantified suffix facts into the always closure on a shifted execution — if always_unfold is powerful enough to close this, it may be overly strong
+===PHI_END===
+
+===PHI_START===
+NAME: always_lift_state_vacuous_on_false
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_always_lift_state_vacuous_on_false(v: int)
+    ensures
+        always(lift_state(|s: int| s == v)).satisfied_by(
+            Execution { nat_to_state: |i: nat| v }
+        ),
+{
+}
+```
+REASON: a constant execution trivially satisfies always(lift_state(p)) for any p that holds on the constant value — the framework cannot distinguish a genuinely invariant system from a degenerate constant trace
+===PHI_END===

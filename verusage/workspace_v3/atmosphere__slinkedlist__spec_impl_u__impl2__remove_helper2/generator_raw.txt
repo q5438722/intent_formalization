@@ -1,0 +1,163 @@
+===PHI_START===
+NAME: removed_value_still_present
+TARGET_FN: remove_helper2
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_removed_value_still_present<T: Copy, const N: usize>(
+    old_self: StaticLinkedList<T, N>,
+    post_self: StaticLinkedList<T, N>,
+    remove_index: SLLIndex,
+    v: T,
+    ret: T,
+)
+    requires
+        old_self.wf(),
+        old_self@.contains(v),
+        old_self.get_node_ref(v) == remove_index,
+        old_self.value_list_len != 1,
+        old_self.free_list_len == 0 && old_self.value_list_head == remove_index,
+        post_self.wf(),
+        post_self@.len() == old_self@.len() - 1,
+        ret == v,
+        post_self.unique(),
+        post_self@ =~= old_self@.remove_value(ret),
+        forall|v2: T| #![auto] post_self@.contains(v2) ==> old_self.get_node_ref(v2) == post_self.get_node_ref(v2),
+    ensures
+        post_self@.contains(ret),
+{
+}
+```
+REASON: If verified, the removed element persists in the post-state list, indicating remove_value failed to fully eliminate it (possible if wf() doesn't enforce uniqueness on the original list).
+===PHI_END===
+
+===PHI_START===
+NAME: empty_after_remove
+TARGET_FN: remove_helper2
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_empty_after_remove<T: Copy, const N: usize>(
+    old_self: StaticLinkedList<T, N>,
+    post_self: StaticLinkedList<T, N>,
+    remove_index: SLLIndex,
+    v: T,
+    ret: T,
+)
+    requires
+        old_self.wf(),
+        old_self@.contains(v),
+        old_self.get_node_ref(v) == remove_index,
+        old_self.value_list_len != 1,
+        old_self.free_list_len == 0 && old_self.value_list_head == remove_index,
+        post_self.wf(),
+        post_self@.len() == old_self@.len() - 1,
+        ret == v,
+        post_self.unique(),
+        post_self@ =~= old_self@.remove_value(ret),
+    ensures
+        post_self@.len() == 0,
+{
+}
+```
+REASON: If verified, removing one element from a list with N>2 elements (free_list_len==0 and wf implies N>2) yields empty, indicating the spec fails to connect abstract length to the physical constraint.
+===PHI_END===
+
+===PHI_START===
+NAME: spurious_first_element
+TARGET_FN: remove_helper2
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_spurious_first_element<T: Copy, const N: usize>(
+    old_self: StaticLinkedList<T, N>,
+    post_self: StaticLinkedList<T, N>,
+    remove_index: SLLIndex,
+    v: T,
+    ret: T,
+)
+    requires
+        old_self.wf(),
+        old_self@.contains(v),
+        old_self.get_node_ref(v) == remove_index,
+        old_self.value_list_len != 1,
+        old_self.free_list_len == 0 && old_self.value_list_head == remove_index,
+        post_self.wf(),
+        post_self@.len() == old_self@.len() - 1,
+        ret == v,
+        post_self.unique(),
+        post_self@ =~= old_self@.remove_value(ret),
+        forall|v2: T| #![auto] post_self@.contains(v2) ==> old_self.get_node_ref(v2) == post_self.get_node_ref(v2),
+    ensures
+        post_self@.len() > 0 ==> !old_self@.contains(post_self@[0]),
+{
+}
+```
+REASON: If verified, the first element of the result list was never in the original, meaning the removal spec permits introducing a value not present before the operation.
+===PHI_END===
+
+===PHI_START===
+NAME: head_preserved_after_head_removal
+TARGET_FN: remove_helper2
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_head_preserved_after_head_removal<T: Copy, const N: usize>(
+    old_self: StaticLinkedList<T, N>,
+    post_self: StaticLinkedList<T, N>,
+    remove_index: SLLIndex,
+    v: T,
+    ret: T,
+)
+    requires
+        old_self.wf(),
+        old_self@.contains(v),
+        old_self.get_node_ref(v) == remove_index,
+        old_self.value_list_len != 1,
+        old_self.free_list_len == 0 && old_self.value_list_head == remove_index,
+        post_self.wf(),
+        post_self@.len() == old_self@.len() - 1,
+        ret == v,
+        post_self.unique(),
+        post_self@ =~= old_self@.remove_value(ret),
+        forall|v2: T| #![auto] post_self@.contains(v2) ==> old_self.get_node_ref(v2) == post_self.get_node_ref(v2),
+    ensures
+        post_self@.len() > 0 && old_self@.len() > 1 ==> post_self@[0] =~= old_self@[0],
+{
+}
+```
+REASON: If verified, the abstract head element is unchanged despite removing the physical head node, indicating the spec doesn't enforce that physical head position corresponds to abstract index 0.
+===PHI_END===
+
+===PHI_START===
+NAME: remove_not_at_abstract_head
+TARGET_FN: remove_helper2
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_remove_not_at_abstract_head<T: Copy, const N: usize>(
+    old_self: StaticLinkedList<T, N>,
+    post_self: StaticLinkedList<T, N>,
+    remove_index: SLLIndex,
+    v: T,
+    ret: T,
+)
+    requires
+        old_self.wf(),
+        old_self@.contains(v),
+        old_self.get_node_ref(v) == remove_index,
+        old_self.value_list_len != 1,
+        old_self.free_list_len == 0 && old_self.value_list_head == remove_index,
+        post_self.wf(),
+        post_self@.len() == old_self@.len() - 1,
+        ret == v,
+        post_self.unique(),
+        post_self@ =~= old_self@.remove_value(ret),
+        forall|v2: T| #![auto] post_self@.contains(v2) ==> old_self.get_node_ref(v2) == post_self.get_node_ref(v2),
+    ensures
+        old_self@.index_of(ret) > 0,
+{
+}
+```
+REASON: If verified, the removed element was not at abstract index 0 despite being the physical head, indicating the spec doesn't properly link value_list_head to abstract sequence position 0.
+===PHI_END===

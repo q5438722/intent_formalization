@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize2pa_mem_valid_unconditional",
+    "type": "logical",
+    "code": "proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body unconditionally ensures MEM_valid(ret) for ANY input \u2014 arbitrary usize values produce \"valid\" physical addresses without proof",
+    "entailed": false,
+    "verus_output": "erusage/workspace_v2/atmosphere__kernel__kernel_kill_thread__impl0__kernel_proc_kill_all_threads/phi_1_usize2pa_mem_valid_unconditional.rs:2735:9\n     |\n2733 | proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n     |       --------------------------------------------------- at the end of the function body\n2734 |     ensures\n2735 |         MEM_valid(usize2pa(v)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 35 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "sll_len_without_wf_returns_value_list_len",
+    "type": "logical",
+    "code": "proof fn phi_2_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    ensures\n        sll.len() == sll.value_list_len,\n{\n}",
+    "reason": "StaticLinkedList::len's external_body ensures l == self.value_list_len unconditionally without requiring wf() \u2014 corrupted linked list returns raw field as trusted length",
+    "entailed": false,
+    "verus_output": "_returns_value_list_len.rs:2735:9\n     |\n2733 | proof fn phi_2_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n     |       -------------------------------------------------------------------------------------------------- at the end of the function body\n2734 |     ensures\n2735 |         sll.len() == sll.value_list_len,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 35 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "container_map_4k_allows_double_ownership",
+    "type": "logical",
+    "code": "proof fn phi_3_container_map_4k_allows_double_ownership(pa: PageAllocator, c1: ContainerPtr, c2: ContainerPtr, p: PagePtr)\n    requires\n        c1 != c2,\n        pa.container_map_4k@.dom().contains(c1),\n        pa.container_map_4k@.dom().contains(c2),\n        pa.container_map_4k@[c1].contains(p),\n        pa.container_map_4k@[c2].contains(p),\n    ensures\n        pa.container_map_4k@[c1].contains(p) && pa.container_map_4k@[c2].contains(p),\n{\n}",
+    "reason": "container_map_4k is a Ghost field with no disjointness predicate \u2014 two distinct containers can simultaneously claim the same physical page",
+    "entailed": true,
+    "verus_output": "2 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__kernel__kernel_kill_thread__impl0__kernel_proc_kill_all_threads/phi_3_container_map_4k_allows_double_ownership.rs:201:10\n    |\n201 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: 35 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "container_map_2m_allows_double_ownership",
+    "type": "logical",
+    "code": "proof fn phi_4_container_map_2m_allows_double_ownership(pa: PageAllocator, c1: ContainerPtr, c2: ContainerPtr, p: PagePtr)\n    requires\n        c1 != c2,\n        pa.container_map_2m@.dom().contains(c1),\n        pa.container_map_2m@.dom().contains(c2),\n        pa.container_map_2m@[c1].contains(p),\n        pa.container_map_2m@[c2].contains(p),\n    ensures\n        pa.container_map_2m@[c1].contains(p) && pa.container_map_2m@[c2].contains(p),\n{\n}",
+    "reason": "container_map_2m has the same unconstrained Ghost field issue as container_map_4k \u2014 two containers can both claim a 2M page with no contradiction",
+    "entailed": true,
+    "verus_output": "2 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__kernel__kernel_kill_thread__impl0__kernel_proc_kill_all_threads/phi_4_container_map_2m_allows_double_ownership.rs:201:10\n    |\n201 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: 35 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "container_map_1g_allows_double_ownership",
+    "type": "logical",
+    "code": "proof fn phi_5_container_map_1g_allows_double_ownership(pa: PageAllocator, c1: ContainerPtr, c2: ContainerPtr, p: PagePtr)\n    requires\n        c1 != c2,\n        pa.container_map_1g@.dom().contains(c1),\n        pa.container_map_1g@.dom().contains(c2),\n        pa.container_map_1g@[c1].contains(p),\n        pa.container_map_1g@[c2].contains(p),\n    ensures\n        pa.container_map_1g@[c1].contains(p) && pa.container_map_1g@[c2].contains(p),\n{\n}",
+    "reason": "container_map_1g has the same unconstrained Ghost field issue \u2014 two containers can both claim a 1G page with no visible disjointness constraint",
+    "entailed": true,
+    "verus_output": "2 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__kernel__kernel_kill_thread__impl0__kernel_proc_kill_all_threads/phi_5_container_map_1g_allows_double_ownership.rs:201:10\n    |\n201 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: 35 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "singleton_set_unique_elt_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_singleton_set_unique_elt_external_body(s: Set<nat>, a: nat, b: nat)\n    requires\n        s.finite(),\n        s.len() == 1,\n        s.contains(a),\n        s.contains(b),\n    ensures\n        a == b,\n{\n    singleton_set_unique_elt(s, a, b);\n}",
+    "reason": "`singleton_set_unique_elt` is `external_body` \u2014 the fundamental uniqueness property of singleton sets is trusted without proof; if wrong, `set_mismatch` inherits unsoundness",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "set_mismatch_derives_false",
+    "type": "logical",
+    "code": "proof fn phi_2_set_mismatch_derives_false(s1: Set<nat>, s2: Set<nat>, missing: nat)\n    requires\n        s1.finite(),\n        s2.finite(),\n        s1.len() == s2.len(),\n        forall |elt| s2.contains(elt) ==> s1.contains(elt),\n        s1.contains(missing),\n        !s2.contains(missing),\n    ensures\n        false,\n{\n    set_mismatch(s1, s2, missing);\n}",
+    "reason": "`set_mismatch` derives `false` \u2014 a contradiction lemma whose correctness depends on the external_body `singleton_set_unique_elt`; the chain of trust bottoms out at an unverified axiom",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "singleton_any_two_elements_equal",
+    "type": "behavioral",
+    "code": "proof fn phi_3_singleton_any_two_elements_equal()\n    ensures ({\n        let s = Set::<nat>::empty().insert(5);\n        forall |a: nat, b: nat| s.contains(a) && s.contains(b) ==> a == b\n    }),\n{\n    let s = Set::<nat>::empty().insert(5);\n    assert forall |a: nat, b: nat| s.contains(a) && s.contains(b) implies a == b by {\n        assert(s.finite());\n        assert(s.len() == 1);\n        singleton_set_unique_elt(s, a, b);\n    }\n}",
+    "reason": "The external_body axiom allows deriving that any concrete singleton set has exactly one element \u2014 testing the axiom on a concrete set to confirm it doesn't over-constrain",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "set_mismatch_len_zero",
+    "type": "boundary",
+    "code": "proof fn phi_4_set_mismatch_len_zero(s1: Set<nat>, missing: nat)\n    requires\n        s1.finite(),\n        s1.len() == 0,\n        s1.contains(missing),\n    ensures\n        false,\n{\n    // s1.len() == 0 and s1.contains(missing) is contradictory\n    // vstd should derive false without set_mismatch\n}",
+    "reason": "A set of length 0 containing an element is contradictory \u2014 tests whether `set_mismatch` can be invoked at the degenerate boundary where `s2` is empty",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "set_mismatch_strict_subset_equal_len",
+    "type": "logical",
+    "code": "proof fn phi_5_set_mismatch_strict_subset_equal_len(n: nat)\n    requires\n        n > 0,\n    ensures ({\n        let s1 = Set::new(|i: nat| i < n + 1);\n        let s2 = Set::new(|i: nat| i < n);\n        !(s1.finite() && s2.finite() && s1.len() == s2.len())\n    }),\n{\n    // If s1 = {0,...,n} and s2 = {0,...,n-1}, they can't have equal cardinality\n    // This tests that set_mismatch's precondition (equal len + subset + missing) is unsatisfiable for strict subsets\n}",
+    "reason": "A strict subset of a finite set cannot have equal cardinality \u2014 tests the consistency of `set_mismatch`'s preconditions against basic set theory",
+    "entailed": false,
+    "verus_output": "en.rs:54:13\n   |\n51 |   proof fn phi_5_set_mismatch_strict_subset_equal_len(n: nat)\n   |         ----------------------------------------------------- at the end of the function body\n...\n54 |       ensures ({\n   |  _____________^\n55 | |         let s1 = Set::new(|i: nat| i < n + 1);\n56 | |         let s2 = Set::new(|i: nat| i < n);\n57 | |         !(s1.finite() && s2.finite() && s1.len() == s2.len())\n58 | |     }),\n   | |______^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

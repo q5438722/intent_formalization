@@ -1,0 +1,37 @@
+[
+  {
+    "name": "lookup_always_none",
+    "target_fn": "hashtable_lookup",
+    "type": "behavioral",
+    "code": "proof fn phi_1_lookup_always_none(h: Hashtable, k: AbstractKey)\n    requires\n        h.dom().contains(k),\n    ensures\n        hashtable_lookup(h, k) is None,\n{\n}",
+    "reason": "If a present key always maps to None, all get-request replies would incorrectly report missing values"
+  },
+  {
+    "name": "retransmit_sends_nothing",
+    "target_fn": "spontaneously_retransmit",
+    "type": "behavioral",
+    "code": "proof fn phi_2_retransmit_sends_nothing(pre: AbstractHostState, post: AbstractHostState, out: Set<Packet>)\n    requires\n        pre.delegation_map.is_complete(),\n        spontaneously_retransmit(pre, post, out),\n    ensures\n        out == Set::<Packet>::empty(),\n{\n}",
+    "reason": "If retransmit never produces packets, unacknowledged messages are silently lost and reliability is broken"
+  },
+  {
+    "name": "set_request_no_h_change",
+    "target_fn": "next_set_request",
+    "type": "behavioral",
+    "code": "proof fn phi_3_set_request_no_h_change(pre: AbstractHostState, post: AbstractHostState, pkt: Packet, out: Set<Packet>)\n    requires\n        pkt.msg is Message,\n        pre.delegation_map.is_complete(),\n        next_set_request(pre, post, pkt, out),\n    ensures\n        post.h == pre.h,\n{\n}",
+    "reason": "If set requests never modify the hashtable, the key-value store cannot be written to at all"
+  },
+  {
+    "name": "bulk_update_excludes_new_keys",
+    "target_fn": "bulk_update_domain",
+    "type": "logical",
+    "code": "proof fn phi_4_bulk_update_excludes_new_keys(h: Hashtable, kr: KeyRange<AbstractKey>, u: Hashtable, k: AbstractKey)\n    requires\n        u.dom().contains(k),\n        kr.contains(k),\n        !h.dom().contains(k),\n    ensures\n        !bulk_update_domain(h, kr, u).contains(k),\n{\n}",
+    "reason": "If bulk_update_domain drops keys present in the update table within the range, delegate operations silently lose data"
+  },
+  {
+    "name": "send_always_suppressed",
+    "target_fn": "send_single_message",
+    "type": "boundary",
+    "code": "proof fn phi_5_send_always_suppressed(pre: SingleDelivery<Message>, post: SingleDelivery<Message>, m: Message, dst: AbstractEndPoint, sm: Option<SingleMessage<Message>>, params: AbstractParameters)\n    requires\n        SingleDelivery::<Message>::send_single_message(pre, post, m, dst, sm, params),\n    ensures\n        sm is None,\n{\n}",
+    "reason": "If send_single_message always returns None, no replies or delegates are ever transmitted, making the protocol non-functional"
+  }
+]

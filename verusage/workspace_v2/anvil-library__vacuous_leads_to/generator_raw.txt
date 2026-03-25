@@ -1,0 +1,84 @@
+===PHI_START===
+NAME: implies_apply_closure_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_implies_apply_closure_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>)
+    requires
+        p.implies(q).satisfied_by(ex),
+        p.satisfied_by(ex),
+    ensures
+        q.satisfied_by(ex),
+{
+    implies_apply::<int>(ex, p, q);
+}
+```
+REASON: implies_apply is external_body bridging p.implies(q)'s TempPred::new closure-wrapped implication to modus ponens — resolves closure identity gap without proof
+===PHI_END===
+
+===PHI_START===
+NAME: false_pred_unsatisfiable
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_false_pred_unsatisfiable(ex: Execution<int>)
+    ensures
+        !false_pred::<int>().satisfied_by(ex),
+{
+}
+```
+REASON: false_pred = not(true_pred()) should be unsatisfiable — if this fails to verify, the closure nesting in not/true_pred/lift_state prevents SMT from resolving it, exposing a closure opacity issue
+===PHI_END===
+
+===PHI_START===
+NAME: vacuous_leads_to_requires_equality
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_vacuous_leads_to_requires_equality(spec: TempPred<int>, p: TempPred<int>, q: TempPred<int>, r: TempPred<int>, ex: Execution<int>)
+    requires
+        spec.entails(always(r)),
+        p.and(r) == false_pred::<int>(),
+        spec.satisfied_by(ex),
+    ensures
+        p.leads_to(q).satisfied_by(ex),
+{
+    vacuous_leads_to::<int>(spec, p, q, r);
+}
+```
+REASON: vacuous_leads_to relies on p.and(r) == false_pred() as intensional equality — if two semantically-false-but-structurally-different TempPreds are passed, the equality precondition gates soundness
+===PHI_END===
+
+===PHI_START===
+NAME: false_pred_equality_gates_soundness
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_false_pred_equality_gates_soundness(p: TempPred<int>, r: TempPred<int>)
+    requires
+        p.and(r) == false_pred::<int>(),
+    ensures
+        forall |ex: Execution<int>| !(#[trigger] p.and(r).satisfied_by(ex)),
+{
+}
+```
+REASON: if p.and(r) == false_pred() holds intensionally, then for any execution it should be unsatisfiable — but the equality is between structurally distinct closures, so this tests whether intensional equality propagates correctly through satisfied_by
+===PHI_END===
+
+===PHI_START===
+NAME: any_leads_to_from_false_antecedent
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_any_leads_to_from_false_antecedent(spec: TempPred<int>, q: TempPred<int>)
+    requires
+        spec.entails(always(true_pred::<int>())),
+        false_pred::<int>().and(true_pred::<int>()) == false_pred::<int>(),
+    ensures
+        spec.entails(false_pred::<int>().leads_to(q)),
+{
+    vacuous_leads_to::<int>(spec, false_pred::<int>(), q, true_pred::<int>());
+}
+```
+REASON: derives that false_pred leads to anything under any spec entailing always(true) — tests whether the intensional equality false_pred.and(true_pred) == false_pred holds and whether ex falso quodlibet propagates through the leads_to machinery
+===PHI_END===

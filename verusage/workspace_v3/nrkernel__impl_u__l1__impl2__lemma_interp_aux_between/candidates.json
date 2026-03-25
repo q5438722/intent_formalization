@@ -1,0 +1,37 @@
+[
+  {
+    "name": "aligned_zero_size",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "code": "proof fn phi_1_aligned_zero_size()\n    ensures\n        aligned(42, 0),\n{\n}",
+    "reason": "If aligned(addr, 0) is provable, the spec is unsound on division-by-zero (nat % 0 is unspecified in SMT)"
+  },
+  {
+    "name": "upper_vaddr_equals_base",
+    "target_fn": "upper_vaddr (Arch)",
+    "type": "behavioral",
+    "code": "proof fn phi_2_upper_vaddr_equals_base(arch: Arch, layer: nat, base: nat)\n    requires\n        arch.inv(),\n        layer < arch.layers.len(),\n    ensures\n        arch.upper_vaddr(layer, base) == base,\n{\n}",
+    "reason": "upper_vaddr equalling base would mean a layer maps zero address space, contradicting inv's positive entry_size and num_entries"
+  },
+  {
+    "name": "entry_next_entry_equal",
+    "target_fn": "entry_base / next_entry_base (Arch)",
+    "type": "logical",
+    "code": "proof fn phi_3_entry_next_entry_equal(arch: Arch, layer: nat, base: nat, idx: nat)\n    requires\n        arch.inv(),\n        layer < arch.layers.len(),\n    ensures\n        arch.entry_base(layer, base, idx) == arch.next_entry_base(layer, base, idx),\n{\n}",
+    "reason": "entry_base equalling next_entry_base implies zero-sized entries, violating the positive entry_size invariant"
+  },
+  {
+    "name": "well_formed_zero_entries",
+    "target_fn": "well_formed (Directory)",
+    "type": "boundary",
+    "code": "proof fn phi_4_well_formed_zero_entries(d: Directory)\n    requires\n        d.well_formed(),\n    ensures\n        d.entries.len() == 0,\n{\n}",
+    "reason": "A well_formed directory with zero entries would be degenerate; arch.inv() requires num_entries > 0 so entries.len() should be > 0"
+  },
+  {
+    "name": "dir_upper_leq_base",
+    "target_fn": "inv / upper_vaddr (Directory)",
+    "type": "logical",
+    "code": "proof fn phi_5_dir_upper_leq_base(d: Directory)\n    requires\n        d.inv(),\n    ensures\n        d.upper_vaddr() <= d.base_vaddr,\n{\n}",
+    "reason": "A valid directory's upper_vaddr must exceed base_vaddr to map a non-empty region; if upper \u2264 base the address range is empty or inverted"
+  }
+]

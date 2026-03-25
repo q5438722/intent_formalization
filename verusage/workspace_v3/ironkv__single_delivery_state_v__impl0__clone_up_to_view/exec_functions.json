@@ -1,0 +1,22 @@
+[
+  {
+    "name": "clone",
+    "code": "pub fn clone(&self) -> (out: SHTKey)\n    ensures out == self\n    {\n        SHTKey{ ukey: self.ukey }\n    }"
+  },
+  {
+    "name": "clone",
+    "code": "fn clone(&self) -> Self {\n        KeyIterator {\n            k: match &self.k {\n                Some(v) => Some(v.clone()),\n                None => None,\n            },\n        }\n    }"
+  },
+  {
+    "name": "clone",
+    "code": "fn clone(&self) -> Self {\n        KeyRange { lo: self.lo.clone(), hi: self.hi.clone() }\n    }"
+  },
+  {
+    "name": "clone",
+    "code": "fn clone(&self) -> (o: Self)\n        //ensures o == self\n    {\n        SHTKey{ukey: self.ukey}\n    }"
+  },
+  {
+    "name": "clone_up_to_view",
+    "code": "pub fn clone_up_to_view(&self) -> (o:Self)\n        ensures o@ == self@\n    {\n        let mut un_acked: Vec<CSingleMessage> = Vec::new();\n        let mut i = 0;\n        while i < self.un_acked.len()\n            invariant\n                i <= self.un_acked.len(),\n                un_acked@.len() == i as nat,\n                forall |j: int| 0 <= j < i as nat ==> #[trigger] (un_acked@[j]@) == self.un_acked@[j]@\n            decreases\n                self.un_acked.len() - i\n        {\n            un_acked.push(self.un_acked[i].clone_up_to_view());\n            i = i + 1;\n        }\n        proof {\n            assert_seqs_equal!(abstractify_cmessage_seq(un_acked@) == abstractify_cmessage_seq(self.un_acked@));\n        }\n        CAckState {\n            num_packets_acked: self.num_packets_acked,\n            un_acked,\n        }\n    }"
+  }
+]

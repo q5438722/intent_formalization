@@ -1,0 +1,95 @@
+===PHI_START===
+NAME: usize2pa_mem_valid_unconditional
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)
+    ensures
+        MEM_valid(usize2pa(v)),
+{
+}
+```
+REASON: usize2pa's external_body unconditionally ensures MEM_valid(ret) for ANY input — arbitrary usize values produce "valid" physical addresses without proof
+===PHI_END===
+
+===PHI_START===
+NAME: sll_len_without_wf_returns_value_list_len
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)
+    ensures
+        sll.len() == sll.value_list_len,
+{
+}
+```
+REASON: StaticLinkedList::len's external_body unconditionally ensures l == self.value_list_len without requiring wf() — the raw field is exposed regardless of internal consistency
+===PHI_END===
+
+===PHI_START===
+NAME: container_map_4k_double_ownership
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_container_map_4k_double_ownership(
+    pa: PageAllocator,
+    c1: ContainerPtr,
+    c2: ContainerPtr,
+    p: PagePtr,
+)
+    requires
+        c1 != c2,
+        pa.container_map_4k@.dom().contains(c1),
+        pa.container_map_4k@.dom().contains(c2),
+        pa.container_map_4k@[c1].contains(p),
+        pa.container_map_4k@[c2].contains(p),
+    ensures
+        false,
+{
+}
+```
+REASON: container_map_4k Ghost field has no disjointness constraint — if two distinct containers both contain the same page, the spec should derive a contradiction but cannot
+===PHI_END===
+
+===PHI_START===
+NAME: is_empty_vacuous_with_kernel_l4_end_512
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_is_empty_vacuous_with_kernel_l4_end_512(pt: PageTable, i: L4Index)
+    requires
+        pt.is_empty(),
+        pt.kernel_l4_end == 512,
+        0 <= i < 512,
+    ensures
+        pt.l4_table@[pt.cr3].value()[i].perm.present || !pt.l4_table@[pt.cr3].value()[i].perm.present,
+{
+}
+```
+REASON: When kernel_l4_end == 512 the forall in is_empty is vacuously satisfied — L4 entries can have present == true since no index satisfies `512 <= i < 512`
+===PHI_END===
+
+===PHI_START===
+NAME: container_map_2m_double_ownership
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_container_map_2m_double_ownership(
+    pa: PageAllocator,
+    c1: ContainerPtr,
+    c2: ContainerPtr,
+    p: PagePtr,
+)
+    requires
+        c1 != c2,
+        pa.container_map_2m@.dom().contains(c1),
+        pa.container_map_2m@.dom().contains(c2),
+        pa.container_map_2m@[c1].contains(p),
+        pa.container_map_2m@[c2].contains(p),
+    ensures
+        false,
+{
+}
+```
+REASON: Same unconstrained Ghost field pattern as container_map_4k — container_map_2m has no disjointness invariant preventing two containers from owning the same 2M page
+===PHI_END===

@@ -1,0 +1,85 @@
+===PHI_START===
+NAME: mult_leq_mono_both_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_mult_leq_mono_both_external_body(a: nat, b: nat, c: nat, d: nat)
+    requires
+        a <= c,
+        b <= d,
+    ensures
+        a * b <= c * d,
+{
+    mult_leq_mono_both(a, b, c, d);
+}
+```
+REASON: `mult_leq_mono_both` is `external_body` — monotonicity of multiplication over naturals is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: entry_size_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_entry_size_external_body(arch: ArchExec, layer: usize)
+    requires
+        layer < arch@.layers.len(),
+    ensures
+        arch.entry_size(layer) == arch@.entry_size(layer as nat),
+{
+}
+```
+REASON: `ArchExec::entry_size` is `external_body` — the exec accessor's correspondence with the spec is trusted without implementation
+===PHI_END===
+
+===PHI_START===
+NAME: entry_base_idx_equals_num_entries
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_entry_base_idx_equals_num_entries(arch: ArchExec, layer: usize, base: usize)
+    requires
+        arch@.inv(),
+        layer < arch@.layers.len(),
+        base <= MAX_BASE,
+    ensures
+        arch@.entry_base(layer as nat, base as nat, X86_NUM_ENTRIES as nat) <= MAX_BASE + X86_MAX_ENTRY_SIZE * X86_NUM_ENTRIES as nat,
+{
+    mult_leq_mono_both(X86_NUM_ENTRIES as nat, arch@.entry_size(layer as nat), X86_NUM_ENTRIES as nat, X86_MAX_ENTRY_SIZE);
+}
+```
+REASON: `idx` can equal `X86_NUM_ENTRIES` (512), not just be less than it — the precondition allows one-past-the-end index, producing an address potentially beyond the mapped region
+===PHI_END===
+
+===PHI_START===
+NAME: inv_no_layer_count_lower_bound
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_inv_no_layer_count_lower_bound()
+    ensures ({
+        let arch = Arch { layers: Seq::empty() };
+        arch.inv()
+    }),
+{
+}
+```
+REASON: An `Arch` with zero layers satisfies `inv()` — the invariant only bounds layers from above (`<= X86_NUM_LAYERS`) but has no minimum, so an empty architecture is considered valid
+===PHI_END===
+
+===PHI_START===
+NAME: entry_size_is_next_vacuous_at_last
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_entry_size_is_next_vacuous_at_last(arch: Arch)
+    requires
+        arch.inv(),
+        arch.layers.len() > 0,
+    ensures
+        arch.entry_size_is_next_layer_size((arch.layers.len() - 1) as nat),
+{
+}
+```
+REASON: `entry_size_is_next_layer_size` is vacuously true for the last layer since `i + 1 >= layers.len()` — the leaf layer's entry_size is unconstrained relative to any sub-structure
+===PHI_END===

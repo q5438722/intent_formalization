@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: resp_matches_req_is_symmetric
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The property merely confirms that resp_msg_matches_req_msg enforces dst/src swap and rpc_id equality, which is exactly what the spec intends. The "same host" concern is a non-issue — the content variant matching (APIResponse vs APIRequest, or ExternalResponse vs ExternalRequest) plus the system's message routing invariants prevent self-matching in practice.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: scheduled_deletion_timestamp_redundant
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The redundancy is real but harmless — unmarshal copies metadata verbatim, so checking deletion_timestamp on both raw and unmarshalled forms is indeed equivalent. This is defensive specification style, not a spec gap. The predicate correctly ensures no deletion timestamp exists on scheduled objects.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: pending_req_xor_allows_both_absent
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The invariant is explicitly named `_if_has_pending_req_msg` — vacuous truth when pending_req_msg is None is intentional by design. The predicate guards on `has_pending_req_msg` which requires `pending_req_msg is Some`, so the None case is deliberately excluded from the constraint. Reconcile states with no pending message are handled by other invariants.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: reconcile_spec_uid_no_status_check
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is intentional — the predicate is specifically named `has_spec_and_uid_as`, not `has_spec_status_and_uid_as`. In Kubernetes controller reconciliation, the controller reacts to spec changes and drives status to match; status is expected to diverge and is not relevant for triggering reconciliation identity.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: object_ref_ignores_uid
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This faithfully models Kubernetes semantics where API operations use (kind, name, namespace) as the resource key. UID is used separately for ownership (OwnerReferenceView includes uid) and identity checks (the_object_in_reconcile_has_spec_and_uid_as checks uid). The ObjectRef type correctly serves as the API-level key.
+===VERDICT_END===
+
+===SUMMARY===
+All five candidates are false positives. The resp_msg_matches_req_msg src/dst swap property is exactly the intended semantics. The deletion_timestamp redundancy in the schedule predicate is defensive but correct since unmarshal preserves metadata. The xor invariant's vacuous truth for None pending messages is intentional per its naming and design. The lack of status checking in the reconcile identity predicate reflects correct Kubernetes controller semantics where status divergence is expected. The object_ref ignoring uid matches real Kubernetes API addressing, with uid checks handled separately where needed.
+===END_SUMMARY===

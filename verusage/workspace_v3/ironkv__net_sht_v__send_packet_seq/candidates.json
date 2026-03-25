@@ -1,0 +1,37 @@
+[
+  {
+    "name": "success_empty_events",
+    "target_fn": "send_packet_seq",
+    "type": "behavioral",
+    "code": "proof fn phi_1_success_empty_events(cpackets: Seq<CPacket>, net_events: Seq<NetEvent>, my_ep: AbstractEndPoint)\n    requires\n        cpackets.len() > 0,\n        outbound_packet_seq_is_valid(cpackets),\n        outbound_packet_seq_has_correct_srcs(cpackets, my_ep),\n        send_log_entries_reflect_packets(net_events, cpackets),\n        only_sent_marshalable_data(net_events),\n        forall |i: int| 0 <= i < net_events.len() ==> net_events[i] is Send,\n    ensures\n        net_events.len() == 0,\n{\n}",
+    "reason": "Successful send of non-empty packets should produce at least one net event, not zero"
+  },
+  {
+    "name": "events_exceed_packets",
+    "target_fn": "send_packet_seq",
+    "type": "boundary",
+    "code": "proof fn phi_2_events_exceed_packets(cpackets: Seq<CPacket>, net_events: Seq<NetEvent>, my_ep: AbstractEndPoint)\n    requires\n        outbound_packet_seq_is_valid(cpackets),\n        outbound_packet_seq_has_correct_srcs(cpackets, my_ep),\n        send_log_entries_reflect_packets(net_events, cpackets),\n        only_sent_marshalable_data(net_events),\n        forall |i: int| 0 <= i < net_events.len() ==> net_events[i] is Send,\n    ensures\n        net_events.len() > cpackets.len(),\n{\n}",
+    "reason": "Each packet should produce exactly one send event; more events than packets indicates a spec gap"
+  },
+  {
+    "name": "success_history_unchanged",
+    "target_fn": "send_packet_seq",
+    "type": "logical",
+    "code": "proof fn phi_3_success_history_unchanged(old_history: Seq<NetEvent>, net_events: Seq<NetEvent>, cpackets: Seq<CPacket>, my_ep: AbstractEndPoint)\n    requires\n        cpackets.len() > 0,\n        outbound_packet_seq_is_valid(cpackets),\n        outbound_packet_seq_has_correct_srcs(cpackets, my_ep),\n        send_log_entries_reflect_packets(net_events, cpackets),\n        only_sent_marshalable_data(net_events),\n        forall |i: int| 0 <= i < net_events.len() ==> net_events[i] is Send,\n    ensures\n        old_history + net_events =~= old_history,\n{\n}",
+    "reason": "Sending non-empty packets must grow the history; unchanged history means events were silently lost"
+  },
+  {
+    "name": "single_packet_multiple_events",
+    "target_fn": "send_packet_seq",
+    "type": "boundary",
+    "code": "proof fn phi_4_single_packet_multiple_events(cpackets: Seq<CPacket>, net_events: Seq<NetEvent>, my_ep: AbstractEndPoint)\n    requires\n        cpackets.len() == 1,\n        outbound_packet_seq_is_valid(cpackets),\n        outbound_packet_seq_has_correct_srcs(cpackets, my_ep),\n        send_log_entries_reflect_packets(net_events, cpackets),\n        only_sent_marshalable_data(net_events),\n        forall |i: int| 0 <= i < net_events.len() ==> net_events[i] is Send,\n    ensures\n        net_events.len() > 1,\n{\n}",
+    "reason": "A single outbound packet should yield exactly one send event; more than one indicates event duplication"
+  },
+  {
+    "name": "to_vec_always_empty",
+    "target_fn": "to_vec",
+    "type": "behavioral",
+    "code": "proof fn phi_5_to_vec_always_empty(h: CKeyHashMap)\n    ensures\n        h.spec_to_vec()@.len() == 0,\n{\n}",
+    "reason": "A map-to-vec conversion should not always yield an empty vector regardless of map contents"
+  }
+]

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "pde_layer0_never_page",
+    "type": "behavioral",
+    "code": "proof fn phi_1_pde_layer0_never_page(entry: usize)\n    requires\n        entry & 1 == 1,\n    ensures\n        !((PDE { entry, layer: Ghost(0) })@ is Page),\n{\n}",
+    "reason": "Layer 0 (PML4) entries should never be Page \u2014 they are always Directory or Invalid; if a Page entry appears at layer 0, the walk semantics would be wrong",
+    "entailed": true,
+    "verus_output": "lds` has been renamed to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__next_step_preserves_inv_sbuf_facts/phi_1_pde_layer0_never_page.rs:171:9\n    |\n171 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pde_layer3_never_directory",
+    "type": "behavioral",
+    "code": "proof fn phi_2_pde_layer3_never_directory(entry: usize)\n    requires\n        entry & 1 == 1,\n        (PDE { entry, layer: Ghost(3) }).all_mb0_bits_are_zero(),\n    ensures\n        !((PDE { entry, layer: Ghost(3) })@ is Directory),\n{\n}",
+    "reason": "Layer 3 (PT) entries should never be Directory \u2014 they are always Page or Invalid; if a Directory entry appears at layer 3, the walk would recurse beyond 4 levels",
+    "entailed": true,
+    "verus_output": "has been renamed to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__next_step_preserves_inv_sbuf_facts/phi_2_pde_layer3_never_directory.rs:171:9\n    |\n171 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "walk_result_vbase_leq_vaddr",
+    "type": "behavioral",
+    "code": "proof fn phi_3_walk_result_vbase_leq_vaddr(w: Walk)\n    requires\n        w.path.last().1 is Page,\n        w.path.len() >= 2,\n        w.path.len() <= 4,\n    ensures\n        w.result() is Valid,\n        w.result()->vbase <= w.vaddr,\n{\n}",
+    "reason": "`vbase = align_to_usize(vaddr, entry_size)` rounds down, so `vbase <= vaddr` \u2014 if this fails, the alignment function is incorrectly rounding up",
+    "entailed": true,
+    "verus_output": "as been renamed to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__next_step_preserves_inv_sbuf_facts/phi_3_walk_result_vbase_leq_vaddr.rs:171:9\n    |\n171 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "walk_result_size_matches_depth",
+    "type": "behavioral",
+    "code": "proof fn phi_4_walk_result_size_matches_depth(w: Walk)\n    requires\n        w.path.last().1 is Page,\n        w.path.len() == 4,\n    ensures\n        w.result() is Valid,\n        w.result()->pte.frame.size == L3_ENTRY_SIZE as nat,\n{\n}",
+    "reason": "A 4-level walk (ending at L3) should produce a 4KB page \u2014 tests that the depth-to-size mapping is correct; wrong sizes would break physical address translation",
+    "entailed": true,
+    "verus_output": "been renamed to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__next_step_preserves_inv_sbuf_facts/phi_4_walk_result_size_matches_depth.rs:171:9\n    |\n171 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pde_layer_geq4_always_invalid",
+    "type": "boundary",
+    "code": "proof fn phi_5_pde_layer_geq4_always_invalid(entry: usize)\n    ensures\n        (PDE { entry, layer: Ghost(4) })@ is Invalid,\n{\n}",
+    "reason": "Layers \u2265 4 don't exist in x86-64 \u2014 any PDE at layer 4 should be Invalid; if it's classified as Directory or Page, the walk could exceed the 4-level hierarchy",
+    "entailed": false,
+    "verus_output": "l__spec_t__mmu__rl2__next_step_preserves_inv_sbuf_facts/phi_5_pde_layer_geq4_always_invalid.rs:1377:9\n     |\n1375 | proof fn phi_5_pde_layer_geq4_always_invalid(entry: usize)\n     |       ---------------------------------------------------- at the end of the function body\n1376 |     ensures\n1377 |         (PDE { entry, layer: Ghost(4) })@ is Invalid,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

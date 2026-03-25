@@ -1,0 +1,37 @@
+[
+  {
+    "name": "only_zero_aligned",
+    "target_fn": "aligned",
+    "type": "behavioral",
+    "code": "proof fn phi_1_only_zero_aligned(addr: nat, size: nat)\n    requires\n        size > 0,\n        aligned(addr, size),\n    ensures\n        addr == 0nat,\n{\n}",
+    "reason": "If provable, aligned would be trivially unsatisfiable for any nonzero address, making all page-table alignment constraints vacuous."
+  },
+  {
+    "name": "4k_implies_8k_aligned",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "code": "proof fn phi_2_4k_implies_8k_aligned(addr: nat)\n    requires\n        aligned(addr, 4096),\n    ensures\n        aligned(addr, 8192),\n{\n}",
+    "reason": "4K-alignment must not entail 8K-alignment; if provable, the pml4 alignment invariant would silently impose a stronger-than-intended constraint."
+  },
+  {
+    "name": "unique_alignment_size",
+    "target_fn": "aligned",
+    "type": "logical",
+    "code": "proof fn phi_3_unique_alignment_size(addr: nat, s1: nat, s2: nat)\n    requires\n        s1 > 0,\n        s2 > 0,\n        s1 != s2,\n        aligned(addr, s1),\n        aligned(addr, s2),\n    ensures\n        false,\n{\n}",
+    "reason": "An address can be aligned to multiple sizes (e.g., 0 is aligned to every size); if provable, aligned would be inconsistent."
+  },
+  {
+    "name": "self_alignment_false",
+    "target_fn": "aligned",
+    "type": "behavioral",
+    "code": "proof fn phi_4_self_alignment_false(size: nat)\n    requires\n        size > 0,\n    ensures\n        !aligned(size, size),\n{\n}",
+    "reason": "Every nonzero n satisfies n % n == 0, so aligned(n,n) must be true; if refuted, the modulus definition is broken."
+  },
+  {
+    "name": "aligned_bounded_by_size",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "code": "proof fn phi_5_aligned_bounded_by_size(addr: nat)\n    requires\n        aligned(addr, 4096),\n    ensures\n        addr <= 4096nat,\n{\n}",
+    "reason": "Aligned addresses are unbounded multiples of the alignment; if provable, any address beyond 4096 would be wrongly excluded from valid page-table bases."
+  }
+]

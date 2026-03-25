@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: no_mapping_infer_trivial_from_empty
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: When all three mapping tables are empty, `page_not_mapped(p)` is trivially true by the open spec definition — the forall quantifiers over empty domains are vacuously satisfied. The external_body lemma `no_mapping_infer_not_mapped` is not even needed here; this is a mathematically correct and desirable property.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: page_closure_includes_l4_table
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This follows directly from the open spec definition of `page_closure`, which is the union of l3, l2, l1, and l4 table domains. Including L4 table pointers in the page closure is intentional — the page table owns its L4 page. Disjointness between levels is a separate concern not addressed by page_closure's definition.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: resolve_l4_kernel_ignores_present
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is intentional x86-64 page table design. Kernel-region L4 entries (indices < `kernel_l4_end`) contain shared kernel mappings that must always be traversable regardless of the present bit. The spec deliberately returns `Some` for `l4i < kernel_l4_end` to ensure kernel address resolution always succeeds.
+===VERDICT_END===
+
+===SUMMARY===
+All three candidates are false positives. `no_mapping_infer_trivial_from_empty` is a trivially correct consequence of vacuous quantification over empty mapping domains. `page_closure_includes_l4_table` directly restates the open spec definition. `resolve_l4_kernel_ignores_present` reflects deliberate x86-64 design where kernel L4 entries are always resolvable.
+===END_SUMMARY===

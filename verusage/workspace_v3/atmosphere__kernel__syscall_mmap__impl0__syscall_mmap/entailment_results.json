@@ -1,0 +1,52 @@
+[
+  {
+    "name": "success_is_error",
+    "target_fn": "is_error",
+    "type": "behavioral",
+    "reason": "Success return value would be incorrectly classified as an error, causing all callers to treat successful operations as failures",
+    "entailed": false,
+    "verified": 0,
+    "errors": 0,
+    "output_tail": " this enum\n...\n2832 |         RetValueType::Success.spec_is_error() == true,\n     |                       ^^^^^^^ variant or associated item not found in `RetValueType`\n\nerror: aborting due to 1 previous error; 21 warnings emitted\n\nFor more information about this error, try `rustc --explain E0599`.\n"
+  },
+  {
+    "name": "quota_error_missed",
+    "target_fn": "is_error",
+    "type": "logical",
+    "reason": "Quota exhaustion errors would go undetected, allowing callers to proceed as if allocation succeeded",
+    "entailed": false,
+    "verified": 0,
+    "errors": 0,
+    "output_tail": " enum\n...\n2832 |         RetValueType::ErrorNoQuota.spec_is_error() == false,\n     |                                    ^^^^^^^^^^^^^ method not found in `RetValueType`\n\nerror: aborting due to 1 previous error; 21 warnings emitted\n\nFor more information about this error, try `rustc --explain E0599`.\n"
+  },
+  {
+    "name": "mmap_always_returns_quota_error",
+    "target_fn": "syscall_mmap",
+    "type": "behavioral",
+    "reason": "mmap would unconditionally fail with ErrorNoQuota regardless of actual quota availability, making memory mapping impossible",
+    "entailed": false,
+    "verified": 0,
+    "errors": 0,
+    "output_tail": "rror(os: OS, os_new: OS, thread_ptr: ThreadPtr, va_range: VaRange4K, ret: SyscallReturnS...\n     |                                                                ^^ not found in this scope\n\nerror: aborting due to 2 previous errors\n\nFor more information about this error, try `rustc --explain E0425`.\n"
+  },
+  {
+    "name": "else_not_error",
+    "target_fn": "is_error",
+    "type": "boundary",
+    "reason": "The catch-all error variant would be silently treated as success, hiding unexpected failure modes from callers",
+    "entailed": false,
+    "verified": 0,
+    "errors": 0,
+    "output_tail": "t found for this enum\n...\n2832 |         RetValueType::Else.spec_is_error() == false,\n     |                            ^^^^^^^^^^^^^ method not found in `RetValueType`\n\nerror: aborting due to 1 previous error; 21 warnings emitted\n\nFor more information about this error, try `rustc --explain E0599`.\n"
+  },
+  {
+    "name": "mmap_breaks_invariant",
+    "target_fn": "syscall_mmap",
+    "type": "logical",
+    "reason": "mmap would destroy the system's global well-formedness invariant, leaving the OS in an inconsistent state after any mapping call",
+    "entailed": false,
+    "verified": 0,
+    "errors": 0,
+    "output_tail": "s_invariant(os: OS, os_new: OS, thread_ptr: ThreadPtr, va_range: VaRange4K, ret: SyscallReturnStruct)\n     |                                                      ^^ not found in this scope\n\nerror: aborting due to 2 previous errors\n\nFor more information about this error, try `rustc --explain E0425`.\n"
+  }
+]

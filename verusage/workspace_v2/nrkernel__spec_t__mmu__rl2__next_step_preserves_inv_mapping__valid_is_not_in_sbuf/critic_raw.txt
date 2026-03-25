@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: read_from_mem_tso_equals_core_mem_read
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `read_from_mem_tso` is defined as `self.core_mem(core).read(addr)` and `core_mem` is defined as `self.pt_mem.write_seq(self.sbuf[core])`. This is a direct definitional unfolding — trivially true by construction.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: flags_combine_absorbs_supervisor
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `combine` defines `is_supervisor: self.is_supervisor || other.is_supervisor`. If `self.is_supervisor` is true, `true || x == true` for any `x`. This is correct boolean OR absorption — it correctly models x86 semantics where supervisor restriction propagates down the page table hierarchy.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: flags_combine_restricts_writable
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `combine` defines `is_writable: self.is_writable && other.is_writable`. If `self.is_writable` is false, `false && x == false` for any `x`. This is correct boolean AND absorption — it models x86 semantics where a read-only directory makes the entire subtree read-only.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: view_external_body_unconstrained
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `PTMem::view` is `external_body` with `unimplemented!()` — the entire PTE interpretation function is opaque. Even though structurally equal inputs should produce equal outputs (spec functions are deterministic), the fact that view is completely unverified means the mapping from raw page table memory to PTE entries is a critical trust assumption.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: lemma_write_seq_idle_external_body_direct
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `write_seq(seq![])` unfolds to `seq![].fold_left(mem, f)` which returns `mem` by the base case of `fold_left`. Therefore `mem.write_seq(seq![]).read(addr) == mem.read(addr)` follows without any external_body lemma. This is trivially correct.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: `PTMem::view` is `external_body` making the entire PTE interpretation opaque and unverified — structural equality of inputs implying equal outputs is trusted. Four false positives: TSO read definitional unfolding, flag combine absorption properties (correct boolean OR/AND semantics matching x86 hierarchy), and empty write_seq identity (follows from fold_left base case).
+===END_SUMMARY===

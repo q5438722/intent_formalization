@@ -1,0 +1,79 @@
+===PHI_START===
+NAME: pow2_negative_is_one
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_pow2_negative_is_one(e: int)
+    requires
+        e < 0,
+    ensures
+        pow2(e) == 1,
+{
+}
+```
+REASON: `pow2` returns 1 for all negative exponents, whereas mathematically 2^(-n) should be a fraction — callers passing negative exponents by mistake get silently wrong results
+===PHI_END===
+
+===PHI_START===
+NAME: pow2_zero_equals_pow2_minus1
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_pow2_zero_equals_pow2_minus1()
+    ensures
+        pow2(0) == pow2(-1),
+{
+}
+```
+REASON: pow2(0) == pow2(-1) == 1 means the function is non-injective in the non-positive range, so distinct exponents produce the same value — could mask off-by-one errors in callers
+===PHI_END===
+
+===PHI_START===
+NAME: shift_zero_by_63
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_shift_zero_by_63(shift: u64)
+    requires
+        0 <= shift < 64,
+    ensures
+        0u64 >> shift == 0,
+{
+    shift_is_div(0u64, shift);
+    pow2_positive(shift as int);
+}
+```
+REASON: Right-shifting zero always yields zero regardless of shift amount — if `shift_is_div` allowed a nonzero result for zero input, the shift-division equivalence would be unsound
+===PHI_END===
+
+===PHI_START===
+NAME: mul_assoc_commutativity_hidden
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_mul_assoc_commutativity_hidden(x: nat, y: nat, z: nat)
+    ensures
+        (x * y) * z == (z * y) * x,
+{
+    mul_assoc(x, y, z);
+    mul_assoc(z, y, x);
+}
+```
+REASON: `mul_assoc` actually proves `(x*y)*z == y*(x*z)` which smuggles in commutativity — if this is unintentional, it could allow proofs to go through for wrong reasons
+===PHI_END===
+
+===PHI_START===
+NAME: div2_loses_remainder
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_div2_loses_remainder(x: u64)
+    requires
+        x as int % 2 == 1,
+    ensures
+        x as int / 2 * 2 != x as int,
+{
+}
+```
+REASON: Integer division truncates — `div2` lemma enables chained divisions that silently discard remainders at each step, potentially accumulating rounding errors in shift_is_div's inductive proof
+===PHI_END===

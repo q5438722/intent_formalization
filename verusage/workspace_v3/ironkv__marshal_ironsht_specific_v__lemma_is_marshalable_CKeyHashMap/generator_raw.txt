@@ -1,0 +1,93 @@
+===PHI_START===
+NAME: nonempty_map_empty_vec
+TARGET_FN: to_vec
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_nonempty_map_empty_vec(h: CKeyHashMap, k: AbstractKey, v: AbstractValue)
+    requires
+        h@.contains_pair(k, v),
+    ensures
+        h.spec_to_vec().len() == 0,
+{
+    h.lemma_to_vec();
+}
+```
+REASON: If provable, to_vec could silently discard all entries from a non-empty map
+===PHI_END===
+
+===PHI_START===
+NAME: vec_len_exceeds_domain
+TARGET_FN: to_vec
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_vec_len_exceeds_domain(h: CKeyHashMap)
+    requires
+        h@.dom().len() > 0,
+    ensures
+        h.spec_to_vec().len() > h@.dom().len(),
+{
+    h.lemma_to_vec();
+}
+```
+REASON: If provable, to_vec could fabricate extra entries not backed by the underlying map
+===PHI_END===
+
+===PHI_START===
+NAME: duplicate_keys_in_vec
+TARGET_FN: to_vec
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_duplicate_keys_in_vec(h: CKeyHashMap, i: int, j: int)
+    requires
+        0 <= i < h.spec_to_vec().len(),
+        0 <= j < h.spec_to_vec().len(),
+        i < j,
+        spec_sorted_keys(h.spec_to_vec()),
+    ensures
+        h.spec_to_vec()[i].k == h.spec_to_vec()[j].k,
+{
+    h.lemma_to_vec();
+}
+```
+REASON: If provable, the sorted-keys invariant fails to prevent duplicate keys, breaking map semantics
+===PHI_END===
+
+===PHI_START===
+NAME: value_mismatch_in_vec
+TARGET_FN: to_vec
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_value_mismatch_in_vec(h: CKeyHashMap, i: int)
+    requires
+        0 <= i < h.spec_to_vec().len(),
+        h@.dom().contains(h.spec_to_vec()[i].k),
+    ensures
+        h.spec_to_vec()[i].v@ != h@[h.spec_to_vec()[i].k],
+{
+    h.lemma_to_vec();
+}
+```
+REASON: If provable, to_vec could associate a key with the wrong value, silently corrupting data
+===PHI_END===
+
+===PHI_START===
+NAME: roundtrip_failure
+TARGET_FN: to_vec
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_roundtrip_failure(h: CKeyHashMap)
+    requires
+        valid_hashtable(h@),
+    ensures
+        CKeyHashMap::spec_from_vec(h.spec_to_vec()) != h,
+{
+    h.lemma_to_vec();
+}
+```
+REASON: If provable, the from_vec/to_vec roundtrip is broken, meaning serialization loses information
+===PHI_END===

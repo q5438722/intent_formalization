@@ -1,0 +1,47 @@
+[
+  {
+    "name": "max_phyaddr_width_axiom_allows_any_value_32_52",
+    "type": "logical",
+    "code": "proof fn phi_1_max_phyaddr_width_axiom_allows_any_value_32_52()\n    ensures\n        32 <= MAX_PHYADDR_WIDTH <= 52,\n{\n    axiom_max_phyaddr_width_facts();\n}",
+    "reason": "`MAX_PHYADDR_WIDTH` is `external_body` with value 52, but the axiom only constrains it to `[32, 52]` \u2014 any proof using MASK_ADDR_SPEC could silently depend on the weaker range, producing masks with fewer valid bits than the actual hardware",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "mask_addr_low_12_bits_zero",
+    "type": "boundary",
+    "code": "proof fn phi_2_mask_addr_low_12_bits_zero()\n    ensures\n        MASK_ADDR_SPEC & 0xFFF == 0,\n{\n    axiom_max_phyaddr_width_facts();\n    assert(forall|low: usize, high: usize| low <= high && high < 64 ==> bitmask_inc!(low, high) & (!0usize >> (64 - low)) == 0) by (bit_vector);\n}",
+    "reason": "`MASK_ADDR_SPEC = bitmask_inc!(12, MAX_PHYADDR_WIDTH-1)` should have bits 0-11 clear \u2014 tests that the mask doesn't accidentally include low offset bits which would corrupt physical address extraction",
+    "entailed": false,
+    "verus_output": "rk trigger terms instead.\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__translation__MASK_ADDR/phi_2_mask_addr_low_12_bits_zero.rs:45:12\n   |\n45 |     assert(forall|low: usize, high: usize| low <= high && high < 64 ==> bitmask_inc!(low, high) & (!0usize >> (64 - low)) == 0) by (...\n   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "mask_addr_bit_12_set",
+    "type": "boundary",
+    "code": "proof fn phi_3_mask_addr_bit_12_set()\n    ensures\n        MASK_ADDR_SPEC & (1usize << 12) != 0,\n{\n    axiom_max_phyaddr_width_facts();\n    assert(1usize << 12 == 4096) by (compute);\n}",
+    "reason": "Bit 12 should be the lowest set bit in MASK_ADDR \u2014 if clear, the mask would start at bit 13+ and lose one bit of physical address resolution",
+    "entailed": false,
+    "verus_output": "1 errors\nerror: postcondition not satisfied\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__translation__MASK_ADDR/phi_3_mask_addr_bit_12_set.rs:42:9\n   |\n40 | proof fn phi_3_mask_addr_bit_12_set()\n   |       ------------------------------- at the end of the function body\n41 |     ensures\n42 |         MASK_ADDR_SPEC & (1usize << 12) != 0,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "mask_addr_high_bits_clear_above_52",
+    "type": "boundary",
+    "code": "proof fn phi_4_mask_addr_high_bits_clear_above_52()\n    ensures\n        MASK_ADDR_SPEC & !((1usize << MAX_PHYADDR_WIDTH) - 1) == 0,\n{\n    axiom_max_phyaddr_width_facts();\n}",
+    "reason": "Bits at or above MAX_PHYADDR_WIDTH should be zero in MASK_ADDR \u2014 if set, the mask would extract bits beyond the physical address width, producing invalid physical addresses",
+    "entailed": false,
+    "verus_output": "_52.rs:42:26\n   |\n42 |         MASK_ADDR_SPEC & !((1usize << MAX_PHYADDR_WIDTH) - 1) == 0,\n   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot apply unary operator `!`\n   |\nnote: `vstd::prelude::int` does not implement `std::ops::Not`\n  --> /home/runner/work/verus/verus/source/builtin/src/lib.rs:635:0\n   |\n   = note: `vstd::prelude::int` is defined in another crate\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0600`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "mask_addr_not_zero_for_any_valid_width",
+    "type": "boundary",
+    "code": "proof fn phi_5_mask_addr_not_zero_for_any_valid_width()\n    ensures\n        MASK_ADDR_SPEC != 0,\n{\n    axiom_max_phyaddr_width_facts();\n}",
+    "reason": "For any MAX_PHYADDR_WIDTH in [32, 52], the mask should be nonzero \u2014 a zero mask would mean no physical address bits are extracted, breaking all address translation",
+    "entailed": false,
+    "verus_output": "condition not satisfied\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__translation__MASK_ADDR/phi_5_mask_addr_not_zero_for_any_valid_width.rs:42:9\n   |\n40 | proof fn phi_5_mask_addr_not_zero_for_any_valid_width()\n   |       ------------------------------------------------- at the end of the function body\n41 |     ensures\n42 |         MASK_ADDR_SPEC != 0,\n   |         ^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

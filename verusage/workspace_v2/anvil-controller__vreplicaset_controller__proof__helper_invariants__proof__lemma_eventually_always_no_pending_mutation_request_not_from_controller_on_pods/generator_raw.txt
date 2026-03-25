@@ -1,0 +1,84 @@
+===PHI_START===
+NAME: unmarshal_total_for_any_value
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_unmarshal_total_for_any_value<T: ResourceView>(obj: DynamicObjectView)
+    requires
+        obj.kind == T::kind(),
+    ensures
+        T::unmarshal(obj) is Ok,
+{
+}
+```
+REASON: no marshal_preserves_integrity proof exists in this version — unmarshal_spec/unmarshal_status are uninterpreted with zero axioms, so matching kind alone cannot guarantee successful unmarshalling
+===PHI_END===
+
+===PHI_START===
+NAME: in_flight_unique_ids_implies_singleton
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_in_flight_unique_ids_implies_singleton(s: ClusterState, msg1: Message, msg2: Message)
+    requires
+        Cluster::every_in_flight_msg_has_unique_id()(s),
+        s.in_flight().contains(msg1),
+        s.in_flight().contains(msg2),
+        msg1.rpc_id == msg2.rpc_id,
+    ensures
+        msg1 == msg2,
+        s.in_flight().count(msg1) == 1,
+{
+}
+```
+REASON: unique IDs imply msg1==msg2 but NOT that the multiset count is 1 — a Multiset can contain duplicate entries of the same message, and the spec only constrains distinct messages
+===PHI_END===
+
+===PHI_START===
+NAME: crash_disabled_implies_controller_exists
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_crash_disabled_implies_controller_exists(s: ClusterState, controller_id: int)
+    requires
+        Cluster::crash_disabled(controller_id)(s),
+    ensures
+        Cluster::there_is_the_controller_state(controller_id)(s),
+{
+}
+```
+REASON: crash_disabled indexes into controller_and_externals without a contains_key guard — satisfying crash_disabled should NOT independently prove the controller exists (it would require the precondition or trigger an out-of-domain access)
+===PHI_END===
+
+===PHI_START===
+NAME: allocator_bound_implies_empty_flight
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_allocator_bound_implies_empty_flight(s: ClusterState)
+    requires
+        Cluster::every_in_flight_msg_has_lower_id_than_allocator()(s),
+        s.rpc_id_allocator.rpc_id_counter == 0int,
+    ensures
+        forall |msg: Message| !s.in_flight().contains(msg),
+{
+}
+```
+REASON: if counter is 0 then all messages need rpc_id < 0 (negative) — this would mean no messages can be in flight, which is only valid if rpc_id is int; if the system allows counter=0 as initial state this proves emptiness which may be too strong
+===PHI_END===
+
+===PHI_START===
+NAME: req_drop_and_pod_monkey_independent
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_req_drop_and_pod_monkey_independent(s: ClusterState)
+    requires
+        Cluster::req_drop_disabled()(s),
+    ensures
+        Cluster::pod_monkey_disabled()(s),
+{
+}
+```
+REASON: req_drop_enabled and pod_monkey_enabled are independent boolean fields on ClusterState — disabling request dropping should NOT entail that the pod monkey is also disabled
+===PHI_END===

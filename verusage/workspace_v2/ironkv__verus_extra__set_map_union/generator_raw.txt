@@ -1,0 +1,79 @@
+===PHI_START===
+NAME: map_union_empty_left
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_map_union_empty_left<A, B>(s: Set<A>, f: spec_fn(A) -> B)
+    ensures
+        (Set::<A>::empty() + s).map(f) == s.map(f),
+{
+    set_map_union(Set::<A>::empty(), s, f);
+    assert(Set::<A>::empty().map(f) =~= Set::<B>::empty());
+}
+```
+REASON: If union with empty on the left changed the map result, the identity element of set union would be broken under mapping
+===PHI_END===
+
+===PHI_START===
+NAME: map_union_commutative
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_map_union_commutative<A, B>(s1: Set<A>, s2: Set<A>, f: spec_fn(A) -> B)
+    ensures
+        s1.map(f) + s2.map(f) == s2.map(f) + s1.map(f),
+{
+}
+```
+REASON: If mapped union wasn't commutative, the set_map_union lemma combined with set union commutativity would yield contradictory equalities
+===PHI_END===
+
+===PHI_START===
+NAME: map_union_idempotent
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_map_union_idempotent<A, B>(s: Set<A>, f: spec_fn(A) -> B)
+    ensures
+        (s + s).map(f) == s.map(f),
+{
+    set_map_union(s, s, f);
+}
+```
+REASON: Mapping over a self-union should equal mapping once — if not, the union distribution would double-count elements in the mapped set
+===PHI_END===
+
+===PHI_START===
+NAME: map_union_subset_left
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_map_union_subset_left<A, B>(s1: Set<A>, s2: Set<A>, f: spec_fn(A) -> B)
+    ensures
+        s1.map(f).subset_of((s1 + s2).map(f)),
+{
+    set_map_union(s1, s2, f);
+}
+```
+REASON: If mapping s1 weren't a subset of mapping the union, the distributive law would lose elements from the left operand
+===PHI_END===
+
+===PHI_START===
+NAME: map_union_constant_fn_singleton
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_map_union_constant_fn_singleton(s1: Set<int>, s2: Set<int>, c: int)
+    requires
+        s1.len() > 0,
+        s2.len() > 0,
+        s1.finite(),
+        s2.finite(),
+    ensures
+        (s1 + s2).map(|_x: int| c) =~= set![c],
+{
+    set_map_union(s1, s2, |_x: int| c);
+}
+```
+REASON: Mapping a union with a constant function should produce a singleton regardless of input sizes — if it produced more elements, the map operation would fabricate values
+===PHI_END===

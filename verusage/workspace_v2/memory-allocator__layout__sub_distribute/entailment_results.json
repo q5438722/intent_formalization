@@ -1,0 +1,47 @@
+[
+  {
+    "name": "sub_distribute_commuted",
+    "type": "logical",
+    "code": "proof fn phi_1_sub_distribute_commuted(a: int, b: int, c: int)\n    ensures\n        c * a - c * b == (a - b) * c,\n{\n    sub_distribute(a, b, c);\n    assert(a * c == c * a) by(nonlinear_arith);\n    assert(b * c == c * b) by(nonlinear_arith);\n}",
+    "reason": "Commutativity combined with sub_distribute derives `c*a - c*b == (a-b)*c` \u2014 a correct mathematical identity, testing that the lemma composes with basic arithmetic",
+    "entailed": true,
+    "verus_output": "verification results:: 5 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "sub_distribute_zero_c",
+    "type": "boundary",
+    "code": "proof fn phi_2_sub_distribute_zero_c(a: int, b: int)\n    ensures\n        a * 0 - b * 0 == 0,\n{\n    sub_distribute(a, b, 0);\n}",
+    "reason": "With `c == 0`, the lemma yields `0 - 0 == 0` \u2014 trivially true but a degenerate case where the distributive law provides no useful information",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "sub_distribute_self",
+    "type": "boundary",
+    "code": "proof fn phi_3_sub_distribute_self(a: int, c: int)\n    ensures\n        a * c - a * c == 0,\n{\n    sub_distribute(a, a, c);\n}",
+    "reason": "When `a == b`, the result is `0 == 0 * c == 0` \u2014 trivially true, testing the degenerate case where subtraction cancels",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "sub_distribute_negative",
+    "type": "behavioral",
+    "code": "proof fn phi_4_sub_distribute_negative(a: int, b: int, c: int)\n    requires\n        a < b,\n        c > 0,\n    ensures\n        a * c - b * c < 0,\n{\n    sub_distribute(a, b, c);\n    assert((a - b) * c < 0) by(nonlinear_arith)\n        requires a < b, c > 0;\n}",
+    "reason": "The lemma enables deriving sign information \u2014 when `a < b` and `c > 0`, `a*c - b*c` is negative, which is correct but shows the lemma's power extends beyond simple factoring",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "sub_distribute_factor_extraction",
+    "type": "logical",
+    "code": "proof fn phi_5_sub_distribute_factor_extraction(n: int, c: int)\n    ensures\n        (n + 1) * c - n * c == c,\n{\n    sub_distribute(n + 1, n, c);\n}",
+    "reason": "Setting `a = n+1, b = n` yields `(n+1)*c - n*c == c` \u2014 this extracts a single factor, which is correct but shows the lemma can derive stepping relationships between consecutive multiples",
+    "entailed": false,
+    "verus_output": "atisfied\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__layout__sub_distribute/phi_5_sub_distribute_factor_extraction.rs:19:9\n   |\n17 | proof fn phi_5_sub_distribute_factor_extraction(n: int, c: int)\n   |       --------------------------------------------------------- at the end of the function body\n18 |     ensures\n19 |         (n + 1) * c - n * c == c,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

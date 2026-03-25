@@ -1,0 +1,89 @@
+===PHI_START===
+NAME: result_not_multiple_of_alignment
+TARGET_FN: align_to_usize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_result_not_multiple_of_alignment(a: usize, b: usize)
+    requires
+        b > 0,
+        a < 0x8000_0000_0000_0000,
+        b < 0x8000_0000_0000_0000,
+    ensures
+        align_to_usize(a, b) % b != 0,
+{
+}
+```
+REASON: Aligning down should always produce a multiple of the alignment value
+===PHI_END===
+
+===PHI_START===
+NAME: result_exceeds_input
+TARGET_FN: align_to_usize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_result_exceeds_input(a: usize, b: usize)
+    requires
+        b > 0,
+    ensures
+        align_to_usize(a, b) > a,
+{
+}
+```
+REASON: Aligning down must never produce a value larger than the original input
+===PHI_END===
+
+===PHI_START===
+NAME: not_idempotent
+TARGET_FN: align_to_usize
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_not_idempotent(a: usize, b: usize)
+    requires
+        b > 0,
+        a < 0x8000_0000_0000_0000,
+        b < 0x8000_0000_0000_0000,
+    ensures
+        align_to_usize(align_to_usize(a, b), b) != align_to_usize(a, b),
+{
+}
+```
+REASON: Alignment should be idempotent — aligning an already-aligned value must be a no-op
+===PHI_END===
+
+===PHI_START===
+NAME: nonaligned_unchanged
+TARGET_FN: align_to_usize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_nonaligned_unchanged(a: usize, b: usize)
+    requires
+        b > 0,
+        a % b != 0,
+    ensures
+        align_to_usize(a, b) == a,
+{
+}
+```
+REASON: A non-aligned input must be rounded down, so the result should differ from the input
+===PHI_END===
+
+===PHI_START===
+NAME: gap_ge_alignment
+TARGET_FN: align_to_usize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_gap_ge_alignment(a: usize, b: usize)
+    requires
+        b > 0,
+    ensures
+        (a - align_to_usize(a, b)) as int >= b as int,
+{
+}
+```
+REASON: The distance from the aligned value to the original must be strictly less than b (i.e. the remainder)
+===PHI_END===

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "set_external_body_ar_ghost_desync",
+    "type": "logical",
+    "code": "proof fn phi_1_set_external_body_ar_ghost_desync<A>(arr: Array<A, 5>, i: usize, v: A)\n    requires\n        arr.wf(),\n        0 <= i < 5,\n    ensures\n        ({\n            let new_seq = arr.seq@.update(i as int, v);\n            new_seq.len() == 5\n        }),\n{\n}",
+    "reason": "set's external_body only constrains Ghost<Seq<A>> \u2014 the concrete ar:[A;N] field has no ensures linking it to the ghost state, so runtime and ghost can desync",
+    "entailed": true,
+    "verus_output": ":prelude::OptionAdditionalFns::is_None`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__array__impl4__init2none/phi_1_set_external_body_ar_ghost_desync.rs:66:63\n   |\n66 |             assert(forall|j:int| #![auto] 0<=j<i ==> self@[j].is_None());\n   |                                                               ^^^^^^^\n\nwarning: 4 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "init2none_vacuous_on_empty",
+    "type": "boundary",
+    "code": "proof fn phi_2_init2none_vacuous_on_empty<T: Copy>(arr: Array<Option<T>, 0>)\n    requires\n        arr.wf(),\n        0usize <= usize::MAX,\n    ensures\n        arr.wf(),\n        forall|index: int| 0 <= index < 0 ==> #[trigger] arr@[index].is_None(),\n{\n}",
+    "reason": "init2none on a zero-length array vacuously satisfies the postcondition with no work \u2014 the N <= usize::MAX guard is always true, potentially masking edge cases",
+    "entailed": true,
+    "verus_output": "de::OptionAdditionalFns::is_None`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__array__impl4__init2none/phi_2_init2none_vacuous_on_empty.rs:83:70\n   |\n83 |         forall|index: int| 0 <= index < 0 ==> #[trigger] arr@[index].is_None(),\n   |                                                                      ^^^^^^^\n\nwarning: 5 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "set_no_value_domain_constraint",
+    "type": "boundary",
+    "code": "proof fn phi_3_set_no_value_domain_constraint(arr: Array<usize, 5>, i: usize)\n    requires\n        arr.wf(),\n        0 <= i < 5,\n    ensures\n        ({\n            let new_seq = arr.seq@.update(i as int, usize::MAX);\n            new_seq[i as int] == usize::MAX\n        }),\n{\n}",
+    "reason": "set accepts any value of type A with no domain validation \u2014 arbitrary sentinel values can be written without the spec constraining the value space",
+    "entailed": true,
+    "verus_output": "td::prelude::OptionAdditionalFns::is_None`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__array__impl4__init2none/phi_3_set_no_value_domain_constraint.rs:66:63\n   |\n66 |             assert(forall|j:int| #![auto] 0<=j<i ==> self@[j].is_None());\n   |                                                               ^^^^^^^\n\nwarning: 4 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "wf_only_checks_length",
+    "type": "logical",
+    "code": "proof fn phi_4_wf_only_checks_length(arr1: Array<usize, 5>, arr2: Array<usize, 5>)\n    requires\n        arr1.wf(),\n        arr2.wf(),\n        arr1.seq@ =~= arr2.seq@,\n    ensures\n        forall|i: int| 0 <= i < 5 ==> arr1@[i] == arr2@[i],\n{\n}",
+    "reason": "wf() only checks seq@.len() == N \u2014 two Arrays with identical ghost seqs are indistinguishable at spec level even if their concrete ar fields differ entirely",
+    "entailed": true,
+    "verus_output": "ethod `vstd::prelude::OptionAdditionalFns::is_None`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__array__impl4__init2none/phi_4_wf_only_checks_length.rs:66:63\n   |\n66 |             assert(forall|j:int| #![auto] 0<=j<i ==> self@[j].is_None());\n   |                                                               ^^^^^^^\n\nwarning: 4 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "set_double_write_loses_first",
+    "type": "behavioral",
+    "code": "proof fn phi_5_set_double_write_loses_first<A>(old_arr: Array<A, 5>, mid_arr: Array<A, 5>, v1: A, v2: A, i: usize)\n    requires\n        old_arr.wf(),\n        0 <= i < 5,\n        mid_arr.seq@ =~= old_arr.seq@.update(i as int, v1),\n        mid_arr.wf(),\n    ensures\n        ({\n            let final_seq = mid_arr.seq@.update(i as int, v2);\n            final_seq[i as int] == v2\n        }),\n{\n}",
+    "reason": "Two consecutive sets to the same index \u2014 the first write is silently lost with no spec-level tracking, and the spec provides no mechanism to detect or prevent overwrites",
+    "entailed": true,
+    "verus_output": "vstd::prelude::OptionAdditionalFns::is_None`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__array__impl4__init2none/phi_5_set_double_write_loses_first.rs:66:63\n   |\n66 |             assert(forall|j:int| #![auto] 0<=j<i ==> self@[j].is_None());\n   |                                                               ^^^^^^^\n\nwarning: 4 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

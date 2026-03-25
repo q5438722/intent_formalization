@@ -1,0 +1,47 @@
+[
+  {
+    "name": "mod_add_zero_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_mod_add_zero_external_body(a: nat, b: nat, c: nat)\n    requires\n        aligned(a, c),\n        aligned(b, c),\n        c > 0,\n    ensures\n        aligned(a + b, c),\n{\n    mod_add_zero(a, b, c);\n}",
+    "reason": "`mod_add_zero` is `external_body` \u2014 closure of alignment under addition is trusted without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 7 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "aligned_transitive_external_body",
+    "type": "logical",
+    "code": "proof fn phi_2_aligned_transitive_external_body(a: nat, b: nat, c: nat)\n    requires\n        0 < b,\n        0 < c,\n        aligned(a, b),\n        aligned(b, c),\n    ensures\n        aligned(a, c),\n{\n    aligned_transitive(a, b, c);\n}",
+    "reason": "`aligned_transitive` is `external_body` \u2014 divisibility transitivity is trusted without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 7 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "mult_less_mono_both1_external_body",
+    "type": "logical",
+    "code": "proof fn phi_3_mult_less_mono_both1_external_body(a: nat, b: nat, c: nat, d: nat)\n    requires\n        a < c,\n        b <= d,\n        0 < c,\n        0 < d,\n    ensures\n        a * b < c * d,\n{\n    mult_less_mono_both1(a, b, c, d);\n}",
+    "reason": "`mult_less_mono_both1` is `external_body` \u2014 multiplication monotonicity with mixed strict/non-strict inequalities is trusted without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 7 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "entry_base_aligned_from_base_aligned",
+    "type": "behavioral",
+    "code": "proof fn phi_4_entry_base_aligned_from_base_aligned(base: nat, idx: nat, entry_size: nat)\n    requires\n        0 < entry_size,\n        aligned(base, entry_size),\n    ensures\n        aligned(entry_base_from_index(base, idx, entry_size), entry_size),\n{\n    lemma_entry_base_from_index(base, idx, entry_size);\n}",
+    "reason": "Entry base alignment to `entry_size` follows from base alignment \u2014 the proof chain uses both `aligned_transitive` and `mod_add_zero` external_body axioms",
+    "entailed": true,
+    "verus_output": "verification results:: 7 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "next_entry_base_no_gap",
+    "type": "boundary",
+    "code": "proof fn phi_5_next_entry_base_no_gap(base: nat, idx: nat, entry_size: nat)\n    requires\n        0 < entry_size,\n    ensures\n        next_entry_base_from_index(base, idx, entry_size) == entry_base_from_index(base, idx, entry_size) + entry_size,\n{\n    lemma_entry_base_from_index(base, idx, entry_size);\n}",
+    "reason": "The gap between consecutive entries is exactly `entry_size` \u2014 tests that entries are contiguous with no dead space",
+    "entailed": true,
+    "verus_output": "verification results:: 7 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

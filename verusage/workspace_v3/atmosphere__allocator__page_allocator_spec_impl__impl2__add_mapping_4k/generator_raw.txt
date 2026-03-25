@@ -1,0 +1,134 @@
+===PHI_START===
+NAME: target_loses_mapped_status
+TARGET_FN: add_mapping_4k
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_target_loses_mapped_status(
+    pre: PageAllocator, post: PageAllocator,
+    target_ptr: PagePtr, pcid: Pcid, va: VAddr,
+)
+    requires
+        pre.wf(),
+        pre.mapped_pages_4k().contains(target_ptr),
+        !pre.page_mappings(target_ptr).contains((pcid, va)),
+        pre.page_mappings(target_ptr).len() + pre.page_io_mappings(target_ptr).len() < usize::MAX,
+        post.mapped_pages_4k() =~= pre.mapped_pages_4k(),
+        post.mapped_pages_2m() =~= pre.mapped_pages_2m(),
+        post.mapped_pages_1g() =~= pre.mapped_pages_1g(),
+    ensures
+        !post.page_is_mapped(target_ptr),
+{
+}
+```
+REASON: Adding a mapping must not cause the target page to lose its mapped status
+===PHI_END===
+
+===PHI_START===
+NAME: prior_mapping_lost_after_insert
+TARGET_FN: add_mapping_4k
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_prior_mapping_lost_after_insert(
+    pre: PageAllocator, post: PageAllocator,
+    target_ptr: PagePtr, pcid: Pcid, va: VAddr,
+    pcid2: Pcid, va2: VAddr,
+)
+    requires
+        pre.wf(),
+        pre.mapped_pages_4k().contains(target_ptr),
+        !pre.page_mappings(target_ptr).contains((pcid, va)),
+        pre.page_mappings(target_ptr).len() + pre.page_io_mappings(target_ptr).len() < usize::MAX,
+        pre.page_mappings(target_ptr).contains((pcid2, va2)),
+        (pcid2, va2) != (pcid, va),
+        post.page_mappings(target_ptr) =~= pre.page_mappings(target_ptr).insert((pcid, va)),
+    ensures
+        !post.page_mappings(target_ptr).contains((pcid2, va2)),
+{
+}
+```
+REASON: Inserting a new mapping must not silently discard a pre-existing mapping on the same page
+===PHI_END===
+
+===PHI_START===
+NAME: mapping_leaks_to_io_mappings
+TARGET_FN: add_mapping_4k
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_mapping_leaks_to_io_mappings(
+    pre: PageAllocator, post: PageAllocator,
+    target_ptr: PagePtr, pcid: Pcid, va: VAddr,
+)
+    requires
+        pre.wf(),
+        pre.mapped_pages_4k().contains(target_ptr),
+        !pre.page_mappings(target_ptr).contains((pcid, va)),
+        pre.page_mappings(target_ptr).len() + pre.page_io_mappings(target_ptr).len() < usize::MAX,
+        !pre.page_io_mappings(target_ptr).contains((pcid, va)),
+        post.page_io_mappings(target_ptr) =~= pre.page_io_mappings(target_ptr),
+    ensures
+        post.page_io_mappings(target_ptr).contains((pcid, va)),
+{
+}
+```
+REASON: A regular mapping addition must not pollute the io_mappings of the target page
+===PHI_END===
+
+===PHI_START===
+NAME: target_becomes_allocated
+TARGET_FN: add_mapping_4k
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_target_becomes_allocated(
+    pre: PageAllocator, post: PageAllocator,
+    target_ptr: PagePtr, pcid: Pcid, va: VAddr,
+)
+    requires
+        pre.wf(),
+        pre.mapped_pages_4k().contains(target_ptr),
+        !pre.page_mappings(target_ptr).contains((pcid, va)),
+        pre.page_mappings(target_ptr).len() + pre.page_io_mappings(target_ptr).len() < usize::MAX,
+        !pre.allocated_pages_4k().contains(target_ptr),
+        post.allocated_pages_4k() =~= pre.allocated_pages_4k(),
+    ensures
+        post.allocated_pages_4k().contains(target_ptr),
+{
+}
+```
+REASON: Adding a mapping must not cause the page to appear in the allocated set (wrong state transition)
+===PHI_END===
+
+===PHI_START===
+NAME: other_page_mapping_lost
+TARGET_FN: add_mapping_4k
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_other_page_mapping_lost(
+    pre: PageAllocator, post: PageAllocator,
+    target_ptr: PagePtr, pcid: Pcid, va: VAddr,
+    other_ptr: PagePtr, pcid3: Pcid, va3: VAddr,
+)
+    requires
+        pre.wf(),
+        pre.mapped_pages_4k().contains(target_ptr),
+        !pre.page_mappings(target_ptr).contains((pcid, va)),
+        pre.page_mappings(target_ptr).len() + pre.page_io_mappings(target_ptr).len() < usize::MAX,
+        other_ptr != target_ptr,
+        pre.page_is_mapped(other_ptr),
+        pre.page_mappings(other_ptr).contains((pcid3, va3)),
+        forall|p: PagePtr|
+            #![trigger post.page_is_mapped(p)]
+            #![trigger post.page_mappings(p)]
+            post.page_is_mapped(p) && p != target_ptr ==> post.page_mappings(p) =~= pre.page_mappings(p),
+        forall|p: PagePtr| #![auto] post.page_is_mapped(p) <==> pre.page_is_mapped(p),
+    ensures
+        !post.page_mappings(other_ptr).contains((pcid3, va3)),
+{
+}
+```
+REASON: Adding a mapping to one page must not cause another mapped page to lose any of its mappings
+===PHI_END===

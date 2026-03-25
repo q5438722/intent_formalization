@@ -1,0 +1,89 @@
+===PHI_START===
+NAME: marshal_preserves_integrity_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_marshal_preserves_integrity_external_body()
+    requires
+        true,
+    ensures
+        forall |o: PodView| PodView::unmarshal(#[trigger] o.marshal()) is Ok && o == PodView::unmarshal(o.marshal())->Ok_0,
+{
+    PodView::marshal_preserves_integrity();
+}
+```
+REASON: marshal_preserves_integrity is #[verifier::external_body] — it's trusted without proof, so this axiom could be unsound if marshal_spec/unmarshal_spec don't actually roundtrip (they're uninterpreted)
+===PHI_END===
+
+===PHI_START===
+NAME: submap_finite_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_submap_finite_external_body(m1: Map<ObjectRef, DynamicObjectView>, m2: Map<ObjectRef, DynamicObjectView>)
+    requires
+        m1.submap_of(m2),
+        m2.dom().finite(),
+    ensures
+        m1.dom().finite(),
+{
+    a_submap_of_a_finite_map_is_finite(m1, m2);
+}
+```
+REASON: a_submap_of_a_finite_map_is_finite is #[verifier::external_body] — trusted without proof, so if vstd's Map axioms don't actually guarantee this property it could be a soundness gap
+===PHI_END===
+
+===PHI_START===
+NAME: create_key_namespace_disagrees_with_obj
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_create_key_namespace_disagrees_with_obj(req: CreateRequest)
+    requires
+        req.obj.metadata.namespace is Some,
+        req.namespace != req.obj.metadata.namespace->0,
+    ensures
+        req.key().namespace != req.obj.metadata.namespace->0,
+{
+}
+```
+REASON: CreateRequest::key uses self.namespace while the obj carries its own metadata.namespace — these can diverge, meaning the key does not faithfully represent the object's actual namespace
+===PHI_END===
+
+===PHI_START===
+NAME: unmarshal_ignores_state_validation
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_unmarshal_ignores_state_validation(obj: DynamicObjectView)
+    requires
+        obj.kind == PodView::kind(),
+        PodView::unmarshal_spec(obj.spec) is Ok,
+        PodView::unmarshal_status(obj.status) is Ok,
+    ensures
+        PodView::unmarshal(obj) is Ok,
+{
+}
+```
+REASON: unmarshal succeeds whenever kind/spec/status parse correctly but never checks state_validation — invalid objects (e.g. pods with spec == None) can be successfully unmarshalled
+===PHI_END===
+
+===PHI_START===
+NAME: object_ref_ignores_uid
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_object_ref_ignores_uid(p1: PodView, p2: PodView)
+    requires
+        p1.metadata.name == p2.metadata.name,
+        p1.metadata.namespace == p2.metadata.namespace,
+        p1.metadata.uid != p2.metadata.uid,
+        p1.metadata.name is Some,
+        p1.metadata.namespace is Some,
+    ensures
+        p1.object_ref() == p2.object_ref(),
+{
+}
+```
+REASON: object_ref is (kind, name, namespace) without uid — two distinct resource incarnations with different uids produce identical ObjectRefs, conflating identity across deletions and recreations
+===PHI_END===

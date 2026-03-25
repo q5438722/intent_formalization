@@ -1,0 +1,110 @@
+===PHI_START===
+NAME: new_entry_present_bit_set
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_new_entry_present_bit_set(address: usize, layer: usize, is_page: bool)
+    requires
+        layer <= 3,
+        if is_page { 0 < layer } else { layer < 3 },
+        addr_is_zero_padded(layer as nat, address, is_page),
+        address & MASK_ADDR == address,
+    ensures
+        (address | MASK_FLAG_P) & MASK_FLAG_P == MASK_FLAG_P,
+{
+    PDE::lemma_new_entry_addr_mask_is_address(layer, address, is_page, false, false, false, false, false);
+}
+```
+REASON: Present bit is always set in the constructed entry — tests that OR with MASK_FLAG_P correctly sets bit 0
+===PHI_END===
+
+===PHI_START===
+NAME: new_entry_dirty_access_clear
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_new_entry_dirty_access_clear(address: usize, layer: usize, is_page: bool, is_writable: bool, is_supervisor: bool, is_writethrough: bool, disable_cache: bool, disable_execute: bool)
+    requires
+        layer <= 3,
+        if is_page { 0 < layer } else { layer < 3 },
+        addr_is_zero_padded(layer as nat, address, is_page),
+        address & MASK_ADDR == address,
+    ensures
+        ({
+            let e = address
+                | MASK_FLAG_P
+                | if is_page && layer != 3 { MASK_L1_PG_FLAG_PS } else { 0 }
+                | if is_writable { MASK_FLAG_RW } else { 0 }
+                | if is_supervisor { 0 } else { MASK_FLAG_US }
+                | if is_writethrough { MASK_FLAG_PWT } else { 0 }
+                | if disable_cache { MASK_FLAG_PCD } else { 0 }
+                | if disable_execute { MASK_FLAG_XD } else { 0 };
+            e & bit!(5) == 0 && e & bit!(6) == 0
+        }),
+{
+    PDE::lemma_new_entry_addr_mask_is_address(layer, address, is_page, is_writable, is_supervisor, is_writethrough, disable_cache, disable_execute);
+}
+```
+REASON: New entries always have dirty (bit 6) and access (bit 5) cleared — tests that none of the flag ORs accidentally set these hardware-managed bits
+===PHI_END===
+
+===PHI_START===
+NAME: addr_mask_roundtrips_through_flags
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_addr_mask_roundtrips_through_flags(address: usize, layer: usize, is_page: bool)
+    requires
+        layer <= 3,
+        if is_page { 0 < layer } else { layer < 3 },
+        addr_is_zero_padded(layer as nat, address, is_page),
+        address & MASK_ADDR == address,
+    ensures
+        ({
+            let e = address | MASK_FLAG_P | MASK_FLAG_RW | MASK_FLAG_US | MASK_FLAG_PWT | MASK_FLAG_PCD | MASK_FLAG_XD
+                | if is_page && layer != 3 { MASK_L1_PG_FLAG_PS } else { 0 };
+            e & MASK_ADDR == address
+        }),
+{
+    PDE::lemma_new_entry_addr_mask_is_address(layer, address, is_page, true, false, true, true, true);
+}
+```
+REASON: Address bits survive ORing all flags — tests that flag bits don't overlap with MASK_ADDR address field
+===PHI_END===
+
+===PHI_START===
+NAME: l1_page_pat_bit_clear
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_l1_page_pat_bit_clear(address: usize)
+    requires
+        address & MASK_L1_PG_ADDR == address,
+        address & MASK_ADDR == address,
+    ensures
+        ({
+            let e = address | MASK_FLAG_P | MASK_L1_PG_FLAG_PS;
+            e & MASK_PG_FLAG_PAT == 0
+        }),
+{
+    PDE::lemma_new_entry_addr_mask_is_address(1, address, true, false, false, false, false, false);
+}
+```
+REASON: L1 page entries have PAT bit (bit 12) clear — relies on MASK_L1_PG_ADDR zeroing bit 12, so the address can't set it
+===PHI_END===
+
+===PHI_START===
+NAME: max_phyaddr_width_external_body
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_max_phyaddr_width_external_body()
+    ensures
+        32 <= MAX_PHYADDR_WIDTH,
+        MAX_PHYADDR_WIDTH <= 52,
+{
+    axiom_max_phyaddr_width_facts();
+}
+```
+REASON: `MAX_PHYADDR_WIDTH` is `external_body` with value 52 but the axiom only constrains it to 32..=52 — the verifier treats it as opaque, creating a gap between spec and implementation
+===PHI_END===

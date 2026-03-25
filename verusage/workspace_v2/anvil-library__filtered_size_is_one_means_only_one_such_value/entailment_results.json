@@ -1,0 +1,47 @@
+[
+  {
+    "name": "len_zero_iff_empty_multiset",
+    "type": "logical",
+    "code": "proof fn phi_1_len_zero_iff_empty_multiset(m: Multiset<int>)\n    requires\n        m.len() == 0,\n    ensures\n        m =~= Multiset::empty(),\n{\n    len_is_zero_means_count_for_each_value_is_zero(m);\n}",
+    "reason": "len_is_zero_means_count_for_each_value_is_zero is external_body \u2014 if its axiom is too strong or interacts unexpectedly with Multiset extensionality, it could force equality with empty that bypasses actual multiset reasoning",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "filter_true_is_identity",
+    "type": "behavioral",
+    "code": "proof fn phi_2_filter_true_is_identity(m: Multiset<int>)\n    ensures\n        m.filter(|v: int| true).len() == m.len(),\n{\n}",
+    "reason": "if filter with always-true predicate doesn't preserve length, the filter axiomatization would be inconsistent \u2014 tests whether filter's len interacts correctly with the identity case",
+    "entailed": false,
+    "verus_output": "u/intent_formalization/verusage/workspace_v2/anvil-library__filtered_size_is_one_means_only_one_such_value/phi_2_filter_true_is_identity.rs:76:9\n   |\n74 | proof fn phi_2_filter_true_is_identity(m: Multiset<int>)\n   |       -------------------------------------------------- at the end of the function body\n75 |     ensures\n76 |         m.filter(|v: int| true).len() == m.len(),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "filter_false_is_empty",
+    "type": "behavioral",
+    "code": "proof fn phi_3_filter_false_is_empty(m: Multiset<int>)\n    ensures\n        m.filter(|v: int| false).len() == 0,\n{\n    filtered_size_is_zero_means_no_such_value(m, |v: int| false);\n}",
+    "reason": "filter with always-false should yield empty \u2014 relies on filtered_size_is_zero external_body axiom being sound",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "filtered_one_unique_witness",
+    "type": "logical",
+    "code": "proof fn phi_4_filtered_one_unique_witness(m: Multiset<int>, f: spec_fn(int) -> bool, v: int, u: int)\n    requires\n        m.filter(f).len() == 1,\n        m.contains(v) && f(v),\n        m.contains(u) && f(u),\n    ensures\n        u == v,\n{\n    filtered_size_is_one_means_only_one_such_value(m, f);\n}",
+    "reason": "tests that the uniqueness clause of filtered_size_is_one actually forces all matching elements equal \u2014 if the proof has a gap, distinct v and u satisfying the filter could coexist",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "contains_implies_positive_count",
+    "type": "boundary",
+    "code": "proof fn phi_5_contains_implies_positive_count(m: Multiset<int>, v: int)\n    requires\n        m.contains(v),\n    ensures\n        m.count(v) >= 1,\n{\n}",
+    "reason": "contains and count must agree \u2014 if contains is axiomatized independently of count, a multiset could \"contain\" an element with zero count, breaking the len_is_zero axiom's foundation",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

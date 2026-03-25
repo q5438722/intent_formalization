@@ -1,0 +1,20 @@
+[
+  {
+    "phi": "present_bit_independent_of_addr",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The ensures clause is a tautology (`addr != 0 || addr == 0`). The real claim\u2014that present entries can have addr==0\u2014is architecturally valid; physical address 0 is a legitimate address on x86. The spec correctly decodes fields independently from the raw usize."
+  },
+  {
+    "phi": "non_zero_value_can_be_empty",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Bits 3\u20136 and 8\u201311 are hardware-reserved/unused bits not decoded by this spec. The spec intentionally only tracks the 5 defined permission bits plus the address field. Non-zero reserved bits producing `is_empty()==true` is correct behavior\u2014the spec abstracts away bits it doesn't model."
+  },
+  {
+    "phi": "ps_and_present_coexist_no_constraint",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "On x86, all these permission bits can indeed be set simultaneously in a raw page table entry. The decoding layer's job is faithful bit extraction, not architectural validity enforcement\u2014that constraint belongs at a higher level (e.g., the page table walk logic, which already uses ps to dispatch between hugepage and normal paths)."
+  }
+]

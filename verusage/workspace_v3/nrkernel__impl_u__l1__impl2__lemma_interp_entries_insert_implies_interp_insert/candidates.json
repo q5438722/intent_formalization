@@ -1,0 +1,37 @@
+[
+  {
+    "name": "zero_layer_arch_satisfies_inv",
+    "target_fn": "Arch::inv",
+    "type": "boundary",
+    "code": "proof fn phi_1_zero_layer_arch_satisfies_inv(arch: Arch)\n    requires\n        arch.layers.len() == 0,\n    ensures\n        arch.inv(),\n{\n}",
+    "reason": "A zero-layer architecture is degenerate (no translation at all) but would satisfy the invariant since all forall-quantifiers are vacuously true"
+  },
+  {
+    "name": "adjacent_entry_bases_collide",
+    "target_fn": "Arch::entry_base",
+    "type": "logical",
+    "code": "proof fn phi_2_adjacent_entry_bases_collide(arch: Arch, layer: nat, base: nat, i: nat)\n    requires\n        arch.inv(),\n        layer < arch.layers.len(),\n        i + 1 < arch.num_entries(layer),\n    ensures\n        arch.entry_base(layer, base, i) == arch.entry_base(layer, base, (i + 1) as nat),\n{\n}",
+    "reason": "Two adjacent entries at the same layer sharing the same base address would mean distinct page table slots map the same virtual address region"
+  },
+  {
+    "name": "page_frame_size_zero_under_inv",
+    "target_fn": "Directory::pages_match_entry_size",
+    "type": "boundary",
+    "code": "proof fn phi_3_page_frame_size_zero_under_inv(d: Directory, i: nat)\n    requires\n        d.inv(),\n        i < d.entries.len(),\n        d.entries[i as int] is Page,\n    ensures\n        d.entries[i as int]->Page_0.frame.size == 0,\n{\n}",
+    "reason": "A page with a zero-size frame in a valid directory would represent a nonsensical mapping to no physical memory"
+  },
+  {
+    "name": "update_invalid_keeps_mapping",
+    "target_fn": "Directory::update",
+    "type": "behavioral",
+    "code": "proof fn phi_4_update_invalid_keeps_mapping(d: Directory, j: nat)\n    requires\n        d.inv(),\n        j < d.num_entries(),\n        d.entries[j as int] is Page,\n    ensures\n        d.update(j, NodeEntry::Invalid).interp_of_entry(j) !== Map::<nat, PTE>::empty(),\n{\n}",
+    "reason": "Replacing a Page entry with Invalid should erase the mapping at that slot; a non-empty interp would mean unmapping fails to remove the translation"
+  },
+  {
+    "name": "nonzero_subdir_base_equals_parent",
+    "target_fn": "Directory::directories_are_in_next_layer",
+    "type": "logical",
+    "code": "proof fn phi_5_nonzero_subdir_base_equals_parent(d: Directory, i: nat)\n    requires\n        d.inv(),\n        i < d.entries.len(),\n        i > 0,\n        d.entries[i as int] is Directory,\n    ensures\n        d.entries[i as int]->Directory_0.base_vaddr == d.base_vaddr,\n{\n}",
+    "reason": "A non-first subdirectory sharing the parent's base_vaddr would mean distinct directory entries govern the same virtual address range, breaking isolation"
+  }
+]

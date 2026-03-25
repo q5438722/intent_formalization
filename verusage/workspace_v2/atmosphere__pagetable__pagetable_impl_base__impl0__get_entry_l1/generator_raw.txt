@@ -1,0 +1,79 @@
+===PHI_START===
+NAME: usize2pa_mem_valid_unconditional
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)
+    ensures
+        MEM_valid(usize2pa(v)),
+{
+}
+```
+REASON: usize2pa's external_body unconditionally ensures MEM_valid(ret) for ANY input — arbitrary usize values produce "valid" physical addresses without proof
+===PHI_END===
+
+===PHI_START===
+NAME: zero_entry_is_empty
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_zero_entry_is_empty()
+    ensures
+        usize2page_entry(0usize).is_empty(),
+{
+}
+```
+REASON: Relies on two independent external_body claims (usize2page_entry and usize2pa) both correctly handling zero — if either is wrong the combined property is unsound
+===PHI_END===
+
+===PHI_START===
+NAME: page_entry_to_map_entry_drops_user_bit
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_page_entry_to_map_entry_drops_user_bit(pe: PageEntry)
+    requires
+        pe.perm.user == true,
+        pe.perm.present == true,
+    ensures
+        spec_page_entry_to_map_entry(&pe) == spec_page_entry_to_map_entry(
+            &PageEntry { perm: PageEntryPerm { user: false, ..pe.perm }, ..pe }
+        ),
+{
+}
+```
+REASON: page_entry_to_map_entry produces identical MapEntry regardless of the user bit — the user/supervisor permission is silently dropped during translation, meaning kernel-only and user-accessible pages become indistinguishable in mappings
+===PHI_END===
+
+===PHI_START===
+NAME: page_entry_to_map_entry_drops_present_bit
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_page_entry_to_map_entry_drops_present_bit(pe: PageEntry)
+    requires
+        pe.perm.present == false,
+    ensures
+        spec_page_entry_to_map_entry(&pe) == MapEntry { addr: pe.addr, write: pe.perm.write, execute_disable: pe.perm.execute_disable },
+{
+}
+```
+REASON: page_entry_to_map_entry converts non-present entries into MapEntry without checking present bit — a non-present page table entry produces a valid-looking MapEntry that could be used in mappings
+===PHI_END===
+
+===PHI_START===
+NAME: l4_dom_singleton_cr3
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_l4_dom_singleton_cr3(pt: PageTable, p: PageMapPtr)
+    requires
+        pt.wf_l4(),
+        pt.l4_table@.dom().contains(p),
+    ensures
+        p == pt.cr3,
+{
+}
+```
+REASON: wf_l4 constrains l4_table domain to exactly {cr3} — only one L4 table exists per PageTable, making PCID-based multi-address-space sharing at L4 level impossible
+===PHI_END===

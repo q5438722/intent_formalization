@@ -1,0 +1,47 @@
+[
+  {
+    "name": "insert_non_map_preserves_unique_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_insert_non_map_preserves_unique_external_body(thread_state: Map<nat, ThreadState>, base: nat)\n    requires\n        inflight_maps_unique(thread_state),\n    ensures\n        inflight_maps_unique(thread_state.insert(base, ThreadState::Idle)),\n        inflight_maps_unique(thread_state.insert(base, ThreadState::Unmap { vaddr: 0, pte: None })),\n{\n    insert_non_map_preserves_unique(thread_state, base, ThreadState::Idle);\n    insert_non_map_preserves_unique(thread_state, base, ThreadState::Unmap { vaddr: 0, pte: None });\n}",
+    "reason": "`insert_non_map_preserves_unique` is `external_body` with `unimplemented!()` \u2014 trusted without proof, any bug in its postcondition would silently propagate",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "map_end_err_no_pmem_overlap_check",
+    "type": "behavioral",
+    "code": "proof fn phi_2_map_end_err_no_pmem_overlap_check(c: Constants, s1: State, s2: State, lbl: RLbl)\n    requires\n        step_MapEnd(c, s1, s2, lbl),\n        lbl matches RLbl::MapEnd { thread_id, vaddr, result },\n        result is Err,\n    ensures\n        s2.mappings === s1.mappings,\n{\n}",
+    "reason": "On MapEnd error, mappings are unchanged but `step_MapEnd` only checks vmem overlap \u2014 a map that overlaps existing pmem could still succeed if it doesn't overlap vmem",
+    "entailed": false,
+    "verus_output": "error[E0425]: cannot find value `result` in this scope\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__hlproof__map_end_preserves_inv/phi_2_map_end_err_no_pmem_overlap_check.rs:260:9\n    |\n260 |         result is Err,\n    |         ^^^^^^ not found in this scope\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0425`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "map_end_ok_no_pmem_overlap_guard",
+    "type": "behavioral",
+    "code": "proof fn phi_3_map_end_ok_no_pmem_overlap_guard(c: Constants, s1: State, s2: State, lbl: RLbl, b: nat)\n    requires\n        step_MapEnd(c, s1, s2, lbl),\n        lbl matches RLbl::MapEnd { thread_id, vaddr, result },\n        result is Ok,\n        s1.thread_state[thread_id] matches ThreadState::Map { vaddr: v2, pte },\n        s1.mappings.contains_key(b),\n        overlap(pte.frame, s1.mappings[b].frame),\n    ensures\n        s2.mappings === s1.mappings.insert(vaddr, s1.thread_state[thread_id]->Map_pte),\n{\n}",
+    "reason": "`step_MapEnd` success path only guards on vmem overlap \u2014 a mapping with overlapping physical frames can be inserted if virtual addresses don't overlap, breaking `pmem_no_overlap`",
+    "entailed": false,
+    "verus_output": "l__spec_t__hlproof__map_end_preserves_inv/phi_3_map_end_ok_no_pmem_overlap_guard.rs:265:67\n    |\n265 |         s2.mappings === s1.mappings.insert(vaddr, s1.thread_state[thread_id]->Map_pte),\n    |                                                                   ^^^^^^^^^ not found in this scope\n    |\nhelp: consider importing this function\n    |\n  1 + use vstd::thread::thread_id;\n    |\n\nerror: aborting due to 5 previous errors\n\nFor more information about this error, try `rustc --explain E0425`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "overlap_zero_size_reflexive",
+    "type": "boundary",
+    "code": "proof fn phi_4_overlap_zero_size_reflexive(base: nat)\n    ensures\n        overlap(MemRegion { base: base, size: 0 }, MemRegion { base: base, size: 0 }),\n{\n}",
+    "reason": "Two zero-size regions at the same base are considered overlapping via `region1.base == region2.base` \u2014 empty intervals should not overlap",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "inv_preserved_relies_on_external_body",
+    "type": "logical",
+    "code": "proof fn phi_5_inv_preserved_relies_on_external_body(c: Constants, s1: State, s2: State, lbl: RLbl)\n    requires\n        step_MapEnd(c, s1, s2, lbl),\n        s1.sound,\n        inv(c, s1),\n        s1.thread_state.contains_key(lbl->MapEnd_thread_id),\n        lbl->MapEnd_result is Ok,\n    ensures\n        inflight_maps_unique(s2.thread_state),\n{\n    map_end_preserves_inv(c, s1, s2, lbl);\n}",
+    "reason": "The proof that `inv` is preserved through `MapEnd` depends on `insert_non_map_preserves_unique` which is `external_body` \u2014 the entire invariant preservation chain rests on an unverified lemma",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

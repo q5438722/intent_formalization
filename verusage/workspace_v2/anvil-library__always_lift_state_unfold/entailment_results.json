@@ -1,0 +1,47 @@
+[
+  {
+    "name": "always_unfold_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_1_always_unfold_intensional_bridge(ex: Execution<int>, p: TempPred<int>, i: nat)\n    requires\n        always(p).satisfied_by(ex),\n    ensures\n        p.satisfied_by(ex.suffix(i)),\n{\n    always_unfold::<int>(ex, p);\n}",
+    "reason": "always_unfold is external_body bridging the forall inside always's TempPred::new closure and a bare forall in the ensures \u2014 intensionally distinct formulations equated without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "lift_state_suffix_head_equivalence",
+    "type": "logical",
+    "code": "proof fn phi_2_lift_state_suffix_head_equivalence(ex: Execution<int>, p: StatePred<int>, i: nat)\n    requires\n        always(lift_state(p)).satisfied_by(ex),\n    ensures\n        p((ex.nat_to_state)(i)),\n{\n    always_lift_state_unfold::<int>(ex, p);\n}",
+    "reason": "ex.suffix(i).head() evaluates via a nested closure |j| f(j+i) at j=0, which should equal f(i) but requires the SMT solver to resolve through the closure \u2014 if this verifies, the axiom chain silently resolves the intensional gap",
+    "entailed": false,
+    "verus_output": "/verusage/workspace_v2/anvil-library__always_lift_state_unfold/phi_2_lift_state_suffix_head_equivalence.rs:82:9\n   |\n78 | proof fn phi_2_lift_state_suffix_head_equivalence(ex: Execution<int>, p: StatePred<int>, i: nat)\n   |       ------------------------------------------------------------------------------------------ at the end of the function body\n...\n82 |         p((ex.nat_to_state)(i)),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "always_lift_state_at_zero",
+    "type": "boundary",
+    "code": "proof fn phi_3_always_lift_state_at_zero(ex: Execution<int>, p: StatePred<int>)\n    requires\n        always(lift_state(p)).satisfied_by(ex),\n    ensures\n        p(ex.head()),\n{\n    always_lift_state_unfold::<int>(ex, p);\n}",
+    "reason": "accessing suffix(0).head() should equal ex.head() but suffix(0) creates a new closure |i| f(i+0) intensionally distinct from ex \u2014 the external_body axiom silently resolves this without proof",
+    "entailed": false,
+    "verus_output": "ndition not satisfied\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-library__always_lift_state_unfold/phi_3_always_lift_state_at_zero.rs:82:9\n   |\n78 | proof fn phi_3_always_lift_state_at_zero(ex: Execution<int>, p: StatePred<int>)\n   |       ------------------------------------------------------------------------- at the end of the function body\n...\n82 |         p(ex.head()),\n   |         ^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "always_preserved_across_suffix",
+    "type": "logical",
+    "code": "proof fn phi_4_always_preserved_across_suffix(ex: Execution<int>, p: StatePred<int>, k: nat)\n    requires\n        always(lift_state(p)).satisfied_by(ex),\n    ensures\n        always(lift_state(p)).satisfied_by(ex.suffix(k)),\n{\n    always_unfold::<int>(ex, lift_state(p));\n}",
+    "reason": "always(lift_state(p)) on ex should imply the same on ex.suffix(k), but proving this requires re-packing quantified suffix facts into the always closure on a shifted execution \u2014 if always_unfold is powerful enough to close this, it may be overly strong",
+    "entailed": false,
+    "verus_output": "always_lift_state_unfold/phi_4_always_preserved_across_suffix.rs:82:9\n   |\n78 | proof fn phi_4_always_preserved_across_suffix(ex: Execution<int>, p: StatePred<int>, k: nat)\n   |       -------------------------------------------------------------------------------------- at the end of the function body\n...\n82 |         always(lift_state(p)).satisfied_by(ex.suffix(k)),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "always_lift_state_vacuous_on_false",
+    "type": "boundary",
+    "code": "proof fn phi_5_always_lift_state_vacuous_on_false(v: int)\n    ensures\n        always(lift_state(|s: int| s == v)).satisfied_by(\n            Execution { nat_to_state: |i: nat| v }\n        ),\n{\n}",
+    "reason": "a constant execution trivially satisfies always(lift_state(p)) for any p that holds on the constant value \u2014 the framework cannot distinguish a genuinely invariant system from a degenerate constant trace",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

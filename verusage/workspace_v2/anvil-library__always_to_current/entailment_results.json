@@ -1,0 +1,47 @@
+[
+  {
+    "name": "execution_equality_forces_fn_equality",
+    "type": "logical",
+    "code": "proof fn phi_1_execution_equality_forces_fn_equality(f: spec_fn(nat) -> int, g: spec_fn(nat) -> int)\n    requires\n        forall |i: nat| #[trigger] f(i) == g(i),\n    ensures\n        f == g,\n{\n    let ex1 = Execution { nat_to_state: f };\n    let ex2 = Execution { nat_to_state: g };\n    execution_equality::<int>(ex1, ex2);\n}",
+    "reason": "execution_equality is external_body forcing intensional equality of spec_fn from pointwise extensional equivalence \u2014 two structurally distinct closures are collapsed to equal",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "suffix_zero_equals_self",
+    "type": "logical",
+    "code": "proof fn phi_2_suffix_zero_equals_self(ex: Execution<int>)\n    ensures\n        ex.suffix(0) == ex,\n{\n    execution_equality::<int>(ex, ex.suffix(0));\n}",
+    "reason": "ex.suffix(0) creates closure |i| f(i+0) intensionally distinct from ex \u2014 execution_equality silently equates these without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "always_to_current_no_axiom_needed",
+    "type": "logical",
+    "code": "proof fn phi_3_always_to_current_no_axiom_needed(ex: Execution<int>, p: TempPred<int>)\n    requires\n        always(p).satisfied_by(ex),\n    ensures\n        p.satisfied_by(ex),\n{\n    always_to_current::<int>(ex, p);\n}",
+    "reason": "always_to_current extracts p from always(p) by routing through execution_equality at suffix(0) \u2014 if this verifies, the external_body axiom is the sole trust anchor for a fundamental temporal logic property",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "always_at_arbitrary_suffix",
+    "type": "boundary",
+    "code": "proof fn phi_4_always_at_arbitrary_suffix(ex: Execution<int>, p: TempPred<int>, i: nat)\n    requires\n        always(p).satisfied_by(ex),\n    ensures\n        p.satisfied_by(ex.suffix(i)),\n{\n    execution_equality::<int>(ex.suffix(i), ex.suffix(i));\n}",
+    "reason": "always(p).satisfied_by(ex) embeds forall|i| p.satisfied_by(ex.suffix(i)) inside a TempPred::new closure \u2014 extracting p at arbitrary suffix i requires bridging the intensional gap between the closure's forall and a bare forall",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "suffix_composition_equals_addition",
+    "type": "logical",
+    "code": "proof fn phi_5_suffix_composition_equals_addition(ex: Execution<int>, i: nat, j: nat)\n    ensures\n        ex.suffix(i).suffix(j) == ex.suffix(i + j),\n{\n    execution_equality::<int>(ex.suffix(i).suffix(j), ex.suffix(i + j));\n}",
+    "reason": "doubly-nested suffix creates a closure intensionally distinct from single-offset suffix \u2014 execution_equality collapses them without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

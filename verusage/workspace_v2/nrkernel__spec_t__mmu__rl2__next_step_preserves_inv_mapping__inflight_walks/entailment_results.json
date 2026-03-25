@@ -1,0 +1,47 @@
+[
+  {
+    "name": "write_seq_dom_grows_but_no_value_constraint",
+    "type": "logical",
+    "code": "proof fn phi_1_write_seq_dom_grows_but_no_value_constraint(mem: PTMem, addr: usize, val1: usize, val2: usize)\n    requires\n        val1 != val2,\n    ensures\n        mem.write_seq(seq![(addr, val1)]).write_seq(seq![(addr, val2)]).read(addr) == mem.write_seq(seq![(addr, val2)]).read(addr),\n{\n}",
+    "reason": "`lemma_write_seq` only constrains pml4 and domain monotonicity \u2014 it says nothing about the *values* written; tests whether last-write-wins is provable without the lemma (it should be, from open spec unfolding)",
+    "entailed": true,
+    "verus_output": "sparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__next_step_preserves_inv_mapping__inflight_walks/phi_1_write_seq_dom_grows_but_no_value_constraint.rs:287:9\n    |\n287 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "lemma_view_addr_aligned_directory_below_max",
+    "type": "logical",
+    "code": "proof fn phi_2_lemma_view_addr_aligned_directory_below_max(pde: PDE)\n    requires\n        pde.layer@ < 4,\n        pde@ is Directory,\n    ensures\n        pde@->Directory_addr < usize::MAX - 4096,\n        aligned(pde@->Directory_addr as nat, 4096),\n{\n    pde.lemma_view_addr_aligned();\n}",
+    "reason": "`lemma_view_addr_aligned` is `external_body` \u2014 it asserts Directory addresses are page-aligned and bounded, but since Directory_addr is extracted via `entry & MASK_ADDR`, this alignment depends on MASK_ADDR zeroing bits 0-11, which is unverified",
+    "entailed": true,
+    "verus_output": "sparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__next_step_preserves_inv_mapping__inflight_walks/phi_2_lemma_view_addr_aligned_directory_below_max.rs:287:9\n    |\n287 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "write_seq_preserves_pml4_chained",
+    "type": "logical",
+    "code": "proof fn phi_3_write_seq_preserves_pml4_chained(mem: PTMem, w1: Seq<(usize, usize)>, w2: Seq<(usize, usize)>)\n    ensures\n        mem.write_seq(w1).write_seq(w2).pml4 == mem.pml4,\n{\n    mem.lemma_write_seq(w1);\n    mem.write_seq(w1).lemma_write_seq(w2);\n}",
+    "reason": "Chaining two `lemma_write_seq` calls to prove double write_seq preserves pml4 \u2014 relies on the external_body lemma being compositional; if the lemma's ensures are too weak, chaining could fail",
+    "entailed": true,
+    "verus_output": " `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__next_step_preserves_inv_mapping__inflight_walks/phi_3_write_seq_preserves_pml4_chained.rs:287:9\n    |\n287 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "lemma_view_addr_aligned_page_addr_8_aligned",
+    "type": "logical",
+    "code": "proof fn phi_4_lemma_view_addr_aligned_page_addr_8_aligned(pde: PDE)\n    requires\n        pde.layer@ < 4,\n        pde@ is Page,\n    ensures\n        aligned(pde@->Page_addr as nat, 8),\n        pde@->Page_addr < usize::MAX - 4096,\n{\n    pde.lemma_view_addr_aligned();\n}",
+    "reason": "`lemma_view_addr_aligned` asserts Page addresses are 8-byte and 4096-byte aligned and bounded \u2014 but Page_addr is extracted via layer-specific masks (MASK_L1/L2/L3_PG_ADDR) which zero different low bits; the 8-byte alignment claim is unverified for all layers",
+    "entailed": true,
+    "verus_output": "sparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__next_step_preserves_inv_mapping__inflight_walks/phi_4_lemma_view_addr_aligned_page_addr_8_aligned.rs:287:9\n    |\n287 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "bit_indices_less_512_implies_walk_addr_bounded",
+    "type": "boundary",
+    "code": "proof fn phi_5_bit_indices_less_512_implies_walk_addr_bounded(mem: PTMem, va: usize)\n    requires\n        mem.pml4 < usize::MAX - 4096,\n    ensures\n        add(mem.pml4, mul(l0_bits!(va), WORD_SIZE)) < mem.pml4 + 4096,\n{\n    lemma_bit_indices_less_512(va);\n    assert(l0_bits!(va) < 512);\n    assert(mul(l0_bits!(va), WORD_SIZE) < 4096) by {\n        assert(forall|x: usize| x < 512 ==> mul(x, 8usize) < 4096) by (bit_vector);\n    };\n}",
+    "reason": "`lemma_bit_indices_less_512` is `external_body` \u2014 it asserts all bit-index extractions produce values < 512; combined with WORD_SIZE=8, this bounds L0 walk addresses within a 4KB page, but the bit extraction correctness is unverified",
+    "entailed": false,
+    "verus_output": "rigger] annotations to manually mark trigger terms instead.\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__next_step_preserves_inv_mapping__inflight_walks/phi_5_bit_indices_less_512_implies_walk_addr_bounded.rs:1396:16\n     |\n1396 |         assert(forall|x: usize| x < 512 ==> mul(x, 8usize) < 4096) by (bit_vector);\n     |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,90 @@
+===PHI_START===
+NAME: zero_serialized_size
+TARGET_FN: serialized_size
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_zero_serialized_size(v: u64)
+    requires
+        v.is_marshalable(),
+    ensures
+        v.ghost_serialize().len() == 0,
+{
+}
+```
+REASON: If entailed, u64 serialization produces no bytes, making serialized_size vacuous and deserialization impossible.
+===PHI_END===
+
+===PHI_START===
+NAME: size_under_eight_bytes
+TARGET_FN: serialized_size
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_size_under_eight_bytes(v: u64)
+    requires
+        v.is_marshalable(),
+        v == u64::MAX,
+    ensures
+        v.ghost_serialize().len() < 8,
+{
+}
+```
+REASON: If entailed, the max u64 value serializes to fewer than 8 bytes, meaning the fixed-size encoding loses precision at the boundary.
+===PHI_END===
+
+===PHI_START===
+NAME: size_exceeds_eight_bytes
+TARGET_FN: serialized_size
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_size_exceeds_eight_bytes(v: u64)
+    requires
+        v.is_marshalable(),
+    ensures
+        v.ghost_serialize().len() > 8,
+{
+}
+```
+REASON: If entailed, u64 serialization exceeds 8 bytes, contradicting the fixed-width le-bytes encoding and the implementation returning 8.
+===PHI_END===
+
+===PHI_START===
+NAME: variable_width_encoding
+TARGET_FN: serialized_size
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_variable_width_encoding(v1: u64, v2: u64)
+    requires
+        v1.is_marshalable(),
+        v2.is_marshalable(),
+        v1 == 0u64,
+        v2 == 1u64,
+    ensures
+        v1.ghost_serialize().len() != v2.ghost_serialize().len(),
+{
+}
+```
+REASON: If entailed, different u64 values yield different serialized lengths, meaning the encoding is variable-width and the constant return of 8 is wrong.
+===PHI_END===
+
+===PHI_START===
+NAME: serialize_non_injective
+TARGET_FN: serialized_size
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_serialize_non_injective(v1: u64, v2: u64)
+    requires
+        v1.is_marshalable(),
+        v2.is_marshalable(),
+        v1 != v2,
+    ensures
+        v1.ghost_serialize() =~= v2.ghost_serialize(),
+{
+}
+```
+REASON: If entailed, distinct u64 values share the same serialization, making the encoding lossy and round-trip deserialization impossible.
+===PHI_END===

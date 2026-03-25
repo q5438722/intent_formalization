@@ -1,0 +1,10 @@
+[
+  {
+    "name": "clone",
+    "code": "pub fn clone(&self) -> (out: SHTKey)\n    ensures out == self\n    {\n        SHTKey{ ukey: self.ukey }\n    }"
+  },
+  {
+    "name": "sorted_keys",
+    "code": "pub exec fn sorted_keys(v: &Vec<CKeyKV>) -> (res: bool)\n    ensures res == spec_sorted_keys(*v),\n{\n    if v.len() <= 1 {\n        true\n    } else {\n        let mut idx = 1;\n        while idx < v.len()\n            invariant\n                (0 < idx <= v.len()),\n                (forall |i: int, j: int| 0 <= i && i + 1 < idx && j == i+1 ==> #[trigger] ckeykvlt(v@[i], v@[j])),\n                decreases\n                    v.len() - idx\n                    {\n                        if v[idx - 1].k.ukey >= v[idx].k.ukey {\n                            assert(!ckeykvlt(v@[idx as int-1], v@[idx as int]));\n                            return false;\n                        } else {\n                            idx = idx + 1;\n                        }\n                    }\n        assert forall |i: int| 0 <= i && i + 1 < v.len() implies #[trigger] v@[i].k.ukey < v@[i + 1].k.ukey by {\n            assert(ckeykvlt(v@[i], v@[i + 1])); // OBSERVE\n        }\n        true\n    }\n}"
+  }
+]

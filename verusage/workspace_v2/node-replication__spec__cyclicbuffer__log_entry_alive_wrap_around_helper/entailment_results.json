@@ -1,0 +1,47 @@
+[
+  {
+    "name": "log_entry_idx_wraps_modulo",
+    "type": "boundary",
+    "code": "proof fn phi_1_log_entry_idx_wraps_modulo(logical: LogicalLogIdx, buffer_size: nat)\n    requires\n        buffer_size > 0,\n    ensures\n        log_entry_idx(logical, buffer_size) == log_entry_idx(logical + buffer_size as int, buffer_size),\n{\n}",
+    "reason": "Two logical indices separated by exactly buffer_size map to the same physical index \u2014 the cyclic buffer cannot distinguish them physically",
+    "entailed": false,
+    "verus_output": "age/workspace_v2/node-replication__spec__cyclicbuffer__log_entry_alive_wrap_around_helper/phi_1_log_entry_idx_wraps_modulo.rs:88:48\n   |\n12 |         buffer_size == LOG_SIZE,\n   |         ----------------------- recommendation not met\n...\n88 |         log_entry_idx(logical, buffer_size) == log_entry_idx(logical + buffer_size as int, buffer_size),\n   |                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "alive_value_flips_on_wrap",
+    "type": "behavioral",
+    "code": "proof fn phi_2_alive_value_flips_on_wrap(logical: LogicalLogIdx, buffer_size: nat)\n    requires\n        buffer_size > 0,\n    ensures\n        log_entry_alive_value(logical, buffer_size) != log_entry_alive_value(logical + buffer_size as int, buffer_size),\n{\n    assert(((logical + buffer_size as int) / buffer_size as int) == ((logical / buffer_size as int) + 1)) by (nonlinear_arith)\n        requires buffer_size > 0;\n}",
+    "reason": "Adjacent epochs at the same physical slot have opposite alive values \u2014 the liveness check relies solely on this toggle bit with no sequence number or generation counter",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "is_alive_same_phys_different_logical",
+    "type": "logical",
+    "code": "proof fn phi_3_is_alive_same_phys_different_logical(\n    alive_bits: Map<LogIdx, bool>,\n    logical1: LogicalLogIdx,\n    logical2: LogicalLogIdx,\n    buffer_size: nat,\n)\n    requires\n        buffer_size > 0,\n        logical2 == logical1 + 2 * (buffer_size as int),\n        forall|i: nat| i < buffer_size <==> alive_bits.contains_key(i),\n    ensures\n        log_entry_is_alive(alive_bits, logical1, buffer_size) == log_entry_is_alive(alive_bits, logical2, buffer_size),\n{\n    assert(log_entry_idx(logical1, buffer_size) == log_entry_idx(logical2, buffer_size));\n    assert(log_entry_alive_value(logical1, buffer_size) == log_entry_alive_value(logical2, buffer_size)) by {\n        assert(((logical1 + 2 * buffer_size as int) / buffer_size as int) == ((logical1 / buffer_size as int) + 2)) by (nonlinear_arith)\n            requires buffer_size > 0;\n    };\n}",
+    "reason": "Entries 2*buffer_size apart are indistinguishable by the alive check \u2014 both map to the same physical slot with the same alive value, meaning the spec cannot detect if the buffer wraps around twice",
+    "entailed": false,
+    "verus_output": "tianyu/intent_formalization/verusage/workspace_v2/node-replication__spec__cyclicbuffer__log_entry_alive_wrap_around_helper/phi_3_is_alive_same_phys_different_logical.rs:98:12\n   |\n31 |         buffer_size == LOG_SIZE,\n   |         ----------------------- recommendation not met\n...\n98 |     assert(log_entry_alive_value(logical1, buffer_size) == log_entry_alive_value(logical2, buffer_size)) by {\n   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "log_entry_idx_negative_logical",
+    "type": "boundary",
+    "code": "proof fn phi_4_log_entry_idx_negative_logical(buffer_size: nat)\n    requires\n        buffer_size > 0,\n    ensures\n        log_entry_idx(-1, buffer_size) == (buffer_size - 1) as nat,\n{\n}",
+    "reason": "Negative logical indices produce valid physical indices via Verus int modulo \u2014 the spec accepts negative log positions without any guard",
+    "entailed": false,
+    "verus_output": "cation__spec__cyclicbuffer__log_entry_alive_wrap_around_helper/phi_4_log_entry_idx_negative_logical.rs:88:9\n   |\n84 | proof fn phi_4_log_entry_idx_negative_logical(buffer_size: nat)\n   |       --------------------------------------------------------- at the end of the function body\n...\n88 |         log_entry_idx(-1, buffer_size) == (buffer_size - 1) as nat,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "wrap_around_helper_shift_equivalence",
+    "type": "logical",
+    "code": "proof fn phi_5_wrap_around_helper_shift_equivalence(\n    alive_bits: Map<LogIdx, bool>,\n    buffer_size: nat,\n    low: nat,\n    high: nat,\n)\n    requires\n        buffer_size == LOG_SIZE,\n        forall|i: nat| i < buffer_size <==> alive_bits.contains_key(i),\n        low <= high <= low + buffer_size,\n        forall|i: int| low <= i < high ==> !log_entry_is_alive(alive_bits, add_buffersize(i, buffer_size), buffer_size),\n    ensures\n        forall|i: int| low <= i < high ==> !log_entry_is_alive(alive_bits, i + buffer_size as int, buffer_size),\n{\n    assert forall|i: int| low <= i < high implies !log_entry_is_alive(alive_bits, i + buffer_size as int, buffer_size) by {\n        assert(!log_entry_is_alive(alive_bits, add_buffersize(i, buffer_size), buffer_size));\n    }\n}",
+    "reason": "`add_buffersize(i, buffer_size)` is definitionally equal to `i + buffer_size` \u2014 the helper function adds no semantic value and the trigger indirection could mask quantifier matching issues",
+    "entailed": false,
+    "verus_output": "mark trigger terms instead.\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/node-replication__spec__cyclicbuffer__log_entry_alive_wrap_around_helper/phi_5_wrap_around_helper_shift_equivalence.rs:96:9\n   |\n96 |         forall|i: int| low <= i < high ==> !log_entry_is_alive(alive_bits, i + buffer_size as int, buffer_size),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

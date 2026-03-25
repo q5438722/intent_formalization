@@ -1,0 +1,77 @@
+===PHI_START===
+NAME: empty_seq_to_set_empty
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_empty_seq_to_set_empty()
+    ensures
+        Seq::<int>::empty().to_set() == Set::<int>::empty(),
+{
+}
+```
+REASON: empty sequence should convert to empty set — tests base case of to_set
+===PHI_END===
+
+===PHI_START===
+NAME: push_preserves_existing_elements
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_push_preserves_existing_elements(s: Seq<int>, e: int, x: int)
+    requires
+        s.to_set().contains(x),
+    ensures
+        s.push(e).to_set().contains(x),
+{
+    push_to_set_eq_to_set_insert(s, e);
+}
+```
+REASON: pushing should not remove existing elements from the set — tests monotonicity of push w.r.t. to_set
+===PHI_END===
+
+===PHI_START===
+NAME: push_element_in_result_set
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_push_element_in_result_set(s: Seq<int>, e: int)
+    ensures
+        s.push(e).to_set().contains(e),
+{
+    push_to_set_eq_to_set_insert(s, e);
+}
+```
+REASON: pushed element must appear in the resulting set — tests basic correctness of the lemma's conclusion
+===PHI_END===
+
+===PHI_START===
+NAME: duplicate_push_to_set_idempotent
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_duplicate_push_to_set_idempotent(s: Seq<int>, e: int)
+    requires
+        s.contains(e),
+    ensures
+        s.push(e).to_set() == s.to_set(),
+{
+    push_to_set_eq_to_set_insert(s, e);
+}
+```
+REASON: pushing a duplicate should not change the set — tests idempotence of set insert through the lemma
+===PHI_END===
+
+===PHI_START===
+NAME: to_set_subset_of_push_to_set
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_to_set_subset_of_push_to_set(s: Seq<int>, e: int)
+    ensures
+        s.to_set().subset_of(s.push(e).to_set()),
+{
+    push_to_set_eq_to_set_insert(s, e);
+}
+```
+REASON: original set should be subset of pushed set — tests that push+to_set is monotone
+===PHI_END===

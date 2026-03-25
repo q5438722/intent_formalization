@@ -1,0 +1,17 @@
+===VERDICT_START===
+PHI: container_map_4k_allows_double_ownership
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The `container_map_4k` Ghost field has no disjointness constraint in the visible spec. The ensures clause correctly demonstrates that two distinct containers can both contain the same page pointer under the given preconditions — Verus confirmed this is satisfiable. A sound page allocator should enforce exclusive page ownership across containers.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: is_empty_kernel_entries_unconstrained
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures clause is a trivial tautology (`x == x`), proving nothing about kernel entries being unconstrained. Moreover, kernel-range L4 entries being unconstrained in `is_empty` is intentional design — kernel mappings are shared across all address spaces and persist regardless of whether a process's user-space page table is "empty."
+===VERDICT_END===
+
+===SUMMARY===
+One true positive and one false positive. The `container_map_4k_allows_double_ownership` PHI identifies a genuine spec gap: the Ghost field `container_map_4k` lacks any disjointness predicate, allowing two containers to claim the same physical page simultaneously. The `is_empty_kernel_entries_unconstrained` PHI is a false positive — its ensures clause is a tautology that proves nothing, and the underlying design choice (kernel entries unconstrained by `is_empty`) is intentional since kernel mappings are shared infrastructure.
+===END_SUMMARY===

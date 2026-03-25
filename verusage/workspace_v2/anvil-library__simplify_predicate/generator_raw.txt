@@ -1,0 +1,89 @@
+===PHI_START===
+NAME: entails_apply_closure_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_entails_apply_closure_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>)
+    requires
+        p.entails(q),
+        p.satisfied_by(ex),
+    ensures
+        q.satisfied_by(ex),
+{
+    entails_apply::<int>(ex, p, q);
+}
+```
+REASON: entails_apply is external_body bridging valid(p.implies(q)) — a forall over TempPred::new closure evaluations — to modus ponens at a specific execution without proof
+===PHI_END===
+
+===PHI_START===
+NAME: temp_pred_equality_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_temp_pred_equality_intensional_bridge(p: TempPred<int>, q: TempPred<int>)
+    requires
+        p.entails(q),
+        q.entails(p),
+    ensures
+        p == q,
+{
+    temp_pred_equality::<int>(p, q);
+}
+```
+REASON: temp_pred_equality is external_body forcing intensional equality from mutual entailment — structurally distinct closures collapsed to equal without proof
+===PHI_END===
+
+===PHI_START===
+NAME: entails_and_temp_closure_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_entails_and_temp_closure_bridge(spec: TempPred<int>, p: TempPred<int>, q: TempPred<int>)
+    requires
+        spec.entails(p),
+        spec.entails(q),
+    ensures
+        spec.entails(p.and(q)),
+{
+    entails_and_temp::<int>(spec, p, q);
+}
+```
+REASON: entails_and_temp is external_body combining two entailments into an entailment of p.and(q) — requires resolving that p.and(q)'s TempPred::new closure evaluates to the conjunction of the individual closure results
+===PHI_END===
+
+===PHI_START===
+NAME: mutual_entailment_derives_false_if_distinct
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_mutual_entailment_derives_false_if_distinct(p: TempPred<int>, q: TempPred<int>)
+    requires
+        p.entails(q),
+        q.entails(p),
+        p !== q,
+    ensures
+        false,
+{
+    temp_pred_equality::<int>(p, q);
+}
+```
+REASON: temp_pred_equality forces p == q from mutual entailment — if two preds are intensionally distinct but semantically equivalent this derives false
+===PHI_END===
+
+===PHI_START===
+NAME: simplify_predicate_equality
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_simplify_predicate_equality(p: TempPred<int>, q: TempPred<int>)
+    requires
+        p.entails(q),
+    ensures
+        p == p.and(q),
+{
+    simplify_predicate::<int>(p, q);
+}
+```
+REASON: simplify_predicate forces intensional equality between p and p.and(q) — structurally distinct closures (p.pred vs conjunction closure) collapsed to equal via the chain of all three external_body axioms
+===PHI_END===

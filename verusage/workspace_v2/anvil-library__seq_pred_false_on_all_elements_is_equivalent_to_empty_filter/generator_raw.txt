@@ -1,0 +1,87 @@
+===PHI_START===
+NAME: external_body_forward_direction
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_external_body_forward_direction(s: Seq<int>, pred: spec_fn(int) -> bool)
+    requires
+        s.filter(pred).len() == 0,
+    ensures
+        forall |e: int| #![auto] s.contains(e) ==> !pred(e),
+{
+    empty_filter_implies_seq_pred_false_on_all_elements(s, pred);
+}
+```
+REASON: empty_filter_implies_seq_pred_false_on_all_elements is external_body — unverified axiom asserting empty filter implies pred false on all elements
+===PHI_END===
+
+===PHI_START===
+NAME: external_body_reverse_direction
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_external_body_reverse_direction(s: Seq<int>, pred: spec_fn(int) -> bool)
+    requires
+        forall |e: int| #![auto] s.contains(e) ==> !pred(e),
+    ensures
+        s.filter(pred).len() == 0,
+{
+    seq_pred_false_on_all_elements_implies_empty_filter(s, pred);
+}
+```
+REASON: seq_pred_false_on_all_elements_implies_empty_filter is external_body — unverified axiom asserting pred false on all elements implies empty filter
+===PHI_END===
+
+===PHI_START===
+NAME: biconditional_instantiation
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_biconditional_instantiation(s: Seq<int>, pred: spec_fn(int) -> bool, e: int)
+    requires
+        s.filter(pred).len() == 0,
+        s.contains(e),
+    ensures
+        !pred(e),
+{
+    empty_filter_implies_seq_pred_false_on_all_elements(s, pred);
+}
+```
+REASON: tests specific element instantiation of the external_body axiom — if the axiom is too strong this could derive contradictions
+===PHI_END===
+
+===PHI_START===
+NAME: singleton_true_filter_nonempty
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_singleton_true_filter_nonempty(v: int, pred: spec_fn(int) -> bool)
+    requires
+        pred(v),
+    ensures
+        seq![v].filter(pred).len() > 0,
+{
+    reveal(Seq::filter);
+}
+```
+REASON: singleton with pred true should have nonempty filter — tests that external_body axioms don't contradict filter's definition
+===PHI_END===
+
+===PHI_START===
+NAME: filter_false_empty
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_filter_false_empty(s: Seq<int>)
+    ensures
+        s.filter(|x: int| false).len() == 0,
+    decreases s.len(),
+{
+    reveal(Seq::filter);
+    if s.len() != 0 {
+        phi_5_filter_false_empty(s.drop_last());
+    }
+}
+```
+REASON: always-false predicate should yield empty filter — tests consistency between external_body axioms and filter's definition
+===PHI_END===

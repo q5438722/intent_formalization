@@ -1,0 +1,91 @@
+===PHI_START===
+NAME: fresh_packet_silently_dropped
+TARGET_FN: receive_packet
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_fresh_packet_silently_dropped(pre: AbstractHostState, post: AbstractHostState, pkt: Packet, out: Set<Packet>, ack: Packet)
+    requires
+        receive_packet(pre, post, pkt, out, ack),
+        pkt.msg is Message,
+        pre.received_packet is None,
+        SingleDelivery::new_single_message(pre.sd, pkt),
+    ensures
+        post.received_packet is None,
+{
+}
+```
+REASON: If provable, fresh messages are silently dropped even when the buffer is empty, violating reliable delivery
+===PHI_END===
+
+===PHI_START===
+NAME: new_message_implies_should_ack
+TARGET_FN: new_single_message
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_new_message_implies_should_ack(pre: AbstractHostState, pkt: Packet)
+    requires
+        pkt.msg is Message,
+        SingleDelivery::new_single_message(pre.sd, pkt),
+    ensures
+        SingleDelivery::should_ack_single_message(pre.sd, pkt),
+{
+}
+```
+REASON: new_single_message (seqno == last+1) and should_ack (seqno <= last) must be mutually exclusive; overlap collapses sequencing
+===PHI_END===
+
+===PHI_START===
+NAME: receive_ack_always_noop
+TARGET_FN: receive_ack
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_receive_ack_always_noop(pre: AbstractHostState, post: AbstractHostState, pkt: Packet, out: Set<Packet>, ack: Packet)
+    requires
+        receive_packet(pre, post, pkt, out, ack),
+        pkt.msg is Ack,
+    ensures
+        post == pre,
+{
+}
+```
+REASON: If ack processing never advances send-state, retransmission queues grow without bound and acked data is never freed
+===PHI_END===
+
+===PHI_START===
+NAME: ack_routed_wrong_direction
+TARGET_FN: send_ack
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_ack_routed_wrong_direction(pre: AbstractHostState, post: AbstractHostState, pkt: Packet, out: Set<Packet>, ack: Packet)
+    requires
+        receive_packet(pre, post, pkt, out, ack),
+        pkt.msg is Message,
+        !out.is_empty(),
+    ensures
+        ack.dst == pkt.dst,
+{
+}
+```
+REASON: Acks must go back to the sender (pkt.src); routing to pkt.dst means the ack never reaches the originator
+===PHI_END===
+
+===PHI_START===
+NAME: receive_never_emits_packets
+TARGET_FN: host_model_receive_packet
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_receive_never_emits_packets(pre: AbstractHostState, post: AbstractHostState, pkt: Packet, out: Set<Packet>, ack: Packet)
+    requires
+        receive_packet(pre, post, pkt, out, ack),
+    ensures
+        out == Set::<Packet>::empty(),
+{
+}
+```
+REASON: If receive_packet never emits outbound packets, host_model_receive_packet can never send acks, breaking the reliable delivery protocol entirely
+===PHI_END===

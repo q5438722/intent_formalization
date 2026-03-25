@@ -1,0 +1,88 @@
+===PHI_START===
+NAME: everything_aligned
+TARGET_FN: aligned
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_everything_aligned(addr: nat, size: nat)
+    requires
+        size > 0,
+    ensures
+        aligned(addr, size),
+{
+}
+```
+REASON: Would mean every address is aligned to every size, making the spec vacuously permissive
+===PHI_END===
+
+===PHI_START===
+NAME: only_zero_aligned
+TARGET_FN: aligned
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_only_zero_aligned(addr: nat, size: nat)
+    requires
+        size > 0,
+        aligned(addr, size),
+    ensures
+        addr == 0nat,
+{
+}
+```
+REASON: Would mean only zero can ever be aligned, collapsing all non-trivial alignment to false
+===PHI_END===
+
+===PHI_START===
+NAME: odd_aligned_to_even
+TARGET_FN: aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_odd_aligned_to_even()
+    ensures
+        aligned(1nat, 2nat),
+{
+}
+```
+REASON: 1 is not a multiple of 2, so claiming 1 is 2-aligned indicates a broken modulus check
+===PHI_END===
+
+===PHI_START===
+NAME: bad_product_composition
+TARGET_FN: aligned
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_bad_product_composition(a: nat, b: nat, c: nat)
+    requires
+        b > 0,
+        c > 0,
+        aligned(a, b),
+        aligned(a, c),
+    ensures
+        aligned(a, b * c),
+{
+}
+```
+REASON: aligned(12,4) && aligned(12,6) does not imply aligned(12,24); conflates LCM with product
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_symmetric
+TARGET_FN: aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_aligned_symmetric(a: nat, b: nat)
+    requires
+        a > 0,
+        b > 0,
+        aligned(a, b),
+    ensures
+        aligned(b, a),
+{
+}
+```
+REASON: aligned(4,2) is true but aligned(2,4) is false; symmetry would indicate modulus is broken
+===PHI_END===

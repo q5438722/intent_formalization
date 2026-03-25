@@ -1,0 +1,52 @@
+[
+  {
+    "name": "ret_some_but_not_present",
+    "target_fn": "get_entry_2m_l2",
+    "type": "behavioral",
+    "reason": "A resolved 2MB mapping should always have its present bit set; returning a non-present entry as Some indicates a spec inconsistency.",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "------------------------------------------------------------------------- at the end of the function body\n...\n1093 |         ret.unwrap().perm.present == false,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 45 warnings emitted\n\n"
+  },
+  {
+    "name": "ret_some_but_ps_not_set",
+    "target_fn": "get_entry_2m_l2",
+    "type": "behavioral",
+    "reason": "A 2MB large-page entry must have the ps (page-size) bit set; returning an entry without ps would confuse large-page and table-pointer semantics.",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "----------------------------------------------------------------------------------- at the end of the function body\n...\n1093 |         ret.unwrap().perm.ps == false,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 45 warnings emitted\n\n"
+  },
+  {
+    "name": "always_returns_none",
+    "target_fn": "get_entry_2m_l2",
+    "type": "boundary",
+    "reason": "If the spec forces every 2MB lookup to return None, the function is vacuously correct but useless\u2014no 2MB page could ever be resolved.",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "------------------------------------------------------------------------------------------------------------------- at the end of the function body\n...\n1092 |         ret.is_None(),\n     |         ^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 45 warnings emitted\n\n"
+  },
+  {
+    "name": "ret_some_addr_zero",
+    "target_fn": "get_entry_2m_l2",
+    "type": "logical",
+    "reason": "A successfully resolved 2MB mapping pointing to physical address 0 is almost certainly a null-pointer bug in the page table specification.",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "------------------------------------------------------------------------------------------------- at the end of the function body\n...\n1093 |         ret.unwrap().addr == 0,\n     |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 45 warnings emitted\n\n"
+  },
+  {
+    "name": "result_ignores_l2_index",
+    "target_fn": "get_entry_2m_l2",
+    "type": "logical",
+    "reason": "If the L2 index has no effect on the resolved mapping, the spec fails to distinguish distinct L2 slots and would collapse all 512 entries into one.",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "--------------------------------------------------------------------------------------------------------------- at the end of the function body\n...\n1095 |         ret_a =~= ret_b,\n     |         ^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 44 warnings emitted\n\n"
+  }
+]

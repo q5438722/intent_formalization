@@ -1,0 +1,47 @@
+[
+  {
+    "name": "serialize_zero_is_single_zero_byte",
+    "type": "behavioral",
+    "code": "proof fn phi_1_serialize_zero_is_single_zero_byte()\n    ensures\n        UnsignedLEB128.spec_serialize(0u64) == seq![0u8],\n{\n}",
+    "reason": "Serializing zero should produce a single zero byte \u2014 if it produced anything else, the LEB128 encoding of zero would be non-canonical or wrong",
+    "entailed": false,
+    "verus_output": "pace_v2/vest__regular__leb128__impl2__lemma_serialize_last_byte_high_8_bit_not_set/phi_1_serialize_zero_is_single_zero_byte.rs:129:9\n    |\n127 | proof fn phi_1_serialize_zero_is_single_zero_byte()\n    |       --------------------------------------------- at the end of the function body\n128 |     ensures\n129 |         UnsignedLEB128.spec_serialize(0u64) == seq![0u8],\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "serialize_nonempty",
+    "type": "boundary",
+    "code": "proof fn phi_2_serialize_nonempty(v: UInt)\n    ensures\n        UnsignedLEB128.spec_serialize(v).len() > 0,\n{\n}",
+    "reason": "Serialization should always produce at least one byte \u2014 if it could produce an empty sequence, parsing would have no bytes to consume, violating productivity",
+    "entailed": true,
+    "verus_output": "verification results:: 6 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "serialize_high_bits_set_except_last",
+    "type": "behavioral",
+    "code": "proof fn phi_3_serialize_high_bits_set_except_last(v: UInt, i: int)\n    requires\n        0 <= i < UnsignedLEB128.spec_serialize(v).len() - 1,\n    ensures\n        is_high_8_bit_set!(UnsignedLEB128.spec_serialize(v)[i]),\n    decreases v,\n{\n    let lo = take_low_7_bits!(v);\n    let hi = v >> 7u64;\n    if hi == 0 {\n        assert(UnsignedLEB128::spec_serialize_helper(v) == seq![lo]);\n    } else {\n        assert(v >> 7 != 0 ==> v >> 7 < v) by (bit_vector);\n        let s = UnsignedLEB128::spec_serialize_helper(hi);\n        assert(UnsignedLEB128::spec_serialize_helper(v) == seq![set_high_8_bit!(lo)] + s);\n        assert((lo | 0x80) as u8 >= 0x80u8) by (bit_vector);\n        if i == 0 {\n        } else {\n            phi_3_serialize_high_bits_set_except_last(hi, i - 1);\n        }\n    }\n}",
+    "reason": "All bytes except the last should have the high bit set \u2014 if any intermediate byte lacked the high bit, the parser would terminate early and produce an incorrect value",
+    "entailed": false,
+    "verus_output": "t index into a value of type `vstd::seq::Seq<u8>`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/vest__regular__leb128__impl2__lemma_serialize_last_byte_high_8_bit_not_set/phi_3_serialize_high_bits_set_except_last.rs:131:60\n    |\n131 |         is_high_8_bit_set!(UnsignedLEB128.spec_serialize(v)[i]),\n    |                                                            ^^^\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0608`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "serialize_max_length_bounded",
+    "type": "boundary",
+    "code": "proof fn phi_4_serialize_max_length_bounded(v: UInt)\n    ensures\n        UnsignedLEB128.spec_serialize(v).len() <= 10,\n    decreases v,\n{\n    let hi = v >> 7u64;\n    if hi == 0 {\n    } else {\n        assert(v >> 7 != 0 ==> v >> 7 < v) by (bit_vector);\n        phi_4_serialize_max_length_bounded(hi);\n    }\n}",
+    "reason": "A u64 value should serialize to at most 10 bytes (ceil(64/7)) \u2014 if the serialization could exceed this, it would indicate the recursive encoding is producing spurious continuation bytes",
+    "entailed": false,
+    "verus_output": "_byte_high_8_bit_not_set/phi_4_serialize_max_length_bounded.rs:129:9\n    |\n129 |           UnsignedLEB128.spec_serialize(v).len() <= 10,\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n...\n133 | /     if hi == 0 {\n134 | |     } else {\n135 | |         assert(v >> 7 != 0 ==> v >> 7 < v) by (bit_vector);\n136 | |         phi_4_serialize_max_length_bounded(hi);\n137 | |     }\n    | |_____- at the end of the function body\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "serialize_127_is_single_byte",
+    "type": "behavioral",
+    "code": "proof fn phi_5_serialize_127_is_single_byte()\n    ensures\n        UnsignedLEB128.spec_serialize(127u64) == seq![127u8],\n{\n    assert(127u64 >> 7u64 == 0u64) by (bit_vector);\n    assert(take_low_7_bits!(127u64) == 127u8) by (bit_vector);\n}",
+    "reason": "127 (0x7F) is the largest single-byte LEB128 value \u2014 if it required two bytes, the encoding boundary between single and multi-byte would be wrong",
+    "entailed": true,
+    "verus_output": "verification results:: 8 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

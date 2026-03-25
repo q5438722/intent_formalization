@@ -1,0 +1,37 @@
+[
+  {
+    "name": "empty_vec_not_unique",
+    "target_fn": "test_unique",
+    "type": "boundary",
+    "code": "proof fn phi_1_empty_vec_not_unique(endpoints: Vec<EndPoint>)\n    requires\n        endpoints@.len() == 0,\n    ensures\n        !seq_is_unique(abstractify_end_points(endpoints)),\n{\n    reveal(seq_is_unique::<AbstractEndPoint>);\n}",
+    "reason": "Empty collections are vacuously unique; if the spec entails they are not unique, the definition of seq_is_unique is wrong"
+  },
+  {
+    "name": "always_unique",
+    "target_fn": "test_unique",
+    "type": "logical",
+    "code": "proof fn phi_2_always_unique(endpoints: Vec<EndPoint>)\n    requires\n        true,\n    ensures\n        seq_is_unique(abstractify_end_points(endpoints)),\n{\n    reveal(seq_is_unique::<AbstractEndPoint>);\n}",
+    "reason": "If every input is deemed unique, the function can never detect duplicates, making test_unique trivially true"
+  },
+  {
+    "name": "single_element_not_unique",
+    "target_fn": "test_unique",
+    "type": "boundary",
+    "code": "proof fn phi_3_single_element_not_unique(endpoints: Vec<EndPoint>)\n    requires\n        endpoints@.len() == 1,\n    ensures\n        !seq_is_unique(abstractify_end_points(endpoints)),\n{\n    reveal(seq_is_unique::<AbstractEndPoint>);\n}",
+    "reason": "A singleton sequence is trivially unique; if the spec says otherwise, seq_is_unique or abstractify_end_points is misstated"
+  },
+  {
+    "name": "duplicates_still_unique",
+    "target_fn": "test_unique",
+    "type": "behavioral",
+    "code": "proof fn phi_4_duplicates_still_unique(endpoints: Vec<EndPoint>, i: int, j: int)\n    requires\n        0 <= i && i < endpoints@.len(),\n        0 <= j && j < endpoints@.len(),\n        i != j,\n        endpoints@[i]@ == endpoints@[j]@,\n    ensures\n        seq_is_unique(abstractify_end_points(endpoints)),\n{\n    reveal(seq_is_unique::<AbstractEndPoint>);\n}",
+    "reason": "A sequence with two equal elements at distinct indices is not unique; if the spec entails uniqueness here, duplicate detection is broken"
+  },
+  {
+    "name": "nonempty_never_unique",
+    "target_fn": "test_unique",
+    "type": "logical",
+    "code": "proof fn phi_5_nonempty_never_unique(endpoints: Vec<EndPoint>)\n    requires\n        endpoints@.len() > 0,\n    ensures\n        !seq_is_unique(abstractify_end_points(endpoints)),\n{\n    reveal(seq_is_unique::<AbstractEndPoint>);\n}",
+    "reason": "If every non-empty collection is deemed non-unique, the function would always return false for non-empty inputs, making uniqueness checking useless"
+  }
+]

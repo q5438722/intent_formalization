@@ -1,0 +1,47 @@
+[
+  {
+    "name": "empty_range_when_equal",
+    "type": "boundary",
+    "code": "proof fn phi_1_empty_range_when_equal(n: nat)\n    ensures\n        set_nat_range(n, n) =~= Set::<nat>::empty(),\n{\n}",
+    "reason": "When `lo == hi`, the range is empty \u2014 correct behavior but verifies the boundary case where the set contains no elements",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "range_contains_lo",
+    "type": "behavioral",
+    "code": "proof fn phi_2_range_contains_lo(lo: nat, hi: nat)\n    requires\n        lo < hi,\n    ensures\n        set_nat_range(lo, hi).contains(lo),\n{\n}",
+    "reason": "The range always contains its lower bound when non-empty \u2014 a correct property verifying set membership at the boundary",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "range_excludes_hi",
+    "type": "boundary",
+    "code": "proof fn phi_3_range_excludes_hi(lo: nat, hi: nat)\n    requires\n        lo < hi,\n    ensures\n        !set_nat_range(lo, hi).contains(hi),\n{\n}",
+    "reason": "The range is half-open `[lo, hi)` and excludes `hi` \u2014 verifies the upper bound exclusion",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "singleton_range_len_1",
+    "type": "boundary",
+    "code": "proof fn phi_4_singleton_range_len_1(n: nat)\n    ensures\n        set_nat_range(n, (n + 1) as nat).finite(),\n        set_nat_range(n, (n + 1) as nat).len() == 1,\n{\n    lemma_nat_range(n, (n + 1) as nat);\n}",
+    "reason": "A range of width 1 has exactly one element \u2014 tests the minimal non-empty case",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "range_subset_monotone",
+    "type": "logical",
+    "code": "proof fn phi_5_range_subset_monotone(a: nat, b: nat, c: nat)\n    requires\n        a <= b,\n        b <= c,\n    ensures\n        set_nat_range(b, c) <= set_nat_range(a, c),\n{\n    assert forall |i: nat| set_nat_range(b, c).contains(i) implies set_nat_range(a, c).contains(i) by {};\n}",
+    "reason": "Narrowing the lower bound produces a subset \u2014 correct monotonicity property, but shows the spec allows arbitrary range nesting without additional constraints",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

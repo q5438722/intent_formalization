@@ -1,0 +1,52 @@
+[
+  {
+    "name": "ret_in_allocated_after_map",
+    "target_fn": "alloc_and_map_4k",
+    "type": "behavioral",
+    "reason": "If ret ends up in allocated_pages_4k the page skipped the mapped state, violating the free\u2192mapped transition",
+    "entailed": false,
+    "verified": 8,
+    "errors": 1,
+    "output_tail": "a: VAddr, c_ptr: ContainerPtr,\n1246 | | )\n     | |_- at the end of the function body\n...\n1255 |           new_self.allocated_pages_4k().contains(ret),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  },
+  {
+    "name": "ret_not_from_free_list",
+    "target_fn": "alloc_and_map_4k",
+    "type": "boundary",
+    "reason": "If ret was never in the free set then remove is a no-op and the set/length invariant is broken, indicating a spec gap between Set and list length",
+    "entailed": false,
+    "verified": 8,
+    "errors": 1,
+    "output_tail": " Pcid, va: VAddr, c_ptr: ContainerPtr,\n1246 | | )\n     | |_- at the end of the function body\n...\n1256 |           !old_self.free_pages_4k().contains(ret),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  },
+  {
+    "name": "ret_cross_category_free_2m",
+    "target_fn": "alloc_and_map_4k",
+    "type": "logical",
+    "reason": "If ret is simultaneously in free_pages_4k and free_pages_2m then a single physical page has two conflicting states, violating page-state exclusivity",
+    "entailed": false,
+    "verified": 8,
+    "errors": 1,
+    "output_tail": "d: Pcid, va: VAddr, c_ptr: ContainerPtr,\n1246 | | )\n     | |_- at the end of the function body\n...\n1256 |           old_self.free_pages_2m().contains(ret),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  },
+  {
+    "name": "extra_mapping_after_alloc",
+    "target_fn": "alloc_and_map_4k",
+    "type": "behavioral",
+    "reason": "If a second distinct mapping sneaks in, the freshly mapped page has stale or phantom TLB-relevant entries, breaking address-space isolation",
+    "entailed": false,
+    "verified": 8,
+    "errors": 1,
+    "output_tail": "cid, va2: VAddr,\n1247 | | )\n     | |_- at the end of the function body\n...\n1257 |           new_self.page_mappings(ret).contains((pcid2, va2)),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  },
+  {
+    "name": "other_container_pages_lost",
+    "target_fn": "alloc_and_map_4k",
+    "type": "logical",
+    "reason": "If another container silently loses an owned page during a 4k allocation, container isolation is broken and pages could be double-mapped across security domains",
+    "entailed": false,
+    "verified": 8,
+    "errors": 1,
+    "output_tail": "Ptr,\n1247 | | )\n     | |_- at the end of the function body\n...\n1262 |           !new_self.get_container_owned_pages(other_c).contains(p),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  }
+]

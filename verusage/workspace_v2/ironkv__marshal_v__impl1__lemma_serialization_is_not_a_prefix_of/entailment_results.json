@@ -1,0 +1,47 @@
+[
+  {
+    "name": "u64_prefix_freedom_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_u64_prefix_freedom_external_body(a: u64, b: u64)\n    requires\n        !a.view_equal(&b),\n        a.ghost_serialize().len() <= b.ghost_serialize().len(),\n    ensures\n        a.ghost_serialize() != b.ghost_serialize().subrange(0, a.ghost_serialize().len() as int),\n{\n    a.lemma_serialization_is_not_a_prefix_of(&b);\n}",
+    "reason": "`u64::lemma_serialization_is_not_a_prefix_of` is `external_body` \u2014 prefix-freedom for u64 is entirely trusted without proof, despite being provable from `spec_u64_to_le_bytes` fixed-length property",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "usize_prefix_delegates_to_u64_external_body",
+    "type": "logical",
+    "code": "proof fn phi_2_usize_prefix_delegates_to_u64_external_body(a: usize, b: usize)\n    requires\n        a.is_marshalable(),\n        b.is_marshalable(),\n        !a.view_equal(&b),\n    ensures\n        a.ghost_serialize() != b.ghost_serialize().subrange(0, a.ghost_serialize().len() as int),\n{\n    a.lemma_serialization_is_not_a_prefix_of(&b);\n}",
+    "reason": "`usize` prefix-freedom proof delegates to `u64`'s `external_body` lemma \u2014 the entire chain of prefix-freedom reasoning for usize rests on an unverified u64 axiom",
+    "entailed": false,
+    "verus_output": "tianyu/intent_formalization/verusage/workspace_v2/ironkv__marshal_v__impl1__lemma_serialization_is_not_a_prefix_of/phi_2_usize_prefix_delegates_to_u64_external_body.rs:93:5\n   |\n27 |       self.ghost_serialize().len() <= other.ghost_serialize().len(),\n   |       ------------------------------------------------------------- failed precondition\n...\n93 |     a.lemma_serialization_is_not_a_prefix_of(&b);\n   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "prefix_no_marshalable_guard",
+    "type": "logical",
+    "code": "proof fn phi_3_prefix_no_marshalable_guard(a: u64, b: u64)\n    requires\n        a != b,\n    ensures\n        a.ghost_serialize() != b.ghost_serialize().subrange(0, a.ghost_serialize().len() as int),\n{\n    a.lemma_serialization_is_not_a_prefix_of(&b);\n}",
+    "reason": "`lemma_serialization_is_not_a_prefix_of` has no `is_marshalable` precondition \u2014 prefix-freedom is asserted even for values where `ghost_serialize` is only governed by `recommends`, not `requires`",
+    "entailed": false,
+    "verus_output": "  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__marshal_v__impl1__lemma_serialization_is_not_a_prefix_of/phi_3_prefix_no_marshalable_guard.rs:91:5\n   |\n27 |       self.ghost_serialize().len() <= other.ghost_serialize().len(),\n   |       ------------------------------------------------------------- failed precondition\n...\n91 |     a.lemma_serialization_is_not_a_prefix_of(&b);\n   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "view_equal_no_symmetry_enforced",
+    "type": "logical",
+    "code": "proof fn phi_4_view_equal_no_symmetry_enforced(a: u64, b: u64)\n    requires\n        a.view_equal(&b),\n    ensures\n        b.view_equal(&a),\n{\n}",
+    "reason": "The trait never requires `view_equal` to be symmetric \u2014 an asymmetric implementation could allow `a.lemma_serialization_is_not_a_prefix_of(&b)` to fire in one direction but not the other, creating inconsistent prefix-freedom guarantees",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "u64_fixed_length_trivializes_prefix_freedom",
+    "type": "behavioral",
+    "code": "proof fn phi_5_u64_fixed_length_trivializes_prefix_freedom(a: u64, b: u64)\n    ensures\n        a.ghost_serialize().len() == b.ghost_serialize().len(),\n{\n    lemma_auto_spec_u64_to_from_le_bytes();\n}",
+    "reason": "All u64 serializations have the same length (8 bytes), making the prefix-freedom lemma's `len() <= len()` precondition always true \u2014 the \"not a prefix\" guarantee reduces to simple injectivity, yet this is hidden behind an `external_body` that claims a stronger property than needed",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

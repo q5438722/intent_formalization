@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: root_not_in_own_subtree
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is a desirable property. `container_subtree_set_wf` requires that if `sub_c_ptr` is in `c_ptr`'s subtree, then `sub_c_ptr`'s depth > `c_ptr`'s depth. Since depth is a `usize` (non-negative), a container cannot have depth strictly greater than itself. The spec correctly prevents self-inclusion in subtrees.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: owned_procs_no_containment_check
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures clause `!container_perms.dom().contains(p_ptr) || container_perms.dom().contains(p_ptr)` is a tautology (law of excluded middle). It proves nothing about the spec — it would verify with any preconditions. The underlying observation about missing owned_procs constraints may be valid, but this PHI doesn't demonstrate it.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: owned_endpoints_disjointness_missing
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The ensures is `true` which is trivially satisfied, but the real test is precondition satisfiability. Neither `container_perms_wf` nor `container_tree_wf` constrains `owned_endpoints` in any way — the same endpoint can appear in multiple containers' `owned_endpoints` sets. Given the code comment explicitly mentions endpoint ownership semantics ("each endpoint can ONLY be referenced by threads in the subtree"), this missing disjointness constraint is a real spec gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: container_self_child_not_excluded
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This confirms that `container_perms_wf` works correctly — it explicitly includes the clause `container_perms[c_ptr].value().children@.contains(c_ptr) == false`. The spec intentionally prevents self-containment, and this PHI verifies that design is in place.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive found: the `owned_endpoints` sets across containers have no disjointness constraint in either `container_perms_wf` or `container_tree_wf`, despite the code comments describing unique ownership semantics for endpoints within container subtrees. The other candidates are either tautologies (`owned_procs_no_containment_check` ensures `true || false`), confirmations of correct spec behavior (`root_not_in_own_subtree` follows from depth ordering, `container_self_child_not_excluded` is explicitly enforced by `container_perms_wf`).
+===END_SUMMARY===

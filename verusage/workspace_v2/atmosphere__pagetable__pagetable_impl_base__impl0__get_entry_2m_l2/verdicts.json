@@ -1,0 +1,20 @@
+[
+  {
+    "phi": "va_1g_valid_uses_2m_spec",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The `va_1g_valid` function has `#[verifier(when_used_as_spec(spec_va_2m_valid))]` \u2014 it should be `spec_va_1g_valid`. This is a clear copy-paste bug: when `va_1g_valid` is used in spec context, it resolves to the 2M validity check instead of the 1G one, silently accepting 2M-aligned addresses as 1G-valid. The `ensures` clause (`ret == spec_va_1g_valid(va)`) is correct but irrelevant in spec contexts where the `when_used_as_spec` annotation takes precedence."
+  },
+  {
+    "phi": "pagemap_get_external_body_no_ar_sync",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The property proven is a tautology \u2014 it says if `ar@[i] == 0` then `usize2page_entry(0).is_empty()`, which follows directly from `usize2page_entry`'s ensures clause (`v == 0 ==> ...`). The candidate doesn't actually demonstrate a desync between `ar` and `spec_seq`; PageMap::wf already enforces `usize2page_entry(ar@[i]) =~= spec_seq@[i]` for all indices, which maintains the synchronization. The commented-out invariant is redundant convenience, not a missing property."
+  },
+  {
+    "phi": "reveal_wf_external_body_chain",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "All five reveal lemmas are `external_body`, axiomatically asserting biconditionals between opaque closed specs (`wf`, `levels_wf`, `disjoint_wf`, `mappings_wf`, `additonal_wf`) and their open definitions. While this is a common Verus pattern for managing SMT performance, the correctness of these decompositions is entirely unverified \u2014 any mismatch between the closed predicates and their stated expansions would go undetected, making this a real soundness gap in the trusted computing base."
+  }
+]

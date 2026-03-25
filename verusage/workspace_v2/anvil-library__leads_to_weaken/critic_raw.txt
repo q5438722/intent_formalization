@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: always_implies_to_leads_to_intensional_bridge
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `always_implies_to_leads_to` is external_body lifting `always(p.implies(q))` to `p.leads_to(q)` which equals `always(p.implies(eventually(q)))`. This requires resolving that `q.satisfied_by(ex)` implies `eventually(q).satisfied_by(ex)` through the eventually closure — an unverified trust assumption.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: leads_to_trans_intensional_bridge
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `leads_to_trans` is external_body composing two leads_to properties through nested always/implies/eventually closures. This is a separate unverified trust assumption bridging intensional closure gaps in the transitive composition.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: implication_strengthens_to_leads_to
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `p.leads_to(p)` is a standard temporal logic tautology — any property trivially leads to itself (witness at suffix 0). The upgrade from `always(p=>p)` to `p.leads_to(p)` is semantically correct.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: false_spec_any_leads_to
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: An unsatisfiable spec vacuously entailing anything is standard ex falso quodlibet. This is not a spec gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: weaken_to_trivial
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `leads_to_weaken` with identity implications is indeed a no-op producing the same conclusion as its premise. This is expected behavior, not a spec gap.
+===VERDICT_END===
+
+===SUMMARY===
+Two true positives: `always_implies_to_leads_to` and `leads_to_trans` are independent external_body axioms bridging distinct intensional closure gaps — the former lifting always-implication to leads_to (requiring eventually introduction), the latter composing two leads_to chains transitively. The remaining three are false positives: reflexive leads_to is a tautology, false-spec entailment is ex falso, and identity weakening is a correct no-op.
+===END_SUMMARY===

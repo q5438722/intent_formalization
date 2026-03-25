@@ -1,0 +1,50 @@
+{
+  "spec_path": "nanvix/src/libs/bitmap/src/lib.spec.rs",
+  "critic_models": [
+    "claude-opus-4.6",
+    "gpt-5.4",
+    "gemini-3.1-pro"
+  ],
+  "total_queries": 1,
+  "valid_queries": [
+    {
+      "name": "test_unknown_0",
+      "category": "unknown",
+      "code": "#[cfg(verus_keep_ghost)]\ninclude!(\"lib.consistency_test.rs\");",
+      "should_fail": false
+    }
+  ],
+  "rejected_queries": [],
+  "full_results": [
+    {
+      "query": {
+        "name": "test_unknown_0",
+        "category": "unknown",
+        "code": "#[cfg(verus_keep_ghost)]\ninclude!(\"lib.consistency_test.rs\");",
+        "should_fail": false
+      },
+      "judgments": [
+        {
+          "model": "claude-opus-4.6",
+          "verdict": "VALID",
+          "reasoning": "Let me verify the actual contents of the included file to ground this analysis rigorously.\n\nNow I have verified the complete contents of all 15 proof functions in the file. Here is my reconsidered analysis:\n\n## Reconsidered Analysis\n\nThe other critic's objection was that the `include!` directive alone is opaque \u2014 one cannot determine validity without inspecting the actual file contents. That objection is procedurally reasonable but factually resolvable: the file exists and its contents are fully inspectable.\n\nHaving now verified every proof function in `consistency_tests.rs`, all **15 tests** are genuinely undesirable queries:\n\n**Boundary tests (5):** Each deliberately violates a `requires` clause (proc not in domain, VA already mapped, zero quota, zero free pages, L2 resolve is None). The assertions under violated preconditions should not be provable.\n\n**Behavioral tests (5):** Each assumes the *correct* postcondition in `requires`, then asserts its *negation* or a *mutated version* in the body (decremented by 2 not 1, page was already mapped, other proc's address space changed, page not mapped after, mapped to wrong process). These are direct contradictions of assumed facts \u2014 provable only via `false`, which a sound spec should not produce.\n\n**Logical tests (5):** Each asserts a plausible but non-entailed strengthening: determinism of page allocation (nondeterministic), free-page decrement without assuming the postcondition, container owned-pages growth without that postcondition, quota subtracted by 2 when only 1 is guaranteed, and `ret.write == false` when the spec sets `true`.\n\nEvery single assertion is clearly and articulably something the specification **should not** entail. The other critic's concern about \"tooling labels\" not being decisive is resolved by the concrete content: these are not ambiguous mixed-purpose tests.\n\nVERDICT: VALID",
+          "turn": 3
+        },
+        {
+          "model": "gpt-5.4",
+          "verdict": "VALID",
+          "reasoning": "I would now change the verdict to **VALID**.\n\nMy earlier ambiguity came from the fact that `include!(\"lib.consistency_test.rs\")` is only a wrapper: by itself it says nothing semantic. But the new information supplies the missing semantics of the included file. On that description, the included assertions are adversarial in the relevant sense:\n\n- Some tests **violate lemma preconditions**. A sound spec should not admit those calls.\n- Some assert **mutated false postconditions**. A correct spec should not prove wrong outputs.\n- Some assert **strictly stronger properties not entailed by the spec**. Those are exactly the kinds of non-theorems an adversarial query should probe.\n\nSo, given the concrete characterization of the included file, \u03c6 is genuinely undesirable: the specification should **not** entail it.\n\nVERDICT: VALID",
+          "turn": 3
+        },
+        {
+          "model": "gemini-3.1-pro",
+          "verdict": "AMBIGUOUS",
+          "reasoning": "Copilot exited 1: Error: Model \"gemini-3.1-pro\" from --model flag is not available.\n",
+          "turn": 1
+        }
+      ],
+      "final_verdict": "VALID",
+      "consensus": false
+    }
+  ]
+}

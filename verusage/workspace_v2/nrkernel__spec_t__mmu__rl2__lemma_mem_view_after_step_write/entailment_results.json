@@ -1,0 +1,47 @@
+[
+  {
+    "name": "ptmem_view_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_ptmem_view_external_body(mem1: PTMem, mem2: PTMem)\n    requires\n        mem1.mem === mem2.mem,\n        mem1.pml4 == mem2.pml4,\n    ensures\n        mem1@ === mem2@,\n{\n}",
+    "reason": "`PTMem::view` is `external_body` \u2014 the mapping from raw page table memory to PTE map is completely opaque, so identical memories could theoretically produce different PTE views",
+    "entailed": true,
+    "verus_output": "verification results:: 7 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "lemma_write_seq_push_external_body",
+    "type": "logical",
+    "code": "proof fn phi_2_lemma_write_seq_push_external_body(mem: PTMem, writes: Seq<(usize, usize)>, addr: usize, value: usize)\n    ensures\n        mem.write_seq(writes.push((addr, value)))\n            == (PTMem {\n                pml4: mem.pml4,\n                mem: mem.write_seq(writes).mem.insert(addr, value),\n            }),\n{\n    mem.lemma_write_seq_push(writes, addr, value);\n}",
+    "reason": "`lemma_write_seq_push` is `external_body` \u2014 the inductive step for write_seq decomposition is trusted without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 7 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "wf_ptmem_range_external_body",
+    "type": "logical",
+    "code": "proof fn phi_3_wf_ptmem_range_external_body(s1: State, s2: State, c: Constants)\n    requires\n        s1.pt_mem === s2.pt_mem,\n        s1.sbuf === s2.sbuf,\n        s1.writes === s2.writes,\n    ensures\n        s1.wf_ptmem_range(c) == s2.wf_ptmem_range(c),\n{\n}",
+    "reason": "`wf_ptmem_range` is `external_body` \u2014 the well-formedness condition on page table memory ranges is completely opaque and unverified",
+    "entailed": false,
+    "verus_output": "nel__spec_t__mmu__rl2__lemma_mem_view_after_step_write/phi_3_wf_ptmem_range_external_body.rs:478:9\n    |\n472 | proof fn phi_3_wf_ptmem_range_external_body(s1: State, s2: State, c: Constants)\n    |       ------------------------------------------------------------------------- at the end of the function body\n...\n478 |         s1.wf_ptmem_range(c) == s2.wf_ptmem_range(c),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "can_flip_polarity_commented_out_conditions",
+    "type": "behavioral",
+    "code": "proof fn phi_4_can_flip_polarity_commented_out_conditions(pre: State, c: Constants)\n    requires\n        pre.writes.tso === set![],\n        pre.writes.nonpos === set![],\n        !pre.hist.pending_maps.is_empty(),\n    ensures\n        pre.can_flip_polarity(c),\n{\n}",
+    "reason": "`can_flip_polarity` has commented-out conditions for `pending_maps` and `pending_unmaps` \u2014 polarity can flip even with outstanding pending maps/unmaps, potentially allowing unsafe interleaving of mapping and unmapping operations",
+    "entailed": true,
+    "verus_output": "verification results:: 7 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "writer_sbuf_empty_after_core_change",
+    "type": "behavioral",
+    "code": "proof fn phi_5_writer_sbuf_empty_after_core_change(pre: State, post: State, c: Constants, lbl: Lbl)\n    requires\n        pre.happy,\n        pre.wf(c),\n        pre.inv_sbuf_facts(c),\n        step_WriteNonneg(pre, post, c, lbl) || step_WriteNonpos(pre, post, c, lbl),\n        lbl->Write_0 != pre.writes.core,\n    ensures\n        pre.writer_sbuf() =~= seq![],\n{\n    assert(pre.writes.tso.contains(pre.writer_sbuf()[0].0)) by {\n        // If sbuf non-empty, tso must be non-empty, but step requires either tso empty or same core\n    };\n}",
+    "reason": "When a different core writes, the precondition `!tso.is_empty() ==> core == writes.core` combined with `writer_sbuf_subset_tso_writes` forces the old writer's sbuf to be empty \u2014 tests that the invariant correctly prevents concurrent writers",
+    "entailed": false,
+    "verus_output": "ion/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_mem_view_after_step_write/phi_5_writer_sbuf_empty_after_core_change.rs:482:36\n    |\n482 |     assert(pre.writes.tso.contains(pre.writer_sbuf()[0].0)) by {\n    |                                    ^^^^^^^^^^^^^^^^^^^^\n    |\n   ::: /home/chentianyu/intent_formalization/verus/vstd/seq.rs:62:13\n    |\n 62 |             0 <= i < self.len(),\n    |             ------------------- recommendation not met\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,37 @@
+[
+  {
+    "name": "align_exceeds_input",
+    "target_fn": "align_to_usize",
+    "type": "behavioral",
+    "code": "proof fn phi_1_align_exceeds_input(a: usize, b: usize)\n    requires\n        b > 0,\n    ensures\n        align_to_usize(a, b) > a,\n{\n}",
+    "reason": "Aligning down should never produce a value greater than the original input"
+  },
+  {
+    "name": "align_result_not_aligned",
+    "target_fn": "align_to_usize",
+    "type": "boundary",
+    "code": "proof fn phi_2_align_result_not_aligned(a: usize, b: usize)\n    requires\n        b > 0,\n    ensures\n        !aligned(align_to_usize(a, b) as nat, b as nat),\n{\n}",
+    "reason": "The result of align_to_usize should always be aligned to b; failing this means the function is wrong"
+  },
+  {
+    "name": "aligned_contradicts_modulus",
+    "target_fn": "aligned",
+    "type": "logical",
+    "code": "proof fn phi_3_aligned_contradicts_modulus(addr: nat, size: nat)\n    requires\n        size > 0,\n        aligned(addr, size),\n    ensures\n        addr % size != 0,\n{\n}",
+    "reason": "If aligned returns true, the modulus must be zero; entailment here means the spec is self-contradictory"
+  },
+  {
+    "name": "align_gap_exceeds_block",
+    "target_fn": "align_to_usize",
+    "type": "boundary",
+    "code": "proof fn phi_4_align_gap_exceeds_block(a: usize, b: usize)\n    requires\n        b > 0,\n        a >= b,\n    ensures\n        a - align_to_usize(a, b) >= b,\n{\n}",
+    "reason": "The difference a - align_to_usize(a,b) equals a%b which must be strictly less than b; a gap >= b means over-alignment"
+  },
+  {
+    "name": "align_not_idempotent",
+    "target_fn": "align_to_usize",
+    "type": "logical",
+    "code": "proof fn phi_5_align_not_idempotent(a: usize, b: usize)\n    requires\n        b > 0,\n    ensures\n        align_to_usize(align_to_usize(a, b), b) != align_to_usize(a, b),\n{\n}",
+    "reason": "Aligning an already-aligned value should be a no-op; failure of idempotence would indicate a broken alignment function"
+  }
+]

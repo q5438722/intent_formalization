@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize2pa_always_mem_valid",
+    "type": "logical",
+    "code": "proof fn phi_1_usize2pa_always_mem_valid(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body ensures MEM_valid for ALL inputs \u2014 but the spec definition masks with MEM_MASK, which should produce a valid address; if MEM_valid is too weak this could hide alignment bugs",
+    "entailed": false,
+    "verus_output": "entianyu/intent_formalization/verusage/workspace_v2/atmosphere__kernel__create_and_map_pages__impl0__alloc_and_map_io/phi_1_usize2pa_always_mem_valid.rs:3038:9\n     |\n3036 | proof fn phi_1_usize2pa_always_mem_valid(v: usize)\n     |       -------------------------------------------- at the end of the function body\n3037 |     ensures\n3038 |         MEM_valid(usize2pa(v)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 37 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "usize2page_entry_zero_is_empty",
+    "type": "behavioral",
+    "code": "proof fn phi_2_usize2page_entry_zero_is_empty()\n    ensures\n        usize2page_entry(0usize).is_empty(),\n{\n}",
+    "reason": "usize2page_entry external_body guarantees all fields false/zero when v==0, making it is_empty \u2014 if the bitfield encoding allows non-zero addr with zero input this would be unsound",
+    "entailed": false,
+    "verus_output": "tion/verusage/workspace_v2/atmosphere__kernel__create_and_map_pages__impl0__alloc_and_map_io/phi_2_usize2page_entry_zero_is_empty.rs:3038:9\n     |\n3036 | proof fn phi_2_usize2page_entry_zero_is_empty()\n     |       ----------------------------------------- at the end of the function body\n3037 |     ensures\n3038 |         usize2page_entry(0usize).is_empty(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 37 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "sll_len_external_body_unconstrained",
+    "type": "logical",
+    "code": "proof fn phi_3_sll_len_external_body_unconstrained(sll: StaticLinkedList<usize, 10>)\n    requires\n        sll.wf(),\n    ensures\n        sll.len() == sll@.len(),\n{\n}",
+    "reason": "len() is external_body claiming wf ==> l == self@.len() \u2014 unverified bridge between runtime value_list_len and ghost spec_seq length",
+    "entailed": false,
+    "verus_output": "ernel__create_and_map_pages__impl0__alloc_and_map_io/phi_3_sll_len_external_body_unconstrained.rs:3040:9\n     |\n3036 | proof fn phi_3_sll_len_external_body_unconstrained(sll: StaticLinkedList<usize, 10>)\n     |       ------------------------------------------------------------------------------ at the end of the function body\n...\n3040 |         sll.len() == sll@.len(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 37 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_entry_present_false_implies_empty_addr",
+    "type": "boundary",
+    "code": "proof fn phi_4_page_entry_present_false_implies_empty_addr(v: usize)\n    requires\n        usize2present(v) == false,\n    ensures\n        usize2page_entry(v).addr == usize2pa(v),\n{\n}",
+    "reason": "Even when present bit is false, addr is still extracted from the raw value \u2014 a non-present entry can carry a non-zero address, potentially leaking stale physical addresses",
+    "entailed": true,
+    "verus_output": "   |\n178 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__kernel__create_and_map_pages__impl0__alloc_and_map_io/phi_4_page_entry_present_false_implies_empty_addr.rs:187:10\n    |\n187 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: 37 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "mem_mask_idempotent",
+    "type": "logical",
+    "code": "proof fn phi_5_mem_mask_idempotent(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n        usize2pa(usize2pa(v)) == usize2pa(v),\n{\n}",
+    "reason": "usize2pa applied twice should be idempotent if MEM_MASK is correct \u2014 if the mask definition has off-by-one bits, double application could produce different results",
+    "entailed": false,
+    "verus_output": "e/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__kernel__create_and_map_pages__impl0__alloc_and_map_io/phi_5_mem_mask_idempotent.rs:3039:9\n     |\n3036 | proof fn phi_5_mem_mask_idempotent(v: usize)\n     |       -------------------------------------- at the end of the function body\n...\n3039 |         usize2pa(usize2pa(v)) == usize2pa(v),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 2 previous errors; 37 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

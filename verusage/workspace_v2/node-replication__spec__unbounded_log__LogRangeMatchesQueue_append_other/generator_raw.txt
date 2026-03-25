@@ -1,0 +1,133 @@
+===PHI_START===
+NAME: append_other_preserves_queue
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_append_other_preserves_queue<DT: Dispatch>(
+    queue: Seq<ReqId>,
+    log: Map<LogIdx, LogEntry<DT>>,
+    nodeId: NodeId,
+    updates: Map<ReqId, UpdateState<DT>>,
+    new_updates: Map<ReqId, UpdateState<DT>>,
+    new_rid: ReqId,
+    log_entry: LogEntry<DT>,
+    logUpper: LogIdx,
+)
+    requires
+        LogContainsEntriesUpToHere(log, logUpper),
+        log_entry.node_id != nodeId,
+        new_updates.contains_key(new_rid),
+        new_updates[new_rid] === (UpdateState::Placed { op: log_entry.op, idx: logUpper }),
+        !queue.contains(new_rid),
+        forall |rid| #[trigger] updates.contains_key(rid) && rid != new_rid ==> new_updates.contains_key(rid) && new_updates[rid] === updates[rid],
+        LogRangeMatchesQueue(queue, log, 0, 0, logUpper, nodeId, updates),
+    ensures ({
+        let new_log = log.insert(logUpper, log_entry);
+        LogRangeMatchesQueue(queue, new_log, 0, 0, logUpper, nodeId, new_updates)
+    }),
+{
+    LogRangeMatchesQueue_append_other(queue, log, log.insert(logUpper, log_entry), 0, 0, logUpper, logUpper, nodeId, updates, new_updates, new_rid, log_entry);
+}
+```
+REASON: Appending a remote entry preserves the existing queue match unchanged — tests that the append_other lemma correctly maintains the invariant when a different node's entry is added
+===PHI_END===
+
+===PHI_START===
+NAME: log_range_empty_implies_queue_end
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_log_range_empty_implies_queue_end<DT: Dispatch>(
+    queue: Seq<ReqId>,
+    log: Map<LogIdx, LogEntry<DT>>,
+    nodeId: NodeId,
+    updates: Map<ReqId, UpdateState<DT>>,
+    idx: LogIdx,
+    queueIndex: nat,
+)
+    requires
+        queueIndex <= queue.len(),
+        LogRangeMatchesQueue(queue, log, queueIndex, idx, idx, nodeId, updates),
+    ensures
+        queueIndex == queue.len(),
+{
+}
+```
+REASON: An empty log range forces the queue to be exhausted at `queueIndex` — tests the base case constraint
+===PHI_END===
+
+===PHI_START===
+NAME: log_range_local_entry_placed_state
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_log_range_local_entry_placed_state<DT: Dispatch>(
+    queue: Seq<ReqId>,
+    log: Map<LogIdx, LogEntry<DT>>,
+    nodeId: NodeId,
+    updates: Map<ReqId, UpdateState<DT>>,
+    logIdx: LogIdx,
+)
+    requires
+        LogContainsEntriesUpToHere(log, logIdx + 1),
+        log[logIdx].node_id == nodeId,
+        LogRangeMatchesQueue(queue, log, 0, logIdx, logIdx + 1, nodeId, updates),
+    ensures
+        queue.len() >= 1,
+        updates.contains_key(queue[0]),
+        updates[queue[0]] is Placed,
+{
+}
+```
+REASON: A single local log entry requires at least one queue element in Placed state — tests that the matching correctly links log entries to update states
+===PHI_END===
+
+===PHI_START===
+NAME: log_range_remote_skip
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_log_range_remote_skip<DT: Dispatch>(
+    queue: Seq<ReqId>,
+    log: Map<LogIdx, LogEntry<DT>>,
+    nodeId: NodeId,
+    updates: Map<ReqId, UpdateState<DT>>,
+    remoteId: NodeId,
+    logIdx: LogIdx,
+)
+    requires
+        LogContainsEntriesUpToHere(log, logIdx + 1),
+        log[logIdx].node_id == remoteId,
+        remoteId != nodeId,
+        LogRangeMatchesQueue(queue, log, 0, logIdx, logIdx + 1, nodeId, updates),
+    ensures
+        queue.len() == 0,
+{
+}
+```
+REASON: A single remote log entry doesn't consume any queue element — tests that remote entries are skipped
+===PHI_END===
+
+===PHI_START===
+NAME: update_state_placed_idx_matches_log
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_update_state_placed_idx_matches_log<DT: Dispatch>(
+    queue: Seq<ReqId>,
+    log: Map<LogIdx, LogEntry<DT>>,
+    nodeId: NodeId,
+    updates: Map<ReqId, UpdateState<DT>>,
+    logIdx: LogIdx,
+)
+    requires
+        LogContainsEntriesUpToHere(log, logIdx + 1),
+        log[logIdx].node_id == nodeId,
+        LogRangeMatchesQueue(queue, log, 0, logIdx, logIdx + 1, nodeId, updates),
+    ensures
+        updates[queue[0]].arrow_Placed_idx() == logIdx,
+{
+}
+```
+REASON: The Placed index in the update state must match the log index — tests that the spec correctly links the update's log position to the actual log entry
+===PHI_END===

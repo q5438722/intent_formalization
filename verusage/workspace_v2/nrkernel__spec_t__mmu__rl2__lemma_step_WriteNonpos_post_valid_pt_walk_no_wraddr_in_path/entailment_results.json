@@ -1,0 +1,47 @@
+[
+  {
+    "name": "ptmem_view_external_body_write_invariance",
+    "type": "logical",
+    "code": "proof fn phi_1_ptmem_view_external_body_write_invariance(mem: PTMem, addr: usize, value: usize)\n    requires\n        mem.read(addr) & 1 == 0,\n        value & 1 == 0,\n    ensures\n        mem.write(addr, value)@ === mem@,\n{\n}",
+    "reason": "`PTMem::view` is `external_body` \u2014 writing a non-present value over a non-present entry should not change the PTE view, but this is unverified and could be incorrect if the view function considers non-present entries",
+    "entailed": false,
+    "verus_output": "_in_path/phi_1_ptmem_view_external_body_write_invariance.rs:1138:9\n     |\n1133 | proof fn phi_1_ptmem_view_external_body_write_invariance(mem: PTMem, addr: usize, value: usize)\n     |       ----------------------------------------------------------------------------------------- at the end of the function body\n...\n1138 |         mem.write(addr, value)@ === mem@,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "ptmem_view_external_body_functional",
+    "type": "logical",
+    "code": "proof fn phi_2_ptmem_view_external_body_functional(mem1: PTMem, mem2: PTMem)\n    requires\n        mem1.mem === mem2.mem,\n        mem1.pml4 == mem2.pml4,\n    ensures\n        mem1@ === mem2@,\n{\n}",
+    "reason": "`PTMem::view` is `external_body` \u2014 identical memories should produce identical PTE views, but this is completely unverified",
+    "entailed": true,
+    "verus_output": "ent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_step_WriteNonpos_post_valid_pt_walk_no_wraddr_in_path/phi_2_ptmem_view_external_body_functional.rs:257:9\n    |\n257 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "write_seq_empty_identity",
+    "type": "behavioral",
+    "code": "proof fn phi_3_write_seq_empty_identity(mem: PTMem)\n    ensures\n        mem.write_seq(seq![]) === mem,\n{\n}",
+    "reason": "`write_seq` of an empty sequence via `fold_left` should be identity \u2014 if fold_left's base case is wrong, this could alter the memory",
+    "entailed": true,
+    "verus_output": "pr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_step_WriteNonpos_post_valid_pt_walk_no_wraddr_in_path/phi_3_write_seq_empty_identity.rs:257:9\n    |\n257 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "all_mb0_bits_are_zero_external_body",
+    "type": "logical",
+    "code": "proof fn phi_4_all_mb0_bits_are_zero_external_body(entry: usize, layer: nat)\n    ensures\n        (PDE { entry, layer: Ghost(layer) }).all_mb0_bits_are_zero()\n        || !(PDE { entry, layer: Ghost(layer) }).all_mb0_bits_are_zero(),\n{\n}",
+    "reason": "`all_mb0_bits_are_zero` is `external_body` \u2014 the PDE validity predicate is entirely opaque",
+    "entailed": true,
+    "verus_output": "ent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_step_WriteNonpos_post_valid_pt_walk_no_wraddr_in_path/phi_4_all_mb0_bits_are_zero_external_body.rs:257:9\n    |\n257 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "is_nonneg_and_nonpos_mutually_exclusive",
+    "type": "logical",
+    "code": "proof fn phi_5_is_nonneg_and_nonpos_mutually_exclusive(mem: PTMem, addr: usize, value: usize)\n    ensures\n        !(mem.is_nonneg_write(addr, value) && mem.is_nonpos_write(addr, value)),\n{\n    assert((mem.read(addr) & 1 == 0 && mem.read(addr) & 1 == 1) ==> false) by (bit_vector);\n}",
+    "reason": "A write cannot be both nonneg (P: 0\u21921) and nonpos (P: 1\u21920) simultaneously \u2014 tests mutual exclusion of the two write classifications",
+    "entailed": false,
+    "verus_output": "ost_valid_pt_walk_no_wraddr_in_path/phi_5_is_nonneg_and_nonpos_mutually_exclusive.rs:1137:22: 1137:26 (#0)\" }, typ: Int(USize), x: Var(VarIdent(\"addr\", VirParam)) }) }])\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_step_WriteNonpos_post_valid_pt_walk_no_wraddr_in_path/phi_5_is_nonneg_and_nonpos_mutually_exclusive.rs:38:9\n   |\n38 |         self.mem[addr]\n   |         ^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

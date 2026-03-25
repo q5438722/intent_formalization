@@ -1,0 +1,18 @@
+[
+  {
+    "name": "va_4k_valid",
+    "code": "#[verifier(when_used_as_spec(spec_va_4k_valid))]\npub fn va_4k_valid(va: usize) -> (ret: bool)\n    ensures\n        ret == spec_va_4k_valid(va),\n{\n    (va & (!MEM_4k_MASK) as usize == 0) && (va as u64 >> 39u64 & 0x1ffu64)\n        >= KERNEL_MEM_END_L4INDEX as u64\n}"
+  },
+  {
+    "name": "va_4k_range_valid",
+    "code": "#[verifier(when_used_as_spec(spec_va_4k_range_valid))]\npub fn va_4k_range_valid(va: usize, len: usize) -> (ret: bool)\n    requires\n        va_4k_valid(va),\n    ensures\n        spec_va_4k_range_valid(va, len) == ret,\n{\n    for idx in iter: 0..len\n        invariant\n            va_4k_valid(va),\n            forall|i: usize|\n                #![trigger spec_va_add_range(va, i)]\n                0 <= i < idx ==> spec_va_4k_valid(spec_va_add_range(va, i)),\n    {\n        if va_4k_valid(va_add_range(va, idx)) == false {\n            return false;\n        }\n    }\n    true\n}"
+  },
+  {
+    "name": "va_add_range",
+    "code": "#[verifier(external_body)]\npub fn va_add_range(va: usize, i: usize) -> (ret: usize)\n    ensures\n        ret == spec_va_add_range(va, i),\n        i != 0 ==> ret != va,\n{\n    (va + (i * 4096)) as usize\n}"
+  },
+  {
+    "name": "new",
+    "code": "#[verifier::spinoff_prover]\n    pub fn new(va: VAddr, len: usize) -> (ret: Self)\n        requires\n            spec_va_4k_valid(va),\n            va_4k_range_valid(va, len),\n            va < usize::MAX - len * 4096,\n        ensures\n            ret.wf(),\n            ret.start == va,\n            ret.len == len,\n    {\n        proof {\n            va_range_lemma();\n        }\n        let seq = Ghost(Seq::new(len as nat, |i: int| spec_va_add_range(va, i as usize)));\n        Self { start: va, len: len, view: seq }\n    }"
+  }
+]

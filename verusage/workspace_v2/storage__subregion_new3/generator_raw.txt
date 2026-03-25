@@ -1,0 +1,113 @@
+===PHI_START===
+NAME: subregion_view_length_matches
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_subregion_view_length_matches(
+    region: PersistentMemoryRegionView,
+    start: nat,
+    len: nat,
+)
+    requires
+        start + len <= region.len(),
+    ensures
+        get_subregion_view(region, start, len).len() == len,
+{
+}
+```
+REASON: The subregion view length should equal the requested length — if `subrange` produced a different length, all offset calculations within the subregion would be invalid
+===PHI_END===
+
+===PHI_START===
+NAME: subregion_view_byte_offset
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_subregion_view_byte_offset(
+    region: PersistentMemoryRegionView,
+    start: nat,
+    len: nat,
+    k: int,
+)
+    requires
+        start + len <= region.len(),
+        0 <= k < len,
+    ensures
+        get_subregion_view(region, start, len).state[k] == region.state[start + k],
+{
+}
+```
+REASON: Subregion byte at relative offset k should equal region byte at absolute offset start+k — if the mapping were wrong, reads/writes through the subregion would access incorrect physical addresses
+===PHI_END===
+
+===PHI_START===
+NAME: views_differ_allows_writable_addr_change
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_views_differ_allows_writable_addr_change(
+    v1: PersistentMemoryRegionView,
+    v2: PersistentMemoryRegionView,
+    start: nat,
+    len: nat,
+    addr: int,
+)
+    requires
+        v1.len() == v2.len(),
+        start + len <= v1.len(),
+        start <= addr < start + len,
+        forall |a: int| a != addr && (
+            ||| 0 <= a < start
+            ||| start + len <= a < v1.len()
+            ||| start <= a < start + len
+        ) ==> v1.state[a] == v2.state[a],
+    ensures
+        views_differ_only_where_subregion_allows(v1, v2, start, len, |a: int| a == addr),
+{
+}
+```
+REASON: When only one address is writable and only that address differs, the predicate should hold — tests that the writable address function correctly permits targeted mutations
+===PHI_END===
+
+===PHI_START===
+NAME: zero_length_subregion_view_empty
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_zero_length_subregion_view_empty(
+    region: PersistentMemoryRegionView,
+    start: nat,
+)
+    requires
+        start <= region.len(),
+    ensures
+        get_subregion_view(region, start, 0).len() == 0,
+{
+}
+```
+REASON: A zero-length subregion should produce an empty view — if it had non-zero length, phantom bytes would appear in the subregion
+===PHI_END===
+
+===PHI_START===
+NAME: adjacent_subregions_cover_range
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_adjacent_subregions_cover_range(
+    region: PersistentMemoryRegionView,
+    start: nat,
+    len1: nat,
+    len2: nat,
+    k: int,
+)
+    requires
+        start + len1 + len2 <= region.len(),
+        0 <= k < len2,
+    ensures
+        get_subregion_view(region, start + len1, len2).state[k]
+            == get_subregion_view(region, start, len1 + len2).state[len1 + k],
+{
+}
+```
+REASON: A subregion starting at `start+len1` should align with the second half of a combined subregion — if subrange arithmetic were inconsistent, splitting a region into adjacent subregions would produce misaligned views
+===PHI_END===

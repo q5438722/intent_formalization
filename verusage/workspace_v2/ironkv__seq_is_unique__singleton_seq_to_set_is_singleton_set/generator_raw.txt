@@ -1,0 +1,92 @@
+===PHI_START===
+NAME: singleton_seq_to_set_len
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_singleton_seq_to_set_len<T>(x: T)
+    ensures
+        seq![x].to_set().len() == 1,
+{
+    singleton_seq_to_set_is_singleton_set(x);
+    assert(seq![x].to_set() == set![x]);
+    assert(set![x].len() == 1);
+}
+```
+REASON: If `set![x].len()` were not 1 (e.g., if the set macro or finite-set axioms were inconsistent), this would indicate a soundness gap in vstd's set axiomatization
+===PHI_END===
+
+===PHI_START===
+NAME: singleton_seq_to_set_contains_only_element
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_singleton_seq_to_set_contains_only_element<T>(x: T, y: T)
+    requires
+        seq![x].to_set().contains(y),
+    ensures
+        x == y,
+{
+    singleton_seq_to_set_is_singleton_set(x);
+    assert(set![x].contains(y));
+}
+```
+REASON: If a singleton set contained elements other than its sole member, the set abstraction would be unsound — `to_set` or `set!` would be over-approximating membership
+===PHI_END===
+
+===PHI_START===
+NAME: empty_seq_to_set_is_empty
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_empty_seq_to_set_is_empty()
+    ensures
+        Seq::<int>::empty().to_set() == Set::<int>::empty(),
+{
+    assert_sets_equal!(Seq::<int>::empty().to_set(), Set::<int>::empty());
+}
+```
+REASON: If `Seq::empty().to_set()` produced a non-empty set, the `to_set` definition would be inconsistent with the base case of sequence-to-set conversion
+===PHI_END===
+
+===PHI_START===
+NAME: duplicate_seq_to_set_equals_singleton
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_duplicate_seq_to_set_equals_singleton(x: int)
+    ensures
+        seq![x, x].to_set() == set![x],
+{
+    let s = seq![x, x];
+    let ts = s.to_set();
+    assert(s[0] == x);
+    assert(s[1] == x);
+    assert forall |y| ts.contains(y) <==> set![x].contains(y) by {
+        if ts.contains(y) {
+            assert(exists|i: int| 0 <= i < s.len() && s[i] == y);
+        }
+    }
+    assert_sets_equal!(ts, set![x]);
+}
+```
+REASON: If a sequence with duplicate elements produced a set larger than the set of distinct elements, `to_set` would violate the mathematical definition of sets as collections of distinct elements
+===PHI_END===
+
+===PHI_START===
+NAME: seq_to_set_subset_of_push
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_seq_to_set_subset_of_push(s: Seq<int>, x: int)
+    ensures
+        s.to_set().subset_of(s.push(x).to_set()),
+{
+    let s2 = s.push(x);
+    assert forall |y| s.to_set().contains(y) implies s2.to_set().contains(y) by {
+        let i = choose|i: int| 0 <= i < s.len() && s[i] == y;
+        assert(s2[i] == y);
+    }
+}
+```
+REASON: If pushing an element onto a sequence caused existing elements to disappear from `to_set`, the `to_set` conversion would be non-monotonic — violating a fundamental set-theoretic property
+===PHI_END===

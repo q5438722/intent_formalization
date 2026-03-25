@@ -1,0 +1,47 @@
+[
+  {
+    "name": "marshal_preserves_integrity_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_marshal_preserves_integrity_external_body()\n    ensures\n        forall |o: VReplicaSetView| VReplicaSetView::unmarshal(#[trigger] o.marshal()) is Ok && o == VReplicaSetView::unmarshal(o.marshal())->Ok_0,\n{\n    VReplicaSetView::marshal_preserves_integrity();\n}",
+    "reason": "marshal_preserves_integrity is #[verifier::external_body] with unimplemented!() \u2014 it assumes the roundtrip axiom without proof, so any property derived from it (including false) is trusted without verification",
+    "entailed": true,
+    "verus_output": "`->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__terminate__lemma_from_after_create_or_delete_pod_rank_zero_to_reconcile_idle/phi_1_marshal_preserves_integrity_external_body.rs:345:1\n    |\n345 | / #[is_variant]\n346 | | pub enum BuiltinControllersStep {\n347 | |     RunGarbageCollector,\n348 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "unmarshal_ignores_state_validation",
+    "type": "behavioral",
+    "code": "proof fn phi_2_unmarshal_ignores_state_validation(obj: DynamicObjectView)\n    requires\n        obj.kind == VReplicaSetView::kind(),\n        VReplicaSetView::unmarshal_spec(obj.spec) is Ok,\n        VReplicaSetView::unmarshal_status(obj.status) is Ok,\n        !(VReplicaSetView::unmarshal(obj)->Ok_0).state_validation(),\n    ensures\n        VReplicaSetView::unmarshal(obj) is Ok,\n{\n}",
+    "reason": "unmarshal succeeds without checking state_validation, allowing structurally invalid objects to enter the system through deserialization",
+    "entailed": true,
+    "verus_output": " - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__terminate__lemma_from_after_create_or_delete_pod_rank_zero_to_reconcile_idle/phi_2_unmarshal_ignores_state_validation.rs:345:1\n    |\n345 | / #[is_variant]\n346 | | pub enum BuiltinControllersStep {\n347 | |     RunGarbageCollector,\n348 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "marshal_spec_not_injective",
+    "type": "logical",
+    "code": "proof fn phi_3_marshal_spec_not_injective(s1: VReplicaSetSpecView, s2: VReplicaSetSpecView)\n    requires\n        s1 != s2,\n        VReplicaSetView::marshal_spec(s1) == VReplicaSetView::marshal_spec(s2),\n    ensures\n        true,\n{\n}",
+    "reason": "marshal_spec is uninterpreted with no injectivity axiom, so two distinct specs could serialize to the same Value \u2014 the API server cannot distinguish different configurations after storage",
+    "entailed": true,
+    "verus_output": "precated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__terminate__lemma_from_after_create_or_delete_pod_rank_zero_to_reconcile_idle/phi_3_marshal_spec_not_injective.rs:345:1\n    |\n345 | / #[is_variant]\n346 | | pub enum BuiltinControllersStep {\n347 | |     RunGarbageCollector,\n348 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "object_ref_ignores_uid",
+    "type": "behavioral",
+    "code": "proof fn phi_4_object_ref_ignores_uid(v1: VReplicaSetView, v2: VReplicaSetView)\n    requires\n        v1.metadata.name is Some,\n        v2.metadata.name is Some,\n        v1.metadata.namespace is Some,\n        v2.metadata.namespace is Some,\n        v1.metadata.name == v2.metadata.name,\n        v1.metadata.namespace == v2.metadata.namespace,\n        v1.metadata.uid != v2.metadata.uid,\n    ensures\n        v1.object_ref() == v2.object_ref(),\n{\n}",
+    "reason": "object_ref uses only kind/name/namespace and ignores uid, so a deleted-and-recreated resource with a new uid maps to the same ObjectRef \u2014 stale reconciliation state could target the wrong instance",
+    "entailed": true,
+    "verus_output": "s deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__terminate__lemma_from_after_create_or_delete_pod_rank_zero_to_reconcile_idle/phi_4_object_ref_ignores_uid.rs:345:1\n    |\n345 | / #[is_variant]\n346 | | pub enum BuiltinControllersStep {\n347 | |     RunGarbageCollector,\n348 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "update_key_ignores_obj_namespace",
+    "type": "behavioral",
+    "code": "proof fn phi_5_update_key_ignores_obj_namespace(req: UpdateRequest)\n    requires\n        req.obj.metadata.namespace is Some,\n        req.namespace != req.obj.metadata.namespace->0,\n    ensures\n        req.key().namespace != req.obj.metadata.namespace->0,\n{\n}",
+    "reason": "UpdateRequest::key uses self.namespace rather than self.obj.metadata.namespace, so the update target can silently disagree with the object payload's own namespace metadata",
+    "entailed": true,
+    "verus_output": "ed - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__terminate__lemma_from_after_create_or_delete_pod_rank_zero_to_reconcile_idle/phi_5_update_key_ignores_obj_namespace.rs:345:1\n    |\n345 | / #[is_variant]\n346 | | pub enum BuiltinControllersStep {\n347 | |     RunGarbageCollector,\n348 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

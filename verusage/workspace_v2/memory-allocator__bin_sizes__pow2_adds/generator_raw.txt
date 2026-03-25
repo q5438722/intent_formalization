@@ -1,0 +1,79 @@
+===PHI_START===
+NAME: pow2_negative_is_one
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_pow2_negative_is_one(e: int)
+    requires
+        e < 0,
+    ensures
+        pow2(e) == 1,
+{
+}
+```
+REASON: `pow2` returns 1 for all negative exponents — mathematically 2^(-n) is a fraction, so callers passing negative exponents by mistake silently get 1
+===PHI_END===
+
+===PHI_START===
+NAME: pow2_non_injective_at_zero
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_pow2_non_injective_at_zero()
+    ensures
+        pow2(0) == pow2(-1) && pow2(-1) == pow2(-100),
+{
+}
+```
+REASON: All non-positive inputs collapse to 1, making `pow2` non-injective below 1 — could mask off-by-one errors near e=0 boundaries
+===PHI_END===
+
+===PHI_START===
+NAME: div2_y_overflow_unchecked
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_div2_y_overflow_unchecked(x: u64)
+    requires
+        x == u64::MAX,
+    ensures
+        x as int / (u64::MAX as int * 2) == (x as int / u64::MAX as int) / 2,
+{
+    div2(x, u64::MAX as int);
+}
+```
+REASON: `div2` takes `y: int` with no upper bound — `y * 2` can exceed any machine word, making the lemma applicable to divisions by values unrealizable as machine integers
+===PHI_END===
+
+===PHI_START===
+NAME: mul_assoc_smuggles_commutativity
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_mul_assoc_smuggles_commutativity(x: nat, y: nat)
+    ensures
+        x * y == y * x,
+{
+    mul_assoc(x, y, 1);
+}
+```
+REASON: `mul_assoc` ensures `(x*y)*z == y*(x*z)` which with z=1 yields commutativity — may let proofs go through for unintended reasons
+===PHI_END===
+
+===PHI_START===
+NAME: shift_zero_always_zero
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_shift_zero_always_zero(shift: u64)
+    requires
+        0 <= shift < 64,
+    ensures
+        0u64 >> shift == 0,
+{
+    shift_is_div(0u64, shift);
+    pow2_positive(shift as int);
+}
+```
+REASON: Right-shifting zero always yields zero — trivially true but tests that `shift_is_div` doesn't produce unsound nonzero results for zero input
+===PHI_END===

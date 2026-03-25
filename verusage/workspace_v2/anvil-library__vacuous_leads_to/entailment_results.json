@@ -1,0 +1,47 @@
+[
+  {
+    "name": "implies_apply_closure_bridge",
+    "type": "logical",
+    "code": "proof fn phi_1_implies_apply_closure_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.implies(q).satisfied_by(ex),\n        p.satisfied_by(ex),\n    ensures\n        q.satisfied_by(ex),\n{\n    implies_apply::<int>(ex, p, q);\n}",
+    "reason": "implies_apply is external_body bridging p.implies(q)'s TempPred::new closure-wrapped implication to modus ponens \u2014 resolves closure identity gap without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "false_pred_unsatisfiable",
+    "type": "boundary",
+    "code": "proof fn phi_2_false_pred_unsatisfiable(ex: Execution<int>)\n    ensures\n        !false_pred::<int>().satisfied_by(ex),\n{\n}",
+    "reason": "false_pred = not(true_pred()) should be unsatisfiable \u2014 if this fails to verify, the closure nesting in not/true_pred/lift_state prevents SMT from resolving it, exposing a closure opacity issue",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "vacuous_leads_to_requires_equality",
+    "type": "logical",
+    "code": "proof fn phi_3_vacuous_leads_to_requires_equality(spec: TempPred<int>, p: TempPred<int>, q: TempPred<int>, r: TempPred<int>, ex: Execution<int>)\n    requires\n        spec.entails(always(r)),\n        p.and(r) == false_pred::<int>(),\n        spec.satisfied_by(ex),\n    ensures\n        p.leads_to(q).satisfied_by(ex),\n{\n    vacuous_leads_to::<int>(spec, p, q, r);\n}",
+    "reason": "vacuous_leads_to relies on p.and(r) == false_pred() as intensional equality \u2014 if two semantically-false-but-structurally-different TempPreds are passed, the equality precondition gates soundness",
+    "entailed": false,
+    "verus_output": " |\n130 | proof fn phi_3_vacuous_leads_to_requires_equality(spec: TempPred<int>, p: TempPred<int>, q: TempPred<int>, r: TempPred<int>, ex: Execution<int>)\n    |       ------------------------------------------------------------------------------------------------------------------------------------------ at the end of the function body\n...\n136 |         p.leads_to(q).satisfied_by(ex),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "false_pred_equality_gates_soundness",
+    "type": "logical",
+    "code": "proof fn phi_4_false_pred_equality_gates_soundness(p: TempPred<int>, r: TempPred<int>)\n    requires\n        p.and(r) == false_pred::<int>(),\n    ensures\n        forall |ex: Execution<int>| !(#[trigger] p.and(r).satisfied_by(ex)),\n{\n}",
+    "reason": "if p.and(r) == false_pred() holds intensionally, then for any execution it should be unsatisfiable \u2014 but the equality is between structurally distinct closures, so this tests whether intensional equality propagates correctly through satisfied_by",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "any_leads_to_from_false_antecedent",
+    "type": "behavioral",
+    "code": "proof fn phi_5_any_leads_to_from_false_antecedent(spec: TempPred<int>, q: TempPred<int>)\n    requires\n        spec.entails(always(true_pred::<int>())),\n        false_pred::<int>().and(true_pred::<int>()) == false_pred::<int>(),\n    ensures\n        spec.entails(false_pred::<int>().leads_to(q)),\n{\n    vacuous_leads_to::<int>(spec, false_pred::<int>(), q, true_pred::<int>());\n}",
+    "reason": "derives that false_pred leads to anything under any spec entailing always(true) \u2014 tests whether the intensional equality false_pred.and(true_pred) == false_pred holds and whether ex falso quodlibet propagates through the leads_to machinery",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

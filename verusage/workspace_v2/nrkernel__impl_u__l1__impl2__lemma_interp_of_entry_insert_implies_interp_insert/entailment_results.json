@@ -1,0 +1,47 @@
+[
+  {
+    "name": "insert_implies_interp_aux_insert_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_insert_implies_interp_aux_insert_external_body(d: Directory, j: nat, base: nat, n: NodeEntry, pte: PTE)\n    requires\n        d.inv(),\n        j < d.num_entries(),\n        d.update(j, n).inv(),\n        d.interp_of_entry(j).insert(base, pte) == d.update(j, n).interp_of_entry(j),\n    ensures\n        d.interp_aux(0).insert(base, pte) == d.update(j, n).interp_aux(0),\n{\n    d.lemma_interp_of_entry_insert_implies_interp_aux_insert(0, j, base, n, pte);\n}",
+    "reason": "`lemma_interp_of_entry_insert_implies_interp_aux_insert` is `external_body` \u2014 the inductive proof that single-entry map insert propagates through `interp_aux` is trusted without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "insert_overwrites_existing_key",
+    "type": "behavioral",
+    "code": "proof fn phi_2_insert_overwrites_existing_key(d: Directory, j: nat, base: nat, n: NodeEntry, pte: PTE)\n    requires\n        d.inv(),\n        j < d.num_entries(),\n        d.update(j, n).inv(),\n        d.interp_of_entry(j).insert(base, pte) == d.update(j, n).interp_of_entry(j),\n        d.interp_aux(0).contains_key(base),\n    ensures\n        d.update(j, n).interp_aux(0).contains_key(base),\n        d.update(j, n).interp_aux(0)[base] == pte,\n{\n    d.lemma_interp_of_entry_insert_implies_interp_aux_insert(0, j, base, n, pte);\n}",
+    "reason": "The commented-out `!self.interp_aux(i).contains_key(base)` precondition means the external_body axiom allows silently overwriting an existing mapping at `base` \u2014 insert propagation holds even when `base` is already mapped",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "update_preserves_other_entries",
+    "type": "behavioral",
+    "code": "proof fn phi_3_update_preserves_other_entries(d: Directory, j: nat, k: nat, n: NodeEntry)\n    requires\n        d.inv(),\n        j < d.num_entries(),\n        k < d.num_entries(),\n        j != k,\n    ensures\n        d.update(j, n).interp_of_entry(k) == d.interp_of_entry(k),\n{\n}",
+    "reason": "`update` only modifies index j but `interp_of_entry(k)` uses `entry_base(k)` which depends on `base_vaddr` \u2014 tests that non-target entries are truly unaffected",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "insert_interp_implies_insert_interp_public",
+    "type": "logical",
+    "code": "proof fn phi_4_insert_interp_implies_insert_interp_public(d: Directory, j: nat, base: nat, n: NodeEntry, pte: PTE)\n    requires\n        d.inv(),\n        j < d.num_entries(),\n        d.update(j, n).inv(),\n        d.interp_of_entry(j).insert(base, pte) == d.update(j, n).interp_of_entry(j),\n    ensures\n        d.interp().insert(base, pte) == d.update(j, n).interp(),\n{\n    d.lemma_interp_of_entry_insert_implies_interp_insert(j, base, n, pte);\n}",
+    "reason": "The public `lemma_interp_of_entry_insert_implies_interp_insert` directly wraps the external_body axiom \u2014 tests that the full interp-level consequence is derivable",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "inv_no_base_vaddr_alignment",
+    "type": "boundary",
+    "code": "proof fn phi_5_inv_no_base_vaddr_alignment(arch: Arch, entries: Seq<NodeEntry>, layer: nat)\n    requires\n        arch.inv(),\n        layer < arch.layers.len(),\n        entries.len() == arch.num_entries(layer),\n        forall|i: nat| i < entries.len() ==> entries[i as int] is Invalid,\n    ensures\n        (Directory { entries, layer, base_vaddr: 7, arch }).inv(),\n{\n}",
+    "reason": "The commented-out alignment constraint `aligned(self.base_vaddr, self.entry_size() * self.num_entries())` means `inv()` accepts arbitrary `base_vaddr` like 7 \u2014 misaligned base addresses are allowed",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

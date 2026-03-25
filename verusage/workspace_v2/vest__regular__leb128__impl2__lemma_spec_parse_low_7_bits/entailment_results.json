@@ -1,0 +1,47 @@
+[
+  {
+    "name": "parse_empty_is_none",
+    "type": "boundary",
+    "code": "proof fn phi_1_parse_empty_is_none()\n    ensures\n        UnsignedLEB128.spec_parse(seq![]).is_none(),\n{\n}",
+    "reason": "Parsing an empty sequence should fail \u2014 if it succeeded, the parser would produce values from no input",
+    "entailed": true,
+    "verus_output": "verification results:: 5 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "parse_single_byte_value_range",
+    "type": "boundary",
+    "code": "proof fn phi_2_parse_single_byte_value_range(b: u8)\n    requires\n        b < 0x80,\n    ensures\n        UnsignedLEB128.spec_parse(seq![b]) == Some((1int, (b & 0x7f) as UInt)),\n{\n}",
+    "reason": "A single byte below 0x80 should parse to its low 7 bits \u2014 if the base case produced a different value, all multi-byte encodings would be wrong",
+    "entailed": true,
+    "verus_output": "verification results:: 5 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "parse_single_continuation_byte_fails",
+    "type": "boundary",
+    "code": "proof fn phi_3_parse_single_continuation_byte_fails(b: u8)\n    requires\n        b >= 0x80,\n    ensures\n        UnsignedLEB128.spec_parse(seq![b]).is_none(),\n{\n}",
+    "reason": "A single continuation byte (high bit set) with no following data should fail to parse \u2014 if it succeeded, truncated encodings would silently produce incorrect values",
+    "entailed": false,
+    "verus_output": "lization/verusage/workspace_v2/vest__regular__leb128__impl2__lemma_spec_parse_low_7_bits/phi_3_parse_single_continuation_byte_fails.rs:121:9\n    |\n117 | proof fn phi_3_parse_single_continuation_byte_fails(b: u8)\n    |       ---------------------------------------------------- at the end of the function body\n...\n121 |         UnsignedLEB128.spec_parse(seq![b]).is_none(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "parse_rejects_non_canonical_zero_continuation",
+    "type": "behavioral",
+    "code": "proof fn phi_4_parse_rejects_non_canonical_zero_continuation()\n    ensures\n        UnsignedLEB128.spec_parse(seq![0x80u8, 0x00u8]).is_none(),\n{\n}",
+    "reason": "The encoding 0x80 0x00 is a non-canonical representation of 0 (v2 == 0 fails the `0 < v2` check) \u2014 if accepted, the same value would have multiple encodings, breaking injectivity",
+    "entailed": false,
+    "verus_output": "l2__lemma_spec_parse_low_7_bits/phi_4_parse_rejects_non_canonical_zero_continuation.rs:119:9\n    |\n117 | proof fn phi_4_parse_rejects_non_canonical_zero_continuation()\n    |       -------------------------------------------------------- at the end of the function body\n118 |     ensures\n119 |         UnsignedLEB128.spec_parse(seq![0x80u8, 0x00u8]).is_none(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "parse_consumed_at_most_input_length",
+    "type": "boundary",
+    "code": "proof fn phi_5_parse_consumed_at_most_input_length(s: Seq<u8>, n: int, v: UInt)\n    requires\n        s.len() > 0,\n        UnsignedLEB128.spec_parse(s) == Some((n, v)),\n    ensures\n        1 <= n <= s.len(),\n    decreases s.len(),\n{\n    let s0 = s[0];\n    if is_high_8_bit_set!(s0) {\n        if let Some((n2, v2)) = UnsignedLEB128.spec_parse(s.drop_first()) {\n            phi_5_parse_consumed_at_most_input_length(s.drop_first(), n2, v2);\n        }\n    }\n}",
+    "reason": "The number of bytes consumed should never exceed input length \u2014 if it did, the parser would claim to read past the end of the buffer",
+    "entailed": true,
+    "verus_output": "verification results:: 5 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,37 @@
+[
+  {
+    "name": "intersect_always_empty",
+    "target_fn": "create_intersect",
+    "type": "behavioral",
+    "code": "proof fn phi_1_intersect_always_empty(cm1: CommitMask, cm2: CommitMask, res: CommitMask)\n    requires\n        res@ == cm1@.intersect(cm2@),\n    ensures\n        res@ =~= Set::<int>::empty(),\n{\n}",
+    "reason": "Would mean every intersection is vacuously empty regardless of inputs, indicating a trivial spec"
+  },
+  {
+    "name": "self_intersect_empty",
+    "target_fn": "create_intersect",
+    "type": "boundary",
+    "code": "proof fn phi_2_self_intersect_empty(cm: CommitMask, res: CommitMask)\n    requires\n        res@ == cm@.intersect(cm@),\n    ensures\n        res@ =~= Set::<int>::empty(),\n{\n}",
+    "reason": "Self-intersection must equal self; if it equals empty the spec loses all set information at boundary"
+  },
+  {
+    "name": "result_leaks_outside_other",
+    "target_fn": "create_intersect",
+    "type": "logical",
+    "code": "proof fn phi_3_result_leaks_outside_other(cm1: CommitMask, cm2: CommitMask, res: CommitMask, i: int)\n    requires\n        res@ == cm1@.intersect(cm2@),\n        res@.contains(i),\n    ensures\n        !cm2@.contains(i),\n{\n}",
+    "reason": "An intersection element not in the second operand violates the fundamental intersection contract"
+  },
+  {
+    "name": "intersect_equals_union",
+    "target_fn": "create_intersect",
+    "type": "logical",
+    "code": "proof fn phi_4_intersect_equals_union(cm1: CommitMask, cm2: CommitMask, res: CommitMask)\n    requires\n        res@ == cm1@.intersect(cm2@),\n    ensures\n        res@ =~= cm1@.union(cm2@),\n{\n}",
+    "reason": "Conflating intersection with union would make the result a superset instead of a subset of operands"
+  },
+  {
+    "name": "intersect_no_filtering",
+    "target_fn": "create_intersect",
+    "type": "behavioral",
+    "code": "proof fn phi_5_intersect_no_filtering(cm1: CommitMask, cm2: CommitMask, res: CommitMask, i: int)\n    requires\n        res@ == cm1@.intersect(cm2@),\n        cm1@.contains(i),\n    ensures\n        res@.contains(i),\n{\n}",
+    "reason": "Would mean intersection never filters anything from self, making it equivalent to identity on the first operand"
+  }
+]

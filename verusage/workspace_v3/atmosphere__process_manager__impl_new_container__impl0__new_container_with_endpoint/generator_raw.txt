@@ -1,0 +1,174 @@
+Looking at the `new_container_with_endpoint` spec, I'll generate 5 candidate undesirable properties targeting different aspects of its ensures clauses.
+
+===PHI_START===
+NAME: container_ptr_in_proc_dom
+TARGET_FN: new_container_with_endpoint
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_container_ptr_in_proc_dom(
+    old_pm: ProcessManager,
+    new_pm: ProcessManager,
+    thread_ptr: ThreadPtr,
+    page_ptr_1: PagePtr,
+    page_ptr_2: PagePtr,
+    page_ptr_3: PagePtr,
+)
+    requires
+        old_pm.wf(),
+        old_pm.thread_dom().contains(thread_ptr),
+        old_pm.page_closure().contains(page_ptr_1) == false,
+        old_pm.page_closure().contains(page_ptr_2) == false,
+        old_pm.page_closure().contains(page_ptr_3) == false,
+        page_ptr_1 != page_ptr_2,
+        page_ptr_1 != page_ptr_3,
+        page_ptr_2 != page_ptr_3,
+        new_pm.wf(),
+        new_pm.proc_dom() =~= old_pm.proc_dom().insert(page_ptr_2),
+        new_pm.container_dom() == old_pm.container_dom().insert(page_ptr_1),
+        new_pm.page_closure() =~= old_pm.page_closure().insert(page_ptr_1).insert(page_ptr_2).insert(page_ptr_3),
+    ensures
+        new_pm.proc_dom().contains(page_ptr_1),
+{
+}
+```
+REASON: If the container page_ptr_1 appeared in proc_dom, it would violate domain separation between containers and processes
+
+===PHI_END===
+
+===PHI_START===
+NAME: parent_children_len_unchanged
+TARGET_FN: new_container_with_endpoint
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_parent_children_len_unchanged(
+    old_pm: ProcessManager,
+    new_pm: ProcessManager,
+    thread_ptr: ThreadPtr,
+    page_ptr_1: PagePtr,
+)
+    requires
+        old_pm.wf(),
+        old_pm.thread_dom().contains(thread_ptr),
+        new_pm.wf(),
+        new_pm.container_dom().contains(old_pm.get_thread(thread_ptr).owning_container),
+        old_pm.get_container(old_pm.get_thread(thread_ptr).owning_container).children.len() < CONTAINER_CHILD_LIST_LEN,
+        new_pm.get_container(old_pm.get_thread(thread_ptr).owning_container).children@ =~=
+            old_pm.get_container(old_pm.get_thread(thread_ptr).owning_container).children@.push(page_ptr_1),
+    ensures
+        new_pm.get_container(old_pm.get_thread(thread_ptr).owning_container).children@.len() ==
+            old_pm.get_container(old_pm.get_thread(thread_ptr).owning_container).children@.len(),
+{
+}
+```
+REASON: If the parent container's children length did not increase after adding a child, the child was silently dropped
+
+===PHI_END===
+
+===PHI_START===
+NAME: new_container_in_own_subtree
+TARGET_FN: new_container_with_endpoint
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_new_container_in_own_subtree(
+    old_pm: ProcessManager,
+    new_pm: ProcessManager,
+    thread_ptr: ThreadPtr,
+    page_ptr_1: PagePtr,
+    page_ptr_2: PagePtr,
+    page_ptr_3: PagePtr,
+)
+    requires
+        old_pm.wf(),
+        old_pm.thread_dom().contains(thread_ptr),
+        old_pm.page_closure().contains(page_ptr_1) == false,
+        new_pm.wf(),
+        new_pm.container_dom() == old_pm.container_dom().insert(page_ptr_1),
+        new_pm.get_container(page_ptr_1).subtree_set@ =~= Set::<ContainerPtr>::empty(),
+        new_pm.get_container(page_ptr_1).children@ =~= Seq::<ContainerPtr>::empty(),
+    ensures
+        new_pm.get_container(page_ptr_1).subtree_set@.contains(page_ptr_1),
+{
+}
+```
+REASON: A newly created leaf container appearing in its own subtree would break the container tree acyclicity invariant
+
+===PHI_END===
+
+===PHI_START===
+NAME: new_thread_endpoint_none
+TARGET_FN: new_container_with_endpoint
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_new_thread_endpoint_none(
+    old_pm: ProcessManager,
+    new_pm: ProcessManager,
+    thread_ptr: ThreadPtr,
+    endpoint_index: EndpointIdx,
+    page_ptr_1: PagePtr,
+    page_ptr_2: PagePtr,
+    page_ptr_3: PagePtr,
+)
+    requires
+        old_pm.wf(),
+        old_pm.thread_dom().contains(thread_ptr),
+        0 <= endpoint_index < MAX_NUM_ENDPOINT_DESCRIPTORS,
+        old_pm.page_closure().contains(page_ptr_3) == false,
+        page_ptr_1 != page_ptr_3,
+        page_ptr_2 != page_ptr_3,
+        old_pm.get_endpoint_ptr_by_endpoint_idx(thread_ptr, endpoint_index).is_Some(),
+        new_pm.wf(),
+        new_pm.thread_dom().contains(page_ptr_3),
+        new_pm.get_thread(page_ptr_3).endpoint_descriptors@ =~= Seq::new(
+            MAX_NUM_ENDPOINT_DESCRIPTORS as nat,
+            |i: int| { None::<EndpointPtr> },
+        ).update(
+            0,
+            Some(old_pm.get_endpoint_ptr_by_endpoint_idx(thread_ptr, endpoint_index).unwrap()),
+        ),
+    ensures
+        new_pm.get_thread(page_ptr_3).endpoint_descriptors@[0int].is_None(),
+{
+}
+```
+REASON: If the new thread's first endpoint descriptor were None, the child container would be created without access to the shared endpoint
+
+===PHI_END===
+
+===PHI_START===
+NAME: old_proc_gets_new_pcid
+TARGET_FN: new_container_with_endpoint
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_old_proc_gets_new_pcid(
+    old_pm: ProcessManager,
+    new_pm: ProcessManager,
+    p_ptr: ProcPtr,
+    page_ptr_2: PagePtr,
+    new_pcid: Pcid,
+)
+    requires
+        old_pm.wf(),
+        new_pm.wf(),
+        old_pm.proc_dom().contains(p_ptr),
+        new_pm.proc_dom().contains(p_ptr),
+        p_ptr != page_ptr_2,
+        forall|pp: ProcPtr|
+            #![trigger new_pm.get_proc(pp)]
+            old_pm.proc_dom().contains(pp) ==> new_pm.get_proc(pp) =~= old_pm.get_proc(pp),
+        forall|p_ptr_i: ProcPtr|
+            #![trigger old_pm.proc_dom().contains(p_ptr_i)]
+            old_pm.proc_dom().contains(p_ptr_i) ==> old_pm.get_proc(p_ptr_i).pcid != new_pcid,
+        new_pm.get_proc(page_ptr_2).pcid =~= new_pcid,
+    ensures
+        new_pm.get_proc(p_ptr).pcid == new_pcid,
+{
+}
+```
+REASON: If an existing process acquired the new pcid, it would violate pcid uniqueness and corrupt address space isolation
+
+===PHI_END===

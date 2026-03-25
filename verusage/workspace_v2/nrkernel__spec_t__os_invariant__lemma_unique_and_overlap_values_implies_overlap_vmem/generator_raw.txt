@@ -1,0 +1,78 @@
+===PHI_START===
+NAME: map_done_failure_still_has_pte_size
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_map_done_failure_still_has_pte_size(pt: Map<nat, PTE>, ult_id: nat, vaddr: nat, pte: PTE)
+    ensures
+        os::CoreState::MapDone { ult_id, vaddr, pte, result: Err(()) }.pte_size(pt) == pte.frame.size,
+{
+}
+```
+REASON: A failed MapDone still reports the original pte's frame size — the inflight region persists even after the map operation failed, blocking other operations from using that virtual address range until the core returns to Idle
+===PHI_END===
+
+===PHI_START===
+NAME: is_map_includes_waiting_but_not_crit
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_is_map_includes_waiting_but_not_crit(ult_id: nat, vaddr: nat, pte: PTE)
+    ensures
+        os::CoreState::MapWaiting { ult_id, vaddr, pte }.is_map(),
+        !os::CoreState::MapWaiting { ult_id, vaddr, pte }.is_in_crit_sect(),
+{
+}
+```
+REASON: MapWaiting is classified as `is_map` but not `is_in_crit_sect` — if code checks `is_map` expecting critical section protection, it would incorrectly assume mutual exclusion for waiting operations
+===PHI_END===
+
+===PHI_START===
+NAME: rl2_interp_loses_sbuf_for_non_writer
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_rl2_interp_loses_sbuf_for_non_writer(s: crate::rl2::State, core: Core)
+    requires
+        core != s.writes.core,
+    ensures
+        s.interp().pt_mem === s.pt_mem.write_seq(s.sbuf[s.writes.core]),
+        // non-writer core's sbuf is invisible in the rl1 interpretation
+{
+}
+```
+REASON: The rl2→rl1 refinement flattens pt_mem to the writer's view only — all non-writer cores' store buffers are invisible at rl1, meaning rl1 cannot distinguish states that differ only in non-writer sbufs
+===PHI_END===
+
+===PHI_START===
+NAME: candidate_mapping_in_bounds_ignores_base_alignment
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_candidate_mapping_in_bounds_ignores_base_alignment(pte: PTE)
+    requires
+        pte.frame.size > 0,
+        pte.frame.size < x86_arch_spec.upper_vaddr(0, 0),
+    ensures
+        candidate_mapping_in_bounds(1, pte),
+{
+}
+```
+REASON: `candidate_mapping_in_bounds` only checks `base + size < upper_vaddr` without requiring alignment — a mapping at base=1 (unaligned) passes the bounds check, potentially allowing misaligned virtual mappings
+===PHI_END===
+
+===PHI_START===
+NAME: valid_core_delegates_to_common
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_valid_core_delegates_to_common(c1: os::Constants, c2: os::Constants, core: Core)
+    requires
+        c1.common === c2.common,
+    ensures
+        c1.valid_core(core) == c2.valid_core(core),
+{
+}
+```
+REASON: `os::Constants::valid_core` delegates entirely to `common.valid_core` — os-level fields like `ult2core` and `ult_no` don't affect core validity, meaning two os::Constants with different thread configurations but same common constants agree on valid cores
+===PHI_END===

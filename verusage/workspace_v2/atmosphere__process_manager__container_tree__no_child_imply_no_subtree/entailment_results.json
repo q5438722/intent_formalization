@@ -1,0 +1,47 @@
+[
+  {
+    "name": "sll_len_without_wf_returns_value_list_len",
+    "type": "logical",
+    "code": "proof fn phi_1_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    ensures\n        sll.len() == sll.value_list_len,\n{\n}",
+    "reason": "StaticLinkedList::len's external_body unconditionally ensures `l == self.value_list_len` without requiring wf() \u2014 the raw field is exposed for malformed lists",
+    "entailed": false,
+    "verus_output": "thout_wf_returns_value_list_len.rs:479:9\n    |\n477 | proof fn phi_1_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    |       -------------------------------------------------------------------------------------------------- at the end of the function body\n478 |     ensures\n479 |         sll.len() == sll.value_list_len,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "owned_threads_shared_across_containers",
+    "type": "logical",
+    "code": "proof fn phi_2_owned_threads_shared_across_containers(\n    root_container: ContainerPtr,\n    container_perms: Map<ContainerPtr, PointsTo<Container>>,\n    c1: ContainerPtr,\n    c2: ContainerPtr,\n    t: ThreadPtr,\n)\n    requires\n        container_perms_wf(container_perms),\n        container_tree_wf(root_container, container_perms),\n        container_perms.dom().contains(c1),\n        container_perms.dom().contains(c2),\n        c1 != c2,\n        container_perms[c1].value().owned_threads@.contains(t),\n        container_perms[c2].value().owned_threads@.contains(t),\n    ensures\n        true,\n{\n}",
+    "reason": "Neither container_perms_wf nor container_tree_wf constrains owned_threads disjointness \u2014 two distinct containers can claim ownership of the same thread",
+    "entailed": true,
+    "verus_output": "_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__container_tree__no_child_imply_no_subtree/phi_2_owned_threads_shared_across_containers.rs:260:63\n    |\n260 |             ==> container_perms[c_ptr].value().parent_rev_ptr.is_Some()\n    |                                                               ^^^^^^^\n\nwarning: 4 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "owned_endpoints_shared_across_containers",
+    "type": "logical",
+    "code": "proof fn phi_3_owned_endpoints_shared_across_containers(\n    root_container: ContainerPtr,\n    container_perms: Map<ContainerPtr, PointsTo<Container>>,\n    c1: ContainerPtr,\n    c2: ContainerPtr,\n    e: EndpointPtr,\n)\n    requires\n        container_perms_wf(container_perms),\n        container_tree_wf(root_container, container_perms),\n        container_perms.dom().contains(c1),\n        container_perms.dom().contains(c2),\n        c1 != c2,\n        container_perms[c1].value().owned_endpoints@.contains(e),\n        container_perms[c2].value().owned_endpoints@.contains(e),\n    ensures\n        true,\n{\n}",
+    "reason": "owned_endpoints is Ghost<Set<EndpointPtr>> with no disjointness constraint \u2014 two containers can claim the same endpoint despite comments about endpoint ownership scoping",
+    "entailed": true,
+    "verus_output": "ariant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__container_tree__no_child_imply_no_subtree/phi_3_owned_endpoints_shared_across_containers.rs:260:63\n    |\n260 |             ==> container_perms[c_ptr].value().parent_rev_ptr.is_Some()\n    |                                                               ^^^^^^^\n\nwarning: 4 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "no_child_no_subtree_but_owns_resources",
+    "type": "logical",
+    "code": "proof fn phi_4_no_child_no_subtree_but_owns_resources(\n    root_container: ContainerPtr,\n    container_perms: Map<ContainerPtr, PointsTo<Container>>,\n    c_ptr: ContainerPtr,\n    t: ThreadPtr,\n)\n    requires\n        container_perms_wf(container_perms),\n        container_tree_wf(root_container, container_perms),\n        container_perms.dom().contains(c_ptr),\n        container_perms[c_ptr].value().children@ =~= Seq::empty(),\n        container_perms[c_ptr].value().owned_threads@.contains(t),\n    ensures\n        container_perms[c_ptr].value().subtree_set@ =~= Set::empty(),\n{\n    no_child_imply_no_subtree(root_container, container_perms, c_ptr);\n}",
+    "reason": "A leaf container (empty children, empty subtree) can still own threads \u2014 tree structural invariants are completely decoupled from resource ownership, so no_child_imply_no_subtree says nothing about resource cleanup",
+    "entailed": true,
+    "verus_output": "_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__container_tree__no_child_imply_no_subtree/phi_4_no_child_no_subtree_but_owns_resources.rs:260:63\n    |\n260 |             ==> container_perms[c_ptr].value().parent_rev_ptr.is_Some()\n    |                                                               ^^^^^^^\n\nwarning: 4 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "root_container_parent_unconstrained",
+    "type": "boundary",
+    "code": "proof fn phi_5_root_container_parent_unconstrained(\n    root_container: ContainerPtr,\n    container_perms: Map<ContainerPtr, PointsTo<Container>>,\n)\n    requires\n        container_perms_wf(container_perms),\n        container_tree_wf(root_container, container_perms),\n        container_perms.dom().contains(root_container),\n        container_perms[root_container].value().parent.is_Some(),\n    ensures\n        true,\n{\n}",
+    "reason": "container_root_wf constrains depth==0 and non-root must have parent.is_Some(), but never asserts root's parent.is_None() \u2014 the root can have a spurious parent pointer",
+    "entailed": true,
+    "verus_output": "ns::is_Some`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__container_tree__no_child_imply_no_subtree/phi_5_root_container_parent_unconstrained.rs:485:56\n    |\n485 |         container_perms[root_container].value().parent.is_Some(),\n    |                                                        ^^^^^^^\n\nwarning: 5 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

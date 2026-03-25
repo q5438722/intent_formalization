@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: entails_trans_intensional_bridge
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `entails_trans` is external_body bridging transitivity across chained `implies`/`TempPred::new` closures. The SMT solver cannot verify that `p ⟹ q` and `q ⟹ r` compose to `p ⟹ r` through the intensional closure boundaries without this unverified axiom.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: entails_preserved_by_always_intensional_bridge
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `entails_preserved_by_always` is external_body lifting entailment through `always`, requiring the SMT solver to bridge `p.entails(q)` into the `forall`-over-suffix closure inside `always`. This is a separate unverified trust assumption from `entails_trans`.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: tla_forall_entails_instance
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Universal instantiation — `(∀a. P(a)) ⟹ P(a)` — is a basic logical tautology. If the SMT solver resolves the `tla_forall` closure to extract a specific instance without external_body help, that's correct behavior, not a spec gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: entails_chain_collapses_arbitrary_intermediates
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is just two applications of `entails_trans`, which is already identified as the trust assumption in φ1. Chaining a verified-correct transitivity rule is standard — no new trust surface is exposed beyond what φ1 already captures.
+===VERDICT_END===
+
+===SUMMARY===
+Two true positives: `entails_trans` and `entails_preserved_by_always` are independent external_body axioms each bridging distinct intensional closure gaps — transitivity across chained implications and lifting entailment through always's forall-over-suffix, respectively. The remaining two are false positives: tla_forall instantiation is basic universal elimination, and chaining entails_trans is a redundant restatement of φ1's trust surface.
+===END_SUMMARY===

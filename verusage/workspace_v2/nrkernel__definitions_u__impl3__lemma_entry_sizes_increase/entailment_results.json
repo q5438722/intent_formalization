@@ -1,0 +1,47 @@
+[
+  {
+    "name": "entry_size_decreases_with_depth",
+    "type": "behavioral",
+    "code": "proof fn phi_1_entry_size_decreases_with_depth(arch: Arch, i: nat, j: nat)\n    requires\n        arch.inv(),\n        i < j,\n        j < arch.layers.len(),\n    ensures\n        arch.entry_size(i) >= arch.entry_size(j),\n{\n    arch.lemma_entry_sizes_increase(i, j);\n}",
+    "reason": "Higher layers have larger-or-equal entry sizes \u2014 direct consequence of the verified lemma, tests that the invariant enforces monotonicity",
+    "entailed": true,
+    "verus_output": "verification results:: 6 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "adjacent_entry_size_geq",
+    "type": "boundary",
+    "code": "proof fn phi_2_adjacent_entry_size_geq(arch: Arch, i: nat)\n    requires\n        arch.inv(),\n        i + 1 < arch.layers.len(),\n    ensures\n        arch.entry_size(i) >= arch.entry_size(i + 1),\n{\n    arch.lemma_entry_sizes_increase(i, i + 1);\n}",
+    "reason": "Adjacent layers satisfy monotonicity \u2014 the base case of the induction",
+    "entailed": true,
+    "verus_output": "verification results:: 6 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "entry_size_equal_when_num_entries_one",
+    "type": "logical",
+    "code": "proof fn phi_3_entry_size_equal_when_num_entries_one(arch: Arch, i: nat)\n    requires\n        arch.inv(),\n        i + 1 < arch.layers.len(),\n        arch.num_entries(i + 1) == 1,\n    ensures\n        arch.entry_size(i) == arch.entry_size(i + 1),\n{\n}",
+    "reason": "When a layer has exactly 1 entry, parent and child entry sizes are equal \u2014 the invariant allows `num_entries == 1` which means a layer maps the same size as its child, creating a redundant nesting level",
+    "entailed": true,
+    "verus_output": "verification results:: 6 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "inv_allows_non_power_of_two_entries",
+    "type": "behavioral",
+    "code": "proof fn phi_4_inv_allows_non_power_of_two_entries()\n    ensures ({\n        let layer0 = ArchLayer { entry_size: 6, num_entries: 3 };\n        let layer1 = ArchLayer { entry_size: 2, num_entries: 2 };\n        let arch = Arch { layers: seq![layer0, layer1] };\n        arch.inv()\n    }),\n{\n}",
+    "reason": "The invariant permits non-power-of-two entry sizes and num_entries \u2014 x86 page tables always use powers of two, but `inv()` allows arbitrary factorizations like 6 = 2 * 3",
+    "entailed": false,
+    "verus_output": "ower_of_two_entries()\n    |         ---------------------------------------------- at the end of the function body\n102 |       ensures ({\n    |  _____________^\n103 | |         let layer0 = ArchLayer { entry_size: 6, num_entries: 3 };\n104 | |         let layer1 = ArchLayer { entry_size: 2, num_entries: 2 };\n105 | |         let arch = Arch { layers: seq![layer0, layer1] };\n106 | |         arch.inv()\n107 | |     }),\n    | |______^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "inv_single_layer_any_entry_size",
+    "type": "boundary",
+    "code": "proof fn phi_5_inv_single_layer_any_entry_size()\n    ensures ({\n        let layer = ArchLayer { entry_size: 7, num_entries: 3 };\n        let arch = Arch { layers: seq![layer] };\n        arch.inv()\n    }),\n{\n}",
+    "reason": "A single-layer architecture with arbitrary entry_size satisfies `inv()` \u2014 `entry_size_is_next_layer_size` is vacuously true for the only layer, so the sole constraint is `0 < entry_size <= X86_MAX_ENTRY_SIZE`",
+    "entailed": true,
+    "verus_output": "verification results:: 6 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

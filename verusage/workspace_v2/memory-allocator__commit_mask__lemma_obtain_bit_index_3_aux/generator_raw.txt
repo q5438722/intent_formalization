@@ -1,0 +1,108 @@
+===PHI_START===
+NAME: not_subset_has_witness
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_not_subset_has_witness(a: u64, b: u64) -> (i: u64)
+    requires
+        a & b != b,
+    ensures
+        i < 64,
+        !is_bit_set!(a, i),
+        is_bit_set!(b, i),
+{
+    assert(a >> 64 == 0) by (bit_vector);
+    assert(b >> 64 == 0) by (bit_vector);
+    lemma_obtain_bit_index_3_aux(a, b, 64)
+}
+```
+REASON: Any pair where `a & b != b` has a witness bit set in `b` but clear in `a` below 64 — this is mathematically correct and serves as a sanity check that the lemma is usable at hi=64
+===PHI_END===
+
+===PHI_START===
+NAME: hi_1_forces_bit_0
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_hi_1_forces_bit_0(a: u64, b: u64) -> (i: u64)
+    requires
+        a & b != b,
+        a >> 1 == 0,
+        b >> 1 == 0,
+    ensures
+        i == 0,
+        !is_bit_set!(a, 0u64),
+        is_bit_set!(b, 0u64),
+{
+    let i = lemma_obtain_bit_index_3_aux(a, b, 1);
+    i
+}
+```
+REASON: With hi=1, the only possible witness index is 0 — tests that the recursion base case correctly identifies the lowest bit
+===PHI_END===
+
+===PHI_START===
+NAME: concrete_witness_0_and_1
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_concrete_witness_0_and_1() -> (i: u64)
+    ensures
+        i < 64,
+        !is_bit_set!(0u64, i),
+        is_bit_set!(1u64, i),
+        i == 0,
+{
+    assert(0u64 & 1u64 != 1u64) by (bit_vector);
+    assert(0u64 >> 64 == 0) by (bit_vector);
+    assert(1u64 >> 64 == 0) by (bit_vector);
+    let i = lemma_obtain_bit_index_3_aux(0, 1, 64);
+    assert(i == 0) by (bit_vector)
+        requires !is_bit_set!(0u64, i), is_bit_set!(1u64, i), i < 64;
+    i
+}
+```
+REASON: For a=0, b=1 the unique witness is bit 0 — verifies the lemma produces the correct concrete result
+===PHI_END===
+
+===PHI_START===
+NAME: result_strictly_less_than_hi
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_result_strictly_less_than_hi(a: u64, b: u64, hi: u64) -> (i: u64)
+    requires
+        a & b != b,
+        hi <= 64,
+        a >> hi == 0,
+        b >> hi == 0,
+    ensures
+        i < hi,
+{
+    lemma_obtain_bit_index_3_aux(a, b, hi)
+}
+```
+REASON: The result index is strictly below hi — a weaker consequence that tests the bound propagation of the decreases/ensures interaction
+===PHI_END===
+
+===PHI_START===
+NAME: witness_implies_b_nonzero
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_witness_implies_b_nonzero(a: u64, b: u64, hi: u64)
+    requires
+        a & b != b,
+        hi <= 64,
+        a >> hi == 0,
+        b >> hi == 0,
+    ensures
+        b != 0,
+{
+    let i = lemma_obtain_bit_index_3_aux(a, b, hi);
+    assert(b != 0) by (bit_vector)
+        requires is_bit_set!(b, i), i < 64;
+}
+```
+REASON: If `a & b != b` then `b` must be nonzero (it has a bit not covered by `a`) — tests that the ensures is strong enough to derive this basic consequence
+===PHI_END===

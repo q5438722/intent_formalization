@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize2pa_mem_valid_unconditional",
+    "type": "logical",
+    "code": "proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body ensures MEM_valid(ret) for ALL inputs \u2014 trusts without proof that masking any arbitrary usize yields a valid physical address",
+    "entailed": false,
+    "verus_output": "ization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__get_entry_2m_l2/phi_1_usize2pa_mem_valid_unconditional.rs:1085:9\n     |\n1083 | proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n     |       --------------------------------------------------- at the end of the function body\n1084 |     ensures\n1085 |         MEM_valid(usize2pa(v)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 44 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "spec_index2va_bitand_collapses",
+    "type": "logical",
+    "code": "proof fn phi_2_spec_index2va_bitand_collapses(l4a: L4Index, l3a: L3Index, l2a: L2Index, l1a: L1Index, l4b: L4Index, l3b: L3Index, l2b: L2Index, l1b: L1Index)\n    requires\n        0 < l4a <= 0x1ff,\n        0 < l4b <= 0x1ff,\n        l4a != l4b,\n        l3a <= 0x1ff,\n        l3b <= 0x1ff,\n        l2a <= 0x1ff,\n        l2b <= 0x1ff,\n        l1a <= 0x1ff,\n        l1b <= 0x1ff,\n    ensures\n        spec_index2va((l4a, l3a, l2a, l1a)) == spec_index2va((l4b, l3b, l2b, l1b)),\n{\n}",
+    "reason": "spec_index2va uses `&` (bitwise AND) instead of `|` (bitwise OR) to combine shifted index fields, causing all distinct index tuples to collapse to the same VA (likely 0)",
+    "entailed": false,
+    "verus_output": " l2b: L2Index, l1b: L1Index)\n     |       ------------------------------------------------------------------------------------------------------------------------------------------------------- at the end of the function body\n...\n1095 |         spec_index2va((l4a, l3a, l2a, l1a)) == spec_index2va((l4b, l3b, l2b, l1b)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 44 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "va_1g_valid_uses_2m_spec",
+    "type": "behavioral",
+    "code": "proof fn phi_3_va_1g_valid_uses_2m_spec(va: usize)\n    ensures\n        va_1g_valid(va) == spec_va_2m_valid(va),\n{\n}",
+    "reason": "va_1g_valid has `when_used_as_spec(spec_va_2m_valid)` instead of `spec_va_1g_valid` \u2014 a copy-paste bug that makes 1G VA validation use the 2M mask",
+    "entailed": true,
+    "verus_output": "id_uses_2m_spec.rs:83:10\n   |\n83 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__get_entry_2m_l2/phi_3_va_1g_valid_uses_2m_spec.rs:92:10\n   |\n92 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 44 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pagemap_get_external_body_no_ar_sync",
+    "type": "behavioral",
+    "code": "proof fn phi_4_pagemap_get_external_body_no_ar_sync(pm: PageMap, i: usize, j: usize)\n    requires\n        pm.wf(),\n        0 <= i < 512,\n        0 <= j < 512,\n        i != j,\n        pm[i].is_empty(),\n    ensures\n        pm.ar@[i as int] == 0 ==> usize2page_entry(0usize).is_empty(),\n{\n}",
+    "reason": "PageMap::get is external_body and only ensures ret =~= self[index], but PageMap::wf's commented-out invariant (is_empty <==> ar@[i] == 0) is never enforced \u2014 the raw usize array and the spec seq can desync on emptiness semantics",
+    "entailed": true,
+    "verus_output": "ync.rs:83:10\n   |\n83 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__get_entry_2m_l2/phi_4_pagemap_get_external_body_no_ar_sync.rs:92:10\n   |\n92 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 44 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "reveal_wf_external_body_chain",
+    "type": "logical",
+    "code": "proof fn phi_5_reveal_wf_external_body_chain(pt: PageTable)\n    requires\n        pt.wf(),\n    ensures\n        pt.wf_l4(),\n        pt.wf_l3(),\n        pt.wf_l2(),\n        pt.wf_l1(),\n        pt.disjoint_l4(),\n        pt.disjoint_l3(),\n        pt.disjoint_l2(),\n        pt.table_pages_wf(),\n        pt.user_only(),\n        pt.pcid_ioid_wf(),\n        pt.tlb_wf(),\n        pt.tlb_submap_of_mapping(),\n{\n    pt.reveal_page_table_wf();\n    pt.reveal_page_table_levels_wf();\n    pt.reveal_page_table_disjoint_wf();\n    pt.reveal_page_table_mappings_wf();\n    pt.reveal_page_table_addtional_wf();\n}",
+    "reason": "The entire wf() decomposition chain is external_body \u2014 all five reveal lemmas are axiomatically trusted, meaning the relationship between wf() and its sub-predicates is unverified and could be inconsistent",
+    "entailed": true,
+    "verus_output": "body_chain.rs:83:10\n   |\n83 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__get_entry_2m_l2/phi_5_reveal_wf_external_body_chain.rs:92:10\n   |\n92 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 44 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

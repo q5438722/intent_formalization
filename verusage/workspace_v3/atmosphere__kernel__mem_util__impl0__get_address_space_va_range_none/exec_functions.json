@@ -1,0 +1,10 @@
+[
+  {
+    "name": "page_entry_to_map_entry",
+    "code": "#[verifier(when_used_as_spec(spec_page_entry_to_map_entry))]\npub fn page_entry_to_map_entry(p: &PageEntry) -> (ret: MapEntry)\n    ensures\n        ret =~= spec_page_entry_to_map_entry(p),\n{\n    MapEntry { addr: p.addr, write: p.perm.write, execute_disable: p.perm.execute_disable }\n}"
+  },
+  {
+    "name": "get_address_space_va_range_none",
+    "code": "pub fn get_address_space_va_range_none(\n        &self,\n        target_proc_ptr: ProcPtr,\n        va_range: VaRange4K,\n    ) -> (ret: bool)\n        requires\n            self.wf(),\n            self.proc_dom().contains(target_proc_ptr),\n            va_range.wf(),\n        ensures\n            ret == (forall|i: int|\n                #![auto]\n                0 <= i < va_range.len ==> self.get_address_space(target_proc_ptr).dom().contains(\n                    va_range@[i],\n                ) == false),\n    {\n        for i in 0..va_range.len\n            invariant\n                0 <= i <= va_range.len,\n                self.wf(),\n                self.proc_dom().contains(target_proc_ptr),\n                va_range.wf(),\n                forall|j: int|\n                    #![auto]\n                    0 <= j < i ==> self.get_address_space(target_proc_ptr).dom().contains(\n                        va_range@[j],\n                    ) == false,\n        {\n            let target_pcid = self.proc_man.get_proc(target_proc_ptr).pcid;\n            if self.mem_man.resolve_pagetable_mapping(target_pcid, va_range.index(i)).is_some() {\n                return false;\n            }\n        }\n        return true;\n    }"
+  }
+]

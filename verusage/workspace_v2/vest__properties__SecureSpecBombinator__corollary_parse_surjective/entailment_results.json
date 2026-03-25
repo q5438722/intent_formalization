@@ -1,0 +1,47 @@
+[
+  {
+    "name": "serialize_parse_roundtrip_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_serialize_parse_roundtrip_external_body<C: SecureSpecCombinator>(c: &C, v: C::Type)\n    requires\n        c.requires(),\n        c.wf(v),\n    ensures\n        c.spec_parse(c.spec_serialize(v)) == Some((c.spec_serialize(v).len() as int, v)),\n{\n    c.theorem_serialize_parse_roundtrip(v);\n}",
+    "reason": "`theorem_serialize_parse_roundtrip` is `external_body` \u2014 the fundamental serialize-then-parse roundtrip property is trusted without proof, so any implementation of `SecureSpecCombinator` gets this for free even if its `spec_serialize`/`spec_parse` are inconsistent",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "wf_default_always_true",
+    "type": "logical",
+    "code": "proof fn phi_2_wf_default_always_true<C: SpecCombinator>(c: &C, v: C::Type)\n    ensures\n        c.wf(v),\n{\n}",
+    "reason": "The default `wf` returns `true` for all values \u2014 any combinator that doesn't override `wf` accepts all values as well-formed, which weakens the roundtrip guarantee to hold vacuously for malformed data",
+    "entailed": false,
+    "verus_output": "ed\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/vest__properties__SecureSpecBombinator__corollary_parse_surjective/phi_2_wf_default_always_true.rs:60:9\n   |\n58 | proof fn phi_2_wf_default_always_true<C: SpecCombinator>(c: &C, v: C::Type)\n   |       --------------------------------------------------------------------- at the end of the function body\n59 |     ensures\n60 |         c.wf(v),\n   |         ^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "requires_default_always_true",
+    "type": "logical",
+    "code": "proof fn phi_3_requires_default_always_true<C: SpecCombinator>(c: &C)\n    ensures\n        c.requires(),\n{\n}",
+    "reason": "The default `requires` returns `true` unconditionally \u2014 any combinator that doesn't override it has no precondition, so all lemmas guarded by `self.requires()` fire without constraint",
+    "entailed": false,
+    "verus_output": " --> /home/chentianyu/intent_formalization/verusage/workspace_v2/vest__properties__SecureSpecBombinator__corollary_parse_surjective/phi_3_requires_default_always_true.rs:60:9\n   |\n58 | proof fn phi_3_requires_default_always_true<C: SpecCombinator>(c: &C)\n   |       --------------------------------------------------------------- at the end of the function body\n59 |     ensures\n60 |         c.requires(),\n   |         ^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "serialize_no_injectivity",
+    "type": "behavioral",
+    "code": "proof fn phi_4_serialize_no_injectivity<C: SecureSpecCombinator>(c: &C, v1: C::Type, v2: C::Type)\n    requires\n        c.requires(),\n        c.wf(v1),\n        c.wf(v2),\n        c.spec_serialize(v1) == c.spec_serialize(v2),\n    ensures\n        v1 == v2,\n{\n    c.theorem_serialize_parse_roundtrip(v1);\n    c.theorem_serialize_parse_roundtrip(v2);\n}",
+    "reason": "The roundtrip axiom implies serialize is injective on well-formed values \u2014 this is a consequence of the external_body axiom that should be an explicit theorem, not a side-effect of a trusted assumption",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "parse_length_matches_serialize_length",
+    "type": "behavioral",
+    "code": "proof fn phi_5_parse_length_matches_serialize_length<C: SecureSpecCombinator>(c: &C, v: C::Type)\n    requires\n        c.requires(),\n        c.wf(v),\n    ensures\n        c.spec_parse(c.spec_serialize(v)).is_some(),\n        c.spec_parse(c.spec_serialize(v)).unwrap().0 == c.spec_serialize(v).len(),\n{\n    c.theorem_serialize_parse_roundtrip(v);\n}",
+    "reason": "The roundtrip axiom forces parse to consume exactly the entire serialized output \u2014 there is no room for a format where parsing legitimately consumes fewer bytes than were serialized, which may over-constrain implementations with trailing data",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

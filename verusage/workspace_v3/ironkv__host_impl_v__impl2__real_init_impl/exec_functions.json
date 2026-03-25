@@ -1,0 +1,18 @@
+[
+  {
+    "name": "real_init_impl",
+    "code": "pub fn real_init_impl(netc: &NetClient, args: &Args) -> (rc: Option<Self>)\n    requires\n        netc.valid(),\n    ensures\n        Self::init_ensures(netc, *args, rc),\n    {\n        let me = netc.get_my_end_point();\n        let constants = /*Self -- Verus unimpl*/ HostState::parse_command_line_configuration(args, me);\n        if matches!(constants, None) { return None; }\n        let constants = constants.unwrap();\n        let spare_root = constants.root_identity.clone_up_to_view();\n        let zero_key = SHTKey::zero(); //SHTKey{ukey: 0};   // for some reason we can't make this call inside the ::new method below\n        assert(SHTKey::zero_spec() == zero_key);\n        let host_state = HostState{\n            next_action_index: 0,\n            resend_count: 0,\n            constants: constants,\n            delegation_map: DelegationMap::new(/*SHTKey::zero()*/ zero_key, spare_root),\n            h: CKeyHashMap::new(),\n            sd: CSingleDelivery::empty(),\n            received_packet: None,\n            num_delegations: 1,\n            received_requests: Ghost(Seq::<AppRequest>::empty()),\n        };\n        let rc = Some(host_state);\n        assert(netc.ok());\n        assert(host_state.invariants(&netc.my_end_point())); // would pass some initial env state?\n        assert(host_state@.delegation_map == AbstractDelegationMap::init(constants.root_identity@)) by {\n            reveal(HostState::view);\n            assert_maps_equal!(host_state.delegation_map@, AbstractDelegationMap::init(constants.root_identity@)@);\n            assert(host_state.delegation_map@ == AbstractDelegationMap::init(constants.root_identity@)@);\n        }\n        assert(init(host_state@, netc.my_end_point(), abstractify_args(*args)));\n        rc\n    }"
+  },
+  {
+    "name": "to_vec",
+    "code": "#[verifier(external_body)]\n    #[verifier(when_used_as_spec(spec_to_vec))]\n    pub fn to_vec(&self) -> (res: Vec<CKeyKV>)\n      ensures res == self.spec_to_vec()\n    {\n        unimplemented!()\n    }"
+  },
+  {
+    "name": "parse_args",
+    "code": "pub open spec(checked) fn parse_args(args: AbstractArgs) -> Option<Seq<AbstractEndPoint>>\n{\n    let end_points = unchecked_parse_args(args);\n    if forall |i| #![auto] 0 <= i < end_points.len() ==> end_points[i].valid_physical_address() {\n        Some(end_points)\n    } else {\n        None\n    }\n}"
+  },
+  {
+    "name": "init",
+    "code": "pub open spec(checked) fn init(pre: AbstractHostState, id: AbstractEndPoint, args: AbstractArgs) -> bool {\n    let end_points = parse_args(args);\n    if end_points is None || end_points.unwrap().len()==0 {\n        false\n    } else {\n        let root_identity = end_points.unwrap()[0];\n        let params = AbstractParameters::static_params();\n        pre == AbstractHostState{\n            constants: AbstractConstants{root_identity, host_ids: end_points.unwrap(), params, me: id },\n            delegation_map: AbstractDelegationMap::init(root_identity),\n            h: Map::empty(),\n            sd: SingleDelivery::init(),\n            received_packet: None,\n            num_delegations: 1,   // TODO nat?\n            received_requests: seq![],\n        }\n    }\n}"
+  }
+]

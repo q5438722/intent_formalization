@@ -1,0 +1,37 @@
+[
+  {
+    "name": "usize2pa_always_zero",
+    "target_fn": "syscall_io_mmap",
+    "type": "behavioral",
+    "code": "proof fn phi_1_usize2pa_always_zero(v: usize)\n    requires\n        true,\n    ensures\n        spec_usize2pa(v) == 0usize,\n{\n}",
+    "reason": "If usize2pa always yields 0, every IO-mapped page in syscall_io_mmap would resolve to physical address 0, making IO mapping useless."
+  },
+  {
+    "name": "mem_valid_implies_zero",
+    "target_fn": "syscall_io_mmap",
+    "type": "boundary",
+    "code": "proof fn phi_2_mem_valid_implies_zero(v: PAddr)\n    requires\n        MEM_valid(v),\n    ensures\n        v == 0usize,\n{\n}",
+    "reason": "If only address 0 satisfies MEM_valid, then usize2pa's postcondition MEM_valid(ret) forces all physical addresses to zero, breaking syscall_io_mmap's allocated page addresses."
+  },
+  {
+    "name": "zero_entry_appears_present",
+    "target_fn": "syscall_io_mmap",
+    "type": "logical",
+    "code": "proof fn phi_3_zero_entry_appears_present()\n    ensures\n        spec_usize2page_entry(0usize).perm.present == true,\n{\n}",
+    "reason": "If a zero raw value decodes to a present page entry, PageEntry::is_empty would be unsound and free IO-space VA range checks in syscall_io_mmap could misidentify empty slots as occupied."
+  },
+  {
+    "name": "perm_never_writable",
+    "target_fn": "syscall_io_mmap",
+    "type": "behavioral",
+    "code": "proof fn phi_4_perm_never_writable(v: usize)\n    requires\n        v != 0usize,\n    ensures\n        spec_usize2page_entry_perm(v).write == false,\n{\n}",
+    "reason": "If write permission is never set regardless of input, IO-mapped pages from syscall_io_mmap would always be read-only, defeating the purpose of device IO mapping."
+  },
+  {
+    "name": "free_list_len_always_zero",
+    "target_fn": "syscall_io_mmap",
+    "type": "boundary",
+    "code": "proof fn phi_5_free_list_len_always_zero<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    requires\n        sll.wf(),\n        sll@.len() > 0,\n    ensures\n        sll.len() == 0usize,\n{\n}",
+    "reason": "If a well-formed non-empty free list reports length 0, syscall_io_mmap's quota assertion `free_pages_4k.len() >= va_range.len * 4` would fail even when pages are available, blocking all IO mappings."
+  }
+]

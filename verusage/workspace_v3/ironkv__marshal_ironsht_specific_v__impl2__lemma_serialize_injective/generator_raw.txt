@@ -1,0 +1,89 @@
+===PHI_START===
+NAME: to_vec_always_empty
+TARGET_FN: to_vec
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_to_vec_always_empty(m: CKeyHashMap)
+    requires
+        m.is_marshalable(),
+    ensures
+        m.to_vec()@.len() == 0,
+{
+}
+```
+REASON: If marshalability forces to_vec to be empty, the hashmap can never faithfully represent any key-value data
+===PHI_END===
+
+===PHI_START===
+NAME: to_vec_at_most_one_entry
+TARGET_FN: to_vec
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_to_vec_at_most_one_entry(m: CKeyHashMap)
+    requires
+        m.is_marshalable(),
+    ensures
+        m.to_vec()@.len() <= 1,
+{
+}
+```
+REASON: If the size bound or sorted-keys constraint accidentally limits to_vec to at most one element, the map is trivially degenerate
+===PHI_END===
+
+===PHI_START===
+NAME: to_vec_serialize_collision
+TARGET_FN: to_vec
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_to_vec_serialize_collision(m1: CKeyHashMap, m2: CKeyHashMap)
+    requires
+        m1.is_marshalable(),
+        m2.is_marshalable(),
+        m1@ !== m2@,
+    ensures
+        m1.to_vec().ghost_serialize() == m2.to_vec().ghost_serialize(),
+{
+}
+```
+REASON: If distinct maps serialize identically via to_vec, deserialization cannot recover the original map, breaking injectivity
+===PHI_END===
+
+===PHI_START===
+NAME: to_vec_values_always_empty
+TARGET_FN: to_vec
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_to_vec_values_always_empty(m: CKeyHashMap, i: int)
+    requires
+        m.is_marshalable(),
+        0 <= i < m.to_vec()@.len(),
+    ensures
+        m.to_vec()@[i].v@.len() == 0,
+{
+}
+```
+REASON: If the spec forces all values to be empty byte vectors, the hashmap cannot store any meaningful payload data
+===PHI_END===
+
+===PHI_START===
+NAME: sorted_keys_forces_all_equal
+TARGET_FN: to_vec
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_sorted_keys_forces_all_equal(m: CKeyHashMap, i: int, j: int)
+    requires
+        m.is_marshalable(),
+        0 <= i < m.to_vec()@.len(),
+        0 <= j < m.to_vec()@.len(),
+    ensures
+        m.to_vec()@[i].k.ukey == m.to_vec()@[j].k.ukey,
+{
+}
+```
+REASON: If spec_sorted_keys combined with marshalability collapses all keys to the same value, the map can hold at most one logical entry
+===PHI_END===

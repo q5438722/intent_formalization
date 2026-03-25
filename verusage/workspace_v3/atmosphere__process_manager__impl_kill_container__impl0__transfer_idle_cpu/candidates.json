@@ -1,0 +1,37 @@
+[
+  {
+    "name": "preconditions_unsatisfiable",
+    "target_fn": "transfer_idle_cpu",
+    "type": "logical",
+    "code": "proof fn phi_1_preconditions_unsatisfiable(pm: &ProcessManager, container_ptr: ContainerPtr, cpu_id: CpuId)\n    requires\n        pm.wf(),\n        0 <= cpu_id < NUM_CPUS,\n        pm.container_dom().contains(container_ptr),\n        pm.get_container(container_ptr).owned_cpus@.contains(cpu_id),\n        pm.get_cpu(cpu_id).current_thread.is_None(),\n        pm.get_container(container_ptr).depth != 0,\n        pm.root_container != container_ptr,\n    ensures\n        false,\n{\n}",
+    "reason": "If provable, the preconditions are contradictory and transfer_idle_cpu can never be called."
+  },
+  {
+    "name": "self_parent_loop",
+    "target_fn": "transfer_idle_cpu",
+    "type": "behavioral",
+    "code": "proof fn phi_2_self_parent_loop(pm: &ProcessManager, container_ptr: ContainerPtr, cpu_id: CpuId)\n    requires\n        pm.wf(),\n        0 <= cpu_id < NUM_CPUS,\n        pm.container_dom().contains(container_ptr),\n        pm.get_container(container_ptr).owned_cpus@.contains(cpu_id),\n        pm.get_cpu(cpu_id).current_thread.is_None(),\n        pm.get_container(container_ptr).depth != 0,\n        pm.root_container != container_ptr,\n    ensures\n        pm.get_container(container_ptr).parent == Some(container_ptr),\n{\n}",
+    "reason": "If provable, a container can be its own parent, making the CPU transfer a no-op and breaking the tree structure."
+  },
+  {
+    "name": "parent_not_in_domain",
+    "target_fn": "transfer_idle_cpu",
+    "type": "logical",
+    "code": "proof fn phi_3_parent_not_in_domain(pm: &ProcessManager, container_ptr: ContainerPtr, cpu_id: CpuId)\n    requires\n        pm.wf(),\n        0 <= cpu_id < NUM_CPUS,\n        pm.container_dom().contains(container_ptr),\n        pm.get_container(container_ptr).owned_cpus@.contains(cpu_id),\n        pm.get_cpu(cpu_id).current_thread.is_None(),\n        pm.get_container(container_ptr).depth != 0,\n        pm.root_container != container_ptr,\n    ensures\n        pm.get_container(container_ptr).parent.is_Some()\n            && !pm.container_dom().contains(pm.get_container(container_ptr).parent.unwrap()),\n{\n}",
+    "reason": "If provable, the parent container is not in the domain, so inserting the CPU into the parent would access invalid memory."
+  },
+  {
+    "name": "depth_exceeds_container_count",
+    "target_fn": "transfer_idle_cpu",
+    "type": "boundary",
+    "code": "proof fn phi_4_depth_exceeds_container_count(pm: &ProcessManager, container_ptr: ContainerPtr, cpu_id: CpuId)\n    requires\n        pm.wf(),\n        0 <= cpu_id < NUM_CPUS,\n        pm.container_dom().contains(container_ptr),\n        pm.get_container(container_ptr).owned_cpus@.contains(cpu_id),\n        pm.get_cpu(cpu_id).current_thread.is_None(),\n        pm.get_container(container_ptr).depth != 0,\n        pm.root_container != container_ptr,\n    ensures\n        pm.get_container(container_ptr).depth as int > pm.container_dom().len(),\n{\n}",
+    "reason": "If provable, tree depth exceeds the number of containers, indicating a malformed container tree invariant."
+  },
+  {
+    "name": "cpu_owner_mismatch",
+    "target_fn": "transfer_idle_cpu",
+    "type": "behavioral",
+    "code": "proof fn phi_5_cpu_owner_mismatch(pm: &ProcessManager, container_ptr: ContainerPtr, cpu_id: CpuId)\n    requires\n        pm.wf(),\n        0 <= cpu_id < NUM_CPUS,\n        pm.container_dom().contains(container_ptr),\n        pm.get_container(container_ptr).owned_cpus@.contains(cpu_id),\n        pm.get_cpu(cpu_id).current_thread.is_None(),\n        pm.get_container(container_ptr).depth != 0,\n        pm.root_container != container_ptr,\n    ensures\n        pm.get_cpu(cpu_id).owning_container != container_ptr,\n{\n}",
+    "reason": "If provable, cpu_list and container owned_cpus are inconsistent\u2014the CPU is listed under a container that the cpu_list disagrees with."
+  }
+]

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "disjoint_mappings_external_body_unsound",
+    "type": "logical",
+    "code": "proof fn phi_1_disjoint_mappings_external_body_unsound(d: Directory, i: nat, j: nat, va: nat)\n    requires\n        d.inv(),\n        i < j,\n        j < d.entries.len(),\n        d.entries[i as int] is Page,\n        d.entries[j as int] is Page,\n        d.entry_base(i) == d.entry_base(j),\n    ensures\n        !d.interp_of_entry(i).contains_key(d.entry_base(i)) || !d.interp_of_entry(j).contains_key(d.entry_base(j)),\n{\n    d.lemma_interp_of_entry_disjoint_mappings(i, j);\n}",
+    "reason": "`lemma_interp_of_entry_disjoint_mappings` is `external_body` and claims disjoint keys for all entry pairs \u2014 but the invariant has no alignment check on `base_vaddr` (commented out), so two Page entries could compute the same `entry_base` if `entry_size == 0` were possible or `base_vaddr` is pathological",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "interp_of_entry_between_no_alignment_guard",
+    "type": "logical",
+    "code": "proof fn phi_2_interp_of_entry_between_no_alignment_guard(d: Directory, i: nat, va: nat, pte: PTE)\n    requires\n        d.inv(),\n        i < d.entries.len(),\n        d.interp_of_entry(i).contains_pair(va, pte),\n    ensures\n        va + pte.frame.size <= d.next_entry_base(i),\n{\n    d.lemma_interp_of_entry_between(i, va, pte);\n}",
+    "reason": "`lemma_interp_of_entry_between` is `external_body` and claims `va + pte.frame.size <= next_entry_base(i)` \u2014 but `pages_match_entry_size` only constrains `frame.size`, and for Directory entries the subdirectory's mappings have no alignment or containment proof backing this bound",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "inv_allows_unaligned_base_vaddr",
+    "type": "logical",
+    "code": "proof fn phi_3_inv_allows_unaligned_base_vaddr(arch: Arch, entries: Seq<NodeEntry>)\n    requires\n        arch.inv(),\n        arch.layers.len() > 0,\n        entries.len() == arch.num_entries(0),\n        forall|i: nat| i < entries.len() ==> entries[i as int] is Invalid,\n    ensures\n        ({\n            let d = Directory { entries: entries, layer: 0, base_vaddr: 1, arch: arch };\n            d.inv()\n        }),\n{\n}",
+    "reason": "`well_formed` has the alignment check on `base_vaddr` commented out \u2014 a directory with `base_vaddr = 1` satisfies `inv()`, undermining the external_body lemmas that implicitly assume alignment",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_frame_base_unconstrained",
+    "type": "logical",
+    "code": "proof fn phi_4_page_frame_base_unconstrained(arch: Arch)\n    requires\n        arch.inv(),\n        arch.layers.len() > 0,\n    ensures\n        ({\n            let es = arch.entry_size(0);\n            let pte = PTE { frame: MemRegion { base: 7, size: es }, flags: Flags { is_writable: true, is_supervisor: false, disable_execute: false } };\n            let entries = Seq::new(arch.num_entries(0) as int, |i: int| if i == 0 { NodeEntry::Page(pte) } else { NodeEntry::Invalid });\n            let d = Directory { entries: entries, layer: 0, base_vaddr: 0, arch: arch };\n            d.inv()\n        }),\n{\n}",
+    "reason": "The invariant checks `frame.size == entry_size` but never constrains `frame.base` \u2014 PTEs can map to unaligned physical addresses since `frames_aligned` is commented out in `inv()`",
+    "entailed": false,
+    "verus_output": ".num_entries(0) as int, |i: int| if i == 0 { NodeEntry::Page(pte) } else { NodeEntry::Invalid });\n    |                     -------- ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `nat`, found `int`\n    |                     |\n    |                     arguments to this function are incorrect\n    |\nnote: associated function defined here\n   --> /home/runner/work/verus/verus/source/vstd/seq.rs:42:25\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0308`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "entry_containment_allows_cross_entry_mapping",
+    "type": "behavioral",
+    "code": "proof fn phi_5_entry_containment_allows_cross_entry_mapping(d: Directory, i: nat, va: nat, pte: PTE)\n    requires\n        d.inv(),\n        i < d.entries.len(),\n        d.interp_of_entry(i).contains_pair(va, pte),\n    ensures\n        d.entry_base(i) <= va,\n        d.entry_base(i) < va + pte.frame.size,\n{\n    d.lemma_interp_of_entry_between(i, va, pte);\n}",
+    "reason": "`lemma_interp_of_entry_between` claims `entry_base(i) < va + frame.size` (strict inequality) \u2014 but for a Page entry, `va == entry_base(i)` and `frame.size == entry_size`, giving `entry_base(i) < entry_base(i) + entry_size` which requires `entry_size > 0`; the external_body trusts this without deriving it from the invariant's `entry_size > 0` constraint",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

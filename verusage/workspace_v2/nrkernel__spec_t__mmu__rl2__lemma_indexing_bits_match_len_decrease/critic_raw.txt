@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: indexing_bits_match_zero_trivial
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: len=0 meaning "no levels to match" is the correct base case. All implications `len > k ==> ...` are vacuously true when len=0. This is standard and intentional.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: indexing_bits_match_reflexive
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Reflexivity is a basic correctness property of any equality-based predicate. An address should always match itself at every level.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: indexing_bits_match_ignores_low_12
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Bits 0-11 are the page offset, not part of any page table index. Two addresses in the same 4KB page should follow identical page table walks. This is correct x86 semantics.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: indexing_bits_match_len5_constrains_nothing_extra
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The predicate saturates at len=4 — any len > 4 is equivalent to len=4 because no additional constraints are added. If a caller passes len=5 expecting stricter matching (e.g., a 5-level paging extension like LA57), the predicate silently accepts it with no extra checks. This is a spec weakness for future extensibility.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: indexing_bits_match_ignores_high_bits
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: Bits 48-63 are not checked by `indexing_bits_match`. On x86-64, bits 48-63 must be a sign-extension of bit 47 for canonical addresses. Non-canonical addresses differing only in bits 48-63 would be considered matching, which could mask canonicality violations if the predicate is used without a separate canonical address check.
+===VERDICT_END===
+
+===SUMMARY===
+Two true positives: the predicate saturates at len=4 with no additional constraints for higher levels (relevant if 5-level paging is ever modeled), and bits 48-63 are unchecked, meaning non-canonical address pairs are treated as matching. Three false positives: len=0 trivial truth, reflexivity, and ignoring the page offset (bits 0-11) are all correct and expected properties of a page table indexing predicate.
+===END_SUMMARY===

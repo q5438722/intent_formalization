@@ -1,0 +1,95 @@
+===PHI_START===
+NAME: serialize_zero_is_single_zero_byte
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_serialize_zero_is_single_zero_byte()
+    ensures
+        UnsignedLEB128.spec_serialize(0u64) == seq![0u8],
+{
+}
+```
+REASON: Serializing zero should produce a single zero byte — if it produced anything else, the LEB128 encoding of zero would be non-canonical or wrong
+===PHI_END===
+
+===PHI_START===
+NAME: serialize_nonempty
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_serialize_nonempty(v: UInt)
+    ensures
+        UnsignedLEB128.spec_serialize(v).len() > 0,
+{
+}
+```
+REASON: Serialization should always produce at least one byte — if it could produce an empty sequence, parsing would have no bytes to consume, violating productivity
+===PHI_END===
+
+===PHI_START===
+NAME: serialize_high_bits_set_except_last
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_serialize_high_bits_set_except_last(v: UInt, i: int)
+    requires
+        0 <= i < UnsignedLEB128.spec_serialize(v).len() - 1,
+    ensures
+        is_high_8_bit_set!(UnsignedLEB128.spec_serialize(v)[i]),
+    decreases v,
+{
+    let lo = take_low_7_bits!(v);
+    let hi = v >> 7u64;
+    if hi == 0 {
+        assert(UnsignedLEB128::spec_serialize_helper(v) == seq![lo]);
+    } else {
+        assert(v >> 7 != 0 ==> v >> 7 < v) by (bit_vector);
+        let s = UnsignedLEB128::spec_serialize_helper(hi);
+        assert(UnsignedLEB128::spec_serialize_helper(v) == seq![set_high_8_bit!(lo)] + s);
+        assert((lo | 0x80) as u8 >= 0x80u8) by (bit_vector);
+        if i == 0 {
+        } else {
+            phi_3_serialize_high_bits_set_except_last(hi, i - 1);
+        }
+    }
+}
+```
+REASON: All bytes except the last should have the high bit set — if any intermediate byte lacked the high bit, the parser would terminate early and produce an incorrect value
+===PHI_END===
+
+===PHI_START===
+NAME: serialize_max_length_bounded
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_serialize_max_length_bounded(v: UInt)
+    ensures
+        UnsignedLEB128.spec_serialize(v).len() <= 10,
+    decreases v,
+{
+    let hi = v >> 7u64;
+    if hi == 0 {
+    } else {
+        assert(v >> 7 != 0 ==> v >> 7 < v) by (bit_vector);
+        phi_4_serialize_max_length_bounded(hi);
+    }
+}
+```
+REASON: A u64 value should serialize to at most 10 bytes (ceil(64/7)) — if the serialization could exceed this, it would indicate the recursive encoding is producing spurious continuation bytes
+===PHI_END===
+
+===PHI_START===
+NAME: serialize_127_is_single_byte
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_serialize_127_is_single_byte()
+    ensures
+        UnsignedLEB128.spec_serialize(127u64) == seq![127u8],
+{
+    assert(127u64 >> 7u64 == 0u64) by (bit_vector);
+    assert(take_low_7_bits!(127u64) == 127u8) by (bit_vector);
+}
+```
+REASON: 127 (0x7F) is the largest single-byte LEB128 value — if it required two bytes, the encoding boundary between single and multi-byte would be wrong
+===PHI_END===

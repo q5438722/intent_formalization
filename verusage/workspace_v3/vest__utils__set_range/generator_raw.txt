@@ -1,0 +1,92 @@
+===PHI_START===
+NAME: noop_nonempty_input
+TARGET_FN: set_range
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_noop_nonempty_input(data: Seq<u8>, i: usize, input: Seq<u8>)
+    requires
+        0 <= i + input.len() <= data.len() <= usize::MAX,
+        input.len() > 0,
+    ensures
+        seq_splice(data, i, input) == data,
+{
+}
+```
+REASON: If a non-empty write is a no-op, set_range never actually modifies data
+===PHI_END===
+
+===PHI_START===
+NAME: splice_changes_length
+TARGET_FN: set_range
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_splice_changes_length(data: Seq<u8>, i: usize, input: Seq<u8>)
+    requires
+        0 <= i + input.len() <= data.len() <= usize::MAX,
+        input.len() > 0,
+    ensures
+        seq_splice(data, i, input).len() != data.len(),
+{
+}
+```
+REASON: If splice changes the sequence length, the ensures clause (length preserved) would be contradictory
+===PHI_END===
+
+===PHI_START===
+NAME: written_byte_mismatch
+TARGET_FN: set_range
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_written_byte_mismatch(data: Seq<u8>, i: usize, input: Seq<u8>)
+    requires
+        0 <= i + input.len() <= data.len() <= usize::MAX,
+        input.len() > 0,
+    ensures
+        seq_splice(data, i, input)[i as int] != input[0],
+{
+}
+```
+REASON: If the byte at position i doesn't match input[0], the splice wrote incorrect data
+===PHI_END===
+
+===PHI_START===
+NAME: prefix_corrupted
+TARGET_FN: set_range
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_prefix_corrupted(data: Seq<u8>, i: usize, input: Seq<u8>)
+    requires
+        0 <= i + input.len() <= data.len() <= usize::MAX,
+        i > 0,
+    ensures
+        exists|k: int| 0 <= k < i && seq_splice(data, i, input)[k] != data[k],
+{
+}
+```
+REASON: If bytes before position i are modified, set_range corrupts data outside the target range
+===PHI_END===
+
+===PHI_START===
+NAME: distinct_inputs_same_result
+TARGET_FN: set_range
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_distinct_inputs_same_result(data: Seq<u8>, i: usize, input1: Seq<u8>, input2: Seq<u8>)
+    requires
+        0 <= i + input1.len() <= data.len() <= usize::MAX,
+        0 <= i + input2.len() <= data.len() <= usize::MAX,
+        input1.len() == input2.len(),
+        input1.len() > 0,
+        input1[0] != input2[0],
+    ensures
+        seq_splice(data, i, input1) == seq_splice(data, i, input2),
+{
+}
+```
+REASON: If two inputs differing in the first byte produce identical splices, the spec ignores input content
+===PHI_END===

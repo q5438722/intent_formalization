@@ -1,0 +1,78 @@
+===PHI_START===
+NAME: always_disjoint
+TARGET_FN: any_set
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_always_disjoint(a: CommitMask, b: CommitMask)
+    ensures
+        a@.disjoint(b@),
+{
+}
+```
+REASON: Would mean any_set always returns false, making the overlap check useless
+===PHI_END===
+
+===PHI_START===
+NAME: zero_mask_nonempty_view
+TARGET_FN: any_set
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_zero_mask_nonempty_view(cm: CommitMask)
+    requires
+        forall|i: int| 0 <= i < 8 ==> cm.mask[i] == 0usize,
+    ensures
+        exists|i: int| cm@.contains(i),
+{
+}
+```
+REASON: A mask with all zero words should have an empty view set; a non-empty view would corrupt disjointness checks
+===PHI_END===
+
+===PHI_START===
+NAME: never_disjoint
+TARGET_FN: any_set
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_never_disjoint(a: CommitMask, b: CommitMask)
+    ensures
+        !a@.disjoint(b@),
+{
+}
+```
+REASON: Would mean any_set always returns true, making it impossible to detect non-overlapping masks
+===PHI_END===
+
+===PHI_START===
+NAME: view_always_empty
+TARGET_FN: any_set
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_view_always_empty(cm: CommitMask)
+    ensures
+        forall|i: int| !cm@.contains(i),
+{
+}
+```
+REASON: Would collapse every CommitMask view to the empty set, making any_set trivially return false regardless of actual bits
+===PHI_END===
+
+===PHI_START===
+NAME: full_mask_self_disjoint
+TARGET_FN: any_set
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_full_mask_self_disjoint(cm: CommitMask)
+    requires
+        forall|i: int| 0 <= i < 8 ==> cm.mask[i] == !0usize,
+    ensures
+        cm@.disjoint(cm@),
+{
+}
+```
+REASON: A mask with all bits set must overlap with itself; self-disjointness here would indicate the view spec is broken
+===PHI_END===

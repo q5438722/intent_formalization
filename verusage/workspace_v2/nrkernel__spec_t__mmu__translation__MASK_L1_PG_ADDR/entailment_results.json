@@ -1,0 +1,47 @@
+[
+  {
+    "name": "mask_l1_pg_addr_low_30_bits_zero",
+    "type": "boundary",
+    "code": "proof fn phi_1_mask_l1_pg_addr_low_30_bits_zero()\n    ensures\n        MASK_L1_PG_ADDR_SPEC & 0x3FFF_FFFF == 0,\n{\n    axiom_max_phyaddr_width_facts();\n    assert(forall|low: usize, high: usize| low <= high && high < 64 ==> bitmask_inc!(low, high) & (!0usize >> (64 - low)) == 0) by (bit_vector);\n}",
+    "reason": "`MASK_L1_PG_ADDR_SPEC = bitmask_inc!(30, MAX_PHYADDR_WIDTH-1)` should have bits 0-29 clear \u2014 if any low bits leak through, 1GB page physical address extraction would include sub-page offset bits",
+    "entailed": false,
+    "verus_output": "erms instead.\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__translation__MASK_L1_PG_ADDR/phi_1_mask_l1_pg_addr_low_30_bits_zero.rs:43:12\n   |\n43 |     assert(forall|low: usize, high: usize| low <= high && high < 64 ==> bitmask_inc!(low, high) & (!0usize >> (64 - low)) == 0) by (...\n   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "mask_l1_pg_addr_bit_30_set",
+    "type": "boundary",
+    "code": "proof fn phi_2_mask_l1_pg_addr_bit_30_set()\n    ensures\n        MASK_L1_PG_ADDR_SPEC & (1usize << 30) != 0,\n{\n    axiom_max_phyaddr_width_facts();\n}",
+    "reason": "Bit 30 should be the lowest set bit \u2014 if clear, the mask would miss the lowest valid address bit for 1GB pages, shifting physical addresses by 1GB",
+    "entailed": false,
+    "verus_output": "tisfied\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__translation__MASK_L1_PG_ADDR/phi_2_mask_l1_pg_addr_bit_30_set.rs:40:9\n   |\n38 | proof fn phi_2_mask_l1_pg_addr_bit_30_set()\n   |       ------------------------------------- at the end of the function body\n39 |     ensures\n40 |         MASK_L1_PG_ADDR_SPEC & (1usize << 30) != 0,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "mask_l1_pg_addr_subset_of_52bit_range",
+    "type": "boundary",
+    "code": "proof fn phi_3_mask_l1_pg_addr_subset_of_52bit_range()\n    ensures\n        MASK_L1_PG_ADDR_SPEC & !((1usize << 52) - 1) == 0,\n{\n    axiom_max_phyaddr_width_facts();\n    assert(1usize << 52 == 0x10000000000000) by (compute);\n}",
+    "reason": "No bits at or above position 52 should be set \u2014 if the mask extends beyond the maximum physical address width, extracted addresses would include invalid high bits",
+    "entailed": false,
+    "verus_output": "subset_of_52bit_range.rs:40:32\n   |\n40 |         MASK_L1_PG_ADDR_SPEC & !((1usize << 52) - 1) == 0,\n   |                                ^^^^^^^^^^^^^^^^^^^^^ cannot apply unary operator `!`\n   |\nnote: `vstd::prelude::int` does not implement `std::ops::Not`\n  --> /home/runner/work/verus/verus/source/builtin/src/lib.rs:635:0\n   |\n   = note: `vstd::prelude::int` is defined in another crate\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0600`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "mask_l1_pg_addr_narrower_than_mask_addr",
+    "type": "logical",
+    "code": "proof fn phi_4_mask_l1_pg_addr_narrower_than_mask_addr()\n    ensures\n        MASK_L1_PG_ADDR_SPEC & bitmask_inc!(12usize, 29usize) == 0,\n{\n    axiom_max_phyaddr_width_facts();\n    assert(bitmask_inc!(12usize, 29usize) == 0x3FFFF000) by (compute);\n}",
+    "reason": "Bits 12-29 should be zero in L1 mask but set in MASK_ADDR \u2014 tests that the 1GB page mask correctly excludes the 18 bits that MASK_ADDR includes for 4KB-aligned directory addresses; if these bits leaked in, 1GB page addresses would be corrupted",
+    "entailed": false,
+    "verus_output": "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: assertion failed\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__translation__MASK_L1_PG_ADDR/phi_4_mask_l1_pg_addr_narrower_than_mask_addr.rs:43:12\n   |\n43 |     assert(bitmask_inc!(12usize, 29usize) == 0x3FFFF000) by (compute);\n   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ simplified to !(!0 << 18) << 12 == 1073737728\n\nerror: aborting due to 2 previous errors\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "mask_l1_width_depends_on_phyaddr_width",
+    "type": "logical",
+    "code": "proof fn phi_5_mask_l1_width_depends_on_phyaddr_width()\n    ensures\n        MASK_L1_PG_ADDR_SPEC != 0,\n        MAX_PHYADDR_WIDTH >= 32 ==> MASK_L1_PG_ADDR_SPEC >= (1usize << 30),\n{\n    axiom_max_phyaddr_width_facts();\n}",
+    "reason": "For any valid MAX_PHYADDR_WIDTH \u2265 32, the mask must be nonzero and include at least bit 30 \u2014 a zero or too-small mask would make 1GB page translation impossible",
+    "entailed": false,
+    "verus_output": "2/nrkernel__spec_t__mmu__translation__MASK_L1_PG_ADDR/phi_5_mask_l1_width_depends_on_phyaddr_width.rs:41:9\n   |\n38 | proof fn phi_5_mask_l1_width_depends_on_phyaddr_width()\n   |       ------------------------------------------------- at the end of the function body\n...\n41 |         MAX_PHYADDR_WIDTH >= 32 ==> MASK_L1_PG_ADDR_SPEC >= (1usize << 30),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 2 previous errors\n\n",
+    "timed_out": false
+  }
+]

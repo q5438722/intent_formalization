@@ -1,0 +1,47 @@
+[
+  {
+    "name": "external_body_filter_subset",
+    "type": "logical",
+    "code": "proof fn phi_1_external_body_filter_subset(s: Seq<int>, pred: spec_fn(int) -> bool, e: int)\n    requires\n        s.filter(pred).contains(e),\n    ensures\n        s.contains(e),\n{\n    seq_filter_is_a_subset_of_original_seq(s, pred);\n}",
+    "reason": "seq_filter_is_a_subset_of_original_seq is external_body \u2014 unverified axiom asserting filter containment without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "filter_preserves_no_dup",
+    "type": "behavioral",
+    "code": "proof fn phi_2_filter_preserves_no_dup(s: Seq<int>, pred: spec_fn(int) -> bool)\n    requires\n        s.no_duplicates(),\n    ensures\n        s.filter(pred).no_duplicates(),\n{\n    seq_filter_preserves_no_duplicates(s, pred);\n}",
+    "reason": "directly tests the main lemma \u2014 if external_body axiom is inconsistent, no_duplicates preservation could be unsound",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "filter_len_leq_original",
+    "type": "boundary",
+    "code": "proof fn phi_3_filter_len_leq_original(s: Seq<int>, pred: spec_fn(int) -> bool)\n    ensures\n        s.filter(pred).len() <= s.len(),\n    decreases s.len(),\n{\n    reveal(Seq::filter);\n    if s.len() != 0 {\n        phi_3_filter_len_leq_original(s.drop_last(), pred);\n    }\n}",
+    "reason": "filter should never produce a longer sequence \u2014 tests basic consistency of filter definition",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "no_dup_filter_len_leq_distinct_count",
+    "type": "logical",
+    "code": "proof fn phi_4_no_dup_filter_len_leq_distinct_count(s: Seq<int>, pred: spec_fn(int) -> bool)\n    requires\n        s.no_duplicates(),\n    ensures\n        s.filter(pred).len() <= s.len(),\n{\n    seq_filter_preserves_no_duplicates(s, pred);\n    phi_3_filter_len_leq_original(s, pred);\n}",
+    "reason": "under no_duplicates, filtered length should still be bounded by original \u2014 tests interaction of the two lemmas",
+    "entailed": false,
+    "verus_output": "error[E0425]: cannot find function `phi_3_filter_len_leq_original` in this scope\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-library__seq_filter_preserves_no_duplicates/phi_4_no_dup_filter_len_leq_distinct_count.rs:39:5\n   |\n39 |     phi_3_filter_len_leq_original(s, pred);\n   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0425`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "filter_false_empty",
+    "type": "boundary",
+    "code": "proof fn phi_5_filter_false_empty(s: Seq<int>)\n    ensures\n        s.filter(|x: int| false).len() == 0,\n    decreases s.len(),\n{\n    reveal(Seq::filter);\n    if s.len() != 0 {\n        phi_5_filter_false_empty(s.drop_last());\n    }\n}",
+    "reason": "always-false predicate should yield empty filter \u2014 tests base consistency of filter and whether external_body axiom interacts correctly",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

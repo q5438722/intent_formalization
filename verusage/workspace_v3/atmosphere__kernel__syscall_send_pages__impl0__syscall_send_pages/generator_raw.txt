@@ -1,0 +1,143 @@
+===PHI_START===
+NAME: success_breaks_wf
+TARGET_FN: syscall_send_pages
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_success_breaks_wf(
+    old_os: OS, new_os: OS,
+    sender_thread_ptr: ThreadPtr,
+    sender_endpoint_payload: EndpointIdx,
+    sender_va_range: VaRange4K,
+    ret: SyscallReturnStruct,
+)
+    requires
+        old_os.wf(),
+        old_os.thread_dom().contains(sender_thread_ptr),
+        0 <= sender_endpoint_payload < MAX_NUM_ENDPOINT_DESCRIPTORS,
+        old_os.get_thread(sender_thread_ptr).state == ThreadState::RUNNING,
+        sender_va_range.wf(),
+        syscall_send_pages_spec(old_os, new_os, sender_thread_ptr, sender_endpoint_payload, sender_va_range, ret),
+        ret == SyscallReturnStruct::NoSwitchNew(RetValueType::Else),
+    ensures
+        !new_os.wf(),
+{
+}
+```
+REASON: A successful page send must preserve the global well-formedness invariant; breaking wf would corrupt system state.
+===PHI_END===
+
+===PHI_START===
+NAME: always_returns_error
+TARGET_FN: syscall_send_pages
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_always_returns_error(
+    old_os: OS, new_os: OS,
+    sender_thread_ptr: ThreadPtr,
+    sender_endpoint_payload: EndpointIdx,
+    sender_va_range: VaRange4K,
+    ret: SyscallReturnStruct,
+)
+    requires
+        old_os.wf(),
+        old_os.thread_dom().contains(sender_thread_ptr),
+        0 <= sender_endpoint_payload < MAX_NUM_ENDPOINT_DESCRIPTORS,
+        old_os.get_thread(sender_thread_ptr).state == ThreadState::RUNNING,
+        sender_va_range.wf(),
+        syscall_send_pages_spec(old_os, new_os, sender_thread_ptr, sender_endpoint_payload, sender_va_range, ret),
+    ensures
+        ret == SyscallReturnStruct::NoSwitchNew(RetValueType::Error),
+{
+}
+```
+REASON: If the spec forces error for all valid inputs, the success path is dead code and pages can never be sent.
+===PHI_END===
+
+===PHI_START===
+NAME: success_removes_sender_thread
+TARGET_FN: syscall_send_pages
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_success_removes_sender_thread(
+    old_os: OS, new_os: OS,
+    sender_thread_ptr: ThreadPtr,
+    sender_endpoint_payload: EndpointIdx,
+    sender_va_range: VaRange4K,
+    ret: SyscallReturnStruct,
+)
+    requires
+        old_os.wf(),
+        old_os.thread_dom().contains(sender_thread_ptr),
+        0 <= sender_endpoint_payload < MAX_NUM_ENDPOINT_DESCRIPTORS,
+        old_os.get_thread(sender_thread_ptr).state == ThreadState::RUNNING,
+        sender_va_range.wf(),
+        syscall_send_pages_spec(old_os, new_os, sender_thread_ptr, sender_endpoint_payload, sender_va_range, ret),
+        ret == SyscallReturnStruct::NoSwitchNew(RetValueType::Else),
+    ensures
+        !new_os.thread_dom().contains(sender_thread_ptr),
+{
+}
+```
+REASON: Sending pages should never destroy the sender thread; it must remain in the thread domain after a successful IPC.
+===PHI_END===
+
+===PHI_START===
+NAME: success_increases_free_pages
+TARGET_FN: syscall_send_pages
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_success_increases_free_pages(
+    old_os: OS, new_os: OS,
+    sender_thread_ptr: ThreadPtr,
+    sender_endpoint_payload: EndpointIdx,
+    sender_va_range: VaRange4K,
+    ret: SyscallReturnStruct,
+)
+    requires
+        old_os.wf(),
+        old_os.thread_dom().contains(sender_thread_ptr),
+        0 <= sender_endpoint_payload < MAX_NUM_ENDPOINT_DESCRIPTORS,
+        old_os.get_thread(sender_thread_ptr).state == ThreadState::RUNNING,
+        sender_va_range.wf(),
+        syscall_send_pages_spec(old_os, new_os, sender_thread_ptr, sender_endpoint_payload, sender_va_range, ret),
+        ret == SyscallReturnStruct::NoSwitchNew(RetValueType::Else),
+    ensures
+        new_os.page_alloc.free_pages_4k.len() > old_os.page_alloc.free_pages_4k.len(),
+{
+}
+```
+REASON: Sharing pages must consume free pages for new mappings; an increase would mean pages are fabricated from nothing.
+===PHI_END===
+
+===PHI_START===
+NAME: error_changes_thread_dom
+TARGET_FN: syscall_send_pages
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_error_changes_thread_dom(
+    old_os: OS, new_os: OS,
+    sender_thread_ptr: ThreadPtr,
+    sender_endpoint_payload: EndpointIdx,
+    sender_va_range: VaRange4K,
+    ret: SyscallReturnStruct,
+)
+    requires
+        old_os.wf(),
+        old_os.thread_dom().contains(sender_thread_ptr),
+        0 <= sender_endpoint_payload < MAX_NUM_ENDPOINT_DESCRIPTORS,
+        old_os.get_thread(sender_thread_ptr).state == ThreadState::RUNNING,
+        sender_va_range.wf(),
+        syscall_send_pages_spec(old_os, new_os, sender_thread_ptr, sender_endpoint_payload, sender_va_range, ret),
+        ret == SyscallReturnStruct::NoSwitchNew(RetValueType::Error),
+    ensures
+        new_os.thread_dom() != old_os.thread_dom(),
+{
+}
+```
+REASON: Error paths (including blocking) must never create or destroy threads; the thread domain should be invariant on failure.
+===PHI_END===

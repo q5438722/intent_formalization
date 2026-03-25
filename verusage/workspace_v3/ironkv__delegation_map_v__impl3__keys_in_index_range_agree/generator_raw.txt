@@ -1,0 +1,84 @@
+===PHI_START===
+NAME: is_lt_greater_returns_true
+TARGET_FN: is_lt
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_is_lt_greater_returns_true()
+    ensures
+        Ordering::Greater.lt(),
+{
+}
+```
+REASON: If Greater is considered less-than, all ordering comparisons would be corrupted
+===PHI_END===
+
+===PHI_START===
+NAME: is_lt_equal_returns_true
+TARGET_FN: is_lt
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_is_lt_equal_returns_true()
+    ensures
+        Ordering::Equal.lt(),
+{
+}
+```
+REASON: If Equal is considered less-than, sorted invariants and deduplication logic would silently break
+===PHI_END===
+
+===PHI_START===
+NAME: agree_always_true
+TARGET_FN: keys_in_index_range_agree
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_agree_always_true<K: KeyTrait + VerusClone>(m: StrictlyOrderedMap<K>, lo: usize, hi: usize, v: ID)
+    requires
+        m.valid(),
+        0 <= lo <= hi < m.keys@.len(),
+    ensures
+        forall |i: int| #![auto] lo <= i <= hi ==> m@[m.keys@[i]]@ == v@,
+{
+}
+```
+REASON: If agreement holds for any v, the map is trivial and the function never returns false in ret.0
+===PHI_END===
+
+===PHI_START===
+NAME: almost_never_holds
+TARGET_FN: keys_in_index_range_agree
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_almost_never_holds<K: KeyTrait + VerusClone>(m: StrictlyOrderedMap<K>, lo: usize, hi: usize, v: ID)
+    requires
+        m.valid(),
+        0 <= lo <= hi < m.keys@.len(),
+        !(forall |i: int| #![auto] lo <= i <= hi ==> m@[m.keys@[i]]@ == v@),
+    ensures
+        !(m@[m.keys@[hi as int]]@ != v@ && (forall |i: int| #![auto] lo <= i < hi ==> m@[m.keys@[i]]@ == v@)),
+{
+}
+```
+REASON: If the almost-agree case is unreachable, ret.1 is meaningless and callers relying on it would have dead logic
+===PHI_END===
+
+===PHI_START===
+NAME: singleton_range_always_agrees
+TARGET_FN: keys_in_index_range_agree
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_singleton_range_always_agrees<K: KeyTrait + VerusClone>(m: StrictlyOrderedMap<K>, lo: usize, v: ID)
+    requires
+        m.valid(),
+        0 <= lo < m.keys@.len(),
+    ensures
+        m@[m.keys@[lo as int]]@ == v@,
+{
+}
+```
+REASON: If a single-element range always agrees with any value, the map collapses to a constant and ret.0 is trivially true for lo==hi
+===PHI_END===

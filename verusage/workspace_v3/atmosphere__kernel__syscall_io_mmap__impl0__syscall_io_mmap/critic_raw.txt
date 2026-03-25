@@ -1,0 +1,17 @@
+===VERDICT_START===
+PHI: zero_len_io_mmap_allowed
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: A zero-length VaRange4K passing all preconditions of `syscall_io_mmap` is not a spec gap — it results in a vacuous no-op that allocates zero pages and maps nothing. The postcondition of `range_alloc_and_map_io` still ensures `self.wf()`, so no invariant is violated. Allowing zero-length operations is standard and harmless; the spec need not reject them.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: zero_quota_bypasses_check
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The quota check `quota.mem_4k < va_range.len * 4` correctly passes when both quota and len are 0, since 0 < 0 is false. This isn't a bypass — zero quota with zero-length request means no resources are needed and none are consumed. When len > 0, zero quota correctly triggers rejection. The arithmetic is sound for all meaningful cases.
+===VERDICT_END===
+
+===SUMMARY===
+Both candidate properties target the same boundary condition: zero-length `VaRange4K` inputs to `syscall_io_mmap`. While Verus confirms the spec entails these properties, they represent benign vacuous-truth scenarios rather than genuine spec weaknesses. A zero-length IO mmap is a no-op that consumes no resources and preserves all invariants. The quota check similarly behaves correctly — zero quota with zero demand is not a bypass. No true positives were found in this batch.
+===END_SUMMARY===

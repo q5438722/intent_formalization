@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize2pa_mem_valid_unconditional",
+    "type": "logical",
+    "code": "proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body unconditionally ensures MEM_valid(ret) for ANY input \u2014 arbitrary usize values produce \"valid\" physical addresses without proof",
+    "entailed": false,
+    "verus_output": "on/verusage/workspace_v2/atmosphere__memory_manager__spec_impl__impl0__create_pagetable_l4_entry/phi_1_usize2pa_mem_valid_unconditional.rs:1007:9\n     |\n1005 | proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n     |       --------------------------------------------------- at the end of the function body\n1006 |     ensures\n1007 |         MEM_valid(usize2pa(v)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 21 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "zero_entry_is_empty",
+    "type": "behavioral",
+    "code": "proof fn phi_2_zero_entry_is_empty()\n    ensures\n        usize2page_entry(0usize).is_empty(),\n{\n}",
+    "reason": "Relies on two independent external_body claims (usize2page_entry and usize2pa) both correctly handling zero \u2014 if either is wrong the combined property is unsound",
+    "entailed": false,
+    "verus_output": "chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__memory_manager__spec_impl__impl0__create_pagetable_l4_entry/phi_2_zero_entry_is_empty.rs:1007:9\n     |\n1005 | proof fn phi_2_zero_entry_is_empty()\n     |       ------------------------------ at the end of the function body\n1006 |     ensures\n1007 |         usize2page_entry(0usize).is_empty(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 21 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pci_bitmap_wf_domain_exact_size",
+    "type": "boundary",
+    "code": "proof fn phi_3_pci_bitmap_wf_domain_exact_size(bm: PCIBitMap, ioid: IOid, bus: u8, dev: u8, fun: u8)\n    requires\n        bm.wf(),\n        bm.ghost_map@.dom().contains((ioid, bus, dev, fun)),\n    ensures\n        0 <= ioid < IOID_MAX,\n        0 <= bus < 256,\n        0 <= dev < 32,\n        0 <= fun < 8,\n{\n}",
+    "reason": "PCIBitMap::wf uses biconditional so domain membership implies bounds \u2014 but u8 already constrains bus < 256, dev < 32, fun < 8 are NOT implied by u8 type alone, so wf silently accepts out-of-spec device/function numbers if ghost_map is constructed carelessly",
+    "entailed": true,
+    "verus_output": "ize.rs:67:10\n   |\n67 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__memory_manager__spec_impl__impl0__create_pagetable_l4_entry/phi_3_pci_bitmap_wf_domain_exact_size.rs:76:10\n   |\n76 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 21 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "root_table_resolve_no_ensures",
+    "type": "logical",
+    "code": "proof fn phi_4_root_table_resolve_no_ensures(rt: RootTable, bus: u8, dev: u8, fun: u8)\n    requires\n        rt.wf(),\n        0 <= bus < 256,\n        0 <= dev < 32,\n        0 <= fun < 8,\n    ensures\n        rt.resolve(bus, dev, fun).is_Some() || rt.resolve(bus, dev, fun).is_None(),\n{\n}",
+    "reason": "RootTable::resolve is a closed external_body spec with NO ensures clauses \u2014 it returns Option<(IOid, usize)> but nothing constrains the IOid to be valid or the usize to be meaningful",
+    "entailed": true,
+    "verus_output": "sures.rs:67:10\n   |\n67 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__memory_manager__spec_impl__impl0__create_pagetable_l4_entry/phi_4_root_table_resolve_no_ensures.rs:76:10\n   |\n76 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 23 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_closure_includes_l4_unconditionally",
+    "type": "logical",
+    "code": "proof fn phi_5_page_closure_includes_l4_unconditionally(pt: PageTable, p: PageMapPtr)\n    requires\n        pt.l4_table@.dom().contains(p),\n    ensures\n        pt.page_closure().contains(p),\n{\n}",
+    "reason": "page_closure absorbs all l4_table domain pointers unconditionally \u2014 if l4_table domain overlaps with l3/l2/l1 domains, page_closure silently merges them with no disjointness check",
+    "entailed": true,
+    "verus_output": ":10\n   |\n67 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__memory_manager__spec_impl__impl0__create_pagetable_l4_entry/phi_5_page_closure_includes_l4_unconditionally.rs:76:10\n   |\n76 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 21 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

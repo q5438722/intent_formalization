@@ -1,0 +1,47 @@
+[
+  {
+    "name": "create_full_external_body_trusted",
+    "type": "logical",
+    "code": "proof fn phi_1_create_full_external_body_trusted(cm: &CommitMask)\n    requires\n        cm@ == Set::new(|i: int| 0 <= i < COMMIT_MASK_BITS),\n    ensures\n        cm@.contains(0),\n        cm@.contains(511),\n        !cm@.contains(512),\n{\n}",
+    "reason": "`create_full` is `external_body` and claims to set exactly bits 0..512 \u2014 since it's unverified, it could set any bits, and the upper bound `!contains(512)` is never checked",
+    "entailed": false,
+    "verus_output": "ition not satisfied\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__commit_mask__impl__create/phi_1_create_full_external_body_trusted.rs:276:9\n    |\n271 | proof fn phi_1_create_full_external_body_trusted(cm: &CommitMask)\n    |       ----------------------------------------------------------- at the end of the function body\n...\n276 |         cm@.contains(511),\n    |         ^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 2 previous errors\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "is_bit_set_not0_no_bound",
+    "type": "logical",
+    "code": "proof fn phi_2_is_bit_set_not0_no_bound(j: usize)\n    requires\n        j >= 64,\n    ensures\n        is_bit_set(!0usize, j),\n{\n    lemma_is_bit_set();\n}",
+    "reason": "`is_bit_set(!0usize, j)` is axiomatized for ALL `j: usize` with no `j < 64` guard \u2014 for `j >= 64`, `1usize << j` wraps, so the external_body axiom asserts a property about out-of-range bit positions",
+    "entailed": true,
+    "verus_output": "verification results:: 14 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "or_bit_set_no_bound",
+    "type": "logical",
+    "code": "proof fn phi_3_or_bit_set_no_bound(a: usize, b: usize, j: usize)\n    requires\n        j >= 64,\n    ensures\n        is_bit_set(a | b, j) <==> is_bit_set(a, j) || is_bit_set(b, j),\n{\n    lemma_is_bit_set();\n}",
+    "reason": "The OR biconditional axiom has no `j < 64` guard \u2014 for out-of-range positions where `1usize << j` wraps, this produces conclusions about wrapped bit operations that don't correspond to real bit semantics",
+    "entailed": true,
+    "verus_output": "verification results:: 14 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "lemma_view_no_range_guard",
+    "type": "logical",
+    "code": "proof fn phi_4_lemma_view_no_range_guard(cm: &CommitMask, i: int)\n    requires\n        cm@.contains(i),\n    ensures\n        ({\n            let a = i / usize::BITS as int;\n            let b = (i % usize::BITS as int) as usize;\n            &&& a * 64 + b == i\n            &&& is_bit_set(cm.mask[a], b)\n        }),\n{\n    cm.lemma_view();\n}",
+    "reason": "`lemma_view` is `external_body` and its first ensures decomposes any `i` in `self@` without guarding `0 <= a < 8` \u2014 for `i >= 512` or `i < 0`, `a` falls outside `[0,8)` making `self.mask[a]` an out-of-bounds spec access",
+    "entailed": true,
+    "verus_output": "verification results:: 14 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "lemma_change_one_entry_no_new_mask_constraint",
+    "type": "behavioral",
+    "code": "proof fn phi_5_lemma_change_one_entry_no_new_mask_constraint(cm1: &CommitMask, cm2: &CommitMask)\n    requires\n        cm1.mask[0] == 0,\n        cm2.mask[0] == !0usize,\n        forall|j: int| 0 < j < 8 ==> cm2.mask[j] == cm1.mask[j],\n    ensures\n        cm2@ == cm1@.union(Set::new(|b: usize| b < 64 && is_bit_set(!0usize, b)).map(|b: usize| 64 * 0 + b)),\n{\n    cm1.lemma_change_one_entry(cm2, 0);\n}",
+    "reason": "`lemma_change_one_entry` is `external_body` and places no constraint on what `other.mask[i]` must be \u2014 it axiomatically derives `other@` from whatever value is in `other.mask[i]`, trusting that the implementation correctly sets it",
+    "entailed": true,
+    "verus_output": "verification results:: 14 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

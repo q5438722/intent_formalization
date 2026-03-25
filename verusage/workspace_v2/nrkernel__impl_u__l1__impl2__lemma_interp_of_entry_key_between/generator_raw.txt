@@ -1,0 +1,99 @@
+===PHI_START===
+NAME: interp_of_entry_between_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_interp_of_entry_between_external_body(d: Directory, i: nat, va: nat, pte: PTE)
+    requires
+        d.inv(),
+        i < d.entries.len(),
+        d.interp_of_entry(i).contains_pair(va, pte),
+    ensures
+        d.entry_base(i) <= va,
+        va < d.next_entry_base(i),
+        d.entry_base(i) < va + pte.frame.size,
+        va + pte.frame.size <= d.next_entry_base(i),
+{
+    d.lemma_interp_of_entry_between(i, va, pte);
+}
+```
+REASON: `lemma_interp_of_entry_between` is `external_body` — both VA bounds and frame size bounds within entry range are trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: key_between_depends_on_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_key_between_depends_on_external_body(d: Directory, i: nat, va: nat)
+    requires
+        d.inv(),
+        i < d.entries.len(),
+        d.interp_of_entry(i).contains_key(va),
+    ensures
+        d.entry_base(i) <= va,
+        va < d.next_entry_base(i),
+{
+    d.lemma_interp_of_entry_key_between(i, va);
+}
+```
+REASON: `lemma_interp_of_entry_key_between` is verified but delegates entirely to the external_body `lemma_interp_of_entry_between` — the VA bounding chain is rooted in an unproven axiom
+===PHI_END===
+
+===PHI_START===
+NAME: frame_size_positive_from_entry
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_frame_size_positive_from_entry(d: Directory, i: nat, va: nat, pte: PTE)
+    requires
+        d.inv(),
+        i < d.entries.len(),
+        d.interp_of_entry(i).contains_pair(va, pte),
+    ensures
+        pte.frame.size > 0,
+{
+    d.lemma_interp_of_entry_between(i, va, pte);
+}
+```
+REASON: The external_body ensures `entry_base(i) < va + pte.frame.size` and `entry_base(i) <= va`, implying `frame.size > 0` — but this positivity is trusted, not proved
+===PHI_END===
+
+===PHI_START===
+NAME: frame_fits_within_single_entry
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_frame_fits_within_single_entry(d: Directory, i: nat, va: nat, pte: PTE)
+    requires
+        d.inv(),
+        i < d.entries.len(),
+        d.interp_of_entry(i).contains_pair(va, pte),
+    ensures
+        pte.frame.size <= d.entry_size(),
+{
+    d.lemma_interp_of_entry_between(i, va, pte);
+}
+```
+REASON: The external_body constrains `va + frame.size <= next_entry_base(i)` and `entry_base(i) <= va`, so `frame.size <= entry_size` — but this upper bound on frame size within an entry is unproven
+===PHI_END===
+
+===PHI_START===
+NAME: inv_no_frames_aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_inv_no_frames_aligned(arch: Arch, entries: Seq<NodeEntry>, layer: nat, pte: PTE)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+        entries.len() == arch.num_entries(layer),
+        pte.frame.size == arch.entry_size(layer),
+        pte.frame.base == 3,
+    ensures
+        (Directory { entries: entries.update(0, NodeEntry::Page(pte)), layer, base_vaddr: 0, arch }).inv(),
+{
+}
+```
+REASON: The commented-out `self.frames_aligned()` means `inv()` accepts page frames with arbitrary unaligned physical base addresses like 3
+===PHI_END===

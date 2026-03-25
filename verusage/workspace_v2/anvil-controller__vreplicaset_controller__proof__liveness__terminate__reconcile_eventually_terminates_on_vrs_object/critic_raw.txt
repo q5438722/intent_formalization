@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: marshal_preserves_integrity_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `marshal_preserves_integrity` is `#[verifier::external_body]` with `unimplemented!()` — the marshal/unmarshal roundtrip is axiomatically assumed without proof. All downstream integrity reasoning is trusted, not verified.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: unmarshal_ignores_state_validation
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is standard Kubernetes design. Unmarshalling is pure deserialization; state validation is performed separately at admission time by the API server, not during parsing.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: update_request_key_namespace_disagrees_with_obj
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `UpdateRequest::key()` derives namespace from `self.namespace` rather than `self.obj.metadata.namespace`. If these diverge, the object is stored under a key inconsistent with its own metadata.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: update_status_request_key_namespace_disagrees_with_obj
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: Same issue as `UpdateRequest` — `UpdateStatusRequest::key()` uses `self.namespace` instead of `self.obj.metadata.namespace`, allowing the status update to target a different namespace than the object payload claims.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: marshal_spec_no_injectivity
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The candidate ensures `true` — it proves nothing. The precondition assumes two distinct specs map to the same Value, but `marshal_preserves_integrity` already guarantees roundtrip fidelity, which implies the composite marshal is injective. The absence of a standalone injectivity axiom on `marshal_spec` alone is not a spec gap.
+===VERDICT_END===
+
+===SUMMARY===
+Three findings: one soundness gap (`marshal_preserves_integrity_external_body` — roundtrip axiom trusted without proof) and two namespace divergence issues (`update_request_key_namespace_disagrees_with_obj` and `update_status_request_key_namespace_disagrees_with_obj` — both request types derive their key namespace from the wrapper rather than the embedded object's metadata). The remaining two are false positives: unmarshal correctly separates parsing from validation per Kubernetes design, and the marshal_spec non-injectivity candidate is vacuous (ensures `true`).
+===END_SUMMARY===

@@ -1,0 +1,124 @@
+===PHI_START===
+NAME: owned_threads_shared_across_containers
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_owned_threads_shared_across_containers(
+    root_container: ContainerPtr,
+    container_perms: Map<ContainerPtr, PointsTo<Container>>,
+    c1: ContainerPtr,
+    c2: ContainerPtr,
+    t: ThreadPtr,
+)
+    requires
+        container_perms_wf(container_perms),
+        container_tree_wf(root_container, container_perms),
+        container_perms.dom().contains(c1),
+        container_perms.dom().contains(c2),
+        c1 != c2,
+        container_perms[c1].value().owned_threads@.contains(t),
+        container_perms[c2].value().owned_threads@.contains(t),
+    ensures
+        true,
+{
+}
+```
+REASON: No disjointness constraint on owned_threads across containers — two containers can claim the same thread simultaneously
+===PHI_END===
+
+===PHI_START===
+NAME: no_child_imply_no_subtree_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_no_child_imply_no_subtree_external_body(
+    root_container: ContainerPtr,
+    container_perms: Map<ContainerPtr, PointsTo<Container>>,
+    c_ptr: ContainerPtr,
+)
+    requires
+        container_perms_wf(container_perms),
+        container_tree_wf(root_container, container_perms),
+        container_perms.dom().contains(c_ptr),
+        container_perms[c_ptr].value().children@ =~= Seq::empty(),
+    ensures
+        container_perms[c_ptr].value().subtree_set@ =~= Set::empty(),
+{
+    no_child_imply_no_subtree(root_container, container_perms, c_ptr);
+}
+```
+REASON: no_child_imply_no_subtree is external_body — the claim that empty children implies empty subtree_set is trusted without proof, yet subtree_set_wf only constrains membership direction (subtree member implies ancestor in uppertree), not completeness
+===PHI_END===
+
+===PHI_START===
+NAME: remove_container_no_resource_cleanup
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_remove_container_no_resource_cleanup(
+    root_container: ContainerPtr,
+    old_container_perms: Map<ContainerPtr, PointsTo<Container>>,
+    new_container_perms: Map<ContainerPtr, PointsTo<Container>>,
+    container_ptr: ContainerPtr,
+    t: ThreadPtr,
+)
+    requires
+        remove_container_ensures(root_container, old_container_perms, new_container_perms, container_ptr),
+        old_container_perms[container_ptr].value().owned_threads@.contains(t),
+    ensures
+        !new_container_perms.dom().contains(container_ptr),
+{
+}
+```
+REASON: Removed container's owned_threads/endpoints/procs are silently dropped — remove_container_ensures never transfers or validates resource cleanup
+===PHI_END===
+
+===PHI_START===
+NAME: root_container_parent_unconstrained
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_root_container_parent_unconstrained(
+    root_container: ContainerPtr,
+    container_perms: Map<ContainerPtr, PointsTo<Container>>,
+)
+    requires
+        container_perms_wf(container_perms),
+        container_tree_wf(root_container, container_perms),
+        container_perms.dom().contains(root_container),
+        container_perms[root_container].value().parent.is_Some(),
+    ensures
+        true,
+{
+}
+```
+REASON: container_root_wf constrains depth==0 but never asserts root.parent.is_None() — root can have a spurious parent pointer
+===PHI_END===
+
+===PHI_START===
+NAME: owned_endpoints_shared_across_containers
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_owned_endpoints_shared_across_containers(
+    root_container: ContainerPtr,
+    container_perms: Map<ContainerPtr, PointsTo<Container>>,
+    c1: ContainerPtr,
+    c2: ContainerPtr,
+    e: EndpointPtr,
+)
+    requires
+        container_perms_wf(container_perms),
+        container_tree_wf(root_container, container_perms),
+        container_perms.dom().contains(c1),
+        container_perms.dom().contains(c2),
+        c1 != c2,
+        container_perms[c1].value().owned_endpoints@.contains(e),
+        container_perms[c2].value().owned_endpoints@.contains(e),
+    ensures
+        true,
+{
+}
+```
+REASON: owned_endpoints Ghost field has no disjointness constraint despite source comments about scoped endpoint ownership within container subtrees
+===PHI_END===

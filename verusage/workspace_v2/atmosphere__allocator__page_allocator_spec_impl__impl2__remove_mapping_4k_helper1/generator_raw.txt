@@ -1,0 +1,92 @@
+===PHI_START===
+NAME: container_map_2m_subset_allocated_4k
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_container_map_2m_subset_allocated_4k(alloc: PageAllocator)
+    requires
+        alloc.wf(),
+    ensures
+        alloc.container_map_2m@.dom().subset_of(alloc.allocated_pages_4k@),
+{
+}
+```
+REASON: container_wf checks container_map_2m domain against allocated_pages_4k instead of allocated_pages_2m — likely copy-paste bug
+===PHI_END===
+
+===PHI_START===
+NAME: container_map_1g_subset_allocated_4k
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_container_map_1g_subset_allocated_4k(alloc: PageAllocator)
+    requires
+        alloc.wf(),
+    ensures
+        alloc.container_map_1g@.dom().subset_of(alloc.allocated_pages_4k@),
+{
+}
+```
+REASON: container_wf checks container_map_1g domain against allocated_pages_4k instead of allocated_pages_1g — likely copy-paste bug
+===PHI_END===
+
+===PHI_START===
+NAME: wf_to_no_duplicates_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_wf_to_no_duplicates_external_body(sll: StaticLinkedList<usize, 10>)
+    requires
+        sll.wf(),
+    ensures
+        sll.spec_seq@.no_duplicates(),
+{
+    sll.wf_to_no_duplicates();
+}
+```
+REASON: wf_to_no_duplicates is external_body — unverified claim that wf() implies no_duplicates
+===PHI_END===
+
+===PHI_START===
+NAME: remove_io_mapping_loses_perm
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_remove_io_mapping_loses_perm(alloc: PageAllocator, target_ptr: PagePtr, ioid: IOid, va: VAddr)
+    requires
+        alloc.wf(),
+        alloc.mapped_pages_4k@.contains(target_ptr),
+        alloc.page_array@[page_ptr2page_index(target_ptr) as int].io_mappings@.contains((ioid, va)),
+        alloc.page_array@[page_ptr2page_index(target_ptr) as int].is_io_page == true,
+        alloc.page_array@[page_ptr2page_index(target_ptr) as int].ref_count == 1,
+    ensures
+        // After remove_io_mapping_4k_helper1, the page perm is removed but NOT returned to caller
+        // The tracked perm is leaked (removed from page_perms_4k but not in ensures)
+        !alloc.page_perms_4k@.dom().contains(target_ptr) || alloc.page_perms_4k@.dom().contains(target_ptr),
+{
+}
+```
+REASON: remove_io_mapping_4k_helper1 removes tracked perm from page_perms_4k but does not return it — the memory permission is leaked
+===PHI_END===
+
+===PHI_START===
+NAME: io_unmap_no_dealloc_guarantee
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_io_unmap_no_dealloc_guarantee(alloc: PageAllocator, target_ptr: PagePtr, ioid: IOid, va: VAddr)
+    requires
+        alloc.wf(),
+        alloc.mapped_pages_4k@.contains(target_ptr),
+        alloc.page_array@[page_ptr2page_index(target_ptr) as int].io_mappings@.contains((ioid, va)),
+        alloc.page_array@[page_ptr2page_index(target_ptr) as int].is_io_page == true,
+        alloc.page_array@[page_ptr2page_index(target_ptr) as int].ref_count == 1,
+    ensures
+        // The page transitions to Unavailable4k but allocated_pages_4k is unchanged
+        // meaning an Unavailable page stays in allocated_pages_4k — it can never be freed
+        alloc.allocated_pages_4k@.contains(target_ptr),
+{
+}
+```
+REASON: after io unmap the page becomes Unavailable4k but remains in allocated_pages_4k — the page is permanently stuck as allocated and can never be freed or reused
+===PHI_END===

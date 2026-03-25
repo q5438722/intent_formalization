@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: lemma_specializes_any_n_without_constraint
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The lemma's postcondition is an implication — at AfterCreatePod(999999), the at_expected_reconcile_states antecedent is false (the system never reaches that step), so the property holds vacuously. This is standard logical strengthening of an implication by narrowing the antecedent; no false conclusion is derivable.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: pending_req_vacuous_when_not_at_state
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is the intended design — pending_req_in_flight_or_resp_in_flight_at_reconcile_state is structured as an implication guarded by at_expected_reconcile_states, which requires contains_key. When no reconcile exists, the guard is false and the implication is vacuously true. This is standard for conditional invariants.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: object_ref_ignores_uid
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This matches real Kubernetes semantics where resources are identified by kind/name/namespace. UID is not part of the resource key. The system handles stale-instance concerns through resource_version checks and reconcile restarts, not through ObjectRef identity.
+===VERDICT_END===
+
+===SUMMARY===
+All three candidates are false positives. The lemma specialization (φ1) and vacuous implication (φ2) both reflect standard logical patterns in conditional invariants — narrowing an implication's antecedent preserves validity, and implications are vacuously true when the guard fails. The object_ref uid omission (φ3) faithfully models Kubernetes API semantics where resource identity is (kind, name, namespace).
+===END_SUMMARY===

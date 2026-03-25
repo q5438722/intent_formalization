@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: pt_walk_iter_walk_equivalence_external_body
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is an exact duplicate of the already-proven `lemma_iter_walk_equals_pt_walk`. The equivalence between `pt_walk` and `iter_walk` is correct and desirable — it confirms the unrolled walk matches the iterative walk. The external_body dependency is a separate concern not exposed by this φ.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: pt_walk_deterministic
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `x == x` is a tautology for any spec function in Verus. Even with `external_body` predicates inside, spec functions are deterministic by construction — they map the same inputs to the same outputs. This proves nothing.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: max_phyaddr_width_gap
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `MAX_PHYADDR_WIDTH` is `external_body` with runtime value 52, but the axiom only constrains it to `32..=52`. All address masks (`MASK_ADDR`, `MASK_L1_PG_ADDR`, etc.) depend on this value, so from Verus's perspective, they could correspond to any physical address width in that range, making the verification unsound for any specific hardware assumption.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: the `MAX_PHYADDR_WIDTH` gap between the external_body value (52) and the axiom constraint (32..=52) means all dependent address masks are underspecified from Verus's perspective. Two false positives: the pt_walk/iter_walk equivalence is an existing proven lemma, and pt_walk determinism is a trivial tautology.
+===END_SUMMARY===

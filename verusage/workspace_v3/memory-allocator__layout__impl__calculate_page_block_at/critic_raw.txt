@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: zero_block_size_collision
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The preconditions of `calculate_page_block_at` don't require `block_size > 0`, so `block_size == 0` is a valid input where all block indices collapse to the same address. This is a missing precondition — a real spec weakness, though callers likely always pass nonzero block sizes in practice.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: result_at_segment_boundary
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The `<=` in the precondition allows the computed pointer to land exactly at `segment_start + SEGMENT_SIZE`, which is one-past-the-end of the segment. This is a genuine spec weakness — the function doesn't guarantee the result stays within the segment's valid range, only that it doesn't exceed the boundary. Whether this is intentional (like C one-past-end pointers) is ambiguous.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: cross_segment_block_aliasing
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This φ constructs two page IDs from different segments whose `block_start_at` values coincidentally match, then shows they compute to the same block address. But `segment_start` is closed/opaque — the premise `block_start_at(page_id1, ...) == block_start_at(page_id2, ...)` already assumes aliasing. Cross-segment uniqueness is an allocator-level invariant, not something this single function's spec should guarantee.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: redundant_postcondition
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The two `ensures` clauses are intentionally structured: one in terms of the spec function `block_start_at` and one as a direct arithmetic expression. This is standard Verus practice — providing both an abstract and concrete postcondition for caller convenience. Redundancy in postconditions is a feature, not a spec gap.
+===VERDICT_END===
+
+===SUMMARY===
+Two true positives identified: (1) `block_size == 0` is not excluded by preconditions, allowing all block indices to alias to the same address — a missing `block_size > 0` precondition; (2) the `<=` bound allows the result to land exactly at the segment boundary (one-past-end), which may be an off-by-one spec weakness depending on intent. Two false positives: cross-segment aliasing is an allocator invariant outside this function's scope, and the "redundant" postcondition is intentional dual-form specification for caller convenience.
+===END_SUMMARY===

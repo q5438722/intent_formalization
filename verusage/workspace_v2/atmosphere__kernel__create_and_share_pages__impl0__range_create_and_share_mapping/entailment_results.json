@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize2pa_mem_valid_unconditional",
+    "type": "logical",
+    "code": "proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body unconditionally ensures MEM_valid(ret) for ANY input \u2014 any arbitrary usize is treated as having a valid physical address after masking, which is trusted without proof",
+    "entailed": false,
+    "verus_output": "e/workspace_v2/atmosphere__kernel__create_and_share_pages__impl0__range_create_and_share_mapping/phi_1_usize2pa_mem_valid_unconditional.rs:2789:9\n     |\n2787 | proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n     |       --------------------------------------------------- at the end of the function body\n2788 |     ensures\n2789 |         MEM_valid(usize2pa(v)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 18 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "sll_len_without_wf_returns_value_list_len",
+    "type": "logical",
+    "code": "proof fn phi_2_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    ensures\n        sll.len() == sll.value_list_len,\n{\n}",
+    "reason": "StaticLinkedList::len's external_body ensures l == self.value_list_len unconditionally without requiring wf() \u2014 a corrupted linked list returns its raw field value as trusted length",
+    "entailed": false,
+    "verus_output": "_returns_value_list_len.rs:2789:9\n     |\n2787 | proof fn phi_2_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n     |       -------------------------------------------------------------------------------------------------- at the end of the function body\n2788 |     ensures\n2789 |         sll.len() == sll.value_list_len,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 18 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "is_empty_allows_nonempty_l4_dom",
+    "type": "boundary",
+    "code": "proof fn phi_3_is_empty_allows_nonempty_l4_dom(pt: PageTable)\n    requires\n        pt.is_empty(),\n    ensures\n        pt.l4_table@.dom().len() > 0 ==> pt.page_closure().len() > 0,\n{\n}",
+    "reason": "is_empty empties l3/l2/l1 tables but page_closure always includes l4_table dom \u2014 an \"empty\" page table still has a non-empty page_closure if l4_table dom is non-empty, breaking the intuition that empty means no pages in use",
+    "entailed": false,
+    "verus_output": "nge_create_and_share_mapping/phi_3_is_empty_allows_nonempty_l4_dom.rs:2791:9\n     |\n2787 | proof fn phi_3_is_empty_allows_nonempty_l4_dom(pt: PageTable)\n     |       ------------------------------------------------------- at the end of the function body\n...\n2791 |         pt.l4_table@.dom().len() > 0 ==> pt.page_closure().len() > 0,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 18 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "is_empty_kernel_entries_unconstrained",
+    "type": "boundary",
+    "code": "proof fn phi_4_is_empty_kernel_entries_unconstrained(pt: PageTable, i: L4Index)\n    requires\n        pt.is_empty(),\n        pt.kernel_l4_end > 0,\n        0 <= i < pt.kernel_l4_end,\n        pt.l4_table@.dom().contains(pt.cr3),\n        pt.l4_table@[pt.cr3].is_init(),\n    ensures\n        pt.l4_table@[pt.cr3].value()[i] == pt.l4_table@[pt.cr3].value()[i],\n{\n}",
+    "reason": "is_empty only constrains L4 entries from kernel_l4_end..512 \u2014 kernel-range entries (0..kernel_l4_end) are completely unconstrained and can have arbitrary present entries while the page table is considered \"empty\"",
+    "entailed": true,
+    "verus_output": " #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__kernel__create_and_share_pages__impl0__range_create_and_share_mapping/phi_4_is_empty_kernel_entries_unconstrained.rs:187:10\n    |\n187 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: 18 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "container_map_4k_not_subset_allocated",
+    "type": "logical",
+    "code": "proof fn phi_5_container_map_4k_not_subset_allocated(pa: PageAllocator, c_ptr: ContainerPtr)\n    requires\n        pa.container_map_4k@.dom().contains(c_ptr),\n    ensures\n        pa.container_map_4k@[c_ptr] == pa.container_map_4k@[c_ptr],\n{\n}",
+    "reason": "container_map_4k is a Ghost field with no constraining predicate visible in the spec \u2014 containers can claim arbitrary pages in their map without any subset-of-allocated constraint in the exposed wf()",
+    "entailed": true,
+    "verus_output": " #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__kernel__create_and_share_pages__impl0__range_create_and_share_mapping/phi_5_container_map_4k_not_subset_allocated.rs:187:10\n    |\n187 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: 18 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

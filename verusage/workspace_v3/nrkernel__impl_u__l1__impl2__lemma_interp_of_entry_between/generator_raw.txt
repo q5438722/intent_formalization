@@ -1,0 +1,87 @@
+===PHI_START===
+NAME: aligned_zero_trivially_true
+TARGET_FN: aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_aligned_zero_trivially_true()
+    ensures
+        aligned(42, 0),
+{
+}
+```
+REASON: If aligned(x, 0) is provable, any address is "aligned" to zero, enabling vacuous reasoning through the alignment preconditions
+===PHI_END===
+
+===PHI_START===
+NAME: arch_upper_vaddr_equals_base
+TARGET_FN: upper_vaddr
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_arch_upper_vaddr_equals_base(arch: Arch, layer: nat, base: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+    ensures
+        arch.upper_vaddr(layer, base) == base,
+{
+}
+```
+REASON: If upper_vaddr equals base for a valid arch, the mapped address region has zero size, making the entire layer useless
+===PHI_END===
+
+===PHI_START===
+NAME: entry_base_collision_different_idx
+TARGET_FN: entry_base
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_entry_base_collision_different_idx(arch: Arch, layer: nat, base: nat, i: nat, j: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+        i < arch.num_entries(layer),
+        j < arch.num_entries(layer),
+        i != j,
+    ensures
+        arch.entry_base(layer, base, i) == arch.entry_base(layer, base, j),
+{
+}
+```
+REASON: If two distinct indices map to the same entry base, page table entries would alias and translations would be ambiguous
+===PHI_END===
+
+===PHI_START===
+NAME: well_formed_zero_entries
+TARGET_FN: well_formed
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_well_formed_zero_entries(d: Directory)
+    requires
+        d.well_formed(),
+    ensures
+        d.num_entries() == 0,
+{
+}
+```
+REASON: If a well-formed directory can have zero entries, the invariant fails to enforce that page tables have meaningful structure
+===PHI_END===
+
+===PHI_START===
+NAME: directory_upper_leq_base
+TARGET_FN: upper_vaddr
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_directory_upper_leq_base(d: Directory)
+    requires
+        d.inv(),
+    ensures
+        d.upper_vaddr() <= d.base_vaddr,
+{
+}
+```
+REASON: If a valid directory's upper_vaddr is at or below its base, the directory covers no address space or wraps around, breaking address containment
+===PHI_END===

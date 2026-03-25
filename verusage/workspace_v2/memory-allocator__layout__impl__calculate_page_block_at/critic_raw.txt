@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: const_facts_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `const_facts` is `external_body` trusting 11 constant equalities without proof. These could be verified by `compute` assertions, so using `external_body` is an unnecessary trust gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: calculate_no_block_size_lower_bound
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `block_start_at` is a pure arithmetic helper — `0 * 5 == 0 * 0` is trivially true. The degenerate `block_size == 0` case is excluded at higher levels (e.g., `is_block_ptr1` requires `block_size >= size_of::<Node>()`). A helper function not enforcing this is normal design.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: page_idx_unbounded
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `page_start` is a pure address computation function that correctly computes `segment_start + SLICE_SIZE * idx` for any `idx`. Bounds are enforced by callers — `calculate_page_block_at` constrains the result to `<= segment_start + SEGMENT_SIZE`, which indirectly limits meaningful `page_id.idx` values.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: block_start_at_negative_idx
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `block_start_at` operates on mathematical `int`, where negative indices are well-defined arithmetic. The runtime function `calculate_page_block_at` uses `usize` for `idx`, preventing negative values in practice. A spec-level helper being more general than its runtime callers is standard design.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: calculate_overflow_not_checked
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures just restates that the block address is within the segment, which follows directly from the precondition. Verus automatically checks `usize` overflow in the exec code (`page_start + block_size * idx`), and the precondition ensures the result fits within `usize::MAX`. There's no gap here.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: `const_facts` is `external_body` trusting constant equalities that could be verified by `compute`. Four false positives test properties of pure arithmetic helper functions (`block_start_at`, `page_start`) that are intentionally general — bounds enforcement and degenerate case exclusion are delegated to higher-level callers and runtime type constraints.
+===END_SUMMARY===

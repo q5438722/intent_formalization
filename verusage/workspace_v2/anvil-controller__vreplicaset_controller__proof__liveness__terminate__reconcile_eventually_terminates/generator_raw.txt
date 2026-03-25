@@ -1,0 +1,89 @@
+===PHI_START===
+NAME: marshal_preserves_integrity_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_marshal_preserves_integrity_external_body()
+    ensures
+        forall |o: VReplicaSetView| VReplicaSetView::unmarshal(#[trigger] o.marshal()) is Ok && o == VReplicaSetView::unmarshal(o.marshal())->Ok_0,
+{
+    VReplicaSetView::marshal_preserves_integrity();
+}
+```
+REASON: marshal_preserves_integrity is #[verifier::external_body] with unimplemented!() — the roundtrip axiom is assumed without proof, so any downstream property built on it is trusted, not verified
+===PHI_END===
+
+===PHI_START===
+NAME: unmarshal_ignores_state_validation
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_unmarshal_ignores_state_validation(obj: DynamicObjectView)
+    requires
+        obj.kind == VReplicaSetView::kind(),
+        VReplicaSetView::unmarshal_spec(obj.spec) is Ok,
+        VReplicaSetView::unmarshal_status(obj.status) is Ok,
+        !(VReplicaSetView::unmarshal(obj)->Ok_0).state_validation(),
+    ensures
+        VReplicaSetView::unmarshal(obj) is Ok,
+{
+}
+```
+REASON: unmarshal succeeds without checking state_validation, so structurally invalid objects can enter the system through deserialization
+===PHI_END===
+
+===PHI_START===
+NAME: update_key_ignores_obj_namespace
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_update_key_ignores_obj_namespace(req: UpdateRequest)
+    requires
+        req.obj.metadata.namespace is Some,
+        req.namespace != req.obj.metadata.namespace->0,
+    ensures
+        req.key().namespace != req.obj.metadata.namespace->0,
+{
+}
+```
+REASON: UpdateRequest::key uses self.namespace rather than self.obj.metadata.namespace, so the update target can silently disagree with the object's own namespace
+===PHI_END===
+
+===PHI_START===
+NAME: marshal_spec_not_injective
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_marshal_spec_not_injective(s1: VReplicaSetSpecView, s2: VReplicaSetSpecView)
+    requires
+        s1 != s2,
+        VReplicaSetView::marshal_spec(s1) == VReplicaSetView::marshal_spec(s2),
+    ensures
+        true,
+{
+}
+```
+REASON: marshal_spec is uninterpreted with no injectivity axiom, so two distinct specs could serialize to the same Value — the system cannot distinguish different configurations after storage
+===PHI_END===
+
+===PHI_START===
+NAME: object_ref_ignores_uid
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_object_ref_ignores_uid(v1: VReplicaSetView, v2: VReplicaSetView)
+    requires
+        v1.metadata.name is Some,
+        v2.metadata.name is Some,
+        v1.metadata.namespace is Some,
+        v2.metadata.namespace is Some,
+        v1.metadata.name == v2.metadata.name,
+        v1.metadata.namespace == v2.metadata.namespace,
+        v1.metadata.uid != v2.metadata.uid,
+    ensures
+        v1.object_ref() == v2.object_ref(),
+{
+}
+```
+REASON: object_ref uses only kind/name/namespace and ignores uid, so a deleted-and-recreated resource with a new uid maps to the same ObjectRef — stale reconciliation could target the wrong instance
+===PHI_END===

@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: owned_threads_shared_across_containers
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: Neither `container_perms_wf` nor `container_tree_wf` constrains `owned_threads`. The preconditions are simultaneously satisfiable, confirming two distinct containers can own the same thread, violating unique ownership intent from code comments.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: new_container_owned_threads_unconstrained
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `new_container_ensures` constrains children, subtree_set, uppertree_seq, depth, and parent but never requires `owned_threads@ =~= Set::empty()`. A freshly created container should logically start with no threads.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: new_container_owned_endpoints_unconstrained
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: Same pattern as owned_threads — `new_container_ensures` never requires `owned_endpoints@ =~= Set::empty()`. A freshly created container should have no endpoints, yet the spec permits arbitrary endpoint sets.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: scheduler_contains_non_owned_thread
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The spec never relates `scheduler` contents to `owned_threads`. A container can schedule threads it doesn't own, breaking the containment model where only owned threads should be schedulable.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: new_container_quota_unconstrained
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: low
+REASONING: `new_container_ensures` never constrains the new container's quota relative to its parent. However, quota allocation may intentionally be handled at a different layer (the commented-out `mem_quota`/`mem_used` fields suggest quota logic is still in development), so this may be an intentional omission rather than a spec gap.
+===VERDICT_END===
+
+===SUMMARY===
+Five true positives identified. Three target missing constraints on container-owned resources: `owned_threads` lacks cross-container disjointness, and both `owned_threads` and `owned_endpoints` are unconstrained for newly created containers. The scheduler-to-owned-threads containment gap is a clear missing invariant. The quota issue is real but lower confidence since quota management appears to be under active development (commented-out fields). The consistent pattern is that `container_perms_wf` and `container_tree_wf` focus exclusively on tree structure (parent/child/depth/subtree/uppertree) while leaving all resource ownership fields (`owned_threads`, `owned_endpoints`, `owned_procs`, `scheduler`, `quota`) completely unconstrained.
+===END_SUMMARY===

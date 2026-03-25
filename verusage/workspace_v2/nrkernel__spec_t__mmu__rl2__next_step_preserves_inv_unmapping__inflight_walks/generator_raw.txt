@@ -1,0 +1,81 @@
+===PHI_START===
+NAME: nonneg_nonpos_mutually_exclusive
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_nonneg_nonpos_mutually_exclusive(mem: PTMem, addr: usize, value: usize)
+    requires
+        mem.is_nonneg_write(addr, value),
+    ensures
+        !mem.is_nonpos_write(addr, value),
+{
+}
+```
+REASON: `is_nonneg_write` requires `read(addr) & 1 == 0` and `value & 1 == 1`; `is_nonpos_write` requires `read(addr) & 1 == 1` and `value & 1 == 0` — tests that these are truly exclusive; if both could hold, the P-bit transition model would be inconsistent
+===PHI_END===
+
+===PHI_START===
+NAME: write_read_roundtrip
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_write_read_roundtrip(mem: PTMem, addr: usize, value: usize)
+    ensures
+        mem.write(addr, value).read(addr) == value,
+{
+}
+```
+REASON: Writing `value` at `addr` and reading back should return `value` — tests that `mem.insert(addr, value)` followed by `mem[addr]` gives the inserted value; failure would mean the Map axioms or PTMem wiring is broken
+===PHI_END===
+
+===PHI_START===
+NAME: walk_flags_accesses_beyond_path_len
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_walk_flags_accesses_beyond_path_len(w: Walk)
+    requires
+        w.path.len() == 1,
+    ensures
+        w.flags() == Flags::from_GPDE(w.path[0].1),
+{
+}
+```
+REASON: `Walk::flags` unconditionally computes `flags1 = flags0.combine(from_GPDE(path[1].1))` etc. even when `path.len() == 1` — the out-of-bounds accesses `path[1]`, `path[2]`, `path[3]` return arbitrary values; tests whether the final branch still selects `flags0`
+===PHI_END===
+
+===PHI_START===
+NAME: walk_result_path_len_1_is_arbitrary
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_walk_result_path_len_1_is_arbitrary(w1: Walk, w2: Walk)
+    requires
+        w1.path.len() == 1,
+        w2.path.len() == 1,
+        w1.path[0].1 is Page,
+        w2.path[0].1 is Page,
+        w1.vaddr != w2.vaddr,
+    ensures
+        w1.result() == w2.result(),
+{
+}
+```
+REASON: For `path.len() == 1` with a Page last entry, `Walk::result` falls to the `else { arbitrary() }` branch — two different walks with different vaddrs would get the same arbitrary value, meaning the result is unconstrained and identical for all such walks
+===PHI_END===
+
+===PHI_START===
+NAME: pde_zero_entry_always_invalid
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_pde_zero_entry_always_invalid(layer: nat)
+    requires
+        layer < 4,
+    ensures
+        (PDE { entry: 0, layer: Ghost(layer) })@ is Invalid,
+{
+}
+```
+REASON: An all-zero PDE entry has P bit = 0, so PDE::view should return Invalid regardless of layer — tests the base case of the PDE classification logic
+===PHI_END===

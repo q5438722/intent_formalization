@@ -1,0 +1,79 @@
+===PHI_START===
+NAME: roundtrip_external_body_trusted
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_roundtrip_external_body_trusted<C: SecureSpecCombinator>(c: &RepeatN<C>, vs: Seq<C::Type>)
+    requires
+        c.requires(),
+        c.wf(vs),
+    ensures
+        c.spec_parse(c.spec_serialize(vs)) == Some((c.spec_serialize(vs).len() as int, vs)),
+{
+    c.theorem_serialize_parse_roundtrip(vs);
+}
+```
+REASON: `RepeatN::theorem_serialize_parse_roundtrip` is `external_body` with `unimplemented!()` — the fundamental roundtrip property is trusted without proof, despite a verified helper existing
+===PHI_END===
+
+===PHI_START===
+NAME: prefix_secure_helper_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_prefix_secure_helper_external_body<C: SecureSpecCombinator>(c: &RepeatN<C>, s1: Seq<u8>, s2: Seq<u8>)
+    requires
+        c.requires(),
+        c.spec_parse(s1).is_some(),
+    ensures
+        c.spec_parse(s1 + s2) == c.spec_parse(s1),
+{
+    c.lemma_prefix_secure_helper(s1, s2, c.1);
+}
+```
+REASON: `lemma_prefix_secure_helper` is `external_body` with `unimplemented!()` — prefix security for RepeatN is trusted and used as a critical dependency in the roundtrip helper proof
+===PHI_END===
+
+===PHI_START===
+NAME: serialize_empty_is_empty
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_serialize_empty_is_empty<C: SecureSpecCombinator>(c: &RepeatN<C>)
+    ensures
+        c.spec_serialize(Seq::<C::Type>::empty()) == Seq::<u8>::empty(),
+{
+}
+```
+REASON: Serializing an empty sequence should produce empty bytes — if non-empty output were produced for zero elements, the fold_left would have injected phantom data
+===PHI_END===
+
+===PHI_START===
+NAME: wf_enforces_length_equals_count
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_wf_enforces_length_equals_count<C: SecureSpecCombinator>(c: &RepeatN<C>, vs: Seq<C::Type>)
+    requires
+        c.wf(vs),
+    ensures
+        vs.len() == c.1,
+{
+}
+```
+REASON: Well-formedness requires `vs.len() == self.1` — if wf accepted sequences of different lengths, the parse-serialize roundtrip would break since parse always returns exactly `n` elements
+===PHI_END===
+
+===PHI_START===
+NAME: serialize_ignores_count_field
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_serialize_ignores_count_field<C: SecureSpecCombinator>(c: &C, vs: Seq<C::Type>, n1: usize, n2: usize)
+    ensures
+        RepeatN(*c, n1).spec_serialize(vs) == RepeatN(*c, n2).spec_serialize(vs),
+{
+}
+```
+REASON: `spec_serialize` uses `fold_left` over `vs` without referencing the `usize` count field — serialization is completely independent of the repetition count, so `RepeatN(c, 0).spec_serialize(vs)` serializes all elements regardless
+===PHI_END===

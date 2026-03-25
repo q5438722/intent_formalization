@@ -1,0 +1,52 @@
+[
+  {
+    "name": "insert_removes_unrelated_key",
+    "target_fn": "insert",
+    "type": "behavioral",
+    "reason": "Insert should preserve all pre-existing keys unrelated to src; losing them would silently drop tombstone entries",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "eTable,\n89 | |     src: AbstractEndPoint, last_seqno: u64,\n90 | |     other: AbstractEndPoint,\n91 | | )\n   | |_- at the end of the function body\n...\n99 |           !post.contains_key(other),\n   |           ^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "insert_max_seqno_wraps_to_zero",
+    "target_fn": "insert",
+    "type": "boundary",
+    "reason": "If u64::MAX as nat wraps to zero the tombstone table would record a wrong sequence number, enabling replayed messages",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "o_zero(\n   |  _______-\n88 | |     pre: TombstoneTable, post: TombstoneTable,\n89 | |     src: AbstractEndPoint,\n90 | | )\n   | |_- at the end of the function body\n...\n96 |           post[src] == 0nat,\n   |           ^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "insert_key_missing_after_insert",
+    "target_fn": "insert",
+    "type": "logical",
+    "reason": "The inserted key must be present afterward; its absence means the tombstone was silently discarded",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "     pre: TombstoneTable, post: TombstoneTable,\n89 | |     src: AbstractEndPoint, last_seqno: u64,\n90 | | )\n   | |_- at the end of the function body\n...\n96 |           !post.contains_key(src),\n   |           ^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "insert_corrupts_other_value",
+    "target_fn": "insert",
+    "type": "behavioral",
+    "reason": "Inserting one key must not mutate another key's sequence number, or unrelated tombstone records become corrupted",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "eTable,\n89 | |     src: AbstractEndPoint, last_seqno: u64,\n90 | |     other: AbstractEndPoint,\n91 | | )\n   | |_- at the end of the function body\n...\n99 |           post[other] != pre[other],\n   |           ^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "insert_value_independent_of_arg",
+    "target_fn": "insert",
+    "type": "logical",
+    "reason": "The stored value must equal the provided last_seqno; if any other value satisfies the spec, sequence-number tracking is broken",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "|     pre: TombstoneTable, post: TombstoneTable,\n89 | |     src: AbstractEndPoint, v1: u64, v2: u64,\n90 | | )\n   | |_- at the end of the function body\n...\n97 |           post[src] == v2 as nat,\n   |           ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

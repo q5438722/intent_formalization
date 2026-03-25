@@ -1,0 +1,52 @@
+[
+  {
+    "name": "set_loses_existing_key",
+    "target_fn": "set",
+    "type": "behavioral",
+    "reason": "If entailed, set could silently drop existing keys unrelated to the inserted key, violating map update semantics.",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": " |     pre_map: Map<K, ID>, k: K, v: ID, j: K,\n293 | | )\n    | |_- at the end of the function body\n...\n299 |           !pre_map.insert(k, v).contains_key(j),\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 8 warnings emitted\n\n"
+  },
+  {
+    "name": "set_value_wrong_for_key",
+    "target_fn": "set",
+    "type": "behavioral",
+    "reason": "If entailed, the value stored at the inserted key would differ from the value passed in, making set fundamentally broken.",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": ">(\n    |  _______-\n292 | |     pre_map: Map<K, ID>, k: K, v: ID,\n293 | | )\n    | |_- at the end of the function body\n...\n297 |           pre_map.insert(k, v)[k] != v,\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 8 warnings emitted\n\n"
+  },
+  {
+    "name": "set_modifies_other_value",
+    "target_fn": "set",
+    "type": "behavioral",
+    "reason": "If entailed, inserting one key-value pair would corrupt the value of an unrelated existing key, breaking frame preservation.",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": " |     pre_map: Map<K, ID>, k: K, v: ID, j: K,\n293 | | )\n    | |_- at the end of the function body\n...\n299 |           pre_map.insert(k, v)[j] != pre_map[j],\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 8 warnings emitted\n\n"
+  },
+  {
+    "name": "set_adds_spurious_key",
+    "target_fn": "set",
+    "type": "logical",
+    "reason": "If entailed, set would introduce phantom keys into the domain that were never inserted, violating the domain-change guarantee.",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": " | |     pre_map: Map<K, ID>, k: K, v: ID, j: K,\n293 | | )\n    | |_- at the end of the function body\n...\n299 |           pre_map.insert(k, v).contains_key(j),\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 8 warnings emitted\n\n"
+  },
+  {
+    "name": "set_gap_survives_insertion",
+    "target_fn": "set",
+    "type": "boundary",
+    "reason": "If entailed, a gap that previously contained k would remain empty even after inserting k, meaning the gap postcondition fails to detect new keys.",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "p_survives_insertion.rs:297:9\n    |\n297 | /         forall |ki: KeyIterator<K>| lo.lt_spec(ki) && ki.lt_spec(hi)\n298 | |             ==> !pre_map.contains_key(*ki.get_spec()),\n    | |_____________________________________________________^\n\nerror: aborting due to 1 previous error; 8 warnings emitted\n\n"
+  }
+]

@@ -1,0 +1,52 @@
+[
+  {
+    "name": "lookup_present_key_returns_none",
+    "target_fn": "hashtable_lookup",
+    "type": "behavioral",
+    "reason": "A key present in the hashtable should return Some, not None; this would break all GET request lookups.",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "    |       ---------------------------------------------------------------------- at the end of the function body\n...\n2121 |         hashtable_lookup(h, k) is None,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 6 warnings emitted\n\n"
+  },
+  {
+    "name": "bulk_update_loses_original_keys",
+    "target_fn": "bulk_update_domain",
+    "type": "logical",
+    "reason": "Keys in the original hashtable outside the updated range must be preserved; losing them would silently drop data during delegation.",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "------------------------------------------------------------ at the end of the function body\n...\n2123 |         !bulk_update_domain(h, kr, u).contains(k),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 6 warnings emitted\n\n"
+  },
+  {
+    "name": "none_value_is_invalid",
+    "target_fn": "valid_optional_value",
+    "type": "boundary",
+    "reason": "None represents a key deletion and must be valid; rejecting it would prevent any SetRequest from removing keys.",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "ption<AbstractValue>)\n     |       --------------------------------------------------------- at the end of the function body\n...\n2121 |         !valid_optional_value(ov),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 6 warnings emitted\n\n"
+  },
+  {
+    "name": "retransmit_modifies_hashtable",
+    "target_fn": "spontaneously_retransmit",
+    "type": "behavioral",
+    "reason": "Retransmission only resends un-acked packets; it must never mutate the hashtable or it would corrupt data.",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "     --------------------------------------------------------------------------------------------------------- at the end of the function body\n...\n2121 |         post.h !== pre.h,\n     |         ^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 6 warnings emitted\n\n"
+  },
+  {
+    "name": "no_invalid_sends_allows_invalid",
+    "target_fn": "no_invalid_sends",
+    "type": "logical",
+    "reason": "The no_invalid_sends guard must actually prevent InvalidMessage sends; if it doesn't, the trusted marshalling invariant is violated.",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "-------------------------------------------------------- at the end of the function body\n...\n2123 |         ios[i].arrow_Send_s().msg is InvalidMessage,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 6 warnings emitted\n\n"
+  }
+]

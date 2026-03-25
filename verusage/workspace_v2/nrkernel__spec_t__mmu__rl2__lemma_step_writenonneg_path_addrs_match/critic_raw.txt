@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: lemma_pt_walk_external_body_completeness
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `lemma_pt_walk` is `external_body` with `unimplemented!()` — walk completeness and the path length bound (1..=4) are asserted without proof. These are fundamental structural properties of the page table walk that the entire MMU verification depends on.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: lemma_pt_walk_path_entries_match_reads
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The correspondence between path entries and PDE views at their addresses is asserted by the external_body `lemma_pt_walk` without proof. This is the critical link between the walk's recorded path and actual memory contents — if incorrect, the walk could claim entries that don't match what's stored in memory.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: lemma_write_seq_domain_monotonic
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `lemma_write_seq` is `external_body` with `unimplemented!()` — domain monotonicity is trusted without proof. While this property is mathematically correct (each `Map::insert` only adds or overwrites keys), the inductive argument over `fold_left` is not verified.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: lemma_pt_walk_no_directory_last
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The assertion that the last path entry is never Directory comes from the external_body `lemma_pt_walk`. This is critical because `Walk::result` falls through to `arbitrary()` for Directory last entries, so if this invariant is wrong, walk results would be completely undefined.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: lemma_pt_walk_intermediate_present
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: All intermediate entries being Directory with P bit set is asserted by the external_body `lemma_pt_walk` without proof. This structural invariant ensures the walk follows valid directory chains — if violated, the walk could traverse non-present or non-directory entries.
+===VERDICT_END===
+
+===SUMMARY===
+All five candidates are true positives. `lemma_pt_walk` and `lemma_write_seq` are both `external_body` with `unimplemented!()`, trusting five distinct properties without proof: walk completeness, path-entry-to-memory correspondence, domain monotonicity of write sequences, no-Directory-last invariant, and intermediate entries being present directories. These collectively form the unverified foundation of the MMU page table walk specification.
+===END_SUMMARY===

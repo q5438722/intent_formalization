@@ -1,0 +1,80 @@
+===PHI_START===
+NAME: always_propagate_forwards_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_always_propagate_forwards_intensional_bridge(ex: Execution<int>, p: TempPred<int>, i: nat)
+    requires
+        always(p).satisfied_by(ex),
+    ensures
+        always(p).satisfied_by(ex.suffix(i)),
+{
+    always_propagate_forwards::<int>(ex, p, i);
+}
+```
+REASON: always_propagate_forwards is external_body asserting always(p) transfers to ex.suffix(i), but ex.suffix(i) creates a new closure intensionally distinct from ex — the axiom silently equates these without proof
+===PHI_END===
+
+===PHI_START===
+NAME: stable_always_vacuously_true_when_not_satisfied
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_stable_always_vacuously_true_when_not_satisfied(ex: Execution<int>, p: TempPred<int>)
+    requires
+        !always(p).satisfied_by(ex),
+    ensures
+        stable(always(p)).satisfied_by(ex),
+{
+}
+```
+REASON: stable(always(p)) is defined as always(p) ==> always(always(p)), so when always(p) is false the implication is vacuously true — stable claims hold for every execution regardless of whether the predicate actually holds
+===PHI_END===
+
+===PHI_START===
+NAME: valid_stable_says_nothing_about_p
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_valid_stable_says_nothing_about_p(p: TempPred<int>, ex: Execution<int>)
+    requires
+        valid(stable(always(p))),
+    ensures
+        !always(p).satisfied_by(ex) || always(always(p)).satisfied_by(ex),
+{
+    always_p_is_stable::<int>(p);
+}
+```
+REASON: valid(stable(always(p))) does not guarantee always(p) holds on any execution — it only guarantees the implication, so it provides no actual safety assurance about p
+===PHI_END===
+
+===PHI_START===
+NAME: suffix_zero_intensional_gap
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_suffix_zero_intensional_gap(ex: Execution<int>, p: TempPred<int>)
+    requires
+        always(p).satisfied_by(ex),
+    ensures
+        always(p).satisfied_by(ex.suffix(0)),
+{
+    always_propagate_forwards::<int>(ex, p, 0);
+}
+```
+REASON: ex.suffix(0) creates closure |i| f(i+0) intensionally distinct from ex — the external_body axiom equates always(p) on these without proof, and this is the i=0 base case showing the axiom is needed even for trivial shifts
+===PHI_END===
+
+===PHI_START===
+NAME: stable_any_pred_vacuous
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_stable_any_pred_vacuous(ex: Execution<int>)
+    ensures
+        stable(TempPred::<int>::new(|ex: Execution<int>| false)).satisfied_by(ex),
+{
+}
+```
+REASON: stable(false_pred) is vacuously satisfied on every execution since the antecedent of the implication is always false — stable provides no guarantee for predicates that never hold, making it a weak specification pattern
+===PHI_END===

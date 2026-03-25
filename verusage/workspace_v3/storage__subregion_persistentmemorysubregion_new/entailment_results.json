@@ -1,0 +1,52 @@
+[
+  {
+    "name": "start_always_zero",
+    "target_fn": "new",
+    "type": "behavioral",
+    "reason": "Would mean the subregion ignores the caller-supplied start offset, always anchoring at 0",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "PMRegion,\n126 | |     start: u64,\n127 | |     len: nat,\n128 | |     result: PersistentMemorySubregion,\n129 | | )\n    | |_- at the end of the function body\n...\n137 |           result.start() == 0,\n    |           ^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "len_always_zero",
+    "target_fn": "new",
+    "type": "behavioral",
+    "reason": "Would mean the subregion always has zero length, discarding the requested size",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "m: &PMRegion,\n126 | |     start: u64,\n127 | |     len: nat,\n128 | |     result: PersistentMemorySubregion,\n129 | | )\n    | |_- at the end of the function body\n...\n137 |           result.len() == 0,\n    |           ^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "view_len_mismatches_len",
+    "target_fn": "new",
+    "type": "logical",
+    "reason": "Would mean the materialized view has a different byte count than the logical length, breaking internal consistency between len() and view()",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "    start: u64,\n127 | |     len: nat,\n128 | |     result: PersistentMemorySubregion,\n129 | | )\n    | |_- at the end of the function body\n...\n137 |           result.view(pm).len() != len,\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "start_len_interchangeable",
+    "target_fn": "new",
+    "type": "logical",
+    "reason": "Would mean start and len are always equal, collapsing two independent parameters into one",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "start: u64,\n127 | |     len: nat,\n128 | |     result: PersistentMemorySubregion,\n129 | | )\n    | |_- at the end of the function body\n...\n137 |           result.start() == result.len(),\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "subregion_covers_full_region",
+    "target_fn": "new",
+    "type": "boundary",
+    "reason": "Would mean every subregion spans the entire backing region, making sub-region slicing meaningless",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "8 | |     result: PersistentMemorySubregion,\n129 | | )\n    | |_- at the end of the function body\n...\n137 |           result.start() == 0 && result.len() == pm@.len(),\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

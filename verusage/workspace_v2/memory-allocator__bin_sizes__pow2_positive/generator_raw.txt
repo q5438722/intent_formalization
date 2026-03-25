@@ -1,0 +1,79 @@
+===PHI_START===
+NAME: pow2_negative_is_one
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_pow2_negative_is_one(e: int)
+    requires
+        e < 0,
+    ensures
+        pow2(e) == 1,
+{
+}
+```
+REASON: `pow2` returns 1 for all negative exponents — mathematically 2^(-n) is a fraction, so callers passing negative exponents by mistake silently get 1
+===PHI_END===
+
+===PHI_START===
+NAME: pow2_non_injective_at_zero
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_pow2_non_injective_at_zero()
+    ensures
+        pow2(0) == pow2(-1),
+{
+}
+```
+REASON: pow2(0) == pow2(-1) == 1 means the function is non-injective in the non-positive range — distinct exponents produce the same value, which could mask off-by-one errors
+===PHI_END===
+
+===PHI_START===
+NAME: pow2_all_negative_equal
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_pow2_all_negative_equal(a: int, b: int)
+    requires
+        a < 0,
+        b < 0,
+    ensures
+        pow2(a) == pow2(b),
+{
+}
+```
+REASON: All negative inputs to `pow2` are indistinguishable — the function collapses the entire negative domain to a single value, losing all information about the exponent
+===PHI_END===
+
+===PHI_START===
+NAME: pow2_not_strictly_monotone
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_pow2_not_strictly_monotone(a: int, b: int)
+    requires
+        a < b,
+        b <= 0,
+    ensures
+        pow2(a) >= pow2(b),
+{
+}
+```
+REASON: `pow2` is not strictly increasing for non-positive inputs — `a < b` yet `pow2(a) == pow2(b)`, violating the expected strict monotonicity of exponential functions
+===PHI_END===
+
+===PHI_START===
+NAME: pow2_zero_not_standard
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_pow2_zero_not_standard(e: int)
+    requires
+        e <= 0,
+    ensures
+        pow2(e) == pow2(0),
+{
+}
+```
+REASON: `pow2(e) == pow2(0) == 1` for all e ≤ 0, meaning the base case swallows all non-positive inputs rather than just e=0 — a caller computing `pow2(e-1)` when e=1 gets the same result as `pow2(e-2)`, silently hiding errors
+===PHI_END===

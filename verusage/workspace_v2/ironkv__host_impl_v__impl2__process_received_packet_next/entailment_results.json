@@ -1,0 +1,47 @@
+[
+  {
+    "name": "cpacket_set_loses_duplicate_packets",
+    "type": "behavioral",
+    "code": "proof fn phi_1_cpacket_set_loses_duplicate_packets(p: CPacket)\n    requires\n        p.abstractable(),\n    ensures\n        abstractify_seq_of_cpackets_to_set_of_sht_packets(seq![p, p]).len() == 1,\n{\n}",
+    "reason": "`abstractify_seq_of_cpackets_to_set_of_sht_packets` converts to Set, silently collapsing duplicate packets \u2014 a sequence of 2 identical retransmissions becomes 1 packet in the abstract model, potentially hiding liveness or delivery-count bugs",
+    "entailed": false,
+    "verus_output": "phi_1_cpacket_set_loses_duplicate_packets.rs:2132:9\n     |\n2128 | proof fn phi_1_cpacket_set_loses_duplicate_packets(p: CPacket)\n     |       -------------------------------------------------------- at the end of the function body\n...\n2132 |         abstractify_seq_of_cpackets_to_set_of_sht_packets(seq![p, p]).len() == 1,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 6 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "lsht_seq_vs_sht_set_disagree",
+    "type": "logical",
+    "code": "proof fn phi_2_lsht_seq_vs_sht_set_disagree(p: CPacket)\n    requires\n        p.abstractable(),\n    ensures\n        abstractify_outbound_packets_to_seq_of_lsht_packets(seq![p, p]).len() == 2,\n        abstractify_seq_of_cpackets_to_set_of_sht_packets(seq![p, p]).len() == 1,\n{\n}",
+    "reason": "Two abstraction functions on the same packet sequence give contradictory cardinalities (2 vs 1) \u2014 the Seq-based and Set-based abstractions silently disagree on how many packets exist, so invariants proved with one don't transfer to the other",
+    "entailed": false,
+    "verus_output": "received_packet_next/phi_2_lsht_seq_vs_sht_set_disagree.rs:2133:9\n     |\n2128 | proof fn phi_2_lsht_seq_vs_sht_set_disagree(p: CPacket)\n     |       ------------------------------------------------- at the end of the function body\n...\n2133 |         abstractify_seq_of_cpackets_to_set_of_sht_packets(seq![p, p]).len() == 1,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 6 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "invalid_message_always_abstractable",
+    "type": "behavioral",
+    "code": "proof fn phi_3_invalid_message_always_abstractable()\n    ensures\n        ({\n            let msg = CSingleMessage::InvalidMessage {};\n            msg.abstractable()\n        }),\n{\n}",
+    "reason": "`InvalidMessage` is unconditionally abstractable and maps to `SingleMessage::InvalidMessage` in the abstract model \u2014 a malformed/corrupted network message silently passes the abstractability check and enters the verified protocol logic rather than being rejected",
+    "entailed": true,
+    "verus_output": "ttps://verus-lang.github.io/verus/guide/datatypes_enum.html\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__host_impl_v__impl2__process_received_packet_next/phi_3_invalid_message_always_abstractable.rs:1686:91\n     |\n1686 |       || (!self.k.is_None() && !other.k.is_None() && self.k.get_Some_0().cmp_spec(other.k.get_Some_0()).lt())\n     |                                                                                           ^^^^^^^^^^\n\nwarning: 6 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "usize_always_marshalable_on_64bit",
+    "type": "boundary",
+    "code": "proof fn phi_4_usize_always_marshalable_on_64bit(x: usize)\n    ensures\n        x.is_marshalable(),\n{\n}",
+    "reason": "`usize::is_marshalable` requires `*self as int <= u64::MAX`, but on a 64-bit platform every usize satisfies this \u2014 the guard is vacuous, making the marshalability check a no-op that provides false confidence about portability to 32-bit targets",
+    "entailed": true,
+    "verus_output": " https://verus-lang.github.io/verus/guide/datatypes_enum.html\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__host_impl_v__impl2__process_received_packet_next/phi_4_usize_always_marshalable_on_64bit.rs:1686:91\n     |\n1686 |       || (!self.k.is_None() && !other.k.is_None() && self.k.get_Some_0().cmp_spec(other.k.get_Some_0()).lt())\n     |                                                                                           ^^^^^^^^^^\n\nwarning: 6 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "option_tag_collides_with_data",
+    "type": "logical",
+    "code": "proof fn phi_5_option_tag_collides_with_data(v: Vec<u8>)\n    requires\n        v.is_marshalable(),\n        v@.len() > 0,\n        v@[0] == 0u8,\n    ensures\n        ({\n            let some_v: Option<Vec<u8>> = Some(v);\n            some_v.ghost_serialize()[0] == 1u8\n        }),\n        ({\n            let none_v: Option<Vec<u8>> = None;\n            none_v.ghost_serialize()[0] == 0u8\n        }),\n{\n}",
+    "reason": "Option serialization uses a single tag byte (0 for None, 1 for Some) with no framing \u2014 while the tag itself distinguishes None/Some, there is no length field after the tag, so a deserializer seeing `[1, 0, ...]` cannot distinguish `Some(v)` where `v` serializes starting with 0 from a corruption scenario without knowing the inner type's exact deserialized length",
+    "entailed": true,
+    "verus_output": "ead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__host_impl_v__impl2__process_received_packet_next/phi_5_option_tag_collides_with_data.rs:1686:91\n     |\n1686 |       || (!self.k.is_None() && !other.k.is_None() && self.k.get_Some_0().cmp_spec(other.k.get_Some_0()).lt())\n     |                                                                                           ^^^^^^^^^^\n\nwarning: 6 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

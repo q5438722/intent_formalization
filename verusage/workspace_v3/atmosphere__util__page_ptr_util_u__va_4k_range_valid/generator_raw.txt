@@ -1,0 +1,87 @@
+===PHI_START===
+NAME: range_always_valid
+TARGET_FN: va_4k_range_valid
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_range_always_valid(va: usize, len: usize)
+    requires
+        va_4k_valid(va),
+    ensures
+        spec_va_4k_range_valid(va, len),
+{
+}
+```
+REASON: If provable, the range check is trivially always true regardless of length, making the validation meaningless
+===PHI_END===
+
+===PHI_START===
+NAME: empty_range_invalid
+TARGET_FN: va_4k_range_valid
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_empty_range_invalid(va: usize)
+    requires
+        va_4k_valid(va),
+    ensures
+        spec_va_4k_range_valid(va, 0) == false,
+{
+}
+```
+REASON: If provable, empty ranges are rejected even though the universal quantifier should be vacuously true for len=0
+===PHI_END===
+
+===PHI_START===
+NAME: range_not_monotonic
+TARGET_FN: va_4k_range_valid
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_range_not_monotonic(va: usize, len: usize)
+    requires
+        va_4k_valid(va),
+        spec_va_4k_range_valid(va, len),
+        len > 0,
+    ensures
+        !spec_va_4k_range_valid(va, (len - 1) as usize),
+{
+}
+```
+REASON: If provable, a valid range of size n implies a smaller sub-range is invalid, violating monotonicity of the forall
+===PHI_END===
+
+===PHI_START===
+NAME: no_nonempty_valid_range
+TARGET_FN: va_4k_range_valid
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_no_nonempty_valid_range(va: usize, len: usize)
+    requires
+        va_4k_valid(va),
+        len > 0,
+    ensures
+        spec_va_4k_range_valid(va, len) == false,
+{
+}
+```
+REASON: If provable, no non-empty range is ever valid even when the base address is valid, making page mapping impossible
+===PHI_END===
+
+===PHI_START===
+NAME: next_page_always_invalid
+TARGET_FN: va_4k_range_valid
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_next_page_always_invalid(va: usize)
+    requires
+        va_4k_valid(va),
+    ensures
+        !spec_va_4k_valid(spec_va_add_range(va, 1)),
+{
+}
+```
+REASON: If provable, no valid address ever has a valid successor page, meaning contiguous multi-page ranges can never exist
+===PHI_END===

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "range_consistent_impl_external_body_trusted",
+    "type": "logical",
+    "code": "proof fn phi_1_range_consistent_impl_external_body_trusted(dm: DelegationMap<AbstractKey>, lo: KeyIterator<AbstractKey>, hi: KeyIterator<AbstractKey>, dst: ID)\n    requires\n        dm.valid(),\n        dm.range_consistent(&lo, &hi, &dst),\n    ensures\n        forall |k: AbstractKey| KeyRange { lo: lo, hi: hi }.contains(k) ==> (#[trigger] dm@[k]) == dst@,\n{\n}",
+    "reason": "`range_consistent_impl` is external_body \u2014 if the implementation returns true for a range where some key actually disagrees, the trusted ensures would introduce unsoundness in all delegation lookups",
+    "entailed": false,
+    "verus_output": "rals are not allowed here; try surrounding the struct literal with parentheses\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__delegation_map_v__impl5__delegate_for_key_range_is_host_impl/phi_1_range_consistent_impl_external_body_trusted.rs:321:33\n    |\n321 |         forall |k: AbstractKey| KeyRange { lo: lo, hi: hi }.contains(k) ==> (#[trigger] dm@[k]) == dst@,\n    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "delegate_for_key_range_vacuous_end_end",
+    "type": "boundary",
+    "code": "proof fn phi_2_delegate_for_key_range_vacuous_end_end(dm: DelegationMap<AbstractKey>, dst: ID)\n    requires\n        dm.valid(),\n    ensures\n        AbstractDelegationMap::delegate_for_key_range_is_host(\n            AbstractDelegationMap(dm@),\n            KeyRange { lo: KeyIterator { k: None }, hi: KeyIterator { k: None } },\n            dst@,\n        ),\n{\n}",
+    "reason": "With both lo and hi as end iterators (None), `between` is vacuously false since `ki.lt_spec(None)` requires `!ki.k.is_None()` but `None.lt_spec(ki)` is always false \u2014 so `delegate_for_key_range_is_host` holds for any destination, making empty-range delegation claims meaningless",
+    "entailed": true,
+    "verus_output": "us-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__delegation_map_v__impl5__delegate_for_key_range_is_host_impl/phi_2_delegate_for_key_range_vacuous_end_end.rs:259:91\n    |\n259 |       || (!self.k.is_None() && !other.k.is_None() && self.k.get_Some_0().cmp_spec(other.k.get_Some_0()).lt())\n    |                                                                                           ^^^^^^^^^^\n\nwarning: 8 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "delegate_for_key_range_contradictory_dsts",
+    "type": "logical",
+    "code": "proof fn phi_3_delegate_for_key_range_contradictory_dsts(dm: DelegationMap<AbstractKey>, k: AbstractKey, dst1: ID, dst2: ID)\n    requires\n        dm.valid(),\n        dst1@ != dst2@,\n    ensures\n        AbstractDelegationMap::delegate_for_key_range_is_host(\n            AbstractDelegationMap(dm@),\n            KeyRange { lo: KeyIterator::new_spec(k), hi: KeyIterator::new_spec(k) },\n            dst1@,\n        ),\n        AbstractDelegationMap::delegate_for_key_range_is_host(\n            AbstractDelegationMap(dm@),\n            KeyRange { lo: KeyIterator::new_spec(k), hi: KeyIterator::new_spec(k) },\n            dst2@,\n        ),\n{\n}",
+    "reason": "A degenerate range [k, k) is simultaneously \"delegated\" to two different hosts with different abstract endpoints, because `between(new_spec(k), new_spec(k), new_spec(k))` requires `k < k` which is false \u2014 callers cannot distinguish \"all keys agree\" from \"empty range\"",
+    "entailed": true,
+    "verus_output": "lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__delegation_map_v__impl5__delegate_for_key_range_is_host_impl/phi_3_delegate_for_key_range_contradictory_dsts.rs:259:91\n    |\n259 |       || (!self.k.is_None() && !other.k.is_None() && self.k.get_Some_0().cmp_spec(other.k.get_Some_0()).lt())\n    |                                                                                           ^^^^^^^^^^\n\nwarning: 8 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "sht_key_between_excludes_lo_equal",
+    "type": "behavioral",
+    "code": "proof fn phi_4_sht_key_between_excludes_lo_equal()\n    ensures\n        !KeyIterator::between(\n            KeyIterator::new_spec(SHTKey { ukey: 5 }),\n            KeyIterator::new_spec(SHTKey { ukey: 5 }),\n            KeyIterator::new_spec(SHTKey { ukey: 10 }),\n        ),\n{\n}",
+    "reason": "`between(lo, ki, hi)` should include the lo endpoint (since `!ki.lt(lo)` when ki == lo), so key 5 should be between [5, 10) \u2014 if this verifies, the lower bound is unexpectedly exclusive and range_consistent misses boundary keys",
+    "entailed": false,
+    "verus_output": "ht_key_between_excludes_lo_equal()\n    |         -------------------------------------------- at the end of the function body\n317 |       ensures\n318 | /         !KeyIterator::between(\n319 | |             KeyIterator::new_spec(SHTKey { ukey: 5 }),\n320 | |             KeyIterator::new_spec(SHTKey { ukey: 5 }),\n321 | |             KeyIterator::new_spec(SHTKey { ukey: 10 }),\n322 | |         ),\n    | |_________^ failed this postcondition\n\nerror: aborting due to 1 previous error; 8 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "abstract_delegation_map_complete_unchecked",
+    "type": "logical",
+    "code": "proof fn phi_5_abstract_delegation_map_complete_unchecked(dm: DelegationMap<AbstractKey>, k: AbstractKey)\n    requires\n        dm.valid(),\n    ensures\n        dm@.dom().contains(k),\n        dm@[k].valid_physical_address(),\n{\n}",
+    "reason": "`DelegationMap::valid` requires `self@.dom().is_full()` and all values have valid physical addresses \u2014 but the ghost field `m` has no runtime enforcement, so any external_body function that constructs a DelegationMap could silently violate these invariants",
+    "entailed": true,
+    "verus_output": "ang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__delegation_map_v__impl5__delegate_for_key_range_is_host_impl/phi_5_abstract_delegation_map_complete_unchecked.rs:259:91\n    |\n259 |       || (!self.k.is_None() && !other.k.is_None() && self.k.get_Some_0().cmp_spec(other.k.get_Some_0()).lt())\n    |                                                                                           ^^^^^^^^^^\n\nwarning: 8 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

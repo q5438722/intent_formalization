@@ -1,0 +1,10 @@
+===VERDICT_START===
+PHI: non_marshalable_element_ignored
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The `usize::is_marshalable` spec requires `*self as int <= u64::MAX`, but on 64-bit platforms (Verus's default model) no `usize` value can exceed `u64::MAX`, making the precondition `!v@[i].is_marshalable()` unsatisfiable. The proof is vacuously true, revealing that the per-element marshalability check for `Vec<usize>` is dead—it can never reject an element. This is a genuine spec gap: the `usize` marshalability guard is platform-dependent and provides no real protection on 64-bit targets.
+===VERDICT_END===
+
+===SUMMARY===
+The single candidate property exposes a real platform-dependent spec weakness. Because Verus models `usize` as fitting within `u64::MAX` on 64-bit architectures, the `is_marshalable` constraint for `usize` is always trivially true, which makes the `forall` element check in `Vec<T>::is_marshalable` vacuous when `T = usize`. The entailment succeeds only because the precondition is contradictory—not because the spec genuinely permits non-marshalable elements. This is the same usize platform assumption previously identified in the marshal_v analysis.
+===END_SUMMARY===

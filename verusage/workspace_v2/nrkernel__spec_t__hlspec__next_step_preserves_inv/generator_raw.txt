@@ -1,0 +1,84 @@
+===PHI_START===
+NAME: vaddr_mapping_modified_choose_arbitrary_on_idle
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_vaddr_mapping_modified_choose_arbitrary_on_idle(s: State, c: Constants, va: nat, thread: nat)
+    requires
+        c.valid_thread(thread),
+        s.thread_state.contains_key(thread),
+        s.thread_state[thread] === ThreadState::Idle,
+        s.vaddr_mapping_is_being_modified(c, va),
+        s.vaddr_mapping_is_being_modified_choose_thread(c, va) == thread,
+    ensures
+        s.vaddr_mapping_is_being_modified_choose(c, va) === arbitrary(),
+{
+}
+```
+REASON: If `choose` picks an Idle thread (which shouldn't satisfy the exists but the `choose` is unconstrained when multiple witnesses exist), `vaddr_mapping_is_being_modified_choose` falls into the `arbitrary()` branch returning an unspecified result
+===PHI_END===
+
+===PHI_START===
+NAME: update_range_length_mismatch
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_update_range_length_mismatch(s: Seq<u8>, new: Seq<u8>)
+    requires
+        s.len() > 0,
+        new.len() == 0,
+    ensures
+        update_range(s, 0, new) === s,
+{
+}
+```
+REASON: `update_range` with an empty `new` sequence should be identity — tests that the subrange arithmetic correctly handles the zero-length case
+===PHI_END===
+
+===PHI_START===
+NAME: overlap_zero_size_reflexive
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_overlap_zero_size_reflexive(base: nat)
+    ensures
+        overlap(MemRegion { base: base, size: 0 }, MemRegion { base: base, size: 0 }),
+{
+}
+```
+REASON: Two zero-size regions at the same base are considered overlapping via `region1.base == region2.base` — empty intervals should not overlap
+===PHI_END===
+
+===PHI_START===
+NAME: memop_valid_size_excludes_16
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_memop_valid_size_excludes_16(op: MemOp)
+    requires
+        op.op_size() == 16,
+    ensures
+        !op.valid_op_size(),
+{
+}
+```
+REASON: `valid_op_size` only allows 1, 2, 4, 8 byte operations — 16-byte SSE/AVX memory operations are excluded, potentially preventing verification of SIMD memory accesses
+===PHI_END===
+
+===PHI_START===
+NAME: is_in_mapped_region_phys_mem_bound_not_in_enabled
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_is_in_mapped_region_phys_mem_bound_not_in_enabled(phys_mem_size: nat, base: nat, pte: PTE, vaddr: nat)
+    requires
+        pte.frame.base + pte.frame.size > phys_mem_size,
+        between(vaddr, base, base + pte.frame.size),
+        vaddr - base >= phys_mem_size - pte.frame.base,
+    ensures
+        !is_in_mapped_region(phys_mem_size, Map::empty().insert(base, pte), vaddr),
+{
+}
+```
+REASON: The TODO comment in `is_in_mapped_region` notes that `pte.frame.base + (vaddr - base) < phys_mem_size` should be checked in `step_Map_enabled` — without it, mappings can be created that reference physical memory beyond bounds, causing some virtual addresses within the mapping to fail `is_in_mapped_region`
+===PHI_END===

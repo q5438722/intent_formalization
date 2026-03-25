@@ -1,0 +1,52 @@
+[
+  {
+    "name": "fresh_packet_silently_dropped",
+    "target_fn": "receive_packet",
+    "type": "behavioral",
+    "reason": "If provable, fresh messages are silently dropped even when the buffer is empty, violating reliable delivery",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "---------------------------------------------------------------------------------------------------------- at the end of the function body\n...\n1422 |         post.received_packet is None,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "new_message_implies_should_ack",
+    "target_fn": "new_single_message",
+    "type": "logical",
+    "reason": "new_single_message (seqno == last+1) and should_ack (seqno <= last) must be mutually exclusive; overlap collapses sequencing",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "------------------------------------------------------ at the end of the function body\n...\n1420 |         SingleDelivery::should_ack_single_message(pre.sd, pkt),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "receive_ack_always_noop",
+    "target_fn": "receive_ack",
+    "type": "behavioral",
+    "reason": "If ack processing never advances send-state, retransmission queues grow without bound and acked data is never freed",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": ")\n     |       ----------------------------------------------------------------------------------------------------------------------------- at the end of the function body\n...\n1420 |         post == pre,\n     |         ^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "ack_routed_wrong_direction",
+    "target_fn": "send_ack",
+    "type": "boundary",
+    "reason": "Acks must go back to the sender (pkt.src); routing to pkt.dst means the ack never reaches the originator",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "------------------------------------------------------------------------------------------------------------------------------ at the end of the function body\n...\n1421 |         ack.dst == pkt.dst,\n     |         ^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "receive_never_emits_packets",
+    "target_fn": "host_model_receive_packet",
+    "type": "behavioral",
+    "reason": "If receive_packet never emits outbound packets, host_model_receive_packet can never send acks, breaking the reliable delivery protocol entirely",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "-------------------------------------------------------------------------------------------------------- at the end of the function body\n...\n1419 |         out == Set::<Packet>::empty(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

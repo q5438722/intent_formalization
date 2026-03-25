@@ -1,0 +1,47 @@
+[
+  {
+    "name": "lemma_to_vec_view_reflexive_trivial",
+    "type": "logical",
+    "code": "proof fn phi_1_lemma_to_vec_view_reflexive_trivial(h: CKeyHashMap)\n    ensures\n        h@ == h@,\n        h.spec_to_vec()@ == h.spec_to_vec()@,\n{\n    h.lemma_to_vec_view(h);\n}",
+    "reason": "Trivially true \u2014 but the real concern is that `lemma_to_vec_view` is external_body and its biconditional could be used to derive non-trivial facts about the uninterpreted `spec_to_vec` from equality of uninterpreted `view`, without any machine-checked justification",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "view_equal_not_symmetric_for_u64",
+    "type": "logical",
+    "code": "proof fn phi_2_view_equal_not_symmetric_for_u64(a: u64, b: u64)\n    requires\n        a.view_equal(&b),\n    ensures\n        b.view_equal(&a),\n{\n}",
+    "reason": "`view_equal` is used in `lemma_serialization_is_not_a_prefix_of` as the negation trigger \u2014 if `view_equal` is not actually an equivalence relation for all Marshalable impls, the prefix-freedom axiom could have gaps; this tests symmetry for the base case",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "prefix_freedom_derives_inequality",
+    "type": "logical",
+    "code": "proof fn phi_3_prefix_freedom_derives_inequality(a: Vec<u8>, b: Vec<u8>)\n    requires\n        a.is_marshalable(),\n        b.is_marshalable(),\n        !a.view_equal(&b),\n    ensures\n        a.ghost_serialize() != b.ghost_serialize(),\n{\n    if a.ghost_serialize().len() <= b.ghost_serialize().len() {\n        a.lemma_serialization_is_not_a_prefix_of(&b);\n    } else {\n        b.lemma_serialization_is_not_a_prefix_of(&a);\n    }\n}",
+    "reason": "`lemma_serialization_is_not_a_prefix_of` is external_body and grants prefix-freedom \u2014 combined with same-length cases this derives full serialization injectivity, but since `ghost_serialize` for `Vec<u8>` is open (length prefix + content), this should hold; if it doesn't, the axiom is too weak",
+    "entailed": false,
+    "verus_output": "inequality.rs:388:9\n    |\n388 |           a.ghost_serialize() != b.ghost_serialize(),\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n389 |   {\n390 | /     if a.ghost_serialize().len() <= b.ghost_serialize().len() {\n391 | |         a.lemma_serialization_is_not_a_prefix_of(&b);\n392 | |     } else {\n393 | |         b.lemma_serialization_is_not_a_prefix_of(&a);\n394 | |     }\n    | |_____- at the end of the function body\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "tuple_serialize_no_delimiter",
+    "type": "behavioral",
+    "code": "proof fn phi_4_tuple_serialize_no_delimiter(a1: u64, b1: Vec<u8>, a2: u64, b2: Vec<u8>)\n    requires\n        (a1, b1).is_marshalable(),\n        (a2, b2).is_marshalable(),\n        a1 != a2,\n        b1@ == b2@,\n    ensures\n        (a1, b1).ghost_serialize() != (a2, b2).ghost_serialize(),\n{\n    (a1, b1).lemma_serialization_is_not_a_prefix_of(&(a2, b2));\n}",
+    "reason": "Tuple serialization is simple concatenation with no length delimiter between fields \u2014 the external_body prefix-freedom axiom claims this is fine, but if the first field's serialization length varies, parsing could misalign without a delimiter, making the axiom unsound",
+    "entailed": false,
+    "verus_output": "workspace_v2/ironkv__marshal_ironsht_specific_v__impl2__lemma_serialization_is_not_a_prefix_of/phi_4_tuple_serialize_no_delimiter.rs:391:5\n    |\n 96 |       self.ghost_serialize().len() <= other.ghost_serialize().len(),\n    |       ------------------------------------------------------------- failed precondition\n...\n391 |     (a1, b1).lemma_serialization_is_not_a_prefix_of(&(a2, b2));\n    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 2 previous errors\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "to_vec_view_biconditional_unsound",
+    "type": "logical",
+    "code": "proof fn phi_5_to_vec_view_biconditional_unsound(h1: CKeyHashMap, h2: CKeyHashMap)\n    requires\n        h1.spec_to_vec()@ == h2.spec_to_vec()@,\n    ensures\n        h1@ == h2@,\n{\n    h1.lemma_to_vec_view(h2);\n}",
+    "reason": "`lemma_to_vec_view` is external_body and asserts a biconditional between `view` equality and `to_vec` view-equality \u2014 this direction (to_vec equal implies view equal) means the uninterpreted `view` is fully determined by `spec_to_vec`, which may over-constrain the model if the real HashMap view includes information not captured by the sorted key-value vector",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

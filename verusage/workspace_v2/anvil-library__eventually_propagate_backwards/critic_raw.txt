@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: execution_equality_forces_fn_equality
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `execution_equality` forces intensional `spec_fn` equality from pointwise extensional equivalence. This is the root unverified trust assumption — structurally distinct closures are collapsed to equal without proof.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: suffix_zero_equals_self
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `ex.suffix(0) == ex` is semantically correct since `f(i+0) == f(i)` for all `i`. This is a desirable and expected property — the intensional bridge via `execution_equality` is legitimate use of that axiom.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: suffix_composition_equals_addition
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `ex.suffix(a).suffix(b) == ex.suffix(a+b)` is semantically correct since `f((i+b)+a) == f(i+(a+b))` by commutativity/associativity of addition. This is a desirable property and the intended use case of `execution_equality`.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: eventually_unfold_intensional_bridge
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures `eventually(p).satisfied_by(ex)` can be proven directly by the SMT solver witnessing the existential with `i` from the requires — it doesn't actually depend on `eventually_unfold` (which has the wrong direction anyway). This is introduction of `eventually` from a witness, which is expected and correct.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: eventually_propagate_to_zero
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This demonstrates that `p.satisfied_by(ex.suffix(i))` implies `eventually(p).satisfied_by(ex)`, which is the standard introduction rule for eventually — given a witness at suffix `i`, the existential is satisfied. This is correct and expected.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: `execution_equality` forces intensional `spec_fn` equality from pointwise extensional equivalence, the root unverified trust assumption. The remaining four are false positives — suffix(0) identity, suffix composition, and both eventually introduction variants are semantically correct properties that represent intended uses of the axioms or direct SMT reasoning.
+===END_SUMMARY===

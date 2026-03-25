@@ -1,0 +1,92 @@
+===PHI_START===
+NAME: lemma_entry_sizes_aligned_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_lemma_entry_sizes_aligned_external_body(arch: Arch, i: nat, j: nat)
+    requires
+        arch.inv(),
+        i <= j,
+        j < arch.layers.len(),
+    ensures
+        aligned(arch.entry_size(i), arch.entry_size(j)),
+{
+    arch.lemma_entry_sizes_aligned(i, j);
+}
+```
+REASON: `lemma_entry_sizes_aligned` is `external_body` — the alignment relationship between layer entry sizes is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: self_aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_self_aligned(arch: Arch, i: nat)
+    requires
+        arch.inv(),
+        i < arch.layers.len(),
+    ensures
+        aligned(arch.entry_size(i), arch.entry_size(i)),
+{
+    arch.lemma_entry_sizes_aligned(i, i);
+}
+```
+REASON: Every entry size is self-aligned — trivially true for any nonzero nat, but derived from the external_body axiom rather than from first principles
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_auto_instantiation
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_aligned_auto_instantiation(arch: Arch)
+    requires
+        arch.inv(),
+        arch.layers.len() >= 2,
+    ensures
+        aligned(arch.entry_size(0), arch.entry_size(1)),
+{
+    arch.lemma_entry_sizes_aligned_auto();
+}
+```
+REASON: Layer 0's entry size is aligned to layer 1's — follows from auto lemma which itself depends on the unverified external_body base lemma
+===PHI_END===
+
+===PHI_START===
+NAME: adjacent_layers_divisible
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_adjacent_layers_divisible(arch: Arch, i: nat)
+    requires
+        arch.inv(),
+        i + 1 < arch.layers.len(),
+    ensures
+        arch.entry_size(i) % arch.entry_size(i + 1) == 0,
+{
+    arch.lemma_entry_sizes_aligned(i, i + 1);
+}
+```
+REASON: Adjacent layer entry sizes are divisible — the `entry_size_is_next_layer_size` invariant makes `entry_size(i) == entry_size(i+1) * num_entries(i+1)`, so divisibility is a verified consequence, but the alignment lemma's external_body makes even this path unverified
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_transitive_via_external
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_aligned_transitive_via_external(arch: Arch, i: nat, j: nat, k: nat)
+    requires
+        arch.inv(),
+        i <= j,
+        j <= k,
+        k < arch.layers.len(),
+    ensures
+        aligned(arch.entry_size(i), arch.entry_size(k)),
+{
+    arch.lemma_entry_sizes_aligned(i, k);
+}
+```
+REASON: Alignment is transitive across non-adjacent layers — this skips intermediate layers entirely, relying solely on the external_body axiom without verifying the inductive chain
+===PHI_END===

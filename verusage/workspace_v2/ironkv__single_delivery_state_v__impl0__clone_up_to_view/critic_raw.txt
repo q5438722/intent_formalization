@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: ckeyhasmap_view_unconstrained
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The property `h1@ === h2@ || !(h1@ === h2@)` is a tautology (law of excluded middle) that holds for any type and any spec function. It reveals nothing about whether `CKeyHashMap::view` is under-constrained — it would verify even if the view were fully axiomatized.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: clone_up_to_view_loses_marshalability
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures clause `y is Message || y is Ack || y is InvalidMessage` is a tautology — it simply enumerates all variants of the `CSingleMessage` enum. Any value of type `CSingleMessage` must be one of these three variants regardless of any spec property.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: seqno_nat_cast_loses_info
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The cast `u64 -> nat` is injective: for any two u64 values, `s1 as nat == s2 as nat` implies `s1 == s2` because `nat` is a superset of u64's range with no truncation. This is a basic arithmetic fact, not a spec gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: abstractify_cmessage_seq_invalid_preserved
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `abstractify_cmessage_seq` applies `map_values` with the view function, which maps `CSingleMessage::InvalidMessage` to `SingleMessage::InvalidMessage` by definition. This is the intended design — the abstraction faithfully preserves message structure, and filtering is a separate concern handled at the protocol level.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: delegate_hashmap_view_not_injective
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: If `h1@ == h2@`, then `CMessage::Delegate{..h: h1}@` equals `CMessage::Delegate{..h: h2}@` because the view function uses `h@` — this is the correct and expected behavior of abstraction functions. The whole point of the view/abstraction layer is to equate concrete states that are equivalent at the abstract level.
+===VERDICT_END===
+
+===SUMMARY===
+All five candidates are false positives. Three are tautologies (excluded middle, enum exhaustiveness, u64-to-nat injectivity) that reveal no spec weakness. The remaining two (InvalidMessage preservation, Delegate view equality) describe intentional and correct behavior of the abstraction layer. None identify real spec gaps.
+===END_SUMMARY===

@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: always_unfold_intensional_bridge
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `always_unfold` is external_body bridging the `forall` embedded inside `always`'s `TempPred::new` closure and a bare `forall` in the ensures. This is an unverified trust assumption.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: implies_apply_closure_bridge
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `implies_apply` is external_body bridging `p.implies(q).satisfied_by(ex)` — which evaluates a fresh closure from `TempPred::new` — to the direct modus ponens conclusion. This is a separate unverified trust assumption resolving the intensional closure gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: entails_preserved_always_any_spec
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This composes `entails_preserved_by_always` (a verified lemma) with `implies_apply` to weaken through an arbitrary spec. The result is semantically correct monotonicity — no new trust surface beyond φ1 and φ2.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: always_entails_monotone_chain
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Transitivity of entailment lifted through always is a standard and expected property. It composes the already-identified axioms with no new trust surface.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: valid_implies_entails_anything
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: If `p` holds on all executions (`valid(p)`), then any spec trivially entails `p` — this is the definition of validity. The "collapse" is correct and expected.
+===VERDICT_END===
+
+===SUMMARY===
+Two true positives: `always_unfold` and `implies_apply` are independent external_body axioms each bridging distinct intensional closure gaps — extracting a forall from always's closure wrapper, and modus ponens through TempPred::new wrapping, respectively. The remaining three are false positives: monotone lifting through specs, transitive chaining through always, and valid-implies-entailed are all standard logical properties that compose the identified axioms with no new trust surface.
+===END_SUMMARY===

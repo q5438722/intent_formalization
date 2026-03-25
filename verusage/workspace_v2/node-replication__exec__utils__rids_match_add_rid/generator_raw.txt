@@ -1,0 +1,144 @@
+===PHI_START===
+NAME: rids_match_add_rid_extends_both
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_rids_match_add_rid_extends_both(
+    bools: Seq<Option<ReqId>>,
+    rids: Seq<ReqId>,
+    bools_start: nat,
+    bools_end: nat,
+    rids_start: nat,
+    rids_end: nat,
+    rid: ReqId,
+)
+    requires
+        0 <= bools_start <= bools_end <= bools.len(),
+        0 <= rids_start <= rids_end <= rids.len(),
+        rids_match(bools, rids, bools_start, bools_end, rids_start, rids_end),
+    ensures
+        rids_match(
+            bools.push(Option::Some(rid)),
+            rids.push(rid),
+            bools_start,
+            (bools_end + 1) as nat,
+            rids_start,
+            (rids_end + 1) as nat,
+        ),
+{
+    rids_match_add_rid(bools, rids, bools_start, bools_end, rids_start, rids_end, rid);
+    // After push, bools_new[bools_end] == Some(rid) and rids_new[rids_end] == rid
+}
+```
+REASON: Pushing `Some(rid)` and extending both windows by 1 preserves the match — tests that appending a matched pair extends the relation
+===PHI_END===
+
+===PHI_START===
+NAME: rids_match_empty_preserves_after_push
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_rids_match_empty_preserves_after_push(rid: ReqId)
+    ensures
+        rids_match(
+            seq![Option::Some(rid)],
+            seq![rid],
+            0,
+            0,
+            0,
+            0,
+        ),
+{
+}
+```
+REASON: Empty match is preserved after constructing sequences with one element each — the empty window `[0,0)` trivially matches `[0,0)` regardless of sequence contents
+===PHI_END===
+
+===PHI_START===
+NAME: rids_match_single_push
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_rids_match_single_push(rid: ReqId)
+    ensures
+        rids_match(
+            seq![Option::Some(rid)],
+            seq![rid],
+            0,
+            1,
+            0,
+            1,
+        ),
+{
+    let bools = Seq::<Option<ReqId>>::empty();
+    let rids = Seq::<ReqId>::empty();
+    rids_match_add_rid(bools, rids, 0, 0, 0, 0, rid);
+}
+```
+REASON: A single `Some(rid)` pushed onto empty sequences matches a single rid — tests the minimal non-trivial extension
+===PHI_END===
+
+===PHI_START===
+NAME: rids_match_duplicate_rids_allowed
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_rids_match_duplicate_rids_allowed(rid: ReqId)
+    ensures
+        rids_match(
+            seq![Option::Some(rid), Option::Some(rid)],
+            seq![rid, rid],
+            0,
+            2,
+            0,
+            2,
+        ),
+{
+    let bools0 = Seq::<Option<ReqId>>::empty();
+    let rids0 = Seq::<ReqId>::empty();
+    rids_match_add_rid(bools0, rids0, 0, 0, 0, 0, rid);
+    let bools1 = bools0.push(Option::Some(rid));
+    let rids1 = rids0.push(rid);
+    rids_match_add_rid(bools1, rids1, 0, 1, 0, 1, rid);
+}
+```
+REASON: The same `rid` can appear multiple times in both sequences — `rids_match` imposes no uniqueness constraint on request IDs
+===PHI_END===
+
+===PHI_START===
+NAME: rids_match_add_rid_idempotent_window
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_rids_match_add_rid_idempotent_window(
+    bools: Seq<Option<ReqId>>,
+    rids: Seq<ReqId>,
+    bools_start: nat,
+    bools_end: nat,
+    rids_start: nat,
+    rids_end: nat,
+    rid1: ReqId,
+    rid2: ReqId,
+)
+    requires
+        0 <= bools_start <= bools_end <= bools.len(),
+        0 <= rids_start <= rids_end <= rids.len(),
+        rids_match(bools, rids, bools_start, bools_end, rids_start, rids_end),
+    ensures
+        rids_match(
+            bools.push(Option::Some(rid1)).push(Option::Some(rid2)),
+            rids.push(rid1).push(rid2),
+            bools_start,
+            bools_end,
+            rids_start,
+            rids_end,
+        ),
+{
+    rids_match_add_rid(bools, rids, bools_start, bools_end, rids_start, rids_end, rid1);
+    let bools1 = bools.push(Option::Some(rid1));
+    let rids1 = rids.push(rid1);
+    rids_match_add_rid(bools1, rids1, bools_start, bools_end, rids_start, rids_end, rid2);
+}
+```
+REASON: Pushing two rid pairs preserves the original window match — the original `[bools_start, bools_end)` window is unaffected by appending beyond it
+===PHI_END===

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "region_flush_idempotent_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_region_flush_idempotent_external_body(region_view: PersistentMemoryRegionView)\n    requires\n        region_view.no_outstanding_writes(),\n    ensures\n        region_view.flush() == region_view,\n{\n    lemma_if_no_outstanding_writes_to_region_then_flush_is_idempotent(region_view);\n}",
+    "reason": "`lemma_if_no_outstanding_writes_to_region_then_flush_is_idempotent` is `external_body` \u2014 single-region flush idempotency is trusted without proof; the multi-region lemma's correctness entirely depends on this unverified assumption",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "flush_outstanding_write_takes_new_value",
+    "type": "behavioral",
+    "code": "proof fn phi_2_flush_outstanding_write_takes_new_value(b: PersistentMemoryByte, val: u8)\n    requires\n        b.outstanding_write == Some(val),\n    ensures\n        b.flush().state_at_last_flush == val,\n        b.flush().state_at_last_flush != b.state_at_last_flush || val == b.state_at_last_flush,\n{\n}",
+    "reason": "After flushing a byte with an outstanding write, the old `state_at_last_flush` is permanently overwritten \u2014 tests that flush commits the pending value and loses the previous state",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "flush_region_preserves_length",
+    "type": "behavioral",
+    "code": "proof fn phi_3_flush_region_preserves_length(view: PersistentMemoryRegionView)\n    ensures\n        view.flush().state.len() == view.state.len(),\n{\n}",
+    "reason": "Flushing a region should not change its size \u2014 if map altered the sequence length, indexing after flush would be invalid",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "no_outstanding_writes_after_flush",
+    "type": "behavioral",
+    "code": "proof fn phi_4_no_outstanding_writes_after_flush(view: PersistentMemoryRegionView)\n    ensures\n        view.flush().no_outstanding_writes(),\n{\n}",
+    "reason": "After flushing all bytes, every byte should have `outstanding_write == None` \u2014 if flush left outstanding writes, a second flush could change state, violating crash consistency",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "no_outstanding_writes_in_empty_range",
+    "type": "boundary",
+    "code": "proof fn phi_5_no_outstanding_writes_in_empty_range(view: PersistentMemoryRegionView, i: int)\n    ensures\n        view.no_outstanding_writes_in_range(i, i),\n{\n}",
+    "reason": "An empty range should vacuously have no outstanding writes \u2014 if the range predicate were off-by-one (using `<=` instead of `<`), empty ranges would require checking a byte",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

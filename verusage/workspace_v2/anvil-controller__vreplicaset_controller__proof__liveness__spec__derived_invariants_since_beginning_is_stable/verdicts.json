@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "unmarshal_skips_state_validation",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is intentional separation of concerns \u2014 unmarshal handles deserialization while state_validation is checked separately by the API server (via `valid_object`). The `each_builtin_object_in_etcd_is_well_formed` invariant ensures objects in etcd satisfy both unmarshallability AND validity. Combining them in unmarshal would conflate parsing with semantic validation."
+  },
+  {
+    "phi": "label_selector_none_matches_everything",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This matches real Kubernetes semantics \u2014 a nil/empty selector matches all objects. The Kubernetes API documentation explicitly states that an empty label selector matches everything. The VReplicaSet's `_state_validation` separately enforces that match_labels must be Some and non-empty for VRS resources."
+  },
+  {
+    "phi": "label_selector_empty_map_matches_everything",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Same as above \u2014 an empty match_labels map vacuously matching everything is correct Kubernetes behavior. The VRS state_validation guards against this by requiring `match_labels->0.len() > 0`. The LabelSelectorView itself is a general-purpose spec used across many resource types, so the permissive semantics are by design."
+  },
+  {
+    "phi": "object_ref_ignores_uid",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "ObjectRef is deliberately defined as (kind, name, namespace) \u2014 this is how Kubernetes identifies resources for API operations (get, update, delete all use kind+name+namespace). UID is used for ownership tracking via OwnerReferenceView, which does include uid. The model correctly uses ObjectRef for API lookups and OwnerReferenceView (with uid) for ownership, matching real Kubernetes semantics."
+  },
+  {
+    "phi": "create_key_namespace_diverges",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "In Kubernetes, the namespace in the API URL path (modeled by `self.namespace`) is authoritative \u2014 the server ignores or overwrites the namespace in the object's metadata. The key correctly uses `self.namespace` because that represents the actual target namespace of the create operation. The API server would reconcile any metadata.namespace mismatch. This models real Kubernetes behavior where the URL namespace takes precedence."
+  }
+]

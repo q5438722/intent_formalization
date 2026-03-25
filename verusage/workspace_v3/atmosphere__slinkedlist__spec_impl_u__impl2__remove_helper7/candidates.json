@@ -1,0 +1,37 @@
+[
+  {
+    "name": "removed_value_still_present",
+    "target_fn": "remove_helper7",
+    "type": "behavioral",
+    "code": "proof fn phi_1_removed_value_still_present<T: Copy, const N: usize>(\n    old_self: StaticLinkedList<T, N>,\n    post_self: StaticLinkedList<T, N>,\n    remove_index: SLLIndex,\n    v: T,\n    ret: T,\n)\n    requires\n        old_self.wf(),\n        old_self@.contains(v),\n        old_self.get_node_ref(v) == remove_index,\n        old_self.value_list_len != 1,\n        old_self.free_list_len != 0,\n        old_self.value_list_tail != remove_index,\n        old_self.value_list_head != remove_index,\n        post_self.wf(),\n        post_self@.len() == old_self@.len() - 1,\n        post_self.unique(),\n        post_self@ =~= old_self@.remove_value(ret),\n        ret == v,\n    ensures\n        post_self@.contains(ret),\n{\n}",
+    "reason": "If the removed value is still present after removal, the remove operation is semantically broken"
+  },
+  {
+    "name": "length_drops_to_zero",
+    "target_fn": "remove_helper7",
+    "type": "boundary",
+    "code": "proof fn phi_2_length_drops_to_zero<T: Copy, const N: usize>(\n    old_self: StaticLinkedList<T, N>,\n    post_self: StaticLinkedList<T, N>,\n    remove_index: SLLIndex,\n    v: T,\n    ret: T,\n)\n    requires\n        old_self.wf(),\n        old_self@.contains(v),\n        old_self.get_node_ref(v) == remove_index,\n        old_self.value_list_len != 1,\n        old_self.free_list_len != 0,\n        old_self.value_list_tail != remove_index,\n        old_self.value_list_head != remove_index,\n        post_self.wf(),\n        post_self@.len() == old_self@.len() - 1,\n        post_self.unique(),\n        post_self@ =~= old_self@.remove_value(ret),\n        ret == v,\n    ensures\n        post_self@.len() == 0,\n{\n}",
+    "reason": "Precondition requires value_list_len != 1 (so len >= 2), meaning post-length must be >= 1, never 0"
+  },
+  {
+    "name": "other_element_lost",
+    "target_fn": "remove_helper7",
+    "type": "behavioral",
+    "code": "proof fn phi_3_other_element_lost<T: Copy, const N: usize>(\n    old_self: StaticLinkedList<T, N>,\n    post_self: StaticLinkedList<T, N>,\n    remove_index: SLLIndex,\n    v: T,\n    ret: T,\n    x: T,\n)\n    requires\n        old_self.wf(),\n        old_self@.contains(v),\n        old_self.get_node_ref(v) == remove_index,\n        old_self.value_list_len != 1,\n        old_self.free_list_len != 0,\n        old_self.value_list_tail != remove_index,\n        old_self.value_list_head != remove_index,\n        post_self.wf(),\n        post_self@.len() == old_self@.len() - 1,\n        post_self.unique(),\n        post_self@ =~= old_self@.remove_value(ret),\n        ret == v,\n        old_self@.contains(x),\n        x != ret,\n    ensures\n        !post_self@.contains(x),\n{\n}",
+    "reason": "An element distinct from the removed one should be preserved; losing it means removal is destructive beyond its target"
+  },
+  {
+    "name": "sequence_unchanged_after_remove",
+    "target_fn": "remove_helper7",
+    "type": "logical",
+    "code": "proof fn phi_4_sequence_unchanged_after_remove<T: Copy, const N: usize>(\n    old_self: StaticLinkedList<T, N>,\n    post_self: StaticLinkedList<T, N>,\n    remove_index: SLLIndex,\n    v: T,\n    ret: T,\n)\n    requires\n        old_self.wf(),\n        old_self@.contains(v),\n        old_self.get_node_ref(v) == remove_index,\n        old_self.value_list_len != 1,\n        old_self.free_list_len != 0,\n        old_self.value_list_tail != remove_index,\n        old_self.value_list_head != remove_index,\n        post_self.wf(),\n        post_self@.len() == old_self@.len() - 1,\n        post_self.unique(),\n        post_self@ =~= old_self@.remove_value(ret),\n        ret == v,\n    ensures\n        post_self@ =~= old_self@,\n{\n}",
+    "reason": "If the sequence is identical before and after removal, the function had no observable effect on the abstract state"
+  },
+  {
+    "name": "node_ref_changes_for_remaining",
+    "target_fn": "remove_helper7",
+    "type": "logical",
+    "code": "proof fn phi_5_node_ref_changes_for_remaining<T: Copy, const N: usize>(\n    old_self: StaticLinkedList<T, N>,\n    post_self: StaticLinkedList<T, N>,\n    remove_index: SLLIndex,\n    v: T,\n    ret: T,\n    x: T,\n)\n    requires\n        old_self.wf(),\n        old_self@.contains(v),\n        old_self.get_node_ref(v) == remove_index,\n        old_self.value_list_len != 1,\n        old_self.free_list_len != 0,\n        old_self.value_list_tail != remove_index,\n        old_self.value_list_head != remove_index,\n        post_self.wf(),\n        post_self@.len() == old_self@.len() - 1,\n        post_self.unique(),\n        post_self@ =~= old_self@.remove_value(ret),\n        ret == v,\n        forall|w: T| #![auto] post_self@.contains(w) ==> old_self.get_node_ref(w) == post_self.get_node_ref(w),\n        post_self@.contains(x),\n    ensures\n        old_self.get_node_ref(x) != post_self.get_node_ref(x),\n{\n}",
+    "reason": "The spec guarantees node refs are stable for surviving elements; if this proves, the stability postcondition is contradictory"
+  }
+]

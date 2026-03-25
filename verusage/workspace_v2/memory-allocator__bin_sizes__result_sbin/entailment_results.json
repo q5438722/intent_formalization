@@ -1,0 +1,47 @@
+[
+  {
+    "name": "size_of_sbin_closed_spec_opaque",
+    "type": "logical",
+    "code": "proof fn phi_1_size_of_sbin_closed_spec_opaque(i: int, j: int)\n    requires\n        valid_sbin_idx(i),\n        valid_sbin_idx(j),\n        i < j,\n    ensures\n        size_of_sbin(i) <= size_of_sbin(j) || size_of_sbin(i) > size_of_sbin(j),\n{\n}",
+    "reason": "`size_of_sbin` is `closed spec` \u2014 callers cannot reason about its definition, so monotonicity (larger bin index \u2192 larger size) cannot be established outside this module, potentially breaking bin-fitting correctness proofs",
+    "entailed": true,
+    "verus_output": "verification results:: 18 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "sbin8_discontinuity",
+    "type": "boundary",
+    "code": "proof fn phi_2_sbin8_discontinuity()\n    ensures\n        smallest_sbin_fitting_size(8) == 8,\n        smallest_sbin_fitting_size(9) != 9,\n{\n}",
+    "reason": "The transition at `i=9` switches from identity (`i <= 8` branch returns `i`) to the bit-manipulation formula, which may produce a different value than 9 \u2014 a discontinuity in the sbin mapping could skip bin indices or assign incorrect bins",
+    "entailed": false,
+    "verus_output": "ts:: 17 verified, 1 errors\nerror: postcondition not satisfied\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__bin_sizes__result_sbin/phi_2_sbin8_discontinuity.rs:238:9\n    |\n235 | proof fn phi_2_sbin8_discontinuity()\n    |       ------------------------------ at the end of the function body\n...\n238 |         smallest_sbin_fitting_size(9) != 9,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "smallest_sbin_negative_input",
+    "type": "boundary",
+    "code": "proof fn phi_3_smallest_sbin_negative_input()\n    ensures\n        smallest_sbin_fitting_size(-5) == -5,\n{\n}",
+    "reason": "For negative inputs, `smallest_sbin_fitting_size` returns the input directly (since `-5 <= 8`), producing a negative sbin index that violates `valid_sbin_idx` \u2014 callers passing invalid slice counts get silently invalid indices",
+    "entailed": true,
+    "verus_output": "verification results:: 18 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "property_sbin_vacuous_for_large",
+    "type": "boundary",
+    "code": "proof fn phi_4_property_sbin_vacuous_for_large(slice_count: int)\n    requires\n        slice_count > 1000000,\n    ensures\n        !valid_sbin_idx(smallest_sbin_fitting_size(slice_count)) || property_sbin(slice_count),\n{\n}",
+    "reason": "For very large slice counts, `smallest_sbin_fitting_size` may produce an index exceeding `SEGMENT_BIN_MAX=31`, making `property_sbin` fail \u2014 there is no BIN_HUGE equivalent to catch oversized inputs like the regular bin allocator has",
+    "entailed": false,
+    "verus_output": "i_4_property_sbin_vacuous_for_large.rs:239:9\n    |\n235 | proof fn phi_4_property_sbin_vacuous_for_large(slice_count: int)\n    |       ---------------------------------------------------------- at the end of the function body\n...\n239 |         !valid_sbin_idx(smallest_sbin_fitting_size(slice_count)) || property_sbin(slice_count),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pow2_negative_is_one",
+    "type": "boundary",
+    "code": "proof fn phi_5_pow2_negative_is_one(e: int)\n    requires\n        e < 0,\n    ensures\n        pow2(e) == 1,\n{\n}",
+    "reason": "`pow2` returns 1 for all negative exponents \u2014 mathematically 2^(-n) is a fraction, so if `size_of_sbin` ever computes a negative `group + 1`, the size silently collapses to `(inner + 5) * 1` instead of producing an error",
+    "entailed": true,
+    "verus_output": "verification results:: 18 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

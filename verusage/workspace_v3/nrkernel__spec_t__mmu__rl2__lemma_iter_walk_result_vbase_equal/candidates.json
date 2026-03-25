@@ -1,0 +1,37 @@
+[
+  {
+    "name": "align_always_zero",
+    "target_fn": "align_to_usize",
+    "type": "behavioral",
+    "code": "proof fn phi_1_align_always_zero(a: usize, b: usize)\n    requires\n        b > 0,\n        a >= b,\n    ensures\n        align_to_usize(a, b) == 0,\n{\n}",
+    "reason": "If alignment collapses every value >= b to zero, the function destroys address information and is trivially wrong."
+  },
+  {
+    "name": "align_exceeds_input",
+    "target_fn": "align_to_usize",
+    "type": "boundary",
+    "code": "proof fn phi_2_align_exceeds_input(a: usize, b: usize)\n    requires\n        b > 0,\n    ensures\n        align_to_usize(a, b) > a,\n{\n}",
+    "reason": "Floor alignment must never produce a value strictly greater than the input; that would map addresses beyond their original range."
+  },
+  {
+    "name": "result_not_aligned",
+    "target_fn": "align_to_usize",
+    "type": "logical",
+    "code": "proof fn phi_3_result_not_aligned(a: usize, b: usize)\n    requires\n        b > 0,\n    ensures\n        align_to_usize(a, b) % (b as int) != 0,\n{\n}",
+    "reason": "The fundamental contract of alignment is that the result is a multiple of b; violating this breaks all page-boundary assumptions in the MMU."
+  },
+  {
+    "name": "not_idempotent",
+    "target_fn": "align_to_usize",
+    "type": "behavioral",
+    "code": "proof fn phi_4_not_idempotent(a: usize, b: usize)\n    requires\n        b > 0,\n    ensures\n        align_to_usize(align_to_usize(a, b), b) != align_to_usize(a, b),\n{\n}",
+    "reason": "Alignment must be idempotent \u2014 re-aligning an already-aligned value should be a no-op; failure means vbase recomputation in Walk::result is unstable."
+  },
+  {
+    "name": "same_block_different_align",
+    "target_fn": "align_to_usize",
+    "type": "boundary",
+    "code": "proof fn phi_5_same_block_different_align(a: usize, b: usize)\n    requires\n        b > 0,\n        a < 0xFFFF_FFFF_FFFF_FFFFusize,\n        (a % b) < (sub(b, 1)),\n    ensures\n        align_to_usize(a, b) != align_to_usize(a + 1, b),\n{\n}",
+    "reason": "Two addresses within the same alignment block must map to the same base; otherwise iter_walk could assign different vbases to addresses on the same page."
+  }
+]

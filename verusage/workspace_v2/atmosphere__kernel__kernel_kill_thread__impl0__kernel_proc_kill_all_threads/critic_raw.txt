@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: container_map_4k_allows_double_ownership
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The `container_map_4k` Ghost field has no disjointness predicate in the visible spec — the ensures clause correctly demonstrates that two distinct containers can simultaneously contain the same page pointer in their respective maps. While the PageAllocator's closed `wf()` might internally enforce disjointness, the fact that this property is provable without requiring `wf()` means callers operating without the full well-formedness assumption can reason about double-owned pages.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: container_map_2m_allows_double_ownership
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: Same issue as `container_map_4k` — the `container_map_2m` Ghost field lacks any visible disjointness constraint. The property is provable without requiring `wf()`, exposing that two containers can claim the same 2M page in partial-wf contexts.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: container_map_1g_allows_double_ownership
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: Same pattern as the 4k and 2m variants. The `container_map_1g` Ghost field has no visible disjointness predicate, allowing two distinct containers to simultaneously claim the same 1G page without contradiction.
+===VERDICT_END===
+
+===SUMMARY===
+All three candidates are true positives identifying the same structural spec gap across the three page size tiers. The `container_map_4k`, `container_map_2m`, and `container_map_1g` Ghost fields in PageAllocator lack any visible disjointness constraint, meaning the spec permits two distinct containers to simultaneously claim ownership of the same physical page. While the closed `wf()` spec may internally enforce disjointness, this invariant is not exposed at the spec surface, allowing reasoning in partial-wf contexts to assume double ownership is possible. This is a meaningful spec weakness for a page allocator where exclusive ownership is a fundamental safety property.
+===END_SUMMARY===

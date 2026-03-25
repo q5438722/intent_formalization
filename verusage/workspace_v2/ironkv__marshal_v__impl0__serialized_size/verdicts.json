@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "u64_serialize_len_always_8",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Fixed-width 8-byte LE encoding for u64 is a standard, intentional design choice. This is the expected behavior of `spec_u64_to_le_bytes`, not a spec gap."
+  },
+  {
+    "phi": "usize_serialized_size_external_body_unchecked",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`usize::serialized_size` is `external_body` with an `unimplemented!()` body, so its ensures clause (`res as int == self.ghost_serialize().len()`) is trusted without verification. Since the serialization length is provably always 8, this could be implemented and verified like the u64 version, but instead it's left as an unverified trust assumption."
+  },
+  {
+    "phi": "serialized_size_trait_external_body",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "For u64, the serialized length is provably 8, which trivially fits in usize. The property demonstrated here is a concrete fact about u64, not a gap. The theoretical concern about future impls exceeding usize::MAX is not a current spec issue."
+  },
+  {
+    "phi": "usize_max_is_marshalable",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The biconditional `(usize::MAX).is_marshalable() <==> (usize::MAX as int <= u64::MAX)` is a direct tautological restatement of the `is_marshalable` definition. Platform-dependent behavior is the intentional design \u2014 the spec correctly captures the constraint."
+  },
+  {
+    "phi": "ghost_serialize_recommends_not_requires",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This PHI's precondition requires `!(a.is_marshalable())` for usize, meaning `a as int > u64::MAX`. On any real platform, `usize` cannot exceed `u64::MAX` on 64-bit (and is smaller on 32-bit), so the precondition is unsatisfiable in practice. The `recommends` vs `requires` distinction is intentional \u2014 non-marshalable inputs are outside the specified domain."
+  }
+]

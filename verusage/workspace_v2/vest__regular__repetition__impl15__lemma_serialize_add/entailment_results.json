@@ -1,0 +1,47 @@
+[
+  {
+    "name": "serialize_empty_is_empty",
+    "type": "boundary",
+    "code": "proof fn phi_1_serialize_empty_is_empty<C: SecureSpecCombinator>(c: &Repeat<C>)\n    ensures\n        c.spec_serialize(Seq::<C::Type>::empty()) == Seq::<u8>::empty(),\n{\n}",
+    "reason": "Serializing an empty sequence should produce empty bytes \u2014 if it produced non-empty output, the serializer would inject phantom data for zero elements",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "serialize_singleton_equals_inner",
+    "type": "behavioral",
+    "code": "proof fn phi_2_serialize_singleton_equals_inner<C: SecureSpecCombinator>(c: &Repeat<C>, v: C::Type)\n    ensures\n        c.spec_serialize(seq![v]) == c.0.spec_serialize(v),\n{\n}",
+    "reason": "Serializing a single-element sequence should equal the inner combinator's serialization \u2014 if it differed, the repetition combinator would add or lose bytes for single elements",
+    "entailed": false,
+    "verus_output": "_singleton_equals_inner.rs:102:9\n    |\n100 | proof fn phi_2_serialize_singleton_equals_inner<C: SecureSpecCombinator>(c: &Repeat<C>, v: C::Type)\n    |       --------------------------------------------------------------------------------------------- at the end of the function body\n101 |     ensures\n102 |         c.spec_serialize(seq![v]) == c.0.spec_serialize(v),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "serialize_length_additive",
+    "type": "logical",
+    "code": "proof fn phi_3_serialize_length_additive<C: SecureSpecCombinator>(c: &Repeat<C>, v: C::Type, vs: Seq<C::Type>)\n    ensures\n        c.spec_serialize(seq![v] + vs).len() == c.0.spec_serialize(v).len() + c.spec_serialize(vs).len(),\n{\n    c.lemma_serialize_add(v, vs);\n}",
+    "reason": "Serialized length should be additive when prepending an element \u2014 if lengths didn't add up, the fold_left accumulation would be losing or duplicating bytes",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "repeatn_ignores_count_field",
+    "type": "logical",
+    "code": "proof fn phi_4_repeatn_ignores_count_field<C: SecureSpecCombinator>(c: &C, vs: Seq<C::Type>, n1: usize, n2: usize)\n    ensures\n        RepeatN(*c, n1).spec_serialize(vs) == RepeatN(*c, n2).spec_serialize(vs),\n{\n}",
+    "reason": "`RepeatN`'s `spec_serialize` uses `fold_left` over `vs` without referencing the `usize` field \u2014 the count parameter is completely ignored during serialization, meaning `RepeatN(c, 0).spec_serialize(vs)` serializes all elements regardless of count",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "serialize_two_elements_concat",
+    "type": "behavioral",
+    "code": "proof fn phi_5_serialize_two_elements_concat<C: SecureSpecCombinator>(c: &Repeat<C>, v1: C::Type, v2: C::Type)\n    ensures\n        c.spec_serialize(seq![v1, v2]) == c.0.spec_serialize(v1) + c.0.spec_serialize(v2),\n{\n    c.lemma_serialize_add(v1, seq![v2]);\n}",
+    "reason": "Serializing two elements should concatenate their individual serializations \u2014 if the fold accumulated incorrectly, pair serialization would produce garbled output",
+    "entailed": false,
+    "verus_output": "oncat<C: SecureSpecCombinator>(c: &Repeat<C>, v1: C::Type, v2: C::Type)\n    |       -------------------------------------------------------------------------------------------------------- at the end of the function body\n101 |     ensures\n102 |         c.spec_serialize(seq![v1, v2]) == c.0.spec_serialize(v1) + c.0.spec_serialize(v2),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

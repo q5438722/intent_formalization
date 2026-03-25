@@ -1,0 +1,95 @@
+===PHI_START===
+NAME: deserialize_external_body_returns_any_marshalable
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_deserialize_external_body_returns_any_marshalable(data: Vec<u8>)
+    requires
+        data@.len() >= 16,
+        data@[0] == 1u8,
+    ensures
+        ({
+            let res = Option::<u64>::deserialize(&data, 0);
+            res.is_some() ==> res.unwrap().0.is_marshalable()
+        }),
+{
+}
+```
+REASON: All `external_body` `deserialize` implementations (usize, Vec<u8>, Option<T>, Vec<T>, (T,U)) have trivially satisfiable `None => true` ensures — they could always return `None` and vacuously satisfy the spec, making the deserialize contract useless for proving roundtrip properties
+===PHI_END===
+
+===PHI_START===
+NAME: option_none_serialize_tag_zero
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_option_none_serialize_tag_zero()
+    ensures
+        ({
+            let n: Option<u64> = None;
+            n.ghost_serialize() == seq![0u8]
+        }),
+{
+}
+```
+REASON: `None` serializes to a single byte `[0]` while `Some(x)` uses `[1] + x.ghost_serialize()` — but since `ghost_serialize` at the trait level is `external_body` with only a `recommends`, there's no guarantee that the open spec definitions here actually match what the external_body trait-level function returns
+===PHI_END===
+
+===PHI_START===
+NAME: tuple_serialize_ambiguous_no_delimiter
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_tuple_serialize_ambiguous_no_delimiter(a1: Vec<u8>, a2: Vec<u8>, b1: Vec<u8>, b2: Vec<u8>)
+    requires
+        a1.is_marshalable(),
+        a2.is_marshalable(),
+        b1.is_marshalable(),
+        b2.is_marshalable(),
+        a1@ == seq![1u8, 2u8],
+        a2@ == seq![3u8, 4u8, 5u8],
+        b1@ == seq![1u8, 2u8, 3u8],
+        b2@ == seq![4u8, 5u8],
+    ensures
+        (a1, a2).ghost_serialize() == (b1, b2).ghost_serialize(),
+{
+}
+```
+REASON: Tuple serialization concatenates the two components without any length delimiter or separator — two different tuples with different split points can produce identical serializations, breaking injectivity
+===PHI_END===
+
+===PHI_START===
+NAME: vec_u8_deserialize_always_none_valid
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_vec_u8_deserialize_always_none_valid(data: Vec<u8>, start: usize)
+    ensures
+        ({
+            let res = Vec::<u8>::deserialize(&data, start);
+            res === None::<(Vec<u8>, usize)> ==> true
+        }),
+{
+}
+```
+REASON: The `external_body` `deserialize` for `Vec<u8>` can always return `None` since the ensures clause has `None => true` — there is no liveness/completeness guarantee that deserialization succeeds when given valid serialized data, so the spec is too weak to prove any roundtrip property
+===PHI_END===
+
+===PHI_START===
+NAME: usize_deserialize_external_body_unconstrained
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_usize_deserialize_external_body_unconstrained(data: Vec<u8>, start: usize)
+    requires
+        data@.len() >= start + 8,
+    ensures
+        ({
+            let res = usize::deserialize(&data, start);
+            res.is_some() ==> res.unwrap().0 as int <= u64::MAX
+        }),
+{
+}
+```
+REASON: `usize::deserialize` is `external_body` with no custom ensures — it inherits the trait ensures which only says the result `is_marshalable()` (i.e., `<= u64::MAX`) if `Some`, but the implementation is completely unverified and could return any usize including values that truncated from the u64 in the byte stream
+===PHI_END===

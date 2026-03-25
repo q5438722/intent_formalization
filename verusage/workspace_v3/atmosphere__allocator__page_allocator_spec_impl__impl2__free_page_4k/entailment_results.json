@@ -1,0 +1,52 @@
+[
+  {
+    "name": "freed_page_becomes_mapped",
+    "target_fn": "free_page_4k",
+    "type": "behavioral",
+    "reason": "A freshly freed page appearing in mapped sets would violate state disjointness between free and mapped pages",
+    "entailed": false,
+    "verified": 8,
+    "errors": 1,
+    "output_tail": "---------------------------------------------------------------------- at the end of the function body\n...\n1090 |         new_alloc.page_is_mapped(target_ptr),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  },
+  {
+    "name": "free_page_not_in_free_set",
+    "target_fn": "free_page_4k",
+    "type": "boundary",
+    "reason": "If the freed page is not actually present in the free set after insertion, the free operation silently lost a page",
+    "entailed": false,
+    "verified": 8,
+    "errors": 1,
+    "output_tail": "------------------------------------------------ at the end of the function body\n...\n1086 |         !new_alloc.free_pages_4k().contains(target_ptr),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  },
+  {
+    "name": "free_removes_other_allocated",
+    "target_fn": "free_page_4k",
+    "type": "logical",
+    "reason": "Freeing one page should never cause a different allocated page to disappear from the allocated set",
+    "entailed": false,
+    "verified": 8,
+    "errors": 1,
+    "output_tail": "---------------------------------------- at the end of the function body\n...\n1088 |         !new_alloc.allocated_pages_4k().contains(other_ptr),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  },
+  {
+    "name": "already_free_page_allocated",
+    "target_fn": "free_page_4k",
+    "type": "logical",
+    "reason": "If wf allows a page to be simultaneously free and allocated, the precondition is too weak to prevent double-free corruption",
+    "entailed": false,
+    "verified": 8,
+    "errors": 1,
+    "output_tail": "-------------------------------------------------- at the end of the function body\n...\n1084 |         old_alloc.free_pages_4k().contains(target_ptr),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  },
+  {
+    "name": "free_changes_mapped_status",
+    "target_fn": "free_page_4k",
+    "type": "behavioral",
+    "reason": "Freeing a 4k page must never cause an unmapped page to become mapped, as that would create phantom memory mappings",
+    "entailed": false,
+    "verified": 8,
+    "errors": 1,
+    "output_tail": "------------------------------------------------------------------------ at the end of the function body\n...\n1087 |         new_alloc.page_is_mapped(other_ptr),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  }
+]

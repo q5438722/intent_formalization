@@ -1,0 +1,108 @@
+===PHI_START===
+NAME: always_returns_none
+TARGET_FN: resolve_iommu_table_mapping
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_always_returns_none(mem: MemoryManager, ioid: IOid, va: VAddr, ret: Option<PageEntry>)
+    requires
+        mem.wf(),
+        mem.ioid_active(ioid),
+        va_4k_valid(va),
+        mem.get_iommu_table_by_ioid(ioid).unwrap().mapping_4k().dom().contains(va) == ret.is_Some(),
+        ret.is_Some() ==> mem.get_iommu_table_by_ioid(ioid).unwrap().mapping_4k().dom().contains(va) && mem.get_iommu_table_by_ioid(ioid).unwrap().mapping_4k()[va] == spec_page_entry_to_map_entry(&ret.unwrap()),
+    ensures
+        ret.is_None(),
+{
+}
+```
+REASON: If entailed, no IOMMU mapping could ever be resolved for any active ioid and valid VA, rendering DMA translation useless.
+===PHI_END===
+
+===PHI_START===
+NAME: resolved_addr_always_zero
+TARGET_FN: resolve_iommu_table_mapping
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_resolved_addr_always_zero(mem: MemoryManager, ioid: IOid, va: VAddr, ret: Option<PageEntry>)
+    requires
+        mem.wf(),
+        mem.ioid_active(ioid),
+        va_4k_valid(va),
+        mem.get_iommu_table_by_ioid(ioid).unwrap().mapping_4k().dom().contains(va) == ret.is_Some(),
+        ret.is_Some() ==> mem.get_iommu_table_by_ioid(ioid).unwrap().mapping_4k().dom().contains(va) && mem.get_iommu_table_by_ioid(ioid).unwrap().mapping_4k()[va] == spec_page_entry_to_map_entry(&ret.unwrap()),
+    ensures
+        ret.is_Some() ==> ret.unwrap().addr == 0,
+{
+}
+```
+REASON: If entailed, every resolved IOMMU mapping would point to physical address zero, meaning all device DMA targets the null page.
+===PHI_END===
+
+===PHI_START===
+NAME: write_always_enabled
+TARGET_FN: resolve_iommu_table_mapping
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_write_always_enabled(mem: MemoryManager, ioid: IOid, va: VAddr, ret: Option<PageEntry>)
+    requires
+        mem.wf(),
+        mem.ioid_active(ioid),
+        va_4k_valid(va),
+        mem.get_iommu_table_by_ioid(ioid).unwrap().mapping_4k().dom().contains(va) == ret.is_Some(),
+        ret.is_Some() ==> mem.get_iommu_table_by_ioid(ioid).unwrap().mapping_4k().dom().contains(va) && mem.get_iommu_table_by_ioid(ioid).unwrap().mapping_4k()[va] == spec_page_entry_to_map_entry(&ret.unwrap()),
+    ensures
+        ret.is_Some() ==> ret.unwrap().perm.write == true,
+{
+}
+```
+REASON: If entailed, all IOMMU-resolved pages are writable, so read-only DMA protections would be impossible.
+===PHI_END===
+
+===PHI_START===
+NAME: execute_disable_never_set
+TARGET_FN: resolve_iommu_table_mapping
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_execute_disable_never_set(mem: MemoryManager, ioid: IOid, va: VAddr, ret: Option<PageEntry>)
+    requires
+        mem.wf(),
+        mem.ioid_active(ioid),
+        va_4k_valid(va),
+        mem.get_iommu_table_by_ioid(ioid).unwrap().mapping_4k().dom().contains(va) == ret.is_Some(),
+        ret.is_Some() ==> mem.get_iommu_table_by_ioid(ioid).unwrap().mapping_4k().dom().contains(va) && mem.get_iommu_table_by_ioid(ioid).unwrap().mapping_4k()[va] == spec_page_entry_to_map_entry(&ret.unwrap()),
+    ensures
+        ret.is_Some() ==> ret.unwrap().perm.execute_disable == false,
+{
+}
+```
+REASON: If entailed, no IOMMU mapping could ever disable execution, breaking NX-bit enforcement for device-accessible memory.
+===PHI_END===
+
+===PHI_START===
+NAME: different_va_same_physical_addr
+TARGET_FN: resolve_iommu_table_mapping
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_different_va_same_physical_addr(mem: MemoryManager, ioid: IOid, va1: VAddr, va2: VAddr, ret1: Option<PageEntry>, ret2: Option<PageEntry>)
+    requires
+        mem.wf(),
+        mem.ioid_active(ioid),
+        va_4k_valid(va1),
+        va_4k_valid(va2),
+        va1 != va2,
+        mem.get_iommu_table_by_ioid(ioid).unwrap().mapping_4k().dom().contains(va1) == ret1.is_Some(),
+        ret1.is_Some() ==> mem.get_iommu_table_by_ioid(ioid).unwrap().mapping_4k()[va1] == spec_page_entry_to_map_entry(&ret1.unwrap()),
+        mem.get_iommu_table_by_ioid(ioid).unwrap().mapping_4k().dom().contains(va2) == ret2.is_Some(),
+        ret2.is_Some() ==> mem.get_iommu_table_by_ioid(ioid).unwrap().mapping_4k()[va2] == spec_page_entry_to_map_entry(&ret2.unwrap()),
+    ensures
+        (ret1.is_Some() && ret2.is_Some()) ==> spec_page_entry_to_map_entry(&ret1.unwrap()).addr == spec_page_entry_to_map_entry(&ret2.unwrap()).addr,
+{
+}
+```
+REASON: If entailed, all distinct mapped VAs for a device alias to the same physical address, collapsing the entire IOMMU address space.
+===PHI_END===

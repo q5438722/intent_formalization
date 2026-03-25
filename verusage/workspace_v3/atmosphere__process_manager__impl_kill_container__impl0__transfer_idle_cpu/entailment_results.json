@@ -1,0 +1,52 @@
+[
+  {
+    "name": "preconditions_unsatisfiable",
+    "target_fn": "transfer_idle_cpu",
+    "type": "logical",
+    "reason": "If provable, the preconditions are contradictory and transfer_idle_cpu can never be called.",
+    "entailed": false,
+    "verified": 23,
+    "errors": 1,
+    "output_tail": ", cpu_id: CpuId)\n     |       ----------------------------------------------------------------------------------------------------- at the end of the function body\n...\n1535 |         false,\n     |         ^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 23 warnings emitted\n\n"
+  },
+  {
+    "name": "self_parent_loop",
+    "target_fn": "transfer_idle_cpu",
+    "type": "behavioral",
+    "reason": "If provable, a container can be its own parent, making the CPU transfer a no-op and breaking the tree structure.",
+    "entailed": false,
+    "verified": 23,
+    "errors": 1,
+    "output_tail": "------------------- at the end of the function body\n...\n1535 |         pm.get_container(container_ptr).parent == Some(container_ptr),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 23 warnings emitted\n\n"
+  },
+  {
+    "name": "parent_not_in_domain",
+    "target_fn": "transfer_idle_cpu",
+    "type": "logical",
+    "reason": "If provable, the parent container is not in the domain, so inserting the CPU into the parent would access invalid memory.",
+    "entailed": false,
+    "verified": 23,
+    "errors": 1,
+    "output_tail": "ome()\n1536 | |             && !pm.container_dom().contains(pm.get_container(container_ptr).parent.unwrap()),\n     | |____________________________________________________________________________________________^ failed this postcondition\n\nerror: aborting due to 1 previous error; 24 warnings emitted\n\n"
+  },
+  {
+    "name": "depth_exceeds_container_count",
+    "target_fn": "transfer_idle_cpu",
+    "type": "boundary",
+    "reason": "If provable, tree depth exceeds the number of containers, indicating a malformed container tree invariant.",
+    "entailed": false,
+    "verified": 23,
+    "errors": 1,
+    "output_tail": "at the end of the function body\n...\n1535 |         pm.get_container(container_ptr).depth as int > pm.container_dom().len(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 23 warnings emitted\n\n"
+  },
+  {
+    "name": "cpu_owner_mismatch",
+    "target_fn": "transfer_idle_cpu",
+    "type": "behavioral",
+    "reason": "If provable, cpu_list and container owned_cpus are inconsistent\u2014the CPU is listed under a container that the cpu_list disagrees with.",
+    "entailed": false,
+    "verified": 23,
+    "errors": 1,
+    "output_tail": "------------------------------------- at the end of the function body\n...\n1535 |         pm.get_cpu(cpu_id).owning_container != container_ptr,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 23 warnings emitted\n\n"
+  }
+]

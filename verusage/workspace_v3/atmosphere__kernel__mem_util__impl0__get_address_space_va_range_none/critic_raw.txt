@@ -1,0 +1,10 @@
+===VERDICT_START===
+PHI: vacuous_empty_range
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The property demonstrates that `get_address_space_va_range_none` trivially returns `true` for any zero-length `VaRange4K`, regardless of whether the address space has mapped pages. This is a real spec weakness: callers relying on this function to validate that a VA range is unmapped could pass a degenerate zero-length range and bypass the check entirely. The ensures clause on the executable function `get_address_space_va_range_none` vacuously holds when `va_range.len == 0`, which could mask bugs in callers that don't independently validate range length.
+===VERDICT_END===
+
+===SUMMARY===
+One candidate property was analyzed. `vacuous_empty_range` is a true positive at medium confidence: it exposes that `get_address_space_va_range_none` (an executable function) vacuously succeeds for zero-length VA ranges, meaning any caller that doesn't separately validate `va_range.len > 0` could incorrectly conclude a region is free. This is a boundary-condition spec gap — the function's contract should either require `va_range.len > 0` or callers should be aware that empty ranges are trivially "unmapped." Whether this is exploitable depends on upstream call sites, but the spec as written permits a degenerate bypass.
+===END_SUMMARY===

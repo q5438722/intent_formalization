@@ -1,0 +1,84 @@
+===PHI_START===
+NAME: block_start_at_diff_underflow
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_block_start_at_diff_underflow(page_id: PageId, block_size: nat, block_idx1: nat, block_idx2: nat)
+    requires
+        block_idx2 < block_idx1,
+        block_size > 0,
+    ensures
+        block_start_at(page_id, block_size as int, block_idx2 as int) ==
+            block_start_at(page_id, block_size as int, block_idx1 as int) + (block_idx2 - block_idx1) * block_size,
+{
+    block_start_at_diff(page_id, block_size, block_idx1, block_idx2);
+}
+```
+REASON: `block_start_at_diff` has no precondition requiring `block_idx2 >= block_idx1` — when `block_idx2 < block_idx1`, the difference `(block_idx2 - block_idx1)` is negative, and the result is still provable but the "diff" semantics are misleading
+===PHI_END===
+
+===PHI_START===
+NAME: block_start_at_diff_zero_size
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_block_start_at_diff_zero_size(page_id: PageId, block_idx1: nat, block_idx2: nat)
+    ensures
+        block_start_at(page_id, 0, block_idx2 as int) ==
+            block_start_at(page_id, 0, block_idx1 as int),
+{
+    block_start_at_diff(page_id, 0, block_idx1, block_idx2);
+}
+```
+REASON: With `block_size == 0`, all block indices map to the same address — `block_start_at_diff` allows this degenerate case where distinct blocks are at identical addresses
+===PHI_END===
+
+===PHI_START===
+NAME: page_start_exceeds_segment
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_page_start_exceeds_segment(page_id: PageId)
+    requires
+        page_id.idx == 1000,
+    ensures
+        page_start(page_id) == segment_start(page_id.segment_id) + 65536000,
+{
+}
+```
+REASON: `page_start` places no upper bound on `page_id.idx` — idx=1000 yields an offset of ~65MB, far beyond SEGMENT_SIZE (33MB), placing the page outside the segment
+===PHI_END===
+
+===PHI_START===
+NAME: start_offset_small_block_384
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_start_offset_small_block_384(page_id: PageId, block_size: int, block_idx: int)
+    requires
+        block_size == 8,
+        block_idx == 0,
+    ensures
+        block_start_at(page_id, block_size, block_idx) == page_start(page_id) + 384,
+{
+}
+```
+REASON: Small blocks (8 ≤ size ≤ 1024) get a 384-byte start offset (3 * MAX_ALIGN_GUARANTEE = 3 * 128) — the first block starts 384 bytes into the page, wasting space; if MAX_ALIGN_GUARANTEE changes, this silently shifts all block addresses
+===PHI_END===
+
+===PHI_START===
+NAME: block_start_at_diff_arbitrary_pages
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_block_start_at_diff_arbitrary_pages(page_id1: PageId, page_id2: PageId, block_size: nat, idx: nat)
+    requires
+        page_id1.segment_id.id != page_id2.segment_id.id,
+    ensures
+        block_start_at(page_id1, block_size as int, idx as int) - block_start_at(page_id2, block_size as int, idx as int)
+            == page_start(page_id1) - page_start(page_id2),
+{
+}
+```
+REASON: `block_start_at` allows computing cross-segment address differences with no constraint that blocks are in the same segment — the diff is well-defined on `int` but meaningless across unrelated segments
+===PHI_END===

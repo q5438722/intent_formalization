@@ -1,0 +1,75 @@
+===PHI_START===
+NAME: region_flush_idempotent_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_region_flush_idempotent_external_body(region_view: PersistentMemoryRegionView)
+    requires
+        region_view.no_outstanding_writes(),
+    ensures
+        region_view.flush() == region_view,
+{
+    lemma_if_no_outstanding_writes_to_region_then_flush_is_idempotent(region_view);
+}
+```
+REASON: `lemma_if_no_outstanding_writes_to_region_then_flush_is_idempotent` is `external_body` — single-region flush idempotency is trusted without proof; the multi-region lemma's correctness entirely depends on this unverified assumption
+===PHI_END===
+
+===PHI_START===
+NAME: flush_outstanding_write_takes_new_value
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_flush_outstanding_write_takes_new_value(b: PersistentMemoryByte, val: u8)
+    requires
+        b.outstanding_write == Some(val),
+    ensures
+        b.flush().state_at_last_flush == val,
+        b.flush().state_at_last_flush != b.state_at_last_flush || val == b.state_at_last_flush,
+{
+}
+```
+REASON: After flushing a byte with an outstanding write, the old `state_at_last_flush` is permanently overwritten — tests that flush commits the pending value and loses the previous state
+===PHI_END===
+
+===PHI_START===
+NAME: flush_region_preserves_length
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_flush_region_preserves_length(view: PersistentMemoryRegionView)
+    ensures
+        view.flush().state.len() == view.state.len(),
+{
+}
+```
+REASON: Flushing a region should not change its size — if map altered the sequence length, indexing after flush would be invalid
+===PHI_END===
+
+===PHI_START===
+NAME: no_outstanding_writes_after_flush
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_no_outstanding_writes_after_flush(view: PersistentMemoryRegionView)
+    ensures
+        view.flush().no_outstanding_writes(),
+{
+}
+```
+REASON: After flushing all bytes, every byte should have `outstanding_write == None` — if flush left outstanding writes, a second flush could change state, violating crash consistency
+===PHI_END===
+
+===PHI_START===
+NAME: no_outstanding_writes_in_empty_range
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_no_outstanding_writes_in_empty_range(view: PersistentMemoryRegionView, i: int)
+    ensures
+        view.no_outstanding_writes_in_range(i, i),
+{
+}
+```
+REASON: An empty range should vacuously have no outstanding writes — if the range predicate were off-by-one (using `<=` instead of `<`), empty ranges would require checking a byte
+===PHI_END===

@@ -1,0 +1,89 @@
+===PHI_START===
+NAME: map_entry_addr_always_zero
+TARGET_FN: page_entry_to_map_entry
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_map_entry_addr_always_zero(p: PageEntry)
+    ensures
+        spec_page_entry_to_map_entry(&p).addr == 0,
+{
+}
+```
+REASON: If provable, the conversion always loses the physical address, making all mappings point to address 0
+===PHI_END===
+
+===PHI_START===
+NAME: map_entry_write_always_false
+TARGET_FN: page_entry_to_map_entry
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_map_entry_write_always_false(p: PageEntry)
+    ensures
+        spec_page_entry_to_map_entry(&p).write == false,
+{
+}
+```
+REASON: If provable, write permission is never propagated to MapEntry, silently making all pages read-only
+===PHI_END===
+
+===PHI_START===
+NAME: map_entry_xd_equals_write
+TARGET_FN: page_entry_to_map_entry
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_map_entry_xd_equals_write(p: PageEntry)
+    ensures
+        spec_page_entry_to_map_entry(&p).execute_disable == spec_page_entry_to_map_entry(&p).write,
+{
+}
+```
+REASON: If provable, execute-disable and write are always conflated, preventing independent writable-but-executable or read-only-non-executable pages
+===PHI_END===
+
+===PHI_START===
+NAME: l1_lookup_always_none
+TARGET_FN: get_entry_l1
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_l1_lookup_always_none(pt: PageTable, l4i: L4Index, l3i: L3Index, l2i: L2Index, l1i: L1Index, l2_entry: PageEntry)
+    requires
+        pt.wf(),
+        pt.kernel_l4_end <= l4i < 512,
+        0 <= l3i < 512,
+        0 <= l2i < 512,
+        0 <= l1i < 512,
+        pt.spec_resolve_mapping_l2(l4i, l3i, l2i) =~= Some(l2_entry),
+    ensures
+        pt.spec_resolve_mapping_4k_l1(l4i, l3i, l2i, l1i).is_None(),
+{
+}
+```
+REASON: If provable, no 4K page can ever be mapped through L1, rendering the entire 4K mapping layer vacuous
+===PHI_END===
+
+===PHI_START===
+NAME: l1_mapping_always_readonly
+TARGET_FN: get_entry_l1
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_l1_mapping_always_readonly(pt: PageTable, l4i: L4Index, l3i: L3Index, l2i: L2Index, l1i: L1Index, l2_entry: PageEntry)
+    requires
+        pt.wf(),
+        pt.kernel_l4_end <= l4i < 512,
+        0 <= l3i < 512,
+        0 <= l2i < 512,
+        0 <= l1i < 512,
+        pt.spec_resolve_mapping_l2(l4i, l3i, l2i) =~= Some(l2_entry),
+        pt.spec_resolve_mapping_4k_l1(l4i, l3i, l2i, l1i).is_Some(),
+    ensures
+        pt.mapping_4k()[spec_index2va((l4i, l3i, l2i, l1i))].write == false,
+{
+}
+```
+REASON: If provable, all resolved 4K mappings are forced read-only, meaning writable user pages can never exist at 4K granularity
+===PHI_END===

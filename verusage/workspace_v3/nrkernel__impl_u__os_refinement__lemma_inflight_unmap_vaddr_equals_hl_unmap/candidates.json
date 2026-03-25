@@ -1,0 +1,37 @@
+[
+  {
+    "name": "aligned_zero_size",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "code": "proof fn phi_1_aligned_zero_size()\n    ensures\n        forall|addr: nat| aligned(addr, 0),\n{\n}",
+    "reason": "If alignment to size 0 is trivially true for all addresses, the spec lacks a guard against degenerate zero-size alignment"
+  },
+  {
+    "name": "inv_empty_arch",
+    "target_fn": "inv",
+    "type": "boundary",
+    "code": "proof fn phi_2_inv_empty_arch()\n    ensures\n        (Arch { layers: seq![] }).inv(),\n{\n}",
+    "reason": "An architecture with zero layers is degenerate and should not satisfy the well-formedness invariant"
+  },
+  {
+    "name": "upper_vaddr_no_progress",
+    "target_fn": "upper_vaddr",
+    "type": "behavioral",
+    "code": "proof fn phi_3_upper_vaddr_no_progress(arch: Arch, layer: nat, base: nat)\n    requires\n        arch.inv(),\n        layer < arch.layers.len(),\n    ensures\n        arch.upper_vaddr(layer, base) == base,\n{\n}",
+    "reason": "If upper_vaddr equals base under a valid invariant, the layer covers zero address space, making the architecture useless"
+  },
+  {
+    "name": "entry_base_collapses_indices",
+    "target_fn": "entry_base",
+    "type": "logical",
+    "code": "proof fn phi_4_entry_base_collapses_indices(arch: Arch, layer: nat, base: nat, i: nat, j: nat)\n    requires\n        arch.inv(),\n        layer < arch.layers.len(),\n        i < arch.num_entries(layer),\n        j < arch.num_entries(layer),\n        i != j,\n    ensures\n        arch.entry_base(layer, base, i) == arch.entry_base(layer, base, j),\n{\n}",
+    "reason": "If two distinct indices map to the same entry base, page table entries would alias and the address space partitioning is broken"
+  },
+  {
+    "name": "entry_size_next_layer_vacuous",
+    "target_fn": "entry_size_is_next_layer_size",
+    "type": "logical",
+    "code": "proof fn phi_5_entry_size_next_layer_vacuous(arch: Arch)\n    requires\n        arch.inv(),\n        arch.layers.len() > 1,\n    ensures\n        arch.entry_size(0) == arch.entry_size(1),\n{\n}",
+    "reason": "If the first and second layer have equal entry sizes despite the decomposition property requiring entry_size(0) == entry_size(1) * num_entries(1) with num_entries > 1, the invariant would be contradictory or num_entries is forced to 1"
+  }
+]

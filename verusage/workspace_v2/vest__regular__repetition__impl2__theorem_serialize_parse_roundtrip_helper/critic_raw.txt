@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: roundtrip_external_body_trusted
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `RepeatN::theorem_serialize_parse_roundtrip` is `external_body` with `unimplemented!()`. While a verified `theorem_serialize_parse_roundtrip_helper` exists, it is not wired into the trait implementation. The fundamental roundtrip property is entirely trusted.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: prefix_secure_helper_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `lemma_prefix_secure_helper` is `external_body` with `unimplemented!()`. This is an independent unverified assumption and a critical dependency in the verified `theorem_serialize_parse_roundtrip_helper` — if prefix security were wrong, the roundtrip helper proof would be unsound.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: serialize_empty_is_empty
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `fold_left(Seq::empty(), f)` on an empty sequence returns `Seq::empty()` by the vstd fold_left base case axiom. Correct by definition.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: wf_enforces_length_equals_count
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The `wf` definition explicitly includes `vs.len() == self.1`. This is a direct consequence of unfolding the open spec. Correct by definition.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: serialize_ignores_count_field
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `spec_serialize` uses `vs.fold_left(...)` which iterates over the provided sequence regardless of `self.1`. The count field is completely ignored during serialization, meaning `RepeatN(c, 0).spec_serialize(large_vec)` serializes all elements. While `wf` guards the roundtrip, the serialize function itself has no length enforcement — this is a spec design gap.
+===VERDICT_END===
+
+===SUMMARY===
+Three true positives: `theorem_serialize_parse_roundtrip` and `lemma_prefix_secure_helper` are both `external_body` with `unimplemented!()`, representing unverified trust assumptions (the roundtrip despite a verified helper existing, and prefix security used as a critical dependency). Additionally, `spec_serialize` completely ignores the `usize` count field, serializing all elements regardless of the repetition count. Two false positives: empty serialization producing empty bytes follows from fold_left's base case, and wf enforcing length equals count follows directly from the open spec definition.
+===END_SUMMARY===

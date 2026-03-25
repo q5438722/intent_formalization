@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: always_zero_index
+TARGET_FN: v2l3index
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_always_zero_index(va: usize)
+    requires
+        spec_va_4k_valid(va) || spec_va_2m_valid(va) || spec_va_1g_valid(va),
+    ensures
+        spec_v2l3index(va) == 0,
+{
+}
+```
+REASON: Would mean the L3 index space collapses to a single entry, making page table walking trivially broken
+===PHI_END===
+
+===PHI_START===
+NAME: kernel_l4_bound_leaks_to_l3
+TARGET_FN: v2l3index
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_kernel_l4_bound_leaks_to_l3(va: usize)
+    requires
+        spec_va_4k_valid(va) || spec_va_2m_valid(va) || spec_va_1g_valid(va),
+    ensures
+        spec_v2l3index(va) >= KERNEL_MEM_END_L4INDEX,
+{
+}
+```
+REASON: Would mean the L4 kernel-memory lower bound incorrectly constrains L3 indices, making index 0 unreachable
+===PHI_END===
+
+===PHI_START===
+NAME: distinct_va_always_collide
+TARGET_FN: v2l3index
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_distinct_va_always_collide(va1: usize, va2: usize)
+    requires
+        spec_va_4k_valid(va1) || spec_va_2m_valid(va1) || spec_va_1g_valid(va1),
+        spec_va_4k_valid(va2) || spec_va_2m_valid(va2) || spec_va_1g_valid(va2),
+        va1 != va2,
+    ensures
+        spec_v2l3index(va1) == spec_v2l3index(va2),
+{
+}
+```
+REASON: Would mean all distinct valid addresses share the same L3 index, destroying any address-space partitioning at level 3
+===PHI_END===
+
+===PHI_START===
+NAME: 1g_valid_forces_zero_index
+TARGET_FN: v2l3index
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_1g_valid_forces_zero_index(va: usize)
+    requires
+        spec_va_1g_valid(va),
+    ensures
+        spec_v2l3index(va) == 0,
+{
+}
+```
+REASON: Would mean 1GB-aligned pages can only occupy L3 entry 0, preventing multiple 1GB mappings in the same L3 table
+===PHI_END===
+
+===PHI_START===
+NAME: upper_half_index_unreachable
+TARGET_FN: v2l3index
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_upper_half_index_unreachable(va: usize)
+    requires
+        spec_va_4k_valid(va) || spec_va_2m_valid(va) || spec_va_1g_valid(va),
+    ensures
+        spec_v2l3index(va) < 256usize,
+{
+}
+```
+REASON: Would mean indices 256–511 are unreachable, silently halving the usable L3 page-table entry space
+===PHI_END===

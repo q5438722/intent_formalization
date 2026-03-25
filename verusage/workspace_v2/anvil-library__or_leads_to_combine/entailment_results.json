@@ -1,0 +1,47 @@
+[
+  {
+    "name": "leads_to_unfold_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_1_leads_to_unfold_intensional_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>, i: nat)\n    requires\n        p.leads_to(q).satisfied_by(ex),\n    ensures\n        p.implies(eventually(q)).satisfied_by(ex.suffix(i)),\n{\n    leads_to_unfold::<int>(ex, p, q);\n}",
+    "reason": "leads_to_unfold is external_body bridging the forall inside always's TempPred::new closure to a bare forall in the ensures \u2014 intensionally distinct formulations equated without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "implies_apply_closure_bridge",
+    "type": "logical",
+    "code": "proof fn phi_2_implies_apply_closure_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.satisfied_by(ex),\n        (p.pred)(ex) ==> (q.pred)(ex),\n    ensures\n        q.satisfied_by(ex),\n{\n    implies_apply::<int>(ex, p, q);\n}",
+    "reason": "implies_apply is external_body bridging p.implies(q).satisfied_by(ex) through TempPred::new closure wrapping \u2014 resolves closure identity mismatch without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "or_leads_to_combine_false_spec",
+    "type": "boundary",
+    "code": "proof fn phi_3_or_leads_to_combine_false_spec(p: TempPred<int>, q: TempPred<int>, r: TempPred<int>)\n    requires\n        TempPred::<int>::new(|ex: Execution<int>| false).entails(p.leads_to(r)),\n        TempPred::<int>::new(|ex: Execution<int>| false).entails(q.leads_to(r)),\n    ensures\n        TempPred::<int>::new(|ex: Execution<int>| false).entails(p.or(q).leads_to(r)),\n{\n    or_leads_to_combine::<int>(TempPred::new(|ex: Execution<int>| false), p, q, r);\n}",
+    "reason": "an unsatisfiable spec vacuously entails any leads_to \u2014 the lemma propagates vacuous truth without detecting spec inconsistency",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "or_leads_to_self",
+    "type": "behavioral",
+    "code": "proof fn phi_4_or_leads_to_self(spec: TempPred<int>, p: TempPred<int>, q: TempPred<int>)\n    requires\n        spec.entails(p.leads_to(p.or(q))),\n        spec.entails(q.leads_to(p.or(q))),\n    ensures\n        spec.entails(p.or(q).leads_to(p.or(q))),\n{\n    or_leads_to_combine::<int>(spec, p, q, p.or(q));\n}",
+    "reason": "or_leads_to_combine can derive reflexive leads_to for any disjunction given component leads_to premises \u2014 if the component premises are themselves derived from unsound axioms this amplifies the unsoundness",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "leads_to_unfold_at_zero",
+    "type": "boundary",
+    "code": "proof fn phi_5_leads_to_unfold_at_zero(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.leads_to(q).satisfied_by(ex),\n        p.satisfied_by(ex),\n    ensures\n        eventually(q).satisfied_by(ex),\n{\n    leads_to_unfold::<int>(ex, p, q);\n    implies_apply::<int>(ex, p, eventually(q));\n}",
+    "reason": "combining leads_to_unfold at suffix(0) with implies_apply extracts eventually(q) from p at the current state \u2014 chains two external_body axioms to derive a temporal liveness conclusion",
+    "entailed": false,
+    "verus_output": "verification results:: 1 verified, 1 errors\nerror: precondition not satisfied\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-library__or_leads_to_combine/phi_5_leads_to_unfold_at_zero.rs:120:5\n    |\n 85 |         p.implies(q).satisfied_by(ex),\n    |         ----------------------------- failed precondition\n...\n120 |     implies_apply::<int>(ex, p, eventually(q));\n    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

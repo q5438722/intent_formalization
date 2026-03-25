@@ -1,0 +1,89 @@
+===PHI_START===
+NAME: range_consistent_vacuous_equal_iterators
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_range_consistent_vacuous_equal_iterators<K: KeyTrait + VerusClone>(dm: DelegationMap<K>, k: K, id: ID)
+    ensures
+        dm.range_consistent(&KeyIterator::new_spec(k), &KeyIterator::new_spec(k), &id),
+{
+    K::cmp_properties();
+    dm.empty_key_range_is_consistent(&KeyIterator::new_spec(k), &KeyIterator::new_spec(k), &id);
+}
+```
+REASON: When lo == hi as `new_spec(k)`, `between` requires `ki.lt_spec(new_spec(k))` and `!ki.lt_spec(new_spec(k))` simultaneously for ki=new_spec(k), making range_consistent vacuously true for any `id` regardless of what `dm@[k]` actually maps to
+===PHI_END===
+
+===PHI_START===
+NAME: empty_range_any_endpoint
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_empty_range_any_endpoint<K: KeyTrait + VerusClone>(dm: DelegationMap<K>, id1: ID, id2: ID, k: K)
+    ensures
+        dm.range_consistent(&KeyIterator::new_spec(k), &KeyIterator::new_spec(k), &id1),
+        dm.range_consistent(&KeyIterator::new_spec(k), &KeyIterator::new_spec(k), &id2),
+{
+    K::cmp_properties();
+    dm.empty_key_range_is_consistent(&KeyIterator::new_spec(k), &KeyIterator::new_spec(k), &id1);
+    dm.empty_key_range_is_consistent(&KeyIterator::new_spec(k), &KeyIterator::new_spec(k), &id2);
+}
+```
+REASON: The same empty range is simultaneously consistent with two different endpoints — `range_consistent` provides no discrimination for degenerate intervals, so callers cannot deduce endpoint uniqueness from consistency claims
+===PHI_END===
+
+===PHI_START===
+NAME: end_iterator_geq_everything
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_end_iterator_geq_everything<K: KeyTrait + VerusClone>(dm: DelegationMap<K>, ki: KeyIterator<K>, id: ID)
+    requires
+        ki.k.is_None(),
+    ensures
+        dm.range_consistent(&ki, &KeyIterator::new_spec(K::zero_spec()), &id),
+{
+    K::cmp_properties();
+    dm.empty_key_range_is_consistent(&ki, &KeyIterator::new_spec(K::zero_spec()), &id);
+}
+```
+REASON: End iterator (None) is `geq` everything because `lt_spec` requires `!self.k.is_None()`, so `geq_spec` is trivially true — making any range from end to anywhere vacuously consistent regardless of actual delegation
+===PHI_END===
+
+===PHI_START===
+NAME: between_excludes_lo_key
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_between_excludes_lo_key<K: KeyTrait + VerusClone>(dm: DelegationMap<K>, k: K, hi: KeyIterator<K>, id: ID)
+    requires
+        KeyIterator::new_spec(k).lt_spec(hi),
+        dm@[k] != id@,
+    ensures
+        dm.range_consistent(&KeyIterator::new_spec(k), &hi, &id),
+{
+}
+```
+REASON: `between(lo, ki, hi)` includes `!ki.lt_spec(lo)` which for `ki = new_spec(k)` and `lo = new_spec(k)` means `!k.cmp_spec(k).lt()` which is true (reflexivity) — so `k` IS in the between range and this should NOT verify; if it does, `range_consistent` fails to enforce the lower bound inclusively
+===PHI_END===
+
+===PHI_START===
+NAME: range_consistent_contradicts_map_value
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_range_consistent_contradicts_map_value<K: KeyTrait + VerusClone>(dm: DelegationMap<K>, lo: K, hi: K, k: K, id: ID)
+    requires
+        lo.cmp_spec(k).lt(),
+        k.cmp_spec(hi).lt(),
+        dm@[k] != id@,
+        lo.cmp_spec(hi).lt(),
+    ensures
+        !dm.range_consistent(&KeyIterator::new_spec(lo), &KeyIterator::new_spec(hi), &id),
+{
+    K::cmp_properties();
+    assert(KeyIterator::between(KeyIterator::new_spec(lo), KeyIterator::new_spec(k), KeyIterator::new_spec(hi)));
+}
+```
+REASON: If a key strictly between lo and hi maps to a different endpoint, range_consistent must be false — verifying this confirms that range_consistent is not vacuously true for proper intervals (a sanity check that the spec is not trivially weak)
+===PHI_END===

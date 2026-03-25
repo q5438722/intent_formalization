@@ -1,0 +1,47 @@
+[
+  {
+    "name": "max_of_empty_is_zero",
+    "type": "boundary",
+    "code": "proof fn phi_1_max_of_empty_is_zero()\n    ensures\n        max_of_set(Set::empty()) == 0,\n{\n    let _ = max_of_set(Set::<nat>::empty());\n}",
+    "reason": "The \"maximum\" of an empty set is defined as 0 \u2014 this is an arbitrary choice that could lead to unsound reasoning if callers assume the max is meaningful for empty sets",
+    "entailed": false,
+    "verus_output": "error: cannot call function `phi_1_max_of_empty_is_zero::max_of_set` with mode proof\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/node-replication__spec__unbounded_log__max_of_set/phi_1_max_of_empty_is_zero.rs:32:9\n   |\n32 |         max_of_set(Set::empty()) == 0,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "max_geq_any_element",
+    "type": "behavioral",
+    "code": "proof fn phi_2_max_geq_any_element(s: Set<nat>, x: nat)\n    requires\n        s.finite(),\n        s.contains(x),\n    ensures\n        x <= max_of_set(s),\n{\n    let _ = max_of_set(s);\n}",
+    "reason": "Every element is bounded by the max \u2014 tests the core ensures clause on a concrete element",
+    "entailed": false,
+    "verus_output": "error: cannot call function `phi_2_max_geq_any_element::max_of_set` with mode proof\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/node-replication__spec__unbounded_log__max_of_set/phi_2_max_geq_any_element.rs:35:14\n   |\n35 |         x <= max_of_set(s),\n   |              ^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "max_not_tight",
+    "type": "logical",
+    "code": "proof fn phi_3_max_not_tight(s: Set<nat>)\n    requires\n        s.finite(),\n        s.len() > 0,\n    ensures\n        max_of_set(s) >= s.choose(),\n{\n    let _ = max_of_set(s);\n}",
+    "reason": "The max is at least as large as the chosen element \u2014 but the spec does not guarantee the max is actually IN the set, so it could be arbitrarily larger",
+    "entailed": false,
+    "verus_output": "error: cannot call function `phi_3_max_not_tight::max_of_set` with mode proof\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/node-replication__spec__unbounded_log__max_of_set/phi_3_max_not_tight.rs:35:9\n   |\n35 |         max_of_set(s) >= s.choose(),\n   |         ^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "singleton_max_is_element",
+    "type": "boundary",
+    "code": "proof fn phi_4_singleton_max_is_element(x: nat)\n    ensures\n        max_of_set(set!{x}) == x,\n{\n    let s = set!{x};\n    let r = max_of_set(s);\n    assert(s.contains(x));\n    assert(x <= r);\n    assert(s.remove(x) =~= Set::empty());\n}",
+    "reason": "For a singleton set, the max equals the element \u2014 but this relies on `choose()` picking the only element and the recursive structure working out",
+    "entailed": false,
+    "verus_output": "error: cannot call function `phi_4_singleton_max_is_element::max_of_set` with mode proof\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/node-replication__spec__unbounded_log__max_of_set/phi_4_singleton_max_is_element.rs:32:9\n   |\n32 |         max_of_set(set!{x}) == x,\n   |         ^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "max_monotone_subset",
+    "type": "logical",
+    "code": "proof fn phi_5_max_monotone_subset(s1: Set<nat>, s2: Set<nat>)\n    requires\n        s1.finite(),\n        s2.finite(),\n        s1.subset_of(s2),\n    ensures\n        max_of_set(s1) <= max_of_set(s2),\n{\n    let r1 = max_of_set(s1);\n    let r2 = max_of_set(s2);\n    // r1 is the return value, and for all x in s1, x <= r1\n    // but r1 itself might not be in s1, so we can't directly conclude r1 <= r2\n    // However, r1 is constructed as either v1 or v2 in the recursion...\n    // This might NOT be provable \u2014 the max could exceed actual elements\n}",
+    "reason": "Subset monotonicity of max \u2014 if max_of_set returns values larger than any actual element, a subset could have a larger \"max\" than its superset",
+    "entailed": false,
+    "verus_output": "error: cannot call function `phi_5_max_monotone_subset::max_of_set` with mode proof\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/node-replication__spec__unbounded_log__max_of_set/phi_5_max_monotone_subset.rs:36:9\n   |\n36 |         max_of_set(s1) <= max_of_set(s2),\n   |         ^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

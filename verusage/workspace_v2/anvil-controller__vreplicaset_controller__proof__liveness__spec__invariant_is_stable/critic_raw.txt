@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: create_key_namespace_diverges
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `CreateRequest::key()` derives namespace from `self.namespace` rather than `self.obj.metadata.namespace`. If these diverge, the object is stored under a key that doesn't match its own metadata, which could lead to inconsistent lookups.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: update_key_ignores_obj_namespace
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `UpdateRequest::key()` uses `self.namespace` instead of `self.obj.metadata.namespace`. Same pattern as CreateRequest — the request's routing key can diverge from the object payload's namespace, allowing an update to target a different namespace than the object describes.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: update_key_ignores_obj_name
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `UpdateRequest::key()` uses `self.name` instead of `self.obj.metadata.name`. This means an update request can target resource "A" while carrying the payload of resource "B", silently overwriting with mismatched data.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: reconcile_id_allocator_no_uniqueness
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is an expected consequence of value semantics — two allocators with identical state naturally produce identical outputs. Global uniqueness is ensured by having a single allocator instance in the cluster state, not by the allocator's spec itself.
+===VERDICT_END===
+
+===SUMMARY===
+Of the 4 candidates, 3 are true positives: `create_key_namespace_diverges`, `update_key_ignores_obj_namespace`, and `update_key_ignores_obj_name` all highlight the same design pattern where request routing keys (`key()`) use top-level request fields rather than the embedded object's metadata, allowing divergence between where a resource is stored/targeted and what the object payload claims. The remaining candidate (`reconcile_id_allocator_no_uniqueness`) is a false positive — identical state producing identical output is expected functional behavior, with global uniqueness enforced by singleton allocation at the cluster level.
+===END_SUMMARY===

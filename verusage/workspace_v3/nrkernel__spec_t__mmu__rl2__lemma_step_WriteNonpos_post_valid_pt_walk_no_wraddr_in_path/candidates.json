@@ -1,0 +1,37 @@
+[
+  {
+    "name": "align_exceeds_input",
+    "target_fn": "align_to_usize",
+    "type": "behavioral",
+    "code": "proof fn phi_1_align_exceeds_input(a: usize, b: usize)\n    requires\n        b > 0,\n        a >= b,\n    ensures\n        align_to_usize(a, b) > a,\n{\n}",
+    "reason": "Aligning down should never produce a value larger than the original input"
+  },
+  {
+    "name": "align_result_not_multiple",
+    "target_fn": "align_to_usize",
+    "type": "logical",
+    "code": "proof fn phi_2_align_result_not_multiple(a: usize, b: usize)\n    requires\n        b > 0,\n    ensures\n        align_to_usize(a, b) % b != 0,\n{\n}",
+    "reason": "The result of aligning down must itself be a multiple of b; otherwise the alignment is broken"
+  },
+  {
+    "name": "aligned_not_idempotent",
+    "target_fn": "align_to_usize",
+    "type": "logical",
+    "code": "proof fn phi_3_aligned_not_idempotent(a: usize, b: usize)\n    requires\n        b > 0,\n        aligned(a as nat, b as nat),\n    ensures\n        align_to_usize(a, b) != a,\n{\n}",
+    "reason": "An already-aligned address should be unchanged by align_to_usize; violating this means the two specs are inconsistent"
+  },
+  {
+    "name": "align_always_zero",
+    "target_fn": "align_to_usize",
+    "type": "boundary",
+    "code": "proof fn phi_4_align_always_zero(a: usize, b: usize)\n    requires\n        b > 0,\n        a >= b,\n    ensures\n        align_to_usize(a, b) == 0,\n{\n}",
+    "reason": "align_to_usize should not collapse every value to zero; for a >= b it must return a positive aligned address"
+  },
+  {
+    "name": "align_unit_changes_value",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "code": "proof fn phi_5_align_unit_changes_value(a: usize)\n    requires\n        a < usize::MAX,\n    ensures\n        align_to_usize(a, 1) != a,\n{\n}",
+    "reason": "Every integer is 1-aligned so align_to_usize(a,1) must equal a; failure means aligned and align_to_usize disagree on trivial case"
+  }
+]

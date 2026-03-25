@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: nonneg_nonpos_not_both
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `is_nonneg_write` requires `self.read(addr) & 1 == 0` while `is_nonpos_write` requires `self.read(addr) & 1 == 1`. These are mutually exclusive — `x & 1` is either 0 or 1. This is a correct bitvector property, not a spec gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: pt_walk_preserves_vaddr
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Every branch of `pt_walk` constructs `Walk { vaddr, ... }` using the input parameter directly. This is correct by construction — the vaddr field is always set to the input.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: pt_walk_always_complete
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: All branches of `pt_walk` construct `Walk { ..., complete: true }`. This is correct by construction for rl3's page table walk, which always terminates (it's a pure spec function with bounded depth). Incomplete walks are an rl2 concept for in-progress hardware walks.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: ptmem_view_external_body_functional
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures clause `P ==> P` and `x == x` are tautologies that hold regardless of whether `view` is `external_body`. This proves nothing about the external_body gap — any expression equals itself.
+===VERDICT_END===
+
+===SUMMARY===
+All four candidates are false positives. Nonneg/nonpos mutual exclusion follows from bitvector arithmetic (`x & 1` is 0 or 1). Walk vaddr preservation and completeness are correct by construction (all branches set these fields directly). The view self-consistency test is a tautology that doesn't probe the external_body gap.
+===END_SUMMARY===

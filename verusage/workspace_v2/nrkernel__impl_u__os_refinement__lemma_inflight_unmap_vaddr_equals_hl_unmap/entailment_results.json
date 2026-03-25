@@ -1,0 +1,47 @@
+[
+  {
+    "name": "ptmem_view_external_body_unconstrained",
+    "type": "logical",
+    "code": "proof fn phi_1_ptmem_view_external_body_unconstrained(pt1: PTMem, pt2: PTMem)\n    requires\n        pt1.mem !== pt2.mem,\n    ensures\n        pt1@ === pt2@,\n{\n}",
+    "reason": "`PTMem::view` is `external_body` with no postconditions \u2014 completely unspecified, so distinct page table memories could have identical PTE interpretations",
+    "entailed": false,
+    "verus_output": "ormalization/verusage/workspace_v2/nrkernel__impl_u__os_refinement__lemma_inflight_unmap_vaddr_equals_hl_unmap/phi_1_ptmem_view_external_body_unconstrained.rs:885:9\n    |\n881 | proof fn phi_1_ptmem_view_external_body_unconstrained(pt1: PTMem, pt2: PTMem)\n    |       ----------------------------------------------------------------------- at the end of the function body\n...\n885 |         pt1@ === pt2@,\n    |         ^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "rl3_interp_external_body_unconstrained",
+    "type": "logical",
+    "code": "proof fn phi_2_rl3_interp_external_body_unconstrained(s1: crate::rl3::State, s2: crate::rl3::State)\n    requires\n        true,\n    ensures\n        s1.interp() === s2.interp(),\n{\n}",
+    "reason": "`rl3::State::interp` is `external_body` closed spec \u2014 any two rl3 states could map to the same rl2 state since the function is completely opaque",
+    "entailed": false,
+    "verus_output": "a_inflight_unmap_vaddr_equals_hl_unmap/phi_2_rl3_interp_external_body_unconstrained.rs:885:9\n    |\n881 | proof fn phi_2_rl3_interp_external_body_unconstrained(s1: crate::rl3::State, s2: crate::rl3::State)\n    |       --------------------------------------------------------------------------------------------- at the end of the function body\n...\n885 |         s1.interp() === s2.interp(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "overlap_reflexive",
+    "type": "behavioral",
+    "code": "proof fn phi_3_overlap_reflexive(r: MemRegion)\n    requires\n        r.size > 0,\n    ensures\n        overlap(r, r),\n{\n}",
+    "reason": "A non-empty region overlaps itself \u2014 tests that `overlap` correctly handles the reflexive case via the `region1.base == region2.base` branch",
+    "entailed": true,
+    "verus_output": "verification results:: 13 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "candidate_mapping_overlaps_self",
+    "type": "behavioral",
+    "code": "proof fn phi_4_candidate_mapping_overlaps_self(mappings: Map<nat, PTE>, base: nat, pte: PTE)\n    requires\n        mappings.contains_key(base),\n        mappings[base].frame.size > 0,\n        pte.frame.size > 0,\n    ensures\n        candidate_mapping_overlaps_existing_vmem(mappings, base, pte),\n{\n}",
+    "reason": "A mapping at an existing base always overlaps \u2014 `candidate_mapping_overlaps_existing_vmem` triggers with witness `b == base` since `overlap` is reflexive at equal bases regardless of sizes",
+    "entailed": true,
+    "verus_output": "verification results:: 13 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "write_does_not_change_view",
+    "type": "logical",
+    "code": "proof fn phi_5_write_does_not_change_view(pt: PTMem, addr: usize, value: usize)\n    requires\n        true,\n    ensures\n        pt.write(addr, value)@ === pt@,\n{\n}",
+    "reason": "Since `PTMem::view` is `external_body` with no connection to `mem`, writes to page table memory may have no observable effect on the PTE interpretation",
+    "entailed": false,
+    "verus_output": "space_v2/nrkernel__impl_u__os_refinement__lemma_inflight_unmap_vaddr_equals_hl_unmap/phi_5_write_does_not_change_view.rs:885:9\n    |\n881 | proof fn phi_5_write_does_not_change_view(pt: PTMem, addr: usize, value: usize)\n    |       ------------------------------------------------------------------------- at the end of the function body\n...\n885 |         pt.write(addr, value)@ === pt@,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

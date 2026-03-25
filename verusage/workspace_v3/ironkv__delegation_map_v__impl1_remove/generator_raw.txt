@@ -1,0 +1,109 @@
+===PHI_START===
+NAME: length_unchanged_after_remove
+TARGET_FN: remove
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_length_unchanged_after_remove<K: KeyTrait + VerusClone>(old_self: StrictlyOrderedVec<K>, post_self: StrictlyOrderedVec<K>, k: K, i: usize)
+    requires
+        old_self.valid(),
+        i < old_self@.len(),
+        post_self.valid(),
+        k == old_self@.index(i as int),
+        post_self@ == old_self@.remove(i as int),
+        post_self@.to_set() == old_self@.to_set().remove(k),
+    ensures
+        post_self@.len() == old_self@.len(),
+{
+}
+```
+REASON: Remove must decrease the length by exactly one; an unchanged length means the element was not actually removed.
+===PHI_END===
+
+===PHI_START===
+NAME: singleton_remove_still_nonempty
+TARGET_FN: remove
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_singleton_remove_still_nonempty<K: KeyTrait + VerusClone>(old_self: StrictlyOrderedVec<K>, post_self: StrictlyOrderedVec<K>, k: K)
+    requires
+        old_self.valid(),
+        old_self@.len() == 1,
+        k == old_self@.index(0),
+        post_self.valid(),
+        post_self@ == old_self@.remove(0),
+        post_self@.to_set() == old_self@.to_set().remove(k),
+    ensures
+        post_self@.len() > 0,
+{
+}
+```
+REASON: Removing the only element from a singleton vec must yield an empty vec; a non-empty result would violate basic remove semantics.
+===PHI_END===
+
+===PHI_START===
+NAME: removed_element_still_in_set
+TARGET_FN: remove
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_removed_element_still_in_set<K: KeyTrait + VerusClone>(old_self: StrictlyOrderedVec<K>, post_self: StrictlyOrderedVec<K>, k: K, i: usize)
+    requires
+        old_self.valid(),
+        i < old_self@.len(),
+        k == old_self@.index(i as int),
+        post_self.valid(),
+        post_self@ == old_self@.remove(i as int),
+        post_self@.to_set() == old_self@.to_set().remove(k),
+    ensures
+        post_self@.to_set().contains(k),
+{
+}
+```
+REASON: The returned element k was removed; if it still appears in the post-state set, the removal had no effect on the set representation.
+===PHI_END===
+
+===PHI_START===
+NAME: set_unchanged_after_remove
+TARGET_FN: remove
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_set_unchanged_after_remove<K: KeyTrait + VerusClone>(old_self: StrictlyOrderedVec<K>, post_self: StrictlyOrderedVec<K>, k: K, i: usize)
+    requires
+        old_self.valid(),
+        i < old_self@.len(),
+        k == old_self@.index(i as int),
+        post_self.valid(),
+        post_self@ == old_self@.remove(i as int),
+        post_self@.to_set() == old_self@.to_set().remove(k),
+    ensures
+        post_self@.to_set() =~= old_self@.to_set(),
+{
+}
+```
+REASON: If the set view is identical before and after remove, the operation is a no-op at the set level, contradicting the purpose of remove.
+===PHI_END===
+
+===PHI_START===
+NAME: old_set_subset_of_new_set
+TARGET_FN: remove
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_old_set_subset_of_new_set<K: KeyTrait + VerusClone>(old_self: StrictlyOrderedVec<K>, post_self: StrictlyOrderedVec<K>, k: K, i: usize)
+    requires
+        old_self.valid(),
+        i < old_self@.len(),
+        k == old_self@.index(i as int),
+        post_self.valid(),
+        post_self@ == old_self@.remove(i as int),
+        post_self@.to_set() == old_self@.to_set().remove(k),
+    ensures
+        old_self@.to_set().subset_of(post_self@.to_set()),
+{
+}
+```
+REASON: The old set is strictly larger (it contains k which was removed); if it were a subset of the new set, no element was actually lost.
+===PHI_END===

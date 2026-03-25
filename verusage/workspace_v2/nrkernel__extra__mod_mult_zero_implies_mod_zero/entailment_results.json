@@ -1,0 +1,47 @@
+[
+  {
+    "name": "aligned_to_product_implies_aligned_to_either_factor",
+    "type": "logical",
+    "code": "proof fn phi_1_aligned_to_product_implies_aligned_to_either_factor(a: nat, b: nat, c: nat)\n    requires\n        aligned(a, b * c),\n        b > 0,\n        c > 0,\n    ensures\n        aligned(a, b) && aligned(a, c),\n{\n    mod_mult_zero_implies_mod_zero(a, b, c);\n    mod_mult_zero_implies_mod_zero(a, c, b);\n    assert(b * c == c * b) by (nonlinear_arith);\n}",
+    "reason": "Alignment to a product implying alignment to BOTH factors means a caller can silently decompose alignment requirements \u2014 but the lemma only proves one factor at a time, so the commutativity trick `b*c == c*b` to get both could mask bugs in how the original alignment was established",
+    "entailed": false,
+    "verus_output": "esults:: 3 verified, 1 errors\nerror: precondition not satisfied\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__extra__mod_mult_zero_implies_mod_zero/phi_1_aligned_to_product_implies_aligned_to_either_factor.rs:37:5\n   |\n15 |     requires aligned(a, b * c), b > 0, c > 0\n   |              ----------------- failed precondition\n...\n37 |     mod_mult_zero_implies_mod_zero(a, c, b);\n   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "aligned_to_one_always",
+    "type": "boundary",
+    "code": "proof fn phi_2_aligned_to_one_always(a: nat)\n    ensures\n        aligned(a, 1),\n{\n}",
+    "reason": "Every address is trivially aligned to 1, so `mod_mult_zero_implies_mod_zero` with c = b*c/b can always produce alignment to 1, making the alignment check vacuous when factor decomposition yields 1",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "zero_aligned_to_anything",
+    "type": "boundary",
+    "code": "proof fn phi_3_zero_aligned_to_anything(b: nat, c: nat)\n    requires\n        b > 0,\n        c > 0,\n    ensures\n        aligned(0, b * c) && aligned(0, b),\n{\n    mod_mult_zero_implies_mod_zero(0, b, c);\n}",
+    "reason": "Address 0 is aligned to any nonzero size \u2014 callers using alignment as a validity check get no protection against null pointers",
+    "entailed": false,
+    "verus_output": "^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: precondition not satisfied\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__extra__mod_mult_zero_implies_mod_zero/phi_3_zero_aligned_to_anything.rs:35:5\n   |\n15 |     requires aligned(a, b * c), b > 0, c > 0\n   |              ----------------- failed precondition\n...\n35 |     mod_mult_zero_implies_mod_zero(0, b, c);\n   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 2 previous errors\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "large_alignment_subsumes_small",
+    "type": "logical",
+    "code": "proof fn phi_4_large_alignment_subsumes_small(a: nat, b: nat, k: nat)\n    requires\n        aligned(a, b * k),\n        b > 0,\n        k > 0,\n    ensures\n        aligned(a, b),\n{\n    mod_mult_zero_implies_mod_zero(a, b, k);\n}",
+    "reason": "Alignment to a larger size always implies alignment to any factor \u2014 but the spec never checks that the larger alignment was actually required, so code could use an unnecessarily large alignment and silently satisfy a weaker one",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "product_alignment_no_overflow_guard",
+    "type": "boundary",
+    "code": "proof fn phi_5_product_alignment_no_overflow_guard(a: nat, b: nat, c: nat)\n    requires\n        aligned(a, b * c),\n        b > 0,\n        c > 0,\n        b * c > usize::MAX,\n    ensures\n        aligned(a, b),\n{\n    mod_mult_zero_implies_mod_zero(a, b, c);\n}",
+    "reason": "The lemma operates on unbounded `nat` and proves alignment even when `b * c` exceeds machine word size \u2014 at runtime such a product would overflow, but the spec-level proof silently succeeds with no overflow guard",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

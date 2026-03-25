@@ -1,0 +1,20 @@
+[
+  {
+    "phi": "lemma_usize_u64_enables_unsound_cast",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`lemma_usize_u64` is an external_body axiom with no precondition, asserting `x as usize as u64 == x` for all u64 values. On a 32-bit platform this is false for any `x > u32::MAX`. Even on 64-bit platforms, this is an unverified assumption that should at minimum carry a precondition like `x as int <= usize::MAX` rather than being universally quantified."
+  },
+  {
+    "phi": "page_ptr_zero_valid",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`spec_page_index2page_ptr(0) == 0` is a direct arithmetic consequence of `0 * 4096 == 0`. Whether page index 0 should be excluded is a design decision external to this spec \u2014 the spec defines a mathematical mapping from indices to pointers, and null-pointer concerns are an implementation-level issue handled elsewhere (e.g., by starting valid page allocation at index 1)."
+  },
+  {
+    "phi": "page_index_valid_not_linked_to_max_usize",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The property that `spec_page_index2page_ptr(i) <= MAX_USIZE` for valid page indices is arithmetically correct: max pointer is `(2M - 1) * 4096 \u2248 8GB` which is well under `MAX_USIZE = 31GB`. While the proof path goes through `lemma_usize_u64`, the arithmetic relationship itself holds and is a desirable property confirming that page pointers fit within the system's memory bounds."
+  }
+]

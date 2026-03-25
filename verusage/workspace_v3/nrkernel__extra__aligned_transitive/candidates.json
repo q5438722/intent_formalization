@@ -1,0 +1,37 @@
+[
+  {
+    "name": "everything_aligned",
+    "target_fn": "aligned",
+    "type": "behavioral",
+    "code": "proof fn phi_1_everything_aligned(addr: nat, size: nat)\n    requires\n        size > 0,\n    ensures\n        aligned(addr, size),\n{\n}",
+    "reason": "Would mean every address is aligned to every size, making the spec vacuously permissive"
+  },
+  {
+    "name": "only_zero_aligned",
+    "target_fn": "aligned",
+    "type": "logical",
+    "code": "proof fn phi_2_only_zero_aligned(addr: nat, size: nat)\n    requires\n        size > 0,\n        aligned(addr, size),\n    ensures\n        addr == 0nat,\n{\n}",
+    "reason": "Would mean only zero can ever be aligned, collapsing all non-trivial alignment to false"
+  },
+  {
+    "name": "odd_aligned_to_even",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "code": "proof fn phi_3_odd_aligned_to_even()\n    ensures\n        aligned(1nat, 2nat),\n{\n}",
+    "reason": "1 is not a multiple of 2, so claiming 1 is 2-aligned indicates a broken modulus check"
+  },
+  {
+    "name": "bad_product_composition",
+    "target_fn": "aligned",
+    "type": "logical",
+    "code": "proof fn phi_4_bad_product_composition(a: nat, b: nat, c: nat)\n    requires\n        b > 0,\n        c > 0,\n        aligned(a, b),\n        aligned(a, c),\n    ensures\n        aligned(a, b * c),\n{\n}",
+    "reason": "aligned(12,4) && aligned(12,6) does not imply aligned(12,24); conflates LCM with product"
+  },
+  {
+    "name": "aligned_symmetric",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "code": "proof fn phi_5_aligned_symmetric(a: nat, b: nat)\n    requires\n        a > 0,\n        b > 0,\n        aligned(a, b),\n    ensures\n        aligned(b, a),\n{\n}",
+    "reason": "aligned(4,2) is true but aligned(2,4) is false; symmetry would indicate modulus is broken"
+  }
+]

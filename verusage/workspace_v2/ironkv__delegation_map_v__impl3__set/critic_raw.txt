@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: gap_means_empty_external_body_unsound
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `gap_means_empty` derives `false` from genuinely contradictory preconditions: `gap(lo, hi)` says no key exists between `lo` and `hi`, yet `contains_key(*k.get())` with `lo < k < hi` contradicts this. The ensures `false` is logically correct — the preconditions are unsatisfiable together. The external_body trust is the standard pattern for this kind of lemma.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: mind_the_gap_external_body_trusted
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: medium
+REASONING: Gap transitivity is a correct mathematical property: if no map keys exist in `(w,x)` and no keys exist in `(y,z)`, and `y < x` (the gaps overlap), then no keys exist in `(w,z)`. While external_body means the proof is trusted, the specification itself is mathematically sound given the `cmp_properties` axioms.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: find_key_none_external_body
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The property that a key in the map domain has a corresponding index in the keys vector follows from `map_valid` which asserts `m@.dom() == keys@.to_set()`. This is a consequence of the validity invariant, not of `find_key`'s external_body. The proof doesn't even call `find_key`.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: insert_external_body_vec_desync
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The property is a standard set-theoretic fact: inserting an element not in a set increases its cardinality by 1. The proof derives this from `!v@.contains(k)` implying `!v@.to_set().contains(k)`, which is pure spec-level reasoning about sets. It doesn't depend on `StrictlyOrderedVec::insert`'s external_body at all.
+===VERDICT_END===
+
+===SUMMARY===
+All four candidates are false positives. Two test external_body proof functions (`gap_means_empty`, `mind_the_gap`) whose specifications are mathematically correct given the ordering axioms. The other two derive standard set-theoretic or validity-invariant consequences without actually depending on external_body implementations. No real spec issues were identified.
+===END_SUMMARY===

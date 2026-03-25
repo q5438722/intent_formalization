@@ -1,0 +1,6 @@
+[
+  {
+    "name": "container_check_is_ancestor",
+    "code": "#[verifier::spinoff_prover]\n    pub fn container_check_is_ancestor(&self, ancestor_ptr: ContainerPtr, child_ptr: ContainerPtr) -> (ret:bool)\n        requires\n            self.wf(),\n            self.container_dom().contains(ancestor_ptr),\n            self.container_dom().contains(child_ptr),\n        ensures\n            ret == self.get_container(ancestor_ptr).subtree_set@.contains(child_ptr),\n    {\n        broadcast use ProcessManager::reveal_process_manager_wf;\n        if self.get_container(ancestor_ptr).depth >= self.get_container(child_ptr).depth {\n            proof {\n                self.same_or_deeper_depth_imply_none_ancestor(ancestor_ptr, child_ptr);\n            }\n            return false;\n        }\n        container_tree_check_is_ancestor(\n            self.root_container,\n            &self.container_perms,\n            ancestor_ptr,\n            child_ptr,\n        )\n    }"
+  }
+]

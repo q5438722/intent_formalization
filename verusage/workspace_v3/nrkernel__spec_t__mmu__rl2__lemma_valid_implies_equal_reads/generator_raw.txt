@@ -1,0 +1,87 @@
+===PHI_START===
+NAME: zero_size_alignment
+TARGET_FN: aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_zero_size_alignment(addr: nat)
+    requires
+        addr == 0,
+    ensures
+        aligned(addr, 0),
+{
+}
+```
+REASON: Alignment with size 0 should be undefined/invalid, not trivially true via 0 % 0 == 0 in SMT
+===PHI_END===
+
+===PHI_START===
+NAME: nonzero_zero_size_alignment
+TARGET_FN: aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_nonzero_zero_size_alignment(addr: nat)
+    requires
+        addr > 0,
+    ensures
+        aligned(addr, 0),
+{
+}
+```
+REASON: Any nonzero address being aligned to size 0 would indicate the spec fails to guard against zero divisor
+===PHI_END===
+
+===PHI_START===
+NAME: upward_alignment_implication
+TARGET_FN: aligned
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_upward_alignment_implication(addr: nat)
+    requires
+        aligned(addr, 4),
+    ensures
+        aligned(addr, 8),
+{
+}
+```
+REASON: 4-alignment does not imply 8-alignment (e.g. addr=4), so this being provable would mean the spec is too weak
+===PHI_END===
+
+===PHI_START===
+NAME: off_by_one_aligned
+TARGET_FN: aligned
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_off_by_one_aligned(addr: nat, size: nat)
+    requires
+        aligned(addr, size),
+        size > 1,
+    ensures
+        aligned((addr + 1) as nat, size),
+{
+}
+```
+REASON: Shifting an aligned address by 1 must break alignment for any size > 1; provability implies the spec is vacuous
+===PHI_END===
+
+===PHI_START===
+NAME: product_sum_alignment
+TARGET_FN: aligned
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_product_sum_alignment(addr: nat, s1: nat, s2: nat)
+    requires
+        s1 > 1,
+        s2 > 1,
+        aligned(addr, s1 * s2),
+    ensures
+        aligned(addr, s1 + s2),
+{
+}
+```
+REASON: Divisibility by a product does not imply divisibility by the sum (e.g. 6 % 6 == 0 but 6 % 5 != 0)
+===PHI_END===

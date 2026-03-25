@@ -1,0 +1,101 @@
+===PHI_START===
+NAME: rids_match_empty_bools_empty_rids
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_rids_match_empty_bools_empty_rids(bools: Seq<Option<ReqId>>, rids: Seq<ReqId>, b: nat, r: nat)
+    requires
+        b <= bools.len(),
+        r <= rids.len(),
+    ensures
+        rids_match(bools, rids, b, b, r, r),
+{
+}
+```
+REASON: Empty bools range trivially matches empty rids range at any position — base case of the recursion
+===PHI_END===
+
+===PHI_START===
+NAME: rids_match_pop_some_consumes_rid
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_rids_match_pop_some_consumes_rid(bools: Seq<Option<ReqId>>, rids: Seq<ReqId>, bools_start: nat, bools_end: nat, rids_start: nat, rids_end: nat)
+    requires
+        0 <= bools_start < bools_end <= bools.len(),
+        0 <= rids_start <= rids_end <= rids.len(),
+        rids_match(bools, rids, bools_start, bools_end, rids_start, rids_end),
+        bools[bools_start as int].is_Some(),
+    ensures
+        rids_start < rids_end,
+        rids[rids_start as int] == bools[bools_start as int].get_Some_0(),
+{
+    rids_match_pop(bools, rids, bools_start, bools_end, rids_start, rids_end);
+}
+```
+REASON: A `Some` at `bools_start` forces `rids_start < rids_end` and value equality — tests that `rids_match_pop` correctly inverts the right-to-left definition into left-to-right access
+===PHI_END===
+
+===PHI_START===
+NAME: rids_match_pop_none_preserves
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_rids_match_pop_none_preserves(bools: Seq<Option<ReqId>>, rids: Seq<ReqId>, bools_start: nat, bools_end: nat, rids_start: nat, rids_end: nat)
+    requires
+        0 <= bools_start < bools_end <= bools.len(),
+        0 <= rids_start <= rids_end <= rids.len(),
+        rids_match(bools, rids, bools_start, bools_end, rids_start, rids_end),
+        bools[bools_start as int].is_None(),
+    ensures
+        rids_match(bools, rids, (bools_start + 1) as nat, bools_end, rids_start, rids_end),
+{
+    rids_match_pop(bools, rids, bools_start, bools_end, rids_start, rids_end);
+}
+```
+REASON: A `None` at `bools_start` can be skipped without consuming a rid — tests that left-to-right popping of `None` preserves the match relation
+===PHI_END===
+
+===PHI_START===
+NAME: rids_match_single_some_singleton
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_rids_match_single_some_singleton(rid: ReqId)
+    ensures ({
+        let bools = seq![Option::Some(rid)];
+        let rids = seq![rid];
+        rids_match(bools, rids, 0, 1, 0, 1)
+    }),
+{
+}
+```
+REASON: A single `Some(rid)` matches a single `rid` — tests the minimal non-trivial case of the matching relation
+===PHI_END===
+
+===PHI_START===
+NAME: rids_match_implies_rid_count
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_rids_match_implies_rid_count(bools: Seq<Option<ReqId>>, rids: Seq<ReqId>, bools_start: nat, bools_end: nat, rids_start: nat, rids_end: nat)
+    requires
+        0 <= bools_start <= bools_end <= bools.len(),
+        0 <= rids_start <= rids_end <= rids.len(),
+        rids_match(bools, rids, bools_start, bools_end, rids_start, rids_end),
+    ensures
+        rids_end - rids_start <= bools_end - bools_start,
+    decreases bools_end - bools_start,
+{
+    if bools_end == bools_start {
+    } else {
+        if bools[bools_end - 1].is_Some() {
+            phi_5_rids_match_implies_rid_count(bools, rids, bools_start, (bools_end - 1) as nat, rids_start, (rids_end - 1) as nat);
+        } else {
+            phi_5_rids_match_implies_rid_count(bools, rids, bools_start, (bools_end - 1) as nat, rids_start, rids_end);
+        }
+    }
+}
+```
+REASON: The number of matched rids never exceeds the number of bools entries — the `None` entries are skipped, so `rids_end - rids_start <= bools_end - bools_start`
+===PHI_END===

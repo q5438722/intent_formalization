@@ -1,0 +1,47 @@
+[
+  {
+    "name": "log_range_empty_queue_end",
+    "type": "boundary",
+    "code": "proof fn phi_1_log_range_empty_queue_end<DT: Dispatch>(\n    queue: Seq<ReqId>,\n    log: Map<LogIdx, LogEntry<DT>>,\n    nodeId: NodeId,\n    updates: Map<ReqId, UpdateState<DT>>,\n    idx: LogIdx,\n)\n    requires\n        LogContainsEntriesUpToHere(log, idx),\n        LogRangeMatchesQueue(queue, log, 0, idx, idx, nodeId, updates),\n    ensures\n        queue.len() == 0,\n{\n}",
+    "reason": "When the log range is empty (`lower == upper`), the queue must also be exhausted \u2014 tests whether an empty log range at a non-zero queue index is rejected",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "log_range_local_entry_consumes_queue",
+    "type": "behavioral",
+    "code": "proof fn phi_2_log_range_local_entry_consumes_queue<DT: Dispatch>(\n    queue: Seq<ReqId>,\n    log: Map<LogIdx, LogEntry<DT>>,\n    nodeId: NodeId,\n    updates: Map<ReqId, UpdateState<DT>>,\n    logIdx: LogIdx,\n)\n    requires\n        LogContainsEntriesUpToHere(log, logIdx + 1),\n        log[logIdx].node_id == nodeId,\n        LogRangeMatchesQueue(queue, log, 0, logIdx, logIdx + 1, nodeId, updates),\n    ensures\n        queue.len() == 1,\n        updates.contains_key(queue[0]),\n        updates[queue[0]] is Placed,\n        updates[queue[0]].arrow_Placed_idx() == logIdx,\n{\n}",
+    "reason": "A single local log entry must consume exactly one queue element in `Placed` state \u2014 tests the one-entry local case",
+    "entailed": false,
+    "verus_output": "_entry_consumes_queue.rs:237:9\n    |\n225 |   proof fn phi_2_log_range_local_entry_consumes_queue<DT: Dispatch>(\n    |  _______-\n226 | |     queue: Seq<ReqId>,\n227 | |     log: Map<LogIdx, LogEntry<DT>>,\n228 | |     nodeId: NodeId,\n229 | |     updates: Map<ReqId, UpdateState<DT>>,\n230 | |     logIdx: LogIdx,\n231 | | )\n    | |_- at the end of the function body\n...\n237 |           queue.len() == 1,\n    |           ^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "log_range_remote_entry_no_queue",
+    "type": "behavioral",
+    "code": "proof fn phi_3_log_range_remote_entry_no_queue<DT: Dispatch>(\n    queue: Seq<ReqId>,\n    log: Map<LogIdx, LogEntry<DT>>,\n    nodeId: NodeId,\n    updates: Map<ReqId, UpdateState<DT>>,\n    logIdx: LogIdx,\n    remoteId: NodeId,\n)\n    requires\n        LogContainsEntriesUpToHere(log, logIdx + 1),\n        log[logIdx].node_id == remoteId,\n        remoteId != nodeId,\n        LogRangeMatchesQueue(queue, log, 0, logIdx, logIdx + 1, nodeId, updates),\n    ensures\n        queue.len() == 0,\n{\n}",
+    "reason": "A single remote log entry should not consume any queue element \u2014 tests that remote entries are skipped entirely",
+    "entailed": false,
+    "verus_output": "_LogRangeMatchesQueue_append/phi_3_log_range_remote_entry_no_queue.rs:239:9\n    |\n225 |   proof fn phi_3_log_range_remote_entry_no_queue<DT: Dispatch>(\n    |  _______-\n226 | |     queue: Seq<ReqId>,\n227 | |     log: Map<LogIdx, LogEntry<DT>>,\n228 | |     nodeId: NodeId,\n...   |\n231 | |     remoteId: NodeId,\n232 | | )\n    | |_- at the end of the function body\n...\n239 |           queue.len() == 0,\n    |           ^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "append_preserves_existing_entries",
+    "type": "logical",
+    "code": "proof fn phi_4_append_preserves_existing_entries<DT: Dispatch>(\n    queue: Seq<ReqId>,\n    log: Map<LogIdx, LogEntry<DT>>,\n    nodeId: NodeId,\n    updates: Map<ReqId, UpdateState<DT>>,\n    new_updates: Map<ReqId, UpdateState<DT>>,\n    new_rid: ReqId,\n    log_entry: LogEntry<DT>,\n    logUpper: LogIdx,\n)\n    requires\n        0 <= logUpper,\n        LogContainsEntriesUpToHere(log, logUpper),\n        log_entry.node_id == nodeId,\n        new_updates.contains_key(new_rid),\n        new_updates[new_rid] === (UpdateState::Placed { op: log_entry.op, idx: logUpper }),\n        !queue.contains(new_rid),\n        forall |rid| #[trigger] updates.contains_key(rid) && rid != new_rid ==> new_updates.contains_key(rid) && new_updates[rid] === updates[rid],\n        LogRangeMatchesQueue(queue, log, 0, 0, logUpper, nodeId, updates),\n    ensures ({\n        let new_log = log.insert(logUpper, log_entry);\n        let new_queue = queue.push(new_rid);\n        LogRangeMatchesQueue(new_queue, new_log, 0, 0, logUpper + 1, nodeId, new_updates)\n    }),\n{\n    LogRangeMatchesQueue_append(queue, log, log.insert(logUpper, log_entry), 0, 0, logUpper, nodeId, updates, new_updates, new_rid, log_entry);\n}",
+    "reason": "Full instantiation of append lemma from index 0 \u2014 tests that the verified lemma correctly extends the log range by 1 with a new local entry and queue element",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "dispatch_trait_trusted",
+    "type": "logical",
+    "code": "proof fn phi_5_dispatch_trait_trusted<DT: Dispatch>(op: DT::WriteOperation, node_id: NodeId)\n    ensures ({\n        let entry = LogEntry::<DT> { op, node_id };\n        entry.node_id == node_id && entry.op === op\n    }),\n{\n}",
+    "reason": "`Dispatch` trait is `#[verus::trusted]` \u2014 all associated types (`WriteOperation`, `Response`, `View`) are trusted without verification, and any implementation could introduce unsoundness",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

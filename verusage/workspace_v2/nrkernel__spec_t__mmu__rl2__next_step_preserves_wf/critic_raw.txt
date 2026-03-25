@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: is_base_pt_walk_requires_aligned_vaddr
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `is_base_pt_walk` requires `vbase == vaddr` where `vbase = align_to_usize(vaddr, L3_ENTRY_SIZE)`. Since `align_to_usize(a, b) = a - (a % b)`, `a == a - (a % b)` implies `a % b == 0`, which is `aligned(a, b)`. This is correct by construction.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: is_base_pt_walk_l1_requires_1g_aligned
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Same reasoning as above: for path length 2, `vbase = align_to_usize(vaddr, L1_ENTRY_SIZE)` and `vbase == vaddr` forces `vaddr % L1_ENTRY_SIZE == 0`. Correct by construction.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: ptmem_view_external_body_no_domain_constraint
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `PTMem::view` is `external_body` with `unimplemented!()` body. Two structurally equal PTMem values (`mem1.pml4 == mem2.pml4` and `mem1.mem === mem2.mem`) imply `mem1 === mem2`, so Verus proves `mem1@ === mem2@` by substitution. However, this confirms that `view` is completely unconstrained — it could return any `Map<usize, PTE>` unrelated to the actual page table walks, which is the real spec gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: max_base_exceeds_48bit_vaddr_space
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `MAX_BASE = X86_MAX_ENTRY_SIZE * X86_NUM_ENTRIES` where `X86_MAX_ENTRY_SIZE = 512^3 * 4096` and `X86_NUM_ENTRIES = 512`. This equals `512^4 * 4096 = 2^48`. This is the correct canonical x86-64 virtual address space size.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: `PTMem::view` is `external_body` and completely unconstrained — while structural equality makes the proof trivial, the real issue is that `view` has no verified connection to `pt_walk` or any other spec, meaning it could return arbitrary mappings. Three false positives: alignment requirements from `is_base_pt_walk` follow from `align_to_usize` semantics, and `MAX_BASE` correctly equals 2^48.
+===END_SUMMARY===

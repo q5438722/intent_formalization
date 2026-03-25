@@ -1,0 +1,17 @@
+===VERDICT_START===
+PHI: get_proc_owned_threads_wf_without_full_wf
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `process_fields_wf` already explicitly requires `self.get_proc(p_ptr).owned_threads.wf()` for all procs in the domain. The `get_proc` external_body ensures simply restates what the precondition `process_fields_wf` already guarantees — this is convenience, not a leak.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: get_endpoint_queue_wf_no_container_check
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `endpoint_perms_wf` (part of `wf()`) already requires `self.endpoint_perms@[e_ptr].value().queue.wf()` for all endpoints in the domain. The `get_endpoint` external_body ensures simply surfaces what `endpoint_perms_wf` already establishes — it's a convenience accessor, not an unverified assumption.
+===VERDICT_END===
+
+===SUMMARY===
+Both candidates are false positives. The `get_proc` ensures on `owned_threads.wf()` is directly implied by the `process_fields_wf` precondition, and the `get_endpoint` ensures on `queue.wf()` is directly implied by `endpoint_perms_wf` (via `wf()`). These external_body ensures are convenience restatements of already-established invariants, not soundness gaps.
+===END_SUMMARY===

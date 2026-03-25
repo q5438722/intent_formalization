@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: committed_length_equals_state_length
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `committed()` uses `self.state.map(...)` which preserves sequence length by the vstd `map` axiom. Correct by construction.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: can_crash_as_committed_when_no_writes
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: With no outstanding writes, `flush_byte()` returns `state_at_last_flush` for every byte. Both `chunk_corresponds_ignoring_outstanding_writes` and `chunk_corresponds_after_flush` hold for `committed()`, so `can_crash_as` is satisfied. Correct by definition.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: crash_state_allows_mixed_chunks
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Chunk 0 (addresses 0–7) uses `chunk_corresponds_ignoring_outstanding_writes` (all 0u8 = state_at_last_flush), chunk 1 (addresses 8–15) uses `chunk_corresponds_after_flush` (42/99 = flush_byte). This is the intended per-chunk crash atomicity model.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: flush_byte_with_outstanding_ignores_old
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `flush_byte` matches `Some(new_val)` and returns `new_val`. Correct by the match arm definition.
+===VERDICT_END===
+
+===SUMMARY===
+All four candidates are false positives. They confirm correct definitional properties: map preserves length, committed state is a valid crash state when no writes are outstanding, per-chunk crash atomicity allows mixed flushed/committed states across chunks, and flush_byte returns the outstanding write value.
+===END_SUMMARY===

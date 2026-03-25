@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "lemma_write_seq_first_external_body",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`lemma_write_seq_first` is `external_body` with `unimplemented!()` \u2014 the decomposition of `fold_left` into processing the first element then the rest is trusted without proof. This is a key lemma used in `lemma_step_Writeback_preserves_writer_mem`."
+  },
+  {
+    "phi": "writeback_preserves_writer_mem_via_external",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "The writer memory preservation proof depends directly on the unverified `lemma_write_seq_first`. While the property itself is correct and desirable, the proof chain is only as strong as the external_body lemma \u2014 making this a transitive trust assumption."
+  },
+  {
+    "phi": "writeback_only_changes_pt_mem_at_addr",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This follows directly from `Map::insert` non-interference \u2014 inserting at one key doesn't affect other keys. This is a standard vstd map axiom and correct behavior."
+  },
+  {
+    "phi": "writeback_non_writer_core_empty_sbuf",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Non-writer cores have empty store buffers (by `non_writer_sbufs_are_empty`), so `core_mem(other_core) == pt_mem.write_seq(seq![]) == post.pt_mem`. After writeback, `post.pt_mem == pre.pt_mem.write(addr, value)`, so `post.pt_mem.mem[addr] == value`. This is correct TSO global visibility semantics."
+  },
+  {
+    "phi": "writer_sbuf_unique_implies_no_duplicate_addrs",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is the contrapositive of `writer_sbuf_entries_are_unique` \u2014 if `i != j` implies different addresses, then same address implies `i == j`. This is correct and is simply restating the invariant in a different logical form."
+  }
+]

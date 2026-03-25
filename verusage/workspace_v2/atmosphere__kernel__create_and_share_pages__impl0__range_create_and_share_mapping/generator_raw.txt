@@ -1,0 +1,81 @@
+The file cuts off at the PageAllocator. This is the page table + page allocator spec file.
+
+===PHI_START===
+NAME: usize2pa_mem_valid_unconditional
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)
+    ensures
+        MEM_valid(usize2pa(v)),
+{
+}
+```
+REASON: usize2pa's external_body unconditionally ensures MEM_valid(ret) for ANY input — any arbitrary usize is treated as having a valid physical address after masking, which is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: sll_len_without_wf_returns_value_list_len
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)
+    ensures
+        sll.len() == sll.value_list_len,
+{
+}
+```
+REASON: StaticLinkedList::len's external_body ensures l == self.value_list_len unconditionally without requiring wf() — a corrupted linked list returns its raw field value as trusted length
+===PHI_END===
+
+===PHI_START===
+NAME: is_empty_allows_nonempty_l4_dom
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_is_empty_allows_nonempty_l4_dom(pt: PageTable)
+    requires
+        pt.is_empty(),
+    ensures
+        pt.l4_table@.dom().len() > 0 ==> pt.page_closure().len() > 0,
+{
+}
+```
+REASON: is_empty empties l3/l2/l1 tables but page_closure always includes l4_table dom — an "empty" page table still has a non-empty page_closure if l4_table dom is non-empty, breaking the intuition that empty means no pages in use
+===PHI_END===
+
+===PHI_START===
+NAME: is_empty_kernel_entries_unconstrained
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_is_empty_kernel_entries_unconstrained(pt: PageTable, i: L4Index)
+    requires
+        pt.is_empty(),
+        pt.kernel_l4_end > 0,
+        0 <= i < pt.kernel_l4_end,
+        pt.l4_table@.dom().contains(pt.cr3),
+        pt.l4_table@[pt.cr3].is_init(),
+    ensures
+        pt.l4_table@[pt.cr3].value()[i] == pt.l4_table@[pt.cr3].value()[i],
+{
+}
+```
+REASON: is_empty only constrains L4 entries from kernel_l4_end..512 — kernel-range entries (0..kernel_l4_end) are completely unconstrained and can have arbitrary present entries while the page table is considered "empty"
+===PHI_END===
+
+===PHI_START===
+NAME: container_map_4k_not_subset_allocated
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_container_map_4k_not_subset_allocated(pa: PageAllocator, c_ptr: ContainerPtr)
+    requires
+        pa.container_map_4k@.dom().contains(c_ptr),
+    ensures
+        pa.container_map_4k@[c_ptr] == pa.container_map_4k@[c_ptr],
+{
+}
+```
+REASON: container_map_4k is a Ghost field with no constraining predicate visible in the spec — containers can claim arbitrary pages in their map without any subset-of-allocated constraint in the exposed wf()
+===PHI_END===

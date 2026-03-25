@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: marshal_preserves_integrity_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `marshal_preserves_integrity` is `external_body` across all ResourceView implementors via the macro. The marshal/unmarshal roundtrip is unverified — a real soundness gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: update_request_key_kind_from_obj
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is the intentional definition of `UpdateRequest::key()` — it derives the key from the embedded object. This is standard Kubernetes semantics where the request's identity comes from the object being updated.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: update_status_request_key_kind_from_obj
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Same as above — intentional Kubernetes API design where the object carries its own kind.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: reconcile_id_allocator_monotonic_unbounded
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `ReconcileId` is `nat` (mathematical natural number), so unbounded growth is by design — no overflow is possible. This is standard for spec-level modeling.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: object_ref_ignores_uid
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This mirrors real Kubernetes semantics where ObjectRef identifies resources by name/namespace/kind, not UID. UID distinguishes incarnations, not identity. Intentional design.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: `marshal_preserves_integrity` is `external_body` across all ResourceView macro implementations, leaving the marshal/unmarshal roundtrip entirely unverified. The remaining four candidates are false positives reflecting intentional Kubernetes API modeling decisions (key derivation from object, nat-based IDs, name-based ObjectRef identity).
+===END_SUMMARY===

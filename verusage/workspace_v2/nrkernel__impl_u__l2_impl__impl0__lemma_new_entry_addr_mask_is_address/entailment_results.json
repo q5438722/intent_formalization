@@ -1,0 +1,47 @@
+[
+  {
+    "name": "new_entry_present_bit_set",
+    "type": "behavioral",
+    "code": "proof fn phi_1_new_entry_present_bit_set(address: usize, layer: usize, is_page: bool)\n    requires\n        layer <= 3,\n        if is_page { 0 < layer } else { layer < 3 },\n        addr_is_zero_padded(layer as nat, address, is_page),\n        address & MASK_ADDR == address,\n    ensures\n        (address | MASK_FLAG_P) & MASK_FLAG_P == MASK_FLAG_P,\n{\n    PDE::lemma_new_entry_addr_mask_is_address(layer, address, is_page, false, false, false, false, false);\n}",
+    "reason": "Present bit is always set in the constructed entry \u2014 tests that OR with MASK_FLAG_P correctly sets bit 0",
+    "entailed": false,
+    "verus_output": "is_address/phi_1_new_entry_present_bit_set.rs:217:9\n    |\n210 | proof fn phi_1_new_entry_present_bit_set(address: usize, layer: usize, is_page: bool)\n    |       ------------------------------------------------------------------------------- at the end of the function body\n...\n217 |         (address | MASK_FLAG_P) & MASK_FLAG_P == MASK_FLAG_P,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "new_entry_dirty_access_clear",
+    "type": "behavioral",
+    "code": "proof fn phi_2_new_entry_dirty_access_clear(address: usize, layer: usize, is_page: bool, is_writable: bool, is_supervisor: bool, is_writethrough: bool, disable_cache: bool, disable_execute: bool)\n    requires\n        layer <= 3,\n        if is_page { 0 < layer } else { layer < 3 },\n        addr_is_zero_padded(layer as nat, address, is_page),\n        address & MASK_ADDR == address,\n    ensures\n        ({\n            let e = address\n                | MASK_FLAG_P\n                | if is_page && layer != 3 { MASK_L1_PG_FLAG_PS } else { 0 }\n                | if is_writable { MASK_FLAG_RW } else { 0 }\n                | if is_supervisor { 0 } else { MASK_FLAG_US }\n                | if is_writethrough { MASK_FLAG_PWT } else { 0 }\n                | if disable_cache { MASK_FLAG_PCD } else { 0 }\n                | if disable_execute { MASK_FLAG_XD } else { 0 };\n            e & bit!(5) == 0 && e & bit!(6) == 0\n        }),\n{\n    PDE::lemma_new_entry_addr_mask_is_address(layer, address, is_page, is_writable, is_supervisor, is_writethrough, disable_cache, disable_execute);\n}",
+    "reason": "New entries always have dirty (bit 6) and access (bit 5) cleared \u2014 tests that none of the flag ORs accidentally set these hardware-managed bits",
+    "entailed": true,
+    "verus_output": " been renamed to `repr_transparent_non_zst_fields`\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__impl_u__l2_impl__impl0__lemma_new_entry_addr_mask_is_address/phi_2_new_entry_dirty_access_clear.rs:11:9\n   |\n11 | #[allow(repr_transparent_external_private_fields)]\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n   |\n   = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "addr_mask_roundtrips_through_flags",
+    "type": "behavioral",
+    "code": "proof fn phi_3_addr_mask_roundtrips_through_flags(address: usize, layer: usize, is_page: bool)\n    requires\n        layer <= 3,\n        if is_page { 0 < layer } else { layer < 3 },\n        addr_is_zero_padded(layer as nat, address, is_page),\n        address & MASK_ADDR == address,\n    ensures\n        ({\n            let e = address | MASK_FLAG_P | MASK_FLAG_RW | MASK_FLAG_US | MASK_FLAG_PWT | MASK_FLAG_PCD | MASK_FLAG_XD\n                | if is_page && layer != 3 { MASK_L1_PG_FLAG_PS } else { 0 };\n            e & MASK_ADDR == address\n        }),\n{\n    PDE::lemma_new_entry_addr_mask_is_address(layer, address, is_page, true, false, true, true, true);\n}",
+    "reason": "Address bits survive ORing all flags \u2014 tests that flag bits don't overlap with MASK_ADDR address field",
+    "entailed": false,
+    "verus_output": "------------------------------------------------------------ at the end of the function body\n...\n217 | /         ({\n218 | |             let e = address | MASK_FLAG_P | MASK_FLAG_RW | MASK_FLAG_US | MASK_FLAG_PWT | MASK_FLAG_PCD | MASK_FLAG_XD\n219 | |                 | if is_page && layer != 3 { MASK_L1_PG_FLAG_PS } else { 0 };\n220 | |             e & MASK_ADDR == address\n221 | |         }),\n    | |__________^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "l1_page_pat_bit_clear",
+    "type": "boundary",
+    "code": "proof fn phi_4_l1_page_pat_bit_clear(address: usize)\n    requires\n        address & MASK_L1_PG_ADDR == address,\n        address & MASK_ADDR == address,\n    ensures\n        ({\n            let e = address | MASK_FLAG_P | MASK_L1_PG_FLAG_PS;\n            e & MASK_PG_FLAG_PAT == 0\n        }),\n{\n    PDE::lemma_new_entry_addr_mask_is_address(1, address, true, false, false, false, false, false);\n}",
+    "reason": "L1 page entries have PAT bit (bit 12) clear \u2014 relies on MASK_L1_PG_ADDR zeroing bit 12, so the address can't set it",
+    "entailed": false,
+    "verus_output": "emma_new_entry_addr_mask_is_address/phi_4_l1_page_pat_bit_clear.rs:215:9\n    |\n210 |   proof fn phi_4_l1_page_pat_bit_clear(address: usize)\n    |         ---------------------------------------------- at the end of the function body\n...\n215 | /         ({\n216 | |             let e = address | MASK_FLAG_P | MASK_L1_PG_FLAG_PS;\n217 | |             e & MASK_PG_FLAG_PAT == 0\n218 | |         }),\n    | |__________^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "max_phyaddr_width_external_body",
+    "type": "boundary",
+    "code": "proof fn phi_5_max_phyaddr_width_external_body()\n    ensures\n        32 <= MAX_PHYADDR_WIDTH,\n        MAX_PHYADDR_WIDTH <= 52,\n{\n    axiom_max_phyaddr_width_facts();\n}",
+    "reason": "`MAX_PHYADDR_WIDTH` is `external_body` with value 52 but the axiom only constrains it to 32..=52 \u2014 the verifier treats it as opaque, creating a gap between spec and implementation",
+    "entailed": true,
+    "verus_output": "en renamed to `repr_transparent_non_zst_fields`\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__impl_u__l2_impl__impl0__lemma_new_entry_addr_mask_is_address/phi_5_max_phyaddr_width_external_body.rs:11:9\n   |\n11 | #[allow(repr_transparent_external_private_fields)]\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n   |\n   = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

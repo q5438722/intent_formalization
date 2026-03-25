@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize2pa_mem_valid_unconditional",
+    "type": "logical",
+    "code": "proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body ensures MEM_valid(ret) for ALL inputs \u2014 trusts without proof that masking any usize yields a valid physical address",
+    "entailed": false,
+    "verus_output": "on/verusage/workspace_v2/atmosphere__kernel__syscall_send_endpoint__impl0__syscall_send_endpoint/phi_1_usize2pa_mem_valid_unconditional.rs:3166:9\n     |\n3164 | proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n     |       --------------------------------------------------- at the end of the function body\n3165 |     ensures\n3166 |         MEM_valid(usize2pa(v)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 33 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "sll_len_no_wf_guard",
+    "type": "behavioral",
+    "code": "proof fn phi_2_sll_len_no_wf_guard<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    ensures\n        sll.len() == sll.value_list_len,\n{\n}",
+    "reason": "StaticLinkedList::len unconditionally ensures l == self.value_list_len without requiring wf \u2014 the length field is trusted even for malformed lists",
+    "entailed": false,
+    "verus_output": "nd_endpoint__impl0__syscall_send_endpoint/phi_2_sll_len_no_wf_guard.rs:3166:9\n     |\n3164 | proof fn phi_2_sll_len_no_wf_guard<T, const N: usize>(sll: StaticLinkedList<T, N>)\n     |       ---------------------------------------------------------------------------- at the end of the function body\n3165 |     ensures\n3166 |         sll.len() == sll.value_list_len,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 33 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "is_empty_ignores_l4_below_kernel_end",
+    "type": "boundary",
+    "code": "proof fn phi_3_is_empty_ignores_l4_below_kernel_end(pt: PageTable, i: L4Index)\n    requires\n        pt.is_empty(),\n        0 <= i < pt.kernel_l4_end,\n    ensures\n        true,\n{\n    // is_empty does NOT constrain L4 entries below kernel_l4_end,\n    // so entries [0, kernel_l4_end) can have arbitrary present/non-empty state\n    // while the table is considered \"empty\"\n}",
+    "reason": "A page table can be \"empty\" while having non-empty kernel-region L4 entries \u2014 is_empty only constrains indices >= kernel_l4_end",
+    "entailed": true,
+    "verus_output": "    |\n194 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__kernel__syscall_send_endpoint__impl0__syscall_send_endpoint/phi_3_is_empty_ignores_l4_below_kernel_end.rs:203:10\n    |\n203 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: 33 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "alloc_iommu_preserves_all_pcid_mappings",
+    "type": "behavioral",
+    "code": "proof fn phi_4_alloc_iommu_preserves_all_pcid_mappings(\n    old_mm: MemoryManager, new_mm: MemoryManager, pcid: Pcid, new_proc: ProcPtr, ret: IOid\n)\n    requires\n        old_mm.wf(),\n        old_mm.free_ioids.len() > 0,\n        new_mm.wf(),\n        new_mm.page_tables =~= old_mm.page_tables,\n        new_mm.pcid_active(pcid) == old_mm.pcid_active(pcid),\n        old_mm.pcid_active(pcid),\n    ensures\n        new_mm.get_pagetable_mapping_by_pcid(pcid) == old_mm.get_pagetable_mapping_by_pcid(pcid),\n{\n}",
+    "reason": "alloc_iommu_table ensures all active PCID mappings are preserved \u2014 if the postcondition is too strong it could mask bugs where IOMMU allocation accidentally modifies page table state",
+    "entailed": true,
+    "verus_output": " |\n194 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__kernel__syscall_send_endpoint__impl0__syscall_send_endpoint/phi_4_alloc_iommu_preserves_all_pcid_mappings.rs:203:10\n    |\n203 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: 33 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "alloc_iommu_new_mapping_empty",
+    "type": "behavioral",
+    "code": "proof fn phi_5_alloc_iommu_new_mapping_empty(\n    old_mm: MemoryManager, new_mm: MemoryManager, new_proc: ProcPtr, ret: IOid\n)\n    requires\n        old_mm.wf(),\n        old_mm.free_ioids.len() > 0,\n        new_mm.wf(),\n        new_mm.ioid_active(ret),\n        !old_mm.ioid_active(ret),\n        new_mm.iommu_tables =~= old_mm.iommu_tables,\n    ensures\n        new_mm.get_iommu_table_mapping_by_ioid(ret).dom() == Set::<PagePtr>::empty(),\n{\n}",
+    "reason": "Newly activated IOMMU has empty mapping but the postcondition says iommu_tables are unchanged \u2014 the IOMMU was already present (just free), so its \"empty\" mapping comes from the free-implies-is_empty invariant rather than any initialization",
+    "entailed": true,
+    "verus_output": "194:10\n    |\n194 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__kernel__syscall_send_endpoint__impl0__syscall_send_endpoint/phi_5_alloc_iommu_new_mapping_empty.rs:203:10\n    |\n203 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: 33 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

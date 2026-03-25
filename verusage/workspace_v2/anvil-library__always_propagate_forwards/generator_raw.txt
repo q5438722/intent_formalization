@@ -1,0 +1,87 @@
+===PHI_START===
+NAME: execution_equality_forces_fn_equality
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_execution_equality_forces_fn_equality(f: spec_fn(nat) -> int, g: spec_fn(nat) -> int)
+    requires
+        forall |i: nat| #[trigger] f(i) == g(i),
+    ensures
+        f == g,
+{
+    let ex1 = Execution { nat_to_state: f };
+    let ex2 = Execution { nat_to_state: g };
+    execution_equality::<int>(ex1, ex2);
+}
+```
+REASON: execution_equality is external_body forcing intensional equality of spec_fn from pointwise extensional equivalence — two structurally distinct closures are collapsed to equal
+===PHI_END===
+
+===PHI_START===
+NAME: always_unfold_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_always_unfold_intensional_bridge(ex: Execution<int>, p: TempPred<int>, i: nat)
+    requires
+        always(p).satisfied_by(ex),
+    ensures
+        p.satisfied_by(ex.suffix(i)),
+{
+    always_unfold::<int>(ex, p);
+}
+```
+REASON: always_unfold is external_body bridging the forall inside always's TempPred::new closure and a bare forall in the ensures — intensionally distinct formulations equated without proof
+===PHI_END===
+
+===PHI_START===
+NAME: always_propagate_chains_arbitrarily
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_always_propagate_chains_arbitrarily(ex: Execution<int>, p: TempPred<int>, i: nat, j: nat)
+    requires
+        always(p).satisfied_by(ex),
+    ensures
+        always(p).satisfied_by(ex.suffix(i).suffix(j)),
+{
+    always_propagate_forwards::<int>(ex, p, i);
+    always_propagate_forwards::<int>(ex.suffix(i), p, j);
+}
+```
+REASON: chaining always_propagate_forwards yields always(p) on doubly-nested suffixes — the two external_body axioms compose to resolve arbitrary suffix nesting without explicit composition lemmas
+===PHI_END===
+
+===PHI_START===
+NAME: suffix_composition_equals_addition
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_suffix_composition_equals_addition(ex: Execution<int>, i: nat, j: nat)
+    ensures
+        ex.suffix(i).suffix(j) == ex.suffix(i + j),
+{
+    execution_equality::<int>(ex.suffix(i).suffix(j), ex.suffix(i + j));
+}
+```
+REASON: doubly-nested suffix creates a closure intensionally distinct from single-offset suffix — execution_equality collapses them without proof, and always_propagate_forwards depends on this
+===PHI_END===
+
+===PHI_START===
+NAME: always_double_nesting
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_always_double_nesting(ex: Execution<int>, p: TempPred<int>)
+    requires
+        always(p).satisfied_by(ex),
+    ensures
+        always(always(p)).satisfied_by(ex),
+{
+    assert forall |i: nat| always(p).satisfied_by(#[trigger] ex.suffix(i)) by {
+        always_propagate_forwards::<int>(ex, p, i);
+    };
+}
+```
+REASON: always(p) implies always(always(p)) — the framework collapses the temporal nesting via always_propagate_forwards without an independent always-idempotence axiom, which could mask issues where inner always should have different semantics than outer
+===PHI_END===

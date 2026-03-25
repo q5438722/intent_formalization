@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: overlap_zero_size_reflexive
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The `overlap` function returns true for two zero-size regions at the same base via `region1.base == region2.base`. Mathematically, empty intervals do not overlap. This is a minor spec defect in the degenerate case.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: inflight_pmem_overlap_idle_ignored
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Idle threads have no associated mapping operation, so they correctly contribute no physical memory overlap. The match arm returning false for `Idle` is the intended and correct behavior.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: uniqueness_not_frame_overlap_based
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The `inflight_maps_unique` check is complemented by `candidate_mapping_overlaps_inflight_pmem` which separately checks physical frame overlap. The `insert_map_preserves_unique` lemma requires `!candidate_mapping_overlaps_inflight_pmem(thread_state.values(), pte)` as a precondition, so double-mapping the same physical frame is prevented by the pmem overlap check, not the uniqueness invariant. These are two separate concerns working together.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: the `overlap` zero-size reflexivity issue. Two false positives: idle threads correctly produce no pmem overlap, and the uniqueness check's value-based comparison is intentionally complemented by the separate `candidate_mapping_overlaps_inflight_pmem` check that guards physical frame overlap at insertion time.
+===END_SUMMARY===

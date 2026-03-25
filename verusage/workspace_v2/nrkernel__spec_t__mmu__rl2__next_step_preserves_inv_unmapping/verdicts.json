@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "pde_directory_addr_masked",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "In `PDE::view`, all Directory branches extract the address as `(v & MASK_ADDR) as usize` regardless of layer (layers 0, 1, 2 all use `MASK_ADDR` for Directory). This is correct by construction of the view function."
+  },
+  {
+    "phi": "pde_layer1_page_uses_different_mask",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "In `PDE::view`, layer 1 Page entries use `(v & MASK_L1_PG_ADDR) as usize` for the address. This is correct x86-64 semantics \u2014 1GB pages have a 30-bit aligned physical base, so bits 30..MAX_PHYADDR_WIDTH-1 are the address field. The ensures matches the definition exactly."
+  },
+  {
+    "phi": "pt_walk_path_l0_entry_is_pde_view",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`pt_walk` computes `l0e = PDE { entry: self.read(l0_addr), layer: Ghost(0) }` and stores `l0e@` as the first path entry's GPDE in all branches. The ensures clause restates this construction exactly."
+  },
+  {
+    "phi": "all_mb0_external_body_gates_all_present",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`all_mb0_bits_are_zero` is `external_body` with `unimplemented!()` \u2014 it gates whether a present entry (P bit set) is classified as Directory/Page vs Invalid. Since the predicate is opaque, Verus cannot verify it actually checks the correct reserved bits for each layer, potentially causing valid entries to be misclassified as Invalid or vice versa."
+  },
+  {
+    "phi": "walk_path_len_bounded_1_to_4",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`pt_walk` has exactly 4 nesting levels of match on GPDE variants. The shortest path is 1 (L0 Invalid/Page), the longest is 4 (all Directory then L3 entry). Each branch constructs a path with `seq!` of 1-4 elements. This is correct by exhaustive case analysis of the function structure."
+  }
+]

@@ -1,0 +1,6 @@
+[
+  {
+    "name": "check_address_space_va_range_free",
+    "code": "#[verifier::spinoff_prover]\n    pub fn check_address_space_va_range_free(\n        &self,\n        target_proc_ptr: ProcPtr,\n        va_range: &VaRange4K,\n    ) -> (ret: bool)\n        requires\n            self.wf(),\n            self.proc_dom().contains(target_proc_ptr),\n            va_range.wf(),\n        ensures\n            ret == self.address_space_range_free(target_proc_ptr, va_range),\n    {\n        let target_pcid = self.proc_man.get_proc(target_proc_ptr).pcid;\n        for i in 0..va_range.len\n            invariant\n                self.mem_man.pcid_active(target_pcid),\n                target_pcid == self.get_proc(target_proc_ptr).pcid,\n                0 <= i <= va_range.len,\n                self.wf(),\n                self.proc_dom().contains(target_proc_ptr),\n                va_range.wf(),\n                forall|j: int|\n                    #![auto]\n                    0 <= j < i ==> self.get_address_space(target_proc_ptr).dom().contains(\n                        va_range@[j],\n                    ) == false,\n        {\n            if self.mem_man.resolve_pagetable_mapping(target_pcid, va_range.index(i)).is_some() {\n                return false;\n            }\n        }\n        return true;\n    }"
+  }
+]

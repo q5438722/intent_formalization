@@ -1,0 +1,82 @@
+===PHI_START===
+NAME: u64_serialize_len_always_8
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_u64_serialize_len_always_8(x: u64)
+    ensures
+        x.ghost_serialize().len() == 8,
+{
+    lemma_auto_spec_u64_to_from_le_bytes();
+}
+```
+REASON: Every u64 serializes to exactly 8 bytes regardless of value — small values like 0 waste 7 bytes, suggesting the format lacks any compact encoding
+===PHI_END===
+
+===PHI_START===
+NAME: usize_serialized_size_external_body_unchecked
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_usize_serialized_size_external_body_unchecked(x: usize)
+    requires
+        x.is_marshalable(),
+    ensures
+        x.ghost_serialize().len() == 8,
+{
+    lemma_auto_spec_u64_to_from_le_bytes();
+}
+```
+REASON: `usize::serialized_size` is `external_body` but the serialization length is always 8 (same as u64) — the unverified exec implementation could return any value, breaking the ensures `res as int == ghost_serialize().len()` without detection
+===PHI_END===
+
+===PHI_START===
+NAME: serialized_size_trait_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_serialized_size_trait_external_body(x: u64)
+    requires
+        x.is_marshalable(),
+    ensures
+        ({
+            let sz = x.ghost_serialize().len();
+            sz as int <= usize::MAX
+        }),
+{
+    lemma_auto_spec_u64_to_from_le_bytes();
+}
+```
+REASON: The trait's `serialized_size` returns `usize` and ensures `res as int == ghost_serialize().len()`, implicitly assuming serialized length fits in usize — but `ghost_serialize` at the trait level is external_body with no length bound, so future impls could have serializations exceeding usize::MAX
+===PHI_END===
+
+===PHI_START===
+NAME: usize_max_is_marshalable
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_usize_max_is_marshalable()
+    ensures
+        (usize::MAX as usize).is_marshalable() <==> (usize::MAX as int <= u64::MAX),
+{
+}
+```
+REASON: Whether usize::MAX is marshalable depends on the platform — on 64-bit systems `usize::MAX == u64::MAX` so all usize values are marshalable, but the spec doesn't constrain the platform, creating a platform-dependent marshalability gap
+===PHI_END===
+
+===PHI_START===
+NAME: ghost_serialize_recommends_not_requires
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_ghost_serialize_recommends_not_requires(a: usize, b: usize)
+    requires
+        !(a.is_marshalable()),
+        !(b.is_marshalable()),
+    ensures
+        a.ghost_serialize() == b.ghost_serialize(),
+{
+}
+```
+REASON: For non-marshalable usize values (above u64::MAX), `ghost_serialize` delegates to `(*self as u64).ghost_serialize()` which truncates — distinct non-marshalable values could serialize identically, collapsing the serialization's injectivity without any warning since `is_marshalable` is only a `recommends`
+===PHI_END===

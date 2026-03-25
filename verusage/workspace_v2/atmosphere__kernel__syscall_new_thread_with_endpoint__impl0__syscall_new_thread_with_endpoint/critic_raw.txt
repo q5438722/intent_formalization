@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: container_map_4k_allows_double_ownership
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures clause `pa.container_map_4k@[c2].contains(p) || !pa.container_map_4k@[c2].contains(p)` is a tautology (P ∨ ¬P) — it is trivially true for any boolean expression regardless of the spec. This PHI proves nothing about double ownership or missing disjointness constraints.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: pagetable_is_empty_allows_nonempty_l4_dom
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures clause `pt.l4_table@.dom().len() > 0 || pt.l4_table@.dom().len() == 0` is a tautology — every natural number is either zero or positive. This proves nothing about the vacuous forall when kernel_l4_end == 512.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: page_closure_includes_l4_table
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is a direct consequence of the open spec definition of `page_closure`, which explicitly includes `self.l4_table@.dom()` as a union component. Including the L4 table in the page closure is intentional — it tracks all page table pages. The disjointness concern would need a separate PHI with non-tautological ensures.
+===VERDICT_END===
+
+===SUMMARY===
+All three candidates are false positives. Two (`container_map_4k_allows_double_ownership` and `pagetable_is_empty_allows_nonempty_l4_dom`) have tautological ensures clauses (P ∨ ¬P patterns) that are trivially true regardless of the spec, making them uninformative. The third (`page_closure_includes_l4_table`) correctly derives a property from the open spec definition of `page_closure`, but this is desirable by design — the L4 table pages are intentionally part of the page closure. The underlying concerns (missing disjointness on container_map, vacuous forall on is_empty) are real but the PHI formulations fail to capture them with non-trivial ensures clauses.
+===END_SUMMARY===

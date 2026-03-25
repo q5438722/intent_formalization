@@ -1,0 +1,106 @@
+===PHI_START===
+NAME: repeatn_productive_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_repeatn_productive_external_body<C: SecureSpecCombinator>(c: &RepeatN<C>, s: Seq<u8>, n: int, vs: Seq<C::Type>)
+    requires
+        c.requires(),
+        c.is_productive(),
+        c.spec_parse(s) == Some((n, vs)),
+    ensures
+        n > 0,
+{
+    c.lemma_parse_productive(s);
+}
+```
+REASON: `RepeatN::lemma_parse_productive` is `external_body` with `unimplemented!()` — the productivity property for the composed repetition combinator is trusted without proof, even though `lemma_parse_productive_helper` exists as a verified helper that could have been used
+===PHI_END===
+
+===PHI_START===
+NAME: inner_productive_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_inner_productive_external_body<C: SecureSpecCombinator>(c: &C, s: Seq<u8>, n: int, v: C::Type)
+    requires
+        c.requires(),
+        c.is_productive(),
+        c.spec_parse(s) == Some((n, v)),
+    ensures
+        n > 0,
+{
+    c.lemma_parse_productive(s);
+}
+```
+REASON: `SecureSpecCombinator::lemma_parse_productive` is `external_body` on the trait — the base productivity guarantee for any combinator is an unverified trust assumption
+===PHI_END===
+
+===PHI_START===
+NAME: parse_zero_always_succeeds
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_parse_zero_always_succeeds<C: SecureSpecCombinator>(c: &RepeatN<C>, s: Seq<u8>)
+    requires
+        c.1 == 0usize,
+    ensures
+        c.spec_parse(s) == Some((0int, seq![])),
+{
+}
+```
+REASON: Parsing zero repetitions always succeeds regardless of input — the combinator produces a result without examining any bytes, which could mask malformed input
+===PHI_END===
+
+===PHI_START===
+NAME: parse_helper_monotone_consumed
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_parse_helper_monotone_consumed<C: SecureSpecCombinator>(c: &RepeatN<C>, s: Seq<u8>, n1: usize, n2: usize, m1: int, m2: int, vs1: Seq<C::Type>, vs2: Seq<C::Type>)
+    requires
+        c.requires(),
+        c.0.is_productive(),
+        n1 < n2,
+        c.spec_parse_helper(s, n1) == Some((m1, vs1)),
+        c.spec_parse_helper(s, n2) == Some((m2, vs2)),
+    ensures
+        m2 > m1,
+    decreases n2,
+{
+    c.lemma_parse_productive_helper(s, n2);
+    if n2 == n1 + 1 {
+        c.0.lemma_parse_productive(s.skip(m1 as int));
+    } else {
+        if let Some((m_prev, vs_prev)) = c.spec_parse_helper(s, (n2 - 1) as usize) {
+            phi_4_parse_helper_monotone_consumed(c, s, n1, (n2 - 1) as usize, m1, m_prev, vs1, vs_prev);
+            c.0.lemma_parse_productive(s.skip(m_prev as int));
+        }
+    }
+}
+```
+REASON: With a productive inner combinator, each additional repetition must consume strictly more bytes — if this weren't true, the parser could loop without advancing through the input
+===PHI_END===
+
+===PHI_START===
+NAME: parse_result_length_equals_count
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_parse_result_length_equals_count<C: SecureSpecCombinator>(c: &RepeatN<C>, s: Seq<u8>, n: usize, m: int, vs: Seq<C::Type>)
+    requires
+        c.spec_parse_helper(s, n) == Some((m, vs)),
+    ensures
+        vs.len() == n,
+    decreases n,
+{
+    if n == 0 {
+    } else {
+        if let Some((m_prev, vs_prev)) = c.spec_parse_helper(s, (n - 1) as usize) {
+            phi_5_parse_result_length_equals_count(c, s, (n - 1) as usize, m_prev, vs_prev);
+        }
+    }
+}
+```
+REASON: The parsed sequence length should always equal the requested repetition count — if the result contained fewer or more elements than requested, the combinator would violate its contract
+===PHI_END===

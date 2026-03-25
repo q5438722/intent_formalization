@@ -1,0 +1,97 @@
+===PHI_START===
+NAME: subtract_aligned_preserves
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_subtract_aligned_preserves(a: nat, b: nat, c: nat)
+    requires
+        aligned(a, c),
+        aligned(b, c),
+        a <= b,
+        c > 0,
+    ensures
+        aligned((b - a) as nat, c),
+{
+    subtract_mod_eq_zero(a, b, c);
+}
+```
+REASON: Difference of two aligned values is aligned — direct consequence of the verified lemma
+===PHI_END===
+
+===PHI_START===
+NAME: subtract_self_aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_subtract_self_aligned(a: nat, c: nat)
+    requires
+        aligned(a, c),
+        c > 0,
+    ensures
+        aligned(0nat, c),
+{
+    subtract_mod_eq_zero(a, a, c);
+}
+```
+REASON: Subtracting a value from itself yields 0, which is trivially aligned — tests the `a == b` boundary
+===PHI_END===
+
+===PHI_START===
+NAME: subtract_zero_aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_subtract_zero_aligned(b: nat, c: nat)
+    requires
+        aligned(b, c),
+        c > 0,
+    ensures
+        aligned(b, c),
+{
+    subtract_mod_eq_zero(0, b, c);
+}
+```
+REASON: Subtracting 0 preserves alignment — tests the `a == 0` boundary (tautological)
+===PHI_END===
+
+===PHI_START===
+NAME: subtract_consecutive_multiples
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_subtract_consecutive_multiples(c: nat, k1: nat, k2: nat)
+    requires
+        c > 0,
+        k1 <= k2,
+    ensures
+        aligned((k2 * c - k1 * c) as nat, c),
+{
+    assert(aligned(k1 * c, c)) by {
+        assert((k1 * c) % c == 0) by (nonlinear_arith) requires c > 0;
+    };
+    assert(aligned(k2 * c, c)) by {
+        assert((k2 * c) % c == 0) by (nonlinear_arith) requires c > 0;
+    };
+    assert(k1 * c <= k2 * c) by (nonlinear_arith) requires k1 <= k2, c > 0;
+    subtract_mod_eq_zero(k1 * c, k2 * c, c);
+}
+```
+REASON: Difference of any two multiples of `c` is aligned to `c` — tests closure of multiples under subtraction
+===PHI_END===
+
+===PHI_START===
+NAME: vstd_lemma_sub_mod_noop_trusted
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_vstd_lemma_sub_mod_noop_trusted(a: int, b: int, c: int)
+    requires
+        c > 0,
+    ensures
+        (b - a) % c == ((b % c) - (a % c)) % c,
+{
+    vstd::arithmetic::div_mod::lemma_sub_mod_noop(b, a, c);
+}
+```
+REASON: The proof depends on vstd's `lemma_sub_mod_noop` — if that library lemma were unsound the subtraction-alignment property would be wrong
+===PHI_END===

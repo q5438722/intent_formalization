@@ -1,0 +1,47 @@
+[
+  {
+    "name": "pow2_negative_is_one",
+    "type": "boundary",
+    "code": "proof fn phi_1_pow2_negative_is_one(e: int)\n    requires\n        e < 0,\n    ensures\n        pow2(e) == 1,\n{\n}",
+    "reason": "`pow2` returns 1 for all negative exponents \u2014 mathematically 2^(-n) is a fraction, so callers accidentally passing negative values get silently wrong results",
+    "entailed": true,
+    "verus_output": "verification results:: 15 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "mul_assoc_smuggles_commutativity",
+    "type": "logical",
+    "code": "proof fn phi_2_mul_assoc_smuggles_commutativity(x: nat, y: nat, z: nat)\n    ensures\n        (x * y) * z == y * (x * z),\n{\n    mul_assoc(x, y, z);\n}",
+    "reason": "`mul_assoc` proves `(x*y)*z == y*(x*z)` which is not pure associativity but a combination of associativity and commutativity \u2014 the name is misleading and may cause incorrect reasoning when callers expect standard `(x*y)*z == x*(y*z)`",
+    "entailed": true,
+    "verus_output": "verification results:: 15 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "shift_zero_by_63_is_zero",
+    "type": "boundary",
+    "code": "proof fn phi_3_shift_zero_by_63_is_zero()\n    ensures\n        0u64 >> 63u64 == 0nat,\n{\n    shift_is_div(0u64, 63u64);\n}",
+    "reason": "Shifting 0 by any amount gives 0 \u2014 trivially correct but tests that `shift_is_div` handles the maximum valid shift with a zero input without issues",
+    "entailed": false,
+    "verus_output": " 14 verified, 1 errors\nerror: postcondition not satisfied\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__bin_sizes__shift_is_div/phi_3_shift_zero_by_63_is_zero.rs:169:9\n    |\n167 | proof fn phi_3_shift_zero_by_63_is_zero()\n    |       ----------------------------------- at the end of the function body\n168 |     ensures\n169 |         0u64 >> 63u64 == 0nat,\n    |         ^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pow2_strict_monotone_gap",
+    "type": "behavioral",
+    "code": "proof fn phi_4_pow2_strict_monotone_gap()\n    ensures\n        pow2(0) == pow2(-1),\n        pow2(-1) == pow2(-100),\n{\n}",
+    "reason": "`pow2` is NOT strictly monotone at the boundary: `pow2(0) == pow2(-1) == pow2(-100) == 1` \u2014 the strict monotonicity property in `pow2_properties` only covers `0 <= e1 < e2`, leaving a flat region for all non-positive inputs where different exponents map to the same value",
+    "entailed": true,
+    "verus_output": "verification results:: 15 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "div2_overflow_boundary",
+    "type": "boundary",
+    "code": "proof fn phi_5_div2_overflow_boundary()\n    ensures\n        u64::MAX as int / (1 * 2) == (u64::MAX as int / 1) / 2,\n{\n    div2(u64::MAX, 1);\n}",
+    "reason": "`div2` takes `x: u64` but ensures a property about `x as int` \u2014 at u64::MAX boundary, the division chain works in int domain but the lemma's signature suggests it handles u64 overflow when it actually sidesteps it via int coercion",
+    "entailed": false,
+    "verus_output": "/phi_5_div2_overflow_boundary.rs:169:9\n    |\n169 |         u64::MAX as int / (1 * 2) == (u64::MAX as int / 1) / 2,\n    |         ^^^^^^^^^^^^^^^^^^-------\n    |                           |\n    |                           this argument influences the return type of `spec_euclidean_or_real_div`\nnote: method defined here\n   --> /home/runner/work/verus/verus/source/builtin/src/lib.rs:1169:7\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0308`.\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: no_mapping_infer_trivial_from_empty
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: An empty page table has all mappings equal to empty maps, so no virtual address maps to any physical address. Deriving `page_not_mapped(p)` for any `p` is the correct and expected consequence — `page_not_mapped` only checks the ghost mapping fields, which is exactly what `is_empty` clears.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: root_table_wf_no_resolve_constraint
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures is `true` (trivially valid), but the real issue it highlights is genuine: all the invariants in `root_table_wf` linking `resolve` results to valid IOids and active IOMMU tables are commented out. This means the spec allows a resolved PCI device to reference an out-of-range or freed IOid with no constraint.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: create_l2_no_pcid_mapping_isolation
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures clause is a tautology (`x == x`), proving nothing about isolation. The concern about IOMMU/process page tables mapping the same physical page is about data pages, not page table structure pages — `page_closure` disjointness and `pagetable_iommu_table_disjoint` handle structural page isolation, and shared data page mappings are an intentional DMA design pattern.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: root_table_cache_stale_none_allowed
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures is `true`, making this trivially valid. The cache being allowed to have None entries when resolve returns Some is intentional — it's a lazy/on-demand cache where entries are populated as needed, not a mirror that must be kept in sync. The invariant correctly ensures that when a cache entry IS populated, it matches resolve.
+===VERDICT_END===
+
+===SUMMARY===
+Of the four candidates, only `root_table_wf_no_resolve_constraint` is a true positive — though its ensures clause is trivially `true`, it correctly identifies that all resolve-related invariants in `root_table_wf` are commented out, leaving no link between PCI device resolution and valid/active IOMMU tables. The other three are false positives: `no_mapping_infer_trivial_from_empty` is expected behavior for empty tables, `create_l2_no_pcid_mapping_isolation` has a tautological ensures proving nothing, and `root_table_cache_stale_none_allowed` describes intentional lazy cache semantics.
+===END_SUMMARY===

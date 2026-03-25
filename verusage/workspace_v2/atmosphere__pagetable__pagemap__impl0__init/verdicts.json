@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "zero_is_empty_external_body_trusted",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`zero_leads_is_empty_page_entry` is `external_body`, axiomatically asserting that `spec_usize2page_entry(0).is_empty()`. The file already contains the bit_vector proof stubs for each individual field (in commented-out code), yet the actual lemma bypasses them. This is a real soundness gap since the property is provable but left unverified."
+  },
+  {
+    "phi": "init_does_not_preserve_ar_contents",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The ensures clause `pm.ar@[i] == 0 || pm.ar@[i] != 0` is a tautology (law of excluded middle) and proves nothing about the actual ar contents. The underlying observation about the commented-out biconditional is interesting but this PHI doesn't actually demonstrate any spec gap."
+  },
+  {
+    "phi": "pagemap_spec_seq_ghost_desyncs",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The ensures clause directly follows from `wf()`: the first conjunct is exactly what `wf()` asserts, and the second follows from `view()` returning `spec_seq@`. This confirms the spec works as intended \u2014 `wf()` is the designed synchronization invariant between `ar` and `spec_seq`."
+  },
+  {
+    "phi": "array_set_no_bounds_check_runtime",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The ensures clause simply restates properties of vstd's `Seq::update`, which is a well-established axiom in Verus's standard library. `Array::set` being `external_body` is standard practice for wrapping Rust's native array operations \u2014 the frame condition and bounds are the expected trusted specification for array mutation."
+  }
+]

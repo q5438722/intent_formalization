@@ -1,0 +1,102 @@
+Looking at `check_address_space_va_range_free`, its ensures clause ties the return to `self.address_space_range_free(target_proc_ptr, va_range)`, and the loop invariant reveals the meaning: for each VA in the range, the address space domain must not contain it. I'll generate 5 candidates probing this spec.
+
+===PHI_START===
+NAME: always_free
+TARGET_FN: check_address_space_va_range_free
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_always_free(os: &OS, target_proc_ptr: ProcPtr, va_range: &VaRange4K)
+    requires
+        os.wf(),
+        os.proc_dom().contains(target_proc_ptr),
+        va_range.wf(),
+    ensures
+        os.address_space_range_free(target_proc_ptr, va_range) == true,
+{
+}
+```
+REASON: If provable, the spec vacuously treats every VA range as free, making the check useless and allowing double-mapping
+===PHI_END===
+
+===PHI_START===
+NAME: never_free_nonempty
+TARGET_FN: check_address_space_va_range_free
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_never_free_nonempty(os: &OS, target_proc_ptr: ProcPtr, va_range: &VaRange4K)
+    requires
+        os.wf(),
+        os.proc_dom().contains(target_proc_ptr),
+        va_range.wf(),
+        va_range.len > 0,
+    ensures
+        os.address_space_range_free(target_proc_ptr, va_range) == false,
+{
+}
+```
+REASON: If provable, the spec says no non-empty range is ever free, blocking all new mappings even in a pristine address space
+===PHI_END===
+
+===PHI_START===
+NAME: proc_independent_result
+TARGET_FN: check_address_space_va_range_free
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_proc_independent_result(os: &OS, p1: ProcPtr, p2: ProcPtr, va_range: &VaRange4K)
+    requires
+        os.wf(),
+        os.proc_dom().contains(p1),
+        os.proc_dom().contains(p2),
+        p1 != p2,
+        va_range.wf(),
+    ensures
+        os.address_space_range_free(p1, va_range) == os.address_space_range_free(p2, va_range),
+{
+}
+```
+REASON: If provable, different processes always agree on which ranges are free, violating address-space isolation
+===PHI_END===
+
+===PHI_START===
+NAME: free_but_first_va_mapped
+TARGET_FN: check_address_space_va_range_free
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_free_but_first_va_mapped(os: &OS, target_proc_ptr: ProcPtr, va_range: &VaRange4K)
+    requires
+        os.wf(),
+        os.proc_dom().contains(target_proc_ptr),
+        va_range.wf(),
+        va_range.len > 0,
+        os.address_space_range_free(target_proc_ptr, va_range),
+    ensures
+        os.get_address_space(target_proc_ptr).dom().contains(va_range@[0]),
+{
+}
+```
+REASON: If provable, a range declared free actually has its first VA mapped, meaning the spec's notion of free contradicts the address-space contents
+===PHI_END===
+
+===PHI_START===
+NAME: single_page_always_free
+TARGET_FN: check_address_space_va_range_free
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_single_page_always_free(os: &OS, target_proc_ptr: ProcPtr, va_range: &VaRange4K)
+    requires
+        os.wf(),
+        os.proc_dom().contains(target_proc_ptr),
+        va_range.wf(),
+        va_range.len == 1,
+    ensures
+        os.address_space_range_free(target_proc_ptr, va_range) == true,
+{
+}
+```
+REASON: If provable, single-page ranges are always free regardless of mappings, suggesting the spec has an off-by-one or vacuous quantifier for len==1
+===PHI_END===

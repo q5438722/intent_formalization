@@ -1,0 +1,99 @@
+===PHI_START===
+NAME: zero_block_size_collision
+TARGET_FN: calculate_page_block_at
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_zero_block_size_collision(page_id: PageId)
+    requires
+        block_start_at(page_id, 0int, 0) <= segment_start(page_id.segment_id) + SEGMENT_SIZE,
+        segment_start(page_id.segment_id) + SEGMENT_SIZE < usize::MAX,
+    ensures
+        block_start_at(page_id, 0int, 0) == block_start_at(page_id, 0int, 1),
+{
+}
+```
+REASON: block_size=0 is not excluded by the preconditions, so distinct block indices map to the same address, causing block collisions
+===PHI_END===
+
+===PHI_START===
+NAME: result_at_segment_boundary
+TARGET_FN: calculate_page_block_at
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_result_at_segment_boundary(page_id: PageId, block_size: usize, idx: usize, page_start: usize)
+    requires
+        page_start == block_start_at(page_id, block_size as int, 0),
+        block_start_at(page_id, block_size as int, 0)
+            + idx as int * block_size as int == segment_start(page_id.segment_id) + SEGMENT_SIZE,
+        segment_start(page_id.segment_id) + SEGMENT_SIZE < usize::MAX,
+    ensures
+        page_start + idx as int * block_size as int == segment_start(page_id.segment_id) + SEGMENT_SIZE,
+{
+}
+```
+REASON: The <= in the precondition allows the result to land exactly at segment_start + SEGMENT_SIZE, one byte past the segment's valid range
+===PHI_END===
+
+===PHI_START===
+NAME: cross_segment_block_aliasing
+TARGET_FN: calculate_page_block_at
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_cross_segment_block_aliasing(page_id1: PageId, page_id2: PageId, block_size: usize, idx: usize)
+    requires
+        block_start_at(page_id1, block_size as int, 0) == block_start_at(page_id2, block_size as int, 0),
+        page_id1.segment_id.id != page_id2.segment_id.id,
+        block_start_at(page_id1, block_size as int, 0)
+            + idx as int * block_size as int <= segment_start(page_id1.segment_id) + SEGMENT_SIZE,
+        segment_start(page_id1.segment_id) + SEGMENT_SIZE < usize::MAX,
+    ensures
+        block_start_at(page_id1, block_size as int, idx as int)
+            == block_start_at(page_id2, block_size as int, idx as int),
+{
+}
+```
+REASON: The spec provides no uniqueness guarantee across segments; blocks from different segments can compute to the same address
+===PHI_END===
+
+===PHI_START===
+NAME: page_idx_beyond_segment
+TARGET_FN: calculate_page_block_at
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_page_idx_beyond_segment(page_id: PageId, block_size: usize, page_start: usize)
+    requires
+        page_id.idx >= SLICES_PER_SEGMENT,
+        page_start == block_start_at(page_id, block_size as int, 0),
+        block_start_at(page_id, block_size as int, 0)
+            <= segment_start(page_id.segment_id) + SEGMENT_SIZE,
+        segment_start(page_id.segment_id) + SEGMENT_SIZE < usize::MAX,
+    ensures
+        page_start(page_id) >= segment_start(page_id.segment_id) + SEGMENT_SIZE,
+{
+    const_facts();
+}
+```
+REASON: The preconditions do not bound page_id.idx < SLICES_PER_SEGMENT, allowing pages to start at or beyond the segment end
+===PHI_END===
+
+===PHI_START===
+NAME: redundant_postcondition
+TARGET_FN: calculate_page_block_at
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_redundant_postcondition(page_id: PageId, block_size: usize, idx: usize, page_start: usize)
+    requires
+        page_start == block_start_at(page_id, block_size as int, 0),
+    ensures
+        block_start_at(page_id, block_size as int, idx as int)
+            == page_start + idx as int * block_size as int,
+{
+}
+```
+REASON: The two ensures clauses are algebraically equivalent given the precondition, so the spec provides only one independent guarantee rather than two
+===PHI_END===

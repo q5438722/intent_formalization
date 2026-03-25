@@ -1,0 +1,193 @@
+===PHI_START===
+NAME: cross_ioid_mapping_leak
+TARGET_FN: create_iommu_table_l4_entry
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_cross_ioid_mapping_leak(
+    old_mm: MemoryManager,
+    new_mm: MemoryManager,
+    target_ioid: IOid,
+    other_ioid: IOid,
+    target_l4i: L4Index,
+    page_map_ptr: PageMapPtr,
+    va: VAddr,
+)
+    requires
+        old_mm.wf(),
+        old_mm.ioid_active(target_ioid),
+        old_mm.ioid_active(other_ioid),
+        other_ioid != target_ioid,
+        0 <= target_l4i < 512,
+        old_mm.get_iommu_table_by_ioid(target_ioid).unwrap().spec_resolve_mapping_l4(target_l4i).is_None(),
+        page_ptr_valid(page_map_ptr),
+        old_mm.page_closure().contains(page_map_ptr) == false,
+        // Post-conditions
+        new_mm.wf(),
+        forall|i: IOid|
+            #![trigger new_mm.ioid_active(i)]
+            new_mm.ioid_active(i) == old_mm.ioid_active(i),
+        forall|i: IOid|
+            #![trigger new_mm.ioid_active(i)]
+            #![trigger new_mm.get_iommu_table_mapping_by_ioid(i)]
+            new_mm.ioid_active(i) ==> old_mm.get_iommu_table_mapping_by_ioid(i) == new_mm.get_iommu_table_mapping_by_ioid(i),
+        !old_mm.get_iommu_table_mapping_by_ioid(other_ioid).dom().contains(va),
+    ensures
+        new_mm.get_iommu_table_mapping_by_ioid(other_ioid).dom().contains(va),
+{
+}
+```
+REASON: If provable, a mapping can appear in another IOID's address space after an unrelated L4 entry creation, violating IOMMU isolation
+===PHI_END===
+
+===PHI_START===
+NAME: null_page_map_ptr_accepted
+TARGET_FN: create_iommu_table_l4_entry
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_null_page_map_ptr_accepted(
+    old_mm: MemoryManager,
+    new_mm: MemoryManager,
+    target_ioid: IOid,
+    target_l4i: L4Index,
+    page_map_ptr: PageMapPtr,
+)
+    requires
+        old_mm.wf(),
+        old_mm.ioid_active(target_ioid),
+        0 <= target_l4i < 512,
+        page_ptr_valid(page_map_ptr),
+        old_mm.get_iommu_table_by_ioid(target_ioid).unwrap().spec_resolve_mapping_l4(target_l4i).is_None(),
+        old_mm.page_closure().contains(page_map_ptr) == false,
+        // Post-conditions
+        new_mm.wf(),
+        new_mm.get_iommu_table_by_ioid(target_ioid).is_Some(),
+        new_mm.get_iommu_table_by_ioid(target_ioid).unwrap().spec_resolve_mapping_l4(target_l4i).is_Some(),
+        new_mm.get_iommu_table_by_ioid(target_ioid).unwrap().spec_resolve_mapping_l4(target_l4i).get_Some_0().addr == page_map_ptr,
+    ensures
+        page_map_ptr == 0,
+{
+}
+```
+REASON: If provable, a null pointer (0) can be installed as a page table page, which would corrupt the IOMMU page-walk structure
+===PHI_END===
+
+===PHI_START===
+NAME: pcid_page_table_mapping_corrupted
+TARGET_FN: create_iommu_table_l4_entry
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_pcid_page_table_mapping_corrupted(
+    old_mm: MemoryManager,
+    new_mm: MemoryManager,
+    target_ioid: IOid,
+    target_l4i: L4Index,
+    page_map_ptr: PageMapPtr,
+    pcid: Pcid,
+)
+    requires
+        old_mm.wf(),
+        old_mm.ioid_active(target_ioid),
+        old_mm.pcid_active(pcid),
+        0 <= target_l4i < 512,
+        page_ptr_valid(page_map_ptr),
+        old_mm.page_closure().contains(page_map_ptr) == false,
+        old_mm.get_iommu_table_by_ioid(target_ioid).unwrap().spec_resolve_mapping_l4(target_l4i).is_None(),
+        // Post-conditions
+        new_mm.wf(),
+        new_mm.page_tables =~= old_mm.page_tables,
+        new_mm.page_table_pages =~= old_mm.page_table_pages,
+        forall|p: Pcid|
+            #![trigger new_mm.pcid_active(p)]
+            new_mm.pcid_active(p) == old_mm.pcid_active(p),
+        forall|p: Pcid|
+            #![trigger new_mm.pcid_active(p)]
+            #![trigger new_mm.get_pagetable_mapping_by_pcid(p)]
+            new_mm.pcid_active(p) ==> old_mm.get_pagetable_mapping_by_pcid(p) == new_mm.get_pagetable_mapping_by_pcid(p),
+    ensures
+        new_mm.get_pagetable_mapping_by_pcid(pcid) != old_mm.get_pagetable_mapping_by_pcid(pcid),
+{
+}
+```
+REASON: If provable, an IOMMU table operation can silently corrupt a process's page table address mappings, breaking memory isolation between IOMMU and process page tables
+===PHI_END===
+
+===PHI_START===
+NAME: target_ioid_deactivated
+TARGET_FN: create_iommu_table_l4_entry
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_target_ioid_deactivated(
+    old_mm: MemoryManager,
+    new_mm: MemoryManager,
+    target_ioid: IOid,
+    target_l4i: L4Index,
+    page_map_ptr: PageMapPtr,
+)
+    requires
+        old_mm.wf(),
+        old_mm.ioid_active(target_ioid),
+        0 <= target_l4i < 512,
+        page_ptr_valid(page_map_ptr),
+        old_mm.page_closure().contains(page_map_ptr) == false,
+        old_mm.get_iommu_table_by_ioid(target_ioid).unwrap().spec_resolve_mapping_l4(target_l4i).is_None(),
+        // Post-conditions
+        new_mm.wf(),
+        new_mm.free_ioids =~= old_mm.free_ioids,
+        forall|i: IOid|
+            #![trigger new_mm.ioid_active(i)]
+            new_mm.ioid_active(i) == old_mm.ioid_active(i),
+        new_mm.get_iommu_table_by_ioid(target_ioid).is_Some(),
+        new_mm.get_iommu_table_by_ioid(target_ioid).unwrap().spec_resolve_mapping_l4(target_l4i).is_Some(),
+    ensures
+        !new_mm.ioid_active(target_ioid),
+{
+}
+```
+REASON: If provable, creating an L4 entry deactivates the target IOID, making the new entry unreachable and leaking the donated page
+===PHI_END===
+
+===PHI_START===
+NAME: other_l4_entry_destroyed
+TARGET_FN: create_iommu_table_l4_entry
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_other_l4_entry_destroyed(
+    old_mm: MemoryManager,
+    new_mm: MemoryManager,
+    target_ioid: IOid,
+    target_l4i: L4Index,
+    other_l4i: L4Index,
+    page_map_ptr: PageMapPtr,
+)
+    requires
+        old_mm.wf(),
+        old_mm.ioid_active(target_ioid),
+        0 <= target_l4i < 512,
+        0 <= other_l4i < 512,
+        target_l4i != other_l4i,
+        old_mm.get_iommu_table_by_ioid(target_ioid).is_Some(),
+        old_mm.get_iommu_table_by_ioid(target_ioid).unwrap().spec_resolve_mapping_l4(target_l4i).is_None(),
+        old_mm.get_iommu_table_by_ioid(target_ioid).unwrap().spec_resolve_mapping_l4(other_l4i).is_Some(),
+        page_ptr_valid(page_map_ptr),
+        old_mm.page_closure().contains(page_map_ptr) == false,
+        // Post-conditions
+        new_mm.wf(),
+        new_mm.get_iommu_table_by_ioid(target_ioid).is_Some(),
+        new_mm.get_iommu_table_by_ioid(target_ioid).unwrap().wf(),
+        new_mm.get_iommu_table_by_ioid(target_ioid).unwrap().kernel_l4_end == old_mm.get_iommu_table_by_ioid(target_ioid).unwrap().kernel_l4_end,
+        new_mm.get_iommu_table_by_ioid(target_ioid).unwrap().mapping_4k() =~= old_mm.get_iommu_table_by_ioid(target_ioid).unwrap().mapping_4k(),
+        new_mm.get_iommu_table_by_ioid(target_ioid).unwrap().mapping_2m() =~= old_mm.get_iommu_table_by_ioid(target_ioid).unwrap().mapping_2m(),
+        new_mm.get_iommu_table_by_ioid(target_ioid).unwrap().mapping_1g() =~= old_mm.get_iommu_table_by_ioid(target_ioid).unwrap().mapping_1g(),
+        new_mm.get_iommu_table_by_ioid(target_ioid).unwrap().page_closure() =~= old_mm.get_iommu_table_by_ioid(target_ioid).unwrap().page_closure().insert(page_map_ptr),
+    ensures
+        new_mm.get_iommu_table_by_ioid(target_ioid).unwrap().spec_resolve_mapping_l4(other_l4i).is_None(),
+{
+}
+```
+REASON: If provable, installing one L4 entry silently destroys another existing L4 entry, disconnecting an entire L3 subtree and leaking its pages while preserving mappings only vacuously
+===PHI_END===

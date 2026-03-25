@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "committed_length_equals_state_length",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`committed()` uses `self.state.map(...)` which preserves sequence length by the vstd `map` axiom. Correct by construction."
+  },
+  {
+    "phi": "can_crash_as_committed_when_no_writes",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "With no outstanding writes, `flush_byte()` returns `state_at_last_flush` for every byte. Both `chunk_corresponds_ignoring_outstanding_writes` and `chunk_corresponds_after_flush` hold for `committed()`, so `can_crash_as` is satisfied. Correct by definition."
+  },
+  {
+    "phi": "crash_state_allows_mixed_chunks",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Chunk 0 (addresses 0\u20137) uses `chunk_corresponds_ignoring_outstanding_writes` (all 0u8 = state_at_last_flush), chunk 1 (addresses 8\u201315) uses `chunk_corresponds_after_flush` (42/99 = flush_byte). This is the intended per-chunk crash atomicity model."
+  },
+  {
+    "phi": "flush_byte_with_outstanding_ignores_old",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`flush_byte` matches `Some(new_val)` and returns `new_val`. Correct by the match arm definition."
+  }
+]

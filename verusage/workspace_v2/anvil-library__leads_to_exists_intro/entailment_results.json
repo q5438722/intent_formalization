@@ -1,0 +1,47 @@
+[
+  {
+    "name": "implies_apply_closure_bridge",
+    "type": "logical",
+    "code": "proof fn phi_1_implies_apply_closure_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.satisfied_by(ex),\n        (p.pred)(ex) ==> (q.pred)(ex),\n    ensures\n        q.satisfied_by(ex),\n{\n    implies_apply::<int>(ex, p, q);\n}",
+    "reason": "implies_apply is external_body bridging p.implies(q).satisfied_by(ex) through TempPred::new closure wrapping and direct implication \u2014 silently resolves closure identity mismatch",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "tla_forall_leads_to_equality_intensional",
+    "type": "logical",
+    "code": "proof fn phi_2_tla_forall_leads_to_equality_intensional(a_to_p: spec_fn(int) -> TempPred<int>, q: TempPred<int>)\n    ensures\n        tla_forall(|a: int| a_to_p(a).leads_to(q)) == tla_exists(a_to_p).leads_to(q),\n{\n    tla_forall_leads_to_equality1::<int, int>(a_to_p, q);\n}",
+    "reason": "tla_forall_leads_to_equality1 is external_body equating two TempPreds built from deeply nested closures (forall-of-leads_to vs leads_to-of-exists) \u2014 intensionally distinct structures forced equal without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "spec_entails_tla_forall_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_3_spec_entails_tla_forall_intensional_bridge(spec: TempPred<int>, a_to_p: spec_fn(int) -> TempPred<int>)\n    requires\n        forall |a: int| spec.entails(#[trigger] a_to_p(a)),\n    ensures\n        spec.entails(tla_forall(a_to_p)),\n{\n    spec_entails_tla_forall::<int, int>(spec, a_to_p);\n}",
+    "reason": "spec_entails_tla_forall is external_body bridging pointwise entailment (forall a, spec entails a_to_p(a)) to entailment of tla_forall \u2014 the tla_forall closure wrapping introduces an intensional gap",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "leads_to_exists_false_antecedent",
+    "type": "boundary",
+    "code": "proof fn phi_4_leads_to_exists_false_antecedent(spec: TempPred<int>, q: TempPred<int>)\n    requires\n        forall |a: int| spec.entails((|a: int| TempPred::<int>::new(|ex: Execution<int>| false))(a).leads_to(q)),\n    ensures\n        spec.entails(tla_exists(|a: int| TempPred::<int>::new(|ex: Execution<int>| false)).leads_to(q)),\n{\n    leads_to_exists_intro::<int, int>(spec, |a: int| TempPred::new(|ex: Execution<int>| false), q);\n}",
+    "reason": "when every a_to_p(a) is unsatisfiable, the individual leads_to are vacuously true, and the conclusion becomes tla_exists(false).leads_to(q) \u2014 vacuous truth propagates through the external_body axioms without detection",
+    "entailed": false,
+    "verus_output": "trigger] annotations to manually mark trigger terms instead.\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-library__leads_to_exists_intro/phi_4_leads_to_exists_false_antecedent.rs:120:9\n    |\n120 |         forall |a: int| spec.entails((|a: int| TempPred::<int>::new(|ex: Execution<int>| false))(a).leads_to(q)),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "leads_to_exists_any_spec",
+    "type": "behavioral",
+    "code": "proof fn phi_5_leads_to_exists_any_spec(spec: TempPred<int>, a_to_p: spec_fn(int) -> TempPred<int>, q: TempPred<int>)\n    requires\n        forall |a: int| valid(a_to_p(a).implies(q)),\n    ensures\n        spec.entails(tla_exists(a_to_p).leads_to(q)),\n{\n    leads_to_exists_intro::<int, int>(spec, a_to_p, q);\n}",
+    "reason": "if each a_to_p(a) pointwise entails q (valid implication), then any spec \u2014 including unrelated or unsatisfiable ones \u2014 entails tla_exists(a_to_p).leads_to(q), making the spec parameter irrelevant",
+    "entailed": false,
+    "verus_output": "error: Could not automatically infer triggers for this quantifier.  Use #[trigger] annotations to manually mark trigger terms instead.\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-library__leads_to_exists_intro/phi_5_leads_to_exists_any_spec.rs:120:9\n    |\n120 |         forall |a: int| valid(a_to_p(a).implies(q)),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,83 @@
+===PHI_START===
+NAME: marshal_spec_not_injective
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_marshal_spec_not_injective(s1: Option<PodSpecView>, s2: Option<PodSpecView>)
+    requires
+        s1 != s2,
+        PodView::marshal_spec(s1) == PodView::marshal_spec(s2),
+    ensures
+        false,
+{
+}
+```
+REASON: marshal_spec is uninterpreted with no injectivity axiom — if this is provable it means the SMT solver assumes injectivity by default, which would be an unsound implicit axiom
+===PHI_END===
+
+===PHI_START===
+NAME: unmarshal_spec_total
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_unmarshal_spec_total(v: Value)
+    requires
+        true,
+    ensures
+        PodView::unmarshal_spec(v) is Ok || PodView::unmarshal_spec(v) is Err,
+{
+}
+```
+REASON: unmarshal_spec is uninterpreted — if the SMT solver can prove totality (always Ok or Err) it's trivially true for Result, but tests whether Verus treats uninterpreted functions as total over their return type
+===PHI_END===
+
+===PHI_START===
+NAME: create_key_namespace_from_request_not_obj
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_create_key_namespace_from_request_not_obj(req: CreateRequest)
+    requires
+        req.obj.metadata.namespace is Some,
+        req.namespace != req.obj.metadata.namespace->0,
+    ensures
+        req.key().namespace != req.obj.metadata.namespace->0,
+{
+}
+```
+REASON: CreateRequest::key uses self.namespace while the object carries its own metadata.namespace — these can diverge, so the key may not represent the object's actual namespace
+===PHI_END===
+
+===PHI_START===
+NAME: allocator_monotone_unbounded
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_allocator_monotone_unbounded(a: ReconcileIdAllocator, n: nat)
+    requires
+        true,
+    ensures
+        a.allocate().1 < a.allocate().0.allocate().1,
+{
+}
+```
+REASON: successive allocations always produce strictly increasing IDs with no upper bound — the spec assumes nat never wraps, modeling infinite resource availability without exhaustion
+===PHI_END===
+
+===PHI_START===
+NAME: unmarshal_no_state_validation
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_unmarshal_no_state_validation(obj: DynamicObjectView)
+    requires
+        obj.kind == PodView::kind(),
+        PodView::unmarshal_spec(obj.spec) is Ok,
+        PodView::unmarshal_status(obj.status) is Ok,
+    ensures
+        PodView::unmarshal(obj) is Ok,
+{
+}
+```
+REASON: unmarshal succeeds whenever kind/spec/status parse correctly but never calls state_validation — objects violating domain invariants (e.g. pod with spec == None) can be successfully unmarshalled
+===PHI_END===

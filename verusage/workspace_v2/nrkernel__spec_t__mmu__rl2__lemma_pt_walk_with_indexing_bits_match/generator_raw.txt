@@ -1,0 +1,83 @@
+===PHI_START===
+NAME: lemma_bits_align_external_body_word_size
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_lemma_bits_align_external_body_word_size(vaddr: usize)
+    ensures
+        l0_bits!(align_to_usize(vaddr, 8)) == l0_bits!(vaddr),
+        l1_bits!(align_to_usize(vaddr, 8)) == l1_bits!(vaddr),
+        l2_bits!(align_to_usize(vaddr, 8)) == l2_bits!(vaddr),
+        l3_bits!(align_to_usize(vaddr, 8)) == l3_bits!(vaddr),
+{
+    lemma_bits_align_to_usize(vaddr);
+}
+```
+REASON: `lemma_bits_align_to_usize` is `external_body` — 8-byte alignment preserving all indexing bits is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: indexing_bits_match_implies_same_path
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_indexing_bits_match_implies_same_path(mem: PTMem, va1: usize, va2: usize)
+    requires
+        indexing_bits_match(va1, va2, mem.pt_walk(va1).path.len()),
+    ensures
+        mem.pt_walk(va1).path == mem.pt_walk(va2).path,
+{
+    lemma_pt_walk_with_indexing_bits_match(mem, va1, va2);
+}
+```
+REASON: Two addresses with matching indexing bits produce the same walk path — depends on external_body `lemma_bits_align_to_usize`; if bit preservation is wrong, different addresses could share paths incorrectly
+===PHI_END===
+
+===PHI_START===
+NAME: indexing_bits_match_implies_same_pte
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_indexing_bits_match_implies_same_pte(mem: PTMem, va1: usize, va2: usize)
+    requires
+        indexing_bits_match(va1, va2, mem.pt_walk(va1).path.len()),
+        mem.pt_walk(va1).result() is Valid,
+    ensures
+        mem.pt_walk(va1).result()->Valid_pte == mem.pt_walk(va2).result()->Valid_pte,
+{
+    lemma_pt_walk_with_indexing_bits_match(mem, va1, va2);
+}
+```
+REASON: Addresses with matching indexing bits that produce valid walks share the same PTE — this means all addresses within a page map to the same physical frame, which depends on the unverified alignment lemma
+===PHI_END===
+
+===PHI_START===
+NAME: all_mb0_bits_are_zero_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_all_mb0_bits_are_zero_external_body(entry: usize, layer: nat)
+    ensures
+        (PDE { entry: 0, layer: Ghost(layer) }).all_mb0_bits_are_zero(),
+{
+}
+```
+REASON: `all_mb0_bits_are_zero` is `external_body` — a zero entry should have all must-be-zero bits clear, but the predicate is opaque so this could be false
+===PHI_END===
+
+===PHI_START===
+NAME: walk_path_determines_validity_symmetry
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_walk_path_determines_validity_symmetry(mem: PTMem, va1: usize, va2: usize)
+    requires
+        indexing_bits_match(va1, va2, mem.pt_walk(va1).path.len()),
+    ensures
+        mem.pt_walk(va1).result() is Valid <==> mem.pt_walk(va2).result() is Valid,
+{
+    lemma_pt_walk_with_indexing_bits_match(mem, va1, va2);
+}
+```
+REASON: Validity is symmetric for addresses with matching indexing bits — depends on external_body lemma chain; if incorrect, one address in a page could be valid while another is invalid
+===PHI_END===

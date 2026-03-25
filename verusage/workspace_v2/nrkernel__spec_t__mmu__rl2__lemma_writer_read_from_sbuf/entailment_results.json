@@ -1,0 +1,47 @@
+[
+  {
+    "name": "lemma_write_seq_read_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_lemma_write_seq_read_external_body(mem: PTMem, writes: Seq<(usize, usize)>, i: int)\n    requires\n        0 <= i < writes.len(),\n        forall|j| #![auto] 0 <= j < writes.len() && writes[j].0 == writes[i].0 ==> i == j,\n    ensures\n        mem.write_seq(writes).mem[writes[i].0] == writes[i].1,\n{\n    mem.lemma_write_seq_read(writes, i);\n}",
+    "reason": "`lemma_write_seq_read` is `external_body` \u2014 the property that writing a unique address into a fold_left sequence produces the expected value is trusted without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 7 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "wf_ptmem_range_external_body",
+    "type": "logical",
+    "code": "proof fn phi_2_wf_ptmem_range_external_body(s1: State, s2: State, c: Constants)\n    requires\n        s1.wf_ptmem_range(c),\n        s1.pt_mem === s2.pt_mem,\n        s1.sbuf === s2.sbuf,\n        s1.writes === s2.writes,\n    ensures\n        s2.wf_ptmem_range(c),\n{\n}",
+    "reason": "`wf_ptmem_range` is `external_body` \u2014 the well-formedness predicate for page table memory range is entirely opaque and could depend on any state field",
+    "entailed": false,
+    "verus_output": "nyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_writer_read_from_sbuf/phi_2_wf_ptmem_range_external_body.rs:344:9\n    |\n337 | proof fn phi_2_wf_ptmem_range_external_body(s1: State, s2: State, c: Constants)\n    |       ------------------------------------------------------------------------- at the end of the function body\n...\n344 |         s2.wf_ptmem_range(c),\n    |         ^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "writer_read_from_sbuf_chains_external",
+    "type": "logical",
+    "code": "proof fn phi_3_writer_read_from_sbuf_chains_external(state: State, c: Constants, i: int)\n    requires\n        state.wf(c),\n        state.inv_sbuf_facts(c),\n        0 <= i < state.writer_sbuf().len(),\n    ensures\n        state.writer_mem().read(state.writer_sbuf()[i].0) == state.writer_sbuf()[i].1,\n{\n    lemma_writer_read_from_sbuf(state, c, i);\n}",
+    "reason": "The writer-reads-from-sbuf lemma depends on `lemma_write_seq_read` (external_body) \u2014 the store buffer read consistency guarantee chains through an unverified lemma",
+    "entailed": true,
+    "verus_output": "verification results:: 7 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "wf_implies_pml4_aligned",
+    "type": "behavioral",
+    "code": "proof fn phi_4_wf_implies_pml4_aligned(state: State, c: Constants)\n    requires\n        state.wf(c),\n    ensures\n        aligned(state.pt_mem.pml4 as nat, 4096),\n{\n}",
+    "reason": "Well-formedness requires pml4 alignment to 4096 \u2014 tests that the alignment constraint is correctly propagated; if too weak, misaligned pml4 could pass wf",
+    "entailed": true,
+    "verus_output": "verification results:: 7 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "wf_walks_sbuf_domain_match",
+    "type": "behavioral",
+    "code": "proof fn phi_5_wf_walks_sbuf_domain_match(state: State, c: Constants, core: Core)\n    requires\n        state.wf(c),\n        state.walks.contains_key(core),\n    ensures\n        state.sbuf.contains_key(core),\n{\n}",
+    "reason": "`wf` requires both `walks` and `sbuf` domains equal `valid_core` \u2014 tests that walk entries always have corresponding sbuf entries",
+    "entailed": false,
+    "verus_output": "tion/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_writer_read_from_sbuf/phi_5_wf_walks_sbuf_domain_match.rs:342:9\n    |\n337 | proof fn phi_5_wf_walks_sbuf_domain_match(state: State, c: Constants, core: Core)\n    |       --------------------------------------------------------------------------- at the end of the function body\n...\n342 |         state.sbuf.contains_key(core),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

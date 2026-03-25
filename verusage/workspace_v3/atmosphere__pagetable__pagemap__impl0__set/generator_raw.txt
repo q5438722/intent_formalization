@@ -1,0 +1,103 @@
+===PHI_START===
+NAME: set_corrupts_other_index
+TARGET_FN: set
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_set_corrupts_other_index(pm_old: Seq<PageEntry>, index: usize, j: int, value: PageEntry)
+    requires
+        pm_old.len() == 512,
+        0 <= index < 512,
+        0 <= j < 512,
+        j != index as int,
+        value.perm.present ==> MEM_valid(value.addr),
+        value.perm.present == false ==> value.is_empty(),
+    ensures
+        pm_old.update(index as int, value)[j] != pm_old[j],
+{
+}
+```
+REASON: If provable, set violates frame preservation — modifying one index silently corrupts another entry
+===PHI_END===
+
+===PHI_START===
+NAME: empty_set_becomes_present
+TARGET_FN: set
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_empty_set_becomes_present(pm_old: Seq<PageEntry>, index: usize, value: PageEntry)
+    requires
+        pm_old.len() == 512,
+        0 <= index < 512,
+        value.perm.present == false,
+        value.is_empty(),
+    ensures
+        pm_old.update(index as int, value)[index as int].perm.present == true,
+{
+}
+```
+REASON: If provable, setting an empty entry paradoxically produces a present entry, contradicting is_empty semantics
+===PHI_END===
+
+===PHI_START===
+NAME: set_present_loses_address
+TARGET_FN: set
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_set_present_loses_address(pm_old: Seq<PageEntry>, index: usize, value: PageEntry)
+    requires
+        pm_old.len() == 512,
+        0 <= index < 512,
+        value.perm.present == true,
+        MEM_valid(value.addr),
+        value.addr != 0,
+    ensures
+        pm_old.update(index as int, value)[index as int].addr == 0,
+{
+}
+```
+REASON: If provable, set silently zeroes the physical address of a present mapping, destroying the page table entry
+===PHI_END===
+
+===PHI_START===
+NAME: set_drops_write_permission
+TARGET_FN: set
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_set_drops_write_permission(pm_old: Seq<PageEntry>, index: usize, value: PageEntry)
+    requires
+        pm_old.len() == 512,
+        0 <= index < 512,
+        value.perm.present == true,
+        MEM_valid(value.addr),
+        value.perm.write == true,
+    ensures
+        pm_old.update(index as int, value)[index as int].perm.write == false,
+{
+}
+```
+REASON: If provable, set silently strips the write permission, creating a read-only mapping when read-write was intended
+===PHI_END===
+
+===PHI_START===
+NAME: set_changes_seq_length
+TARGET_FN: set
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_set_changes_seq_length(pm_old: Seq<PageEntry>, index: usize, value: PageEntry)
+    requires
+        pm_old.len() == 512,
+        0 <= index < 512,
+        value.perm.present ==> MEM_valid(value.addr),
+        value.perm.present == false ==> value.is_empty(),
+    ensures
+        pm_old.update(index as int, value).len() != 512,
+{
+}
+```
+REASON: If provable, set changes the sequence length, breaking the 512-entry invariant and corrupting the page table structure
+===PHI_END===

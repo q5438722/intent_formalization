@@ -1,0 +1,176 @@
+===PHI_START===
+NAME: descriptors_len_changes
+TARGET_FN: kernel_drop_endpoint
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_descriptors_len_changes(old_os: OS, new_os: OS, thread_ptr: ThreadPtr, edp_idx: EndpointIdx)
+    requires
+        old_os.wf(),
+        0 <= edp_idx < MAX_NUM_ENDPOINT_DESCRIPTORS,
+        old_os.thread_dom().contains(thread_ptr),
+        old_os.get_thread(thread_ptr).state == ThreadState::BLOCKED
+            ==> old_os.get_thread(thread_ptr).blocking_endpoint_index.unwrap() != edp_idx,
+        new_os.wf(),
+        new_os.container_dom() == old_os.container_dom(),
+        new_os.proc_dom() == old_os.proc_dom(),
+        new_os.thread_dom() == old_os.thread_dom(),
+        containers_tree_unchanged(old_os.proc_man, new_os.proc_man),
+        containers_owned_proc_unchanged(old_os.proc_man, new_os.proc_man),
+        processes_unchanged(old_os.proc_man, new_os.proc_man),
+        threads_unchanged_except(old_os.proc_man, new_os.proc_man, set![thread_ptr]),
+        new_os.get_thread(thread_ptr).endpoint_descriptors@
+            =~= old_os.get_thread(thread_ptr).endpoint_descriptors@.update(edp_idx as int, None),
+        old_os.get_thread(thread_ptr).state == new_os.get_thread(thread_ptr).state,
+        new_os.get_thread(thread_ptr).blocking_endpoint_index == old_os.get_thread(thread_ptr).blocking_endpoint_index,
+        old_os.get_thread(thread_ptr).owning_proc == new_os.get_thread(thread_ptr).owning_proc,
+    ensures
+        new_os.get_thread(thread_ptr).endpoint_descriptors@.len()
+            != old_os.get_thread(thread_ptr).endpoint_descriptors@.len(),
+{
+}
+```
+REASON: Dropping an endpoint should set a slot to None in-place, not shrink/grow the descriptor array length.
+===PHI_END===
+
+===PHI_START===
+NAME: unrelated_endpoint_corrupted
+TARGET_FN: kernel_drop_endpoint
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_unrelated_endpoint_corrupted(old_os: OS, new_os: OS, thread_ptr: ThreadPtr, edp_idx: EndpointIdx, j: int)
+    requires
+        old_os.wf(),
+        0 <= edp_idx < MAX_NUM_ENDPOINT_DESCRIPTORS,
+        old_os.thread_dom().contains(thread_ptr),
+        old_os.get_thread(thread_ptr).state == ThreadState::BLOCKED
+            ==> old_os.get_thread(thread_ptr).blocking_endpoint_index.unwrap() != edp_idx,
+        new_os.wf(),
+        new_os.container_dom() == old_os.container_dom(),
+        new_os.proc_dom() == old_os.proc_dom(),
+        new_os.thread_dom() == old_os.thread_dom(),
+        containers_tree_unchanged(old_os.proc_man, new_os.proc_man),
+        containers_owned_proc_unchanged(old_os.proc_man, new_os.proc_man),
+        processes_unchanged(old_os.proc_man, new_os.proc_man),
+        threads_unchanged_except(old_os.proc_man, new_os.proc_man, set![thread_ptr]),
+        new_os.get_thread(thread_ptr).endpoint_descriptors@
+            =~= old_os.get_thread(thread_ptr).endpoint_descriptors@.update(edp_idx as int, None),
+        old_os.get_thread(thread_ptr).state == new_os.get_thread(thread_ptr).state,
+        new_os.get_thread(thread_ptr).blocking_endpoint_index == old_os.get_thread(thread_ptr).blocking_endpoint_index,
+        old_os.get_thread(thread_ptr).owning_proc == new_os.get_thread(thread_ptr).owning_proc,
+        0 <= j < old_os.get_thread(thread_ptr).endpoint_descriptors@.len(),
+        j != edp_idx as int,
+    ensures
+        new_os.get_thread(thread_ptr).endpoint_descriptors@[j]
+            != old_os.get_thread(thread_ptr).endpoint_descriptors@[j],
+{
+}
+```
+REASON: Dropping one endpoint descriptor must not corrupt any other descriptor slot at a different index.
+===PHI_END===
+
+===PHI_START===
+NAME: non_blocked_becomes_blocked
+TARGET_FN: kernel_drop_endpoint
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_non_blocked_becomes_blocked(old_os: OS, new_os: OS, thread_ptr: ThreadPtr, edp_idx: EndpointIdx)
+    requires
+        old_os.wf(),
+        0 <= edp_idx < MAX_NUM_ENDPOINT_DESCRIPTORS,
+        old_os.thread_dom().contains(thread_ptr),
+        old_os.get_thread(thread_ptr).state != ThreadState::BLOCKED,
+        new_os.wf(),
+        new_os.container_dom() == old_os.container_dom(),
+        new_os.proc_dom() == old_os.proc_dom(),
+        new_os.thread_dom() == old_os.thread_dom(),
+        containers_tree_unchanged(old_os.proc_man, new_os.proc_man),
+        containers_owned_proc_unchanged(old_os.proc_man, new_os.proc_man),
+        processes_unchanged(old_os.proc_man, new_os.proc_man),
+        threads_unchanged_except(old_os.proc_man, new_os.proc_man, set![thread_ptr]),
+        new_os.get_thread(thread_ptr).endpoint_descriptors@
+            =~= old_os.get_thread(thread_ptr).endpoint_descriptors@.update(edp_idx as int, None),
+        old_os.get_thread(thread_ptr).state == new_os.get_thread(thread_ptr).state,
+        new_os.get_thread(thread_ptr).blocking_endpoint_index == old_os.get_thread(thread_ptr).blocking_endpoint_index,
+        old_os.get_thread(thread_ptr).owning_proc == new_os.get_thread(thread_ptr).owning_proc,
+    ensures
+        new_os.get_thread(thread_ptr).state == ThreadState::BLOCKED,
+{
+}
+```
+REASON: Dropping an endpoint should never change thread scheduling state; a running thread must not become blocked.
+===PHI_END===
+
+===PHI_START===
+NAME: other_thread_state_changed
+TARGET_FN: kernel_drop_endpoint
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_other_thread_state_changed(old_os: OS, new_os: OS, thread_ptr: ThreadPtr, other_ptr: ThreadPtr, edp_idx: EndpointIdx)
+    requires
+        old_os.wf(),
+        0 <= edp_idx < MAX_NUM_ENDPOINT_DESCRIPTORS,
+        old_os.thread_dom().contains(thread_ptr),
+        old_os.get_thread(thread_ptr).state == ThreadState::BLOCKED
+            ==> old_os.get_thread(thread_ptr).blocking_endpoint_index.unwrap() != edp_idx,
+        new_os.wf(),
+        new_os.container_dom() == old_os.container_dom(),
+        new_os.proc_dom() == old_os.proc_dom(),
+        new_os.thread_dom() == old_os.thread_dom(),
+        containers_tree_unchanged(old_os.proc_man, new_os.proc_man),
+        containers_owned_proc_unchanged(old_os.proc_man, new_os.proc_man),
+        processes_unchanged(old_os.proc_man, new_os.proc_man),
+        threads_unchanged_except(old_os.proc_man, new_os.proc_man, set![thread_ptr]),
+        new_os.get_thread(thread_ptr).endpoint_descriptors@
+            =~= old_os.get_thread(thread_ptr).endpoint_descriptors@.update(edp_idx as int, None),
+        old_os.get_thread(thread_ptr).state == new_os.get_thread(thread_ptr).state,
+        new_os.get_thread(thread_ptr).blocking_endpoint_index == old_os.get_thread(thread_ptr).blocking_endpoint_index,
+        old_os.get_thread(thread_ptr).owning_proc == new_os.get_thread(thread_ptr).owning_proc,
+        old_os.thread_dom().contains(other_ptr),
+        other_ptr != thread_ptr,
+    ensures
+        new_os.get_thread(other_ptr).endpoint_descriptors@
+            != old_os.get_thread(other_ptr).endpoint_descriptors@,
+{
+}
+```
+REASON: Dropping an endpoint on one thread must not modify any other thread's endpoint descriptors (isolation violation).
+===PHI_END===
+
+===PHI_START===
+NAME: container_dom_gains_member
+TARGET_FN: kernel_drop_endpoint
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_container_dom_gains_member(old_os: OS, new_os: OS, thread_ptr: ThreadPtr, edp_idx: EndpointIdx, c: ContainerPtr)
+    requires
+        old_os.wf(),
+        0 <= edp_idx < MAX_NUM_ENDPOINT_DESCRIPTORS,
+        old_os.thread_dom().contains(thread_ptr),
+        old_os.get_thread(thread_ptr).state == ThreadState::BLOCKED
+            ==> old_os.get_thread(thread_ptr).blocking_endpoint_index.unwrap() != edp_idx,
+        new_os.wf(),
+        new_os.container_dom() == old_os.container_dom(),
+        new_os.proc_dom() == old_os.proc_dom(),
+        new_os.thread_dom() == old_os.thread_dom(),
+        containers_tree_unchanged(old_os.proc_man, new_os.proc_man),
+        containers_owned_proc_unchanged(old_os.proc_man, new_os.proc_man),
+        processes_unchanged(old_os.proc_man, new_os.proc_man),
+        threads_unchanged_except(old_os.proc_man, new_os.proc_man, set![thread_ptr]),
+        new_os.get_thread(thread_ptr).endpoint_descriptors@
+            =~= old_os.get_thread(thread_ptr).endpoint_descriptors@.update(edp_idx as int, None),
+        old_os.get_thread(thread_ptr).state == new_os.get_thread(thread_ptr).state,
+        new_os.get_thread(thread_ptr).blocking_endpoint_index == old_os.get_thread(thread_ptr).blocking_endpoint_index,
+        old_os.get_thread(thread_ptr).owning_proc == new_os.get_thread(thread_ptr).owning_proc,
+        !old_os.container_dom().contains(c),
+    ensures
+        new_os.container_dom().contains(c),
+{
+}
+```
+REASON: Dropping an endpoint must not create new containers; the container domain should be strictly preserved.
+===PHI_END===

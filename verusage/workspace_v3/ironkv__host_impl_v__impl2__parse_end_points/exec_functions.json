@@ -1,0 +1,10 @@
+[
+  {
+    "name": "parse_end_points",
+    "code": "fn parse_end_points(args: &Args) -> (out: Option<Vec<EndPoint>>)\n    ensures\n        match out {\n            None => parse_args(abstractify_args(*args)) is None,\n            Some(vec) => {\n                &&& parse_args(abstractify_args(*args)) is Some\n                &&& abstractify_end_points(vec) == parse_args(abstractify_args(*args)).unwrap()\n            },\n        }\n    {\n        let mut end_points: Vec<EndPoint> = Vec::new();\n        let mut i: usize = 0;\n\n        while i<args.len()\n          invariant\n            i <= args.len(),\n            end_points.len() == i,\n            forall |j| #![auto] 0 <= j < i ==> parse_arg_as_end_point(abstractify_args(*args)[j]) == end_points@[j]@,\n            forall |j| #![auto] 0 <= j < i ==> end_points@[j]@.valid_physical_address(),\n          decreases\n            args.len() - i\n        {\n            let end_point = Self::parse_end_point(&(*args)[i]);\n            if !end_point.valid_physical_address() {\n                assert(!unchecked_parse_args(abstractify_args(*args))[i as int].valid_physical_address()); // witness to !forall\n                return None;\n            }\n            end_points.push(end_point);\n            i = i + 1;\n        }\n\n        proof {\n            assert_seqs_equal!(abstractify_end_points(end_points), unchecked_parse_args(abstractify_args(*args)));\n        }\n        Some(end_points)\n    }"
+  },
+  {
+    "name": "parse_args",
+    "code": "pub open spec(checked) fn parse_args(args: AbstractArgs) -> Option<Seq<AbstractEndPoint>>\n{\n    let end_points = unchecked_parse_args(args);\n    if forall |i| #![auto] 0 <= i < end_points.len() ==> end_points[i].valid_physical_address() {\n        Some(end_points)\n    } else {\n        None\n    }\n}"
+  }
+]

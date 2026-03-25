@@ -1,0 +1,47 @@
+[
+  {
+    "name": "seq_to_set_is_finite_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_seq_to_set_is_finite_external_body(seq: Seq<ReqId>)\n    ensures\n        seq_to_set(seq).finite(),\n{\n    seq_to_set_is_finite(seq);\n}",
+    "reason": "`seq_to_set_is_finite` is `external_body` \u2014 finiteness of `Set::new(|a| seq.contains(a))` is trusted without proof, and the set comprehension could in principle capture elements outside the sequence indices",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "combiner_request_ids_infinite_arbitrary",
+    "type": "boundary",
+    "code": "proof fn phi_2_combiner_request_ids_infinite_arbitrary(\n    combiners: Map<NodeId, CombinerState>,\n    s: Set<ReqId>,\n)\n    requires\n        !combiners.dom().finite(),\n    ensures\n        combiner_request_ids(combiners) === s,\n{\n}",
+    "reason": "When the domain is infinite, `combiner_request_ids` returns `arbitrary()` which can equal any set \u2014 an infinite combiner map yields unconstrained request IDs",
+    "entailed": false,
+    "verus_output": "pec__unbounded_log__combiner_request_ids_finite/phi_2_combiner_request_ids_infinite_arbitrary.rs:115:9\n    |\n108 |   proof fn phi_2_combiner_request_ids_infinite_arbitrary(\n    |  _______-\n109 | |     combiners: Map<NodeId, CombinerState>,\n110 | |     s: Set<ReqId>,\n111 | | )\n    | |_- at the end of the function body\n...\n115 |           combiner_request_ids(combiners) === s,\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "combiner_ready_contributes_empty",
+    "type": "behavioral",
+    "code": "proof fn phi_3_combiner_ready_contributes_empty(\n    node_id: NodeId,\n)\n    ensures\n        CombinerState::Ready.queued_ops() === Seq::<ReqId>::empty(),\n{\n}",
+    "reason": "A `Ready` combiner contributes empty queued_ops \u2014 but it still participates in the `combiner_request_ids` fold, potentially masking that Ready combiners should not be in the map at all",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "combiner_request_ids_empty_map",
+    "type": "boundary",
+    "code": "proof fn phi_4_combiner_request_ids_empty_map()\n    ensures\n        combiner_request_ids(Map::empty()) === Set::<ReqId>::empty(),\n{\n}",
+    "reason": "Empty combiner map yields empty request IDs \u2014 tests that the base case of the fold-over-choose produces exactly the empty set",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "combiner_request_ids_superset_of_single",
+    "type": "logical",
+    "code": "proof fn phi_5_combiner_request_ids_superset_of_single(\n    combiners: Map<NodeId, CombinerState>,\n    nid: NodeId,\n)\n    requires\n        combiners.dom().finite(),\n        combiners.contains_key(nid),\n    ensures\n        seq_to_set(combiners[nid].queued_ops()).subset_of(combiner_request_ids(combiners)),\n{\n    if combiners.dom().len() == 1 {\n        assert(combiners.dom().choose() == nid);\n    } else {\n        let chosen = combiners.dom().choose();\n        if chosen == nid {\n        } else {\n            combiner_request_ids_superset_of_single(combiners.remove(chosen), nid);\n        }\n    }\n}",
+    "reason": "Each node's queued_ops is a subset of the aggregate \u2014 tests that the nondeterministic `choose()`-based fold correctly accumulates all nodes' contributions",
+    "entailed": false,
+    "verus_output": "single` in this scope\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/node-replication__spec__unbounded_log__combiner_request_ids_finite/phi_5_combiner_request_ids_superset_of_single.rs:124:13\n    |\n124 |             combiner_request_ids_superset_of_single(combiners.remove(chosen), nid);\n    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0425`.\n",
+    "timed_out": false
+  }
+]

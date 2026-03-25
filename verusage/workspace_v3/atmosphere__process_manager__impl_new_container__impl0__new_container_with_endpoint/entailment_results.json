@@ -1,0 +1,52 @@
+[
+  {
+    "name": "container_ptr_in_proc_dom",
+    "target_fn": "new_container_with_endpoint",
+    "type": "logical",
+    "reason": "If the container page_ptr_1 appeared in proc_dom, it would violate domain separation between containers and processes",
+    "entailed": false,
+    "verified": 23,
+    "errors": 1,
+    "output_tail": "    |\n2869 | |     page_ptr_3: PagePtr,\n2870 | | )\n     | |_- at the end of the function body\n...\n2885 |           new_pm.proc_dom().contains(page_ptr_1),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 31 warnings emitted\n\n"
+  },
+  {
+    "name": "parent_children_len_unchanged",
+    "target_fn": "new_container_with_endpoint",
+    "type": "boundary",
+    "reason": "If the parent container's children length did not increase after adding a child, the child was silently dropped",
+    "entailed": false,
+    "verified": 23,
+    "errors": 1,
+    "output_tail": "79 | |             old_pm.get_container(old_pm.get_thread(thread_ptr).owning_container).children@.len(),\n     | |________________________________________________________________________________________________^ failed this postcondition\n\nerror: aborting due to 1 previous error; 31 warnings emitted\n\n"
+  },
+  {
+    "name": "new_container_in_own_subtree",
+    "target_fn": "new_container_with_endpoint",
+    "type": "logical",
+    "reason": "A newly created leaf container appearing in its own subtree would break the container tree acyclicity invariant",
+    "entailed": false,
+    "verified": 23,
+    "errors": 1,
+    "output_tail": "| |_- at the end of the function body\n...\n2880 |           new_pm.get_container(page_ptr_1).subtree_set@.contains(page_ptr_1),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 31 warnings emitted\n\n"
+  },
+  {
+    "name": "new_thread_endpoint_none",
+    "target_fn": "new_container_with_endpoint",
+    "type": "behavioral",
+    "reason": "If the new thread's first endpoint descriptor were None, the child container would be created without access to the shared endpoint",
+    "entailed": false,
+    "verified": 23,
+    "errors": 1,
+    "output_tail": "|_- at the end of the function body\n...\n2890 |           new_pm.get_thread(page_ptr_3).endpoint_descriptors@[0int].is_None(),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 33 warnings emitted\n\n"
+  },
+  {
+    "name": "old_proc_gets_new_pcid",
+    "target_fn": "new_container_with_endpoint",
+    "type": "behavioral",
+    "reason": "If an existing process acquired the new pcid, it would violate pcid uniqueness and corrupt address space isolation",
+    "entailed": false,
+    "verified": 23,
+    "errors": 1,
+    "output_tail": "PagePtr,\n2868 | |     new_pcid: Pcid,\n2869 | | )\n     | |_- at the end of the function body\n...\n2884 |           new_pm.get_proc(p_ptr).pcid == new_pcid,\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 31 warnings emitted\n\n"
+  }
+]

@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: lemma_tentatively_append_external_body_invariant
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `lemma_tentatively_append` is `external_body` with `unimplemented!()` body. It asserts that writing bytes to the log area and updating info/state preserves `info_consistent_with_log_area` — a complex invariant involving circular buffer arithmetic, persistent memory byte state, and flush semantics. This entire proof is trusted without verification.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: subregion_start_len_external_body
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `start()` and `len()` return `nat` values (non-negative integers). The ensures `sub.start() + sub.len() >= sub.start()` is trivially true since `sub.len()` is a `nat` (≥ 0). This holds regardless of the external_body implementations — it's a consequence of natural number arithmetic.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: write_preserves_length
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `write` is defined via `self.state.map(...)` which preserves sequence length by the vstd `map` axiom. The resulting state sequence has the same length as the input, so `view.write(...).len() == view.len()`. Correct by construction.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: write_within_range_has_outstanding
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: For `k` in range `[addr, addr + bytes.len())`, the map closure returns `pre_byte.write(bytes[k - addr])` which sets `outstanding_write: Some(bytes[k - addr])`. This follows directly from the definitions of `PersistentMemoryRegionView::write` and `PersistentMemoryByte::write`.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: `lemma_tentatively_append` is an `external_body` proof trusting that non-wrapping log append preserves the complex `info_consistent_with_log_area` invariant without verification. Three false positives: nat arithmetic triviality for subregion bounds, map-preserves-length for write, and direct definitional unfolding for outstanding write recording.
+===END_SUMMARY===

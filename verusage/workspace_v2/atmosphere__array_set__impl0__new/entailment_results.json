@@ -1,0 +1,47 @@
+[
+  {
+    "name": "new_array_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_new_array_external_body()\n    ensures\n        ({\n            let ar = Array::<bool, 5>::new();\n            ar.wf() && ar@.len() == 5\n        }),\n{\n}",
+    "reason": "Array::new is external_body \u2014 wf() guarantee is unverified, no constraint on initial element values",
+    "entailed": false,
+    "verus_output": "error: cannot call function `phi_1_new_array_external_body::Array::new` with mode exec\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__array_set__impl0__new/phi_1_new_array_external_body.rs:124:22\n    |\n124 |             let ar = Array::<bool, 5>::new();\n    |                      ^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "arrayset_wf_no_upper_bound_on_set",
+    "type": "boundary",
+    "code": "proof fn phi_2_arrayset_wf_no_upper_bound_on_set(s: ArraySet<5>)\n    requires\n        s.wf(),\n    ensures\n        s@.len() <= 5,\n{\n}",
+    "reason": "wf constrains len field but set cardinality bound depends on the biconditional with data \u2014 if sound this is expected, but tests the completeness of the invariant",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "arrayset_set_external_body_frame",
+    "type": "logical",
+    "code": "proof fn phi_3_arrayset_set_external_body_frame(ar: Array<bool, 10>, i: usize, j: usize)\n    requires\n        ar.wf(),\n        0 <= i < 10,\n        0 <= j < 10,\n        i != j,\n        ar@[j as int] == true,\n    ensures\n        ar@.update(i as int, false)[j as int] == true,\n{\n}",
+    "reason": "Array::set is external_body \u2014 frame condition on update for non-target indices is unverified",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "arrayset_new_empty_all_false",
+    "type": "behavioral",
+    "code": "proof fn phi_4_arrayset_new_empty_all_false(s: ArraySet<5>)\n    requires\n        s.wf(),\n        s@ == Set::<usize>::empty(),\n    ensures\n        forall|i: usize| 0 <= i < 5 ==> s.data@[i as int] == false,\n{\n}",
+    "reason": "An empty set should mean all data entries are false \u2014 tests that the biconditional in wf is strong enough",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "arrayset_wf_closed_spec_opaque",
+    "type": "logical",
+    "code": "proof fn phi_5_arrayset_wf_closed_spec_opaque(s1: ArraySet<3>, s2: ArraySet<3>)\n    requires\n        s1.wf(),\n        s2.wf(),\n        s1@ == s2@,\n    ensures\n        s1.len == s2.len,\n{\n}",
+    "reason": "wf and view are closed spec \u2014 even with equal ghost sets, len equality depends on wf internals being accessible; tests whether closed spec leaks enough info",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

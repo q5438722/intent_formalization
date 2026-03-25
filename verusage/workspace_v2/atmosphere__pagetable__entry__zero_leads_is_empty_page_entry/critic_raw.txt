@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: present_bit_independent_of_addr
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures clause is a tautology (`addr != 0 || addr == 0`). The real claim—that present entries can have addr==0—is architecturally valid; physical address 0 is a legitimate address on x86. The spec correctly decodes fields independently from the raw usize.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: non_zero_value_can_be_empty
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Bits 3–6 and 8–11 are hardware-reserved/unused bits not decoded by this spec. The spec intentionally only tracks the 5 defined permission bits plus the address field. Non-zero reserved bits producing `is_empty()==true` is correct behavior—the spec abstracts away bits it doesn't model.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: ps_and_present_coexist_no_constraint
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: On x86, all these permission bits can indeed be set simultaneously in a raw page table entry. The decoding layer's job is faithful bit extraction, not architectural validity enforcement—that constraint belongs at a higher level (e.g., the page table walk logic, which already uses ps to dispatch between hugepage and normal paths).
+===VERDICT_END===
+
+===SUMMARY===
+All three candidates are false positives. The `present_bit_independent_of_addr` ensures clause is a tautology and the underlying observation (addr can be 0) is architecturally correct. The `non_zero_value_can_be_empty` finding reflects intentional abstraction—reserved hardware bits are not modeled. The `ps_and_present_coexist_no_constraint` observation is expected since this is a low-level bit decoding layer; architectural validity constraints on flag combinations are enforced at the page table walk level, not the entry parsing level.
+===END_SUMMARY===

@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "arch_inv_allows_single_layer",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The `Arch` structure is designed to be generic over different page table configurations. A single-layer page table is a valid (if simple) architecture. The `inv` invariant correctly constrains entry sizes and counts \u2014 a single layer with valid parameters is not a spec gap."
+  },
+  {
+    "phi": "arch_inv_allows_empty_layers",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "An architecture with zero layers represents a page table that maps nothing \u2014 `upper_vaddr(0, 0)` would access out-of-bounds on the empty sequence. While `inv` uses `<=` for `layers.len()`, allowing zero layers is likely unintended since a page table must have at least one level to function. The invariant should require `self.layers.len() > 0`."
+  },
+  {
+    "phi": "entry_size_is_next_layer_vacuous_at_last",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is correct by design. The last layer has no \"next layer\" to relate to, so the implication `i + 1 < self.layers.len() ==> ...` is vacuously true. The leaf layer's entry size is independently constrained by `0 < self.entry_size(i) <= X86_MAX_ENTRY_SIZE` in `inv`."
+  },
+  {
+    "phi": "max_base_equals_upper_vaddr",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This equality is intentional and verified by `x86_arch_spec_upper_bound`. `MAX_BASE` represents the upper bound of the virtual address space, which is exactly `upper_vaddr(0, 0)` \u2014 the total addressable space from the root of the page table. These aren't meant to be different bounds."
+  }
+]

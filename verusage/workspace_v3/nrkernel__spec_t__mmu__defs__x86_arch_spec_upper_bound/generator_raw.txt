@@ -1,0 +1,76 @@
+===PHI_START===
+NAME: inv_allows_empty_arch
+TARGET_FN: inv
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_inv_allows_empty_arch()
+    ensures
+        (Arch { layers: seq![] }).inv(),
+{
+}
+```
+REASON: An architecture with zero layers should not satisfy the invariant, as it represents no address translation at all
+===PHI_END===
+
+===PHI_START===
+NAME: inv_allows_non_page_aligned_entry_size
+TARGET_FN: entry_size
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_inv_allows_non_page_aligned_entry_size()
+    ensures
+        (Arch { layers: seq![ArchLayer { entry_size: 3 as nat, num_entries: 512 }] }).inv(),
+{
+}
+```
+REASON: An entry_size of 3 bytes is nonsensical for page tables; inv should enforce entry sizes are multiples of PAGE_SIZE
+===PHI_END===
+
+===PHI_START===
+NAME: upper_vaddr_exceeds_max_base
+TARGET_FN: upper_vaddr
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_upper_vaddr_exceeds_max_base()
+    ensures
+        x86_arch_spec.upper_vaddr(0, 1) > MAX_BASE,
+{
+    assert(x86_arch_spec.upper_vaddr(0, 1) > MAX_BASE) by (compute_only);
+}
+```
+REASON: upper_vaddr with any nonzero base at layer 0 exceeds MAX_BASE, suggesting the spec lacks a base-range guard
+===PHI_END===
+
+===PHI_START===
+NAME: inv_allows_single_entry_layer
+TARGET_FN: num_entries
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_inv_allows_single_entry_layer()
+    ensures
+        (Arch { layers: seq![ArchLayer { entry_size: 4096 as nat, num_entries: 1 }] }).inv(),
+{
+}
+```
+REASON: A layer with num_entries=1 is degenerate and provides no fan-out; inv should enforce num_entries > 1
+===PHI_END===
+
+===PHI_START===
+NAME: entry_size_is_next_layer_vacuously_true
+TARGET_FN: entry_size_is_next_layer_size
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_entry_size_is_next_layer_vacuously_true()
+    ensures
+        (Arch { layers: seq![ArchLayer { entry_size: 7 as nat, num_entries: 3 }] })
+            .entry_size_is_next_layer_size(0),
+{
+}
+```
+REASON: For a single-layer arch the implication is vacuously true, allowing arbitrary entry_size values that bypass the hierarchical size constraint
+===PHI_END===

@@ -1,0 +1,94 @@
+===PHI_START===
+NAME: wherever_no_writes_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_wherever_no_writes_external_body(
+    pm_region_view: PersistentMemoryRegionView,
+    s: Seq<u8>,
+    addr: int,
+)
+    requires
+        pm_region_view.can_crash_as(s),
+        0 <= addr < s.len(),
+        pm_region_view.state[addr].outstanding_write.is_none(),
+    ensures
+        s[addr] == pm_region_view.committed()[addr],
+{
+    lemma_wherever_no_outstanding_writes_persistent_memory_view_can_only_crash_as_committed(pm_region_view);
+}
+```
+REASON: `lemma_wherever_no_outstanding_writes_persistent_memory_view_can_only_crash_as_committed` is `external_body` — the per-address crash determinism for bytes without outstanding writes is trusted without proof; if a chunk with mixed outstanding/non-outstanding bytes could crash as flushed, the non-outstanding byte would change
+===PHI_END===
+
+===PHI_START===
+NAME: crash_as_preserves_length
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_crash_as_preserves_length(view: PersistentMemoryRegionView, s: Seq<u8>)
+    requires
+        view.can_crash_as(s),
+    ensures
+        s.len() == view.len(),
+{
+}
+```
+REASON: Any valid crash state must have the same length as the region — if crash states could have different lengths, all index-based reasoning would be invalid
+===PHI_END===
+
+===PHI_START===
+NAME: chunk_vacuous_for_out_of_bounds
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_chunk_vacuous_for_out_of_bounds(view: PersistentMemoryRegionView, bytes: Seq<u8>)
+    requires
+        view.len() > 0,
+    ensures
+        view.chunk_corresponds_ignoring_outstanding_writes(-1, bytes),
+        view.chunk_corresponds_after_flush(-1, bytes),
+{
+}
+```
+REASON: Negative chunk indices are vacuously true because no valid address divides to a negative chunk — if the chunk predicate weren't vacuous for invalid chunks, `can_crash_as` would impose impossible constraints
+===PHI_END===
+
+===PHI_START===
+NAME: committed_at_addr_equals_state_at_last_flush
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_committed_at_addr_equals_state_at_last_flush(view: PersistentMemoryRegionView, addr: int)
+    requires
+        0 <= addr < view.len(),
+    ensures
+        view.committed()[addr] == view.state[addr].state_at_last_flush,
+{
+}
+```
+REASON: `committed()` should project `state_at_last_flush` for each byte — if the map produced different values, crash recovery would read corrupted data
+===PHI_END===
+
+===PHI_START===
+NAME: outstanding_write_in_chunk_allows_flushed_crash
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_outstanding_write_in_chunk_allows_flushed_crash(b: PersistentMemoryByte, val: u8)
+    requires
+        b.outstanding_write == Some(val),
+        b.state_at_last_flush != val,
+    ensures
+        ({
+            let view = PersistentMemoryRegionView {
+                state: seq![b, b, b, b, b, b, b, b],
+            };
+            let flushed = Seq::<u8>::new(8, |_i: int| val);
+            view.can_crash_as(flushed)
+        }),
+{
+}
+```
+REASON: A full chunk with outstanding writes should be able to crash as the flushed state — tests that the crash model allows the flushed branch per chunk; if it didn't, pending writes could never become visible after a crash
+===PHI_END===

@@ -1,0 +1,52 @@
+[
+  {
+    "name": "descriptors_len_changes",
+    "target_fn": "kernel_drop_endpoint",
+    "type": "boundary",
+    "reason": "Dropping an endpoint should set a slot to None in-place, not shrink/grow the descriptor array length.",
+    "entailed": false,
+    "verified": 0,
+    "errors": 0,
+    "output_tail": "_1_descriptors_len_changes(old_os: OS, new_os: OS, thread_ptr: ThreadPtr, edp_idx: EndpointIdx)\n     |                                                            ^^ not found in this scope\n\nerror: aborting due to 2 previous errors\n\nFor more information about this error, try `rustc --explain E0425`.\n"
+  },
+  {
+    "name": "unrelated_endpoint_corrupted",
+    "target_fn": "kernel_drop_endpoint",
+    "type": "logical",
+    "reason": "Dropping one endpoint descriptor must not corrupt any other descriptor slot at a different index.",
+    "entailed": false,
+    "verified": 0,
+    "errors": 0,
+    "output_tail": "int_corrupted(old_os: OS, new_os: OS, thread_ptr: ThreadPtr, edp_idx: EndpointIdx, j: int)\n     |                                                                 ^^ not found in this scope\n\nerror: aborting due to 2 previous errors\n\nFor more information about this error, try `rustc --explain E0425`.\n"
+  },
+  {
+    "name": "non_blocked_becomes_blocked",
+    "target_fn": "kernel_drop_endpoint",
+    "type": "behavioral",
+    "reason": "Dropping an endpoint should never change thread scheduling state; a running thread must not become blocked.",
+    "entailed": false,
+    "verified": 0,
+    "errors": 0,
+    "output_tail": "locked_becomes_blocked(old_os: OS, new_os: OS, thread_ptr: ThreadPtr, edp_idx: EndpointIdx)\n     |                                                                ^^ not found in this scope\n\nerror: aborting due to 2 previous errors\n\nFor more information about this error, try `rustc --explain E0425`.\n"
+  },
+  {
+    "name": "other_thread_state_changed",
+    "target_fn": "kernel_drop_endpoint",
+    "type": "behavioral",
+    "reason": "Dropping an endpoint on one thread must not modify any other thread's endpoint descriptors (isolation violation).",
+    "entailed": false,
+    "verified": 0,
+    "errors": 0,
+    "output_tail": "d(old_os: OS, new_os: OS, thread_ptr: ThreadPtr, other_ptr: ThreadPtr, edp_idx: EndpointIdx)\n     |                                                               ^^ not found in this scope\n\nerror: aborting due to 2 previous errors\n\nFor more information about this error, try `rustc --explain E0425`.\n"
+  },
+  {
+    "name": "container_dom_gains_member",
+    "target_fn": "kernel_drop_endpoint",
+    "type": "boundary",
+    "reason": "Dropping an endpoint must not create new containers; the container domain should be strictly preserved.",
+    "entailed": false,
+    "verified": 0,
+    "errors": 0,
+    "output_tail": "member(old_os: OS, new_os: OS, thread_ptr: ThreadPtr, edp_idx: EndpointIdx, c: ContainerPtr)\n     |                                                               ^^ not found in this scope\n\nerror: aborting due to 2 previous errors\n\nFor more information about this error, try `rustc --explain E0425`.\n"
+  }
+]

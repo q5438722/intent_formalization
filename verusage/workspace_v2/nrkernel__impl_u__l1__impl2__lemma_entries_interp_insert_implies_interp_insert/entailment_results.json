@@ -1,0 +1,47 @@
+[
+  {
+    "name": "insert_implies_interp_aux_insert_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_insert_implies_interp_aux_insert_external_body(d1: Directory, d2: Directory, idx: nat, vaddr: nat, pte: PTE)\n    requires\n        d1.inv(),\n        d2.inv(),\n        idx < d1.entries.len(),\n        d1.arch == d2.arch,\n        d1.layer == d2.layer,\n        d1.base_vaddr == d2.base_vaddr,\n        d2.entries[idx as int].interp(d1.entry_base(idx))\n            == d1.entries[idx as int].interp(d1.entry_base(idx)).insert(vaddr, pte),\n        forall|j: nat| j < d1.entries.len() && j != idx\n            ==> (#[trigger] d1.entries[j as int]).interp(d1.entry_base(j))\n                        == d2.entries[j as int].interp(d1.entry_base(j)),\n    ensures\n        d2.interp_aux(0) === d1.interp_aux(0).insert(vaddr, pte),\n{\n    d1.lemma_entries_interp_insert_implies_interp_aux_insert(d2, idx, vaddr, pte, 0);\n}",
+    "reason": "`lemma_entries_interp_insert_implies_interp_aux_insert` is `external_body` \u2014 the inductive proof that single-entry map insertion propagates to interp_aux is trusted without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "insert_propagates_to_interp",
+    "type": "behavioral",
+    "code": "proof fn phi_2_insert_propagates_to_interp(d1: Directory, d2: Directory, idx: nat, vaddr: nat, pte: PTE)\n    requires\n        d1.inv(),\n        d2.inv(),\n        idx < d1.entries.len(),\n        d1.arch == d2.arch,\n        d1.layer == d2.layer,\n        d1.base_vaddr == d2.base_vaddr,\n        d2.entries[idx as int].interp(d1.entry_base(idx))\n            == d1.entries[idx as int].interp(d1.entry_base(idx)).insert(vaddr, pte),\n        forall|j: nat| j < d1.entries.len() && j != idx\n            ==> (#[trigger] d1.entries[j as int]).interp(d1.entry_base(j))\n                        == d2.entries[j as int].interp(d1.entry_base(j)),\n    ensures\n        d2.interp() === d1.interp().insert(vaddr, pte),\n{\n    d1.lemma_entries_interp_insert_implies_interp_insert(d2, idx, vaddr, pte);\n}",
+    "reason": "Full interp insertion depends on the external_body axiom \u2014 if the inductive step were wrong, map insertions could silently corrupt other entries",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "insert_past_idx_identity",
+    "type": "boundary",
+    "code": "proof fn phi_3_insert_past_idx_identity(d1: Directory, d2: Directory, idx: nat, vaddr: nat, pte: PTE, i: nat)\n    requires\n        d1.inv(),\n        d2.inv(),\n        idx < d1.entries.len(),\n        i > idx,\n        i <= d1.entries.len(),\n        d1.arch == d2.arch,\n        d1.layer == d2.layer,\n        d1.base_vaddr == d2.base_vaddr,\n        d2.entries[idx as int].interp(d1.entry_base(idx))\n            == d1.entries[idx as int].interp(d1.entry_base(idx)).insert(vaddr, pte),\n        forall|j: nat| i <= j < d1.entries.len() && j != idx\n            ==> (#[trigger] d1.entries[j as int]).interp(d1.entry_base(j))\n                        == d2.entries[j as int].interp(d1.entry_base(j)),\n    ensures\n        d2.interp_aux(i) === d1.interp_aux(i),\n{\n    d1.lemma_entries_interp_insert_implies_interp_aux_insert(d2, idx, vaddr, pte, i);\n}",
+    "reason": "The external_body claims interp_aux is unchanged past the insertion index \u2014 the `idx < i` branch returns identity without proving entry-by-entry equivalence",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_frame_size_matches",
+    "type": "behavioral",
+    "code": "proof fn phi_4_page_frame_size_matches(d: Directory, i: nat)\n    requires\n        d.inv(),\n        i < d.entries.len(),\n        d.entries[i as int] is Page,\n    ensures\n        d.entries[i as int]->Page_0.frame.size == d.entry_size(),\n{\n}",
+    "reason": "Page frame sizes must match entry size \u2014 tests the `pages_match_entry_size` invariant",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "subdirectory_base_computed",
+    "type": "behavioral",
+    "code": "proof fn phi_5_subdirectory_base_computed(d: Directory, i: nat)\n    requires\n        d.inv(),\n        i < d.entries.len(),\n        d.entries[i as int] is Directory,\n    ensures\n        d.entries[i as int]->Directory_0.base_vaddr == d.base_vaddr + i * d.entry_size(),\n{\n}",
+    "reason": "Subdirectory base address is computed from parent \u2014 tests the `directories_are_in_next_layer` invariant",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

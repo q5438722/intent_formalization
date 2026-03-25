@@ -1,0 +1,47 @@
+[
+  {
+    "name": "overlap_reflexive_nonzero",
+    "type": "behavioral",
+    "code": "proof fn phi_1_overlap_reflexive_nonzero(r: MemRegion)\n    requires\n        r.size > 0,\n    ensures\n        overlap(r, r),\n{\n}",
+    "reason": "Any non-empty region should overlap with itself \u2014 tests that the `region1.base == region2.base` equality branch in `overlap` fires correctly for self-overlap",
+    "entailed": true,
+    "verus_output": "is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__os_invariant__lemma_candidate_mapping_inflight_pmem_overlap_os_implies_hl/phi_1_overlap_reflexive_nonzero.rs:975:65\n    |\n975 | ...                   &&& overlap(candidate.frame, result.get_Ok_0().frame)\n    |                                                           ^^^^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "overlap_same_base_zero_size",
+    "type": "boundary",
+    "code": "proof fn phi_2_overlap_same_base_zero_size(base: nat)\n    ensures\n        overlap(\n            MemRegion { base, size: 0 },\n            MemRegion { base, size: 0 },\n        ),\n{\n}",
+    "reason": "Two zero-size regions at the same base are considered overlapping due to the `region1.base == region2.base` check \u2014 this means empty regions at the same address block each other, which may be an unintended spec weakness",
+    "entailed": true,
+    "verus_output": " deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__os_invariant__lemma_candidate_mapping_inflight_pmem_overlap_os_implies_hl/phi_2_overlap_same_base_zero_size.rs:975:65\n    |\n975 | ...                   &&& overlap(candidate.frame, result.get_Ok_0().frame)\n    |                                                           ^^^^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "is_in_crit_sect_map_executing",
+    "type": "behavioral",
+    "code": "proof fn phi_3_is_in_crit_sect_map_executing(ult_id: nat, vaddr: nat, pte: PTE)\n    ensures\n        CoreState::MapExecuting { ult_id, vaddr, pte }.is_in_crit_sect(),\n        CoreState::MapExecuting { ult_id, vaddr, pte }.is_map(),\n{\n}",
+    "reason": "`MapExecuting` is both in critical section and a map state \u2014 tests that the two predicates agree on intermediate map states; if `is_in_crit_sect` missed `MapExecuting`, concurrent operations could proceed unsafely",
+    "entailed": false,
+    "verus_output": "      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror[E0432]: unresolved import `crate::defs`\n --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__os_invariant__lemma_candidate_mapping_inflight_pmem_overlap_os_implies_hl/phi_3_is_in_crit_sect_map_executing.rs:2:12\n  |\n2 | use crate::defs::*;\n  |            ^^^^ could not find `defs` in the crate root\n\nerror: aborting due to 2 previous errors\n\nFor more information about this error, try `rustc --explain E0432`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "candidate_mapping_in_bounds_pmem_strict_vs_nonstrict",
+    "type": "boundary",
+    "code": "proof fn phi_4_candidate_mapping_in_bounds_pmem_strict_vs_nonstrict(c: crate::Constants, pte: PTE)\n    requires\n        candidate_mapping_in_bounds_pmem(c, pte),\n    ensures\n        pte.frame.base + pte.frame.size <= c.range_mem.1,\n{\n}",
+    "reason": "`candidate_mapping_in_bounds_pmem` uses `<=` (non-strict) while `candidate_mapping_in_bounds` uses `<` (strict) \u2014 the inconsistency means a physical mapping can touch the boundary of `range_mem` but a virtual mapping cannot touch `upper_vaddr`, which may cause edge-case mismatches",
+    "entailed": true,
+    "verus_output": " `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__os_invariant__lemma_candidate_mapping_inflight_pmem_overlap_os_implies_hl/phi_4_candidate_mapping_in_bounds_pmem_strict_vs_nonstrict.rs:975:65\n    |\n975 | ...                   &&& overlap(candidate.frame, result.get_Ok_0().frame)\n    |                                                           ^^^^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "unmap_waiting_not_in_crit_sect",
+    "type": "behavioral",
+    "code": "proof fn phi_5_unmap_waiting_not_in_crit_sect(ult_id: nat, vaddr: nat)\n    ensures\n        !CoreState::UnmapWaiting { ult_id, vaddr }.is_in_crit_sect(),\n{\n}",
+    "reason": "`UnmapWaiting` is explicitly excluded from `is_in_crit_sect` \u2014 tests that waiting-to-unmap cores aren't considered in critical section; if wrong, the OS could deadlock by blocking new operations while waiting to start an unmap",
+    "entailed": false,
+    "verus_output": "          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror[E0432]: unresolved import `crate::defs`\n --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__os_invariant__lemma_candidate_mapping_inflight_pmem_overlap_os_implies_hl/phi_5_unmap_waiting_not_in_crit_sect.rs:2:12\n  |\n2 | use crate::defs::*;\n  |            ^^^^ could not find `defs` in the crate root\n\nerror: aborting due to 2 previous errors\n\nFor more information about this error, try `rustc --explain E0432`.\n",
+    "timed_out": false
+  }
+]

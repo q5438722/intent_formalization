@@ -1,0 +1,123 @@
+===PHI_START===
+NAME: pm_write_external_body_trusted
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_pm_write_external_body_trusted(
+    view: PersistentMemoryRegionView,
+    addr: int,
+    bytes: Seq<u8>,
+    k: int,
+)
+    requires
+        addr + bytes.len() <= view.len(),
+        view.no_outstanding_writes_in_range(addr, addr + bytes.len()),
+        addr <= k < addr + bytes.len(),
+    ensures
+        view.write(addr, bytes).state[k].outstanding_write == Some(bytes[k - addr]),
+{
+}
+```
+REASON: The write spec sets outstanding_write to Some(byte) for each written position — if the map function had an off-by-one in `bytes[pos - addr]`, written bytes would be shifted relative to their intended addresses
+===PHI_END===
+
+===PHI_START===
+NAME: write_relative_writable_check_absolute_translation
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_write_relative_writable_check_absolute_translation(
+    start: nat,
+    relative_addr: int,
+)
+    requires
+        0 <= relative_addr,
+    ensures
+        ({
+            let abs = relative_addr + start;
+            let back = abs - start;
+            back == relative_addr
+        }),
+{
+}
+```
+REASON: The `is_writable_relative_addr` translates via `addr + self.start()` while `write_relative` uses `relative_addr + self.start_` — if the translation between relative and absolute addressing were inconsistent, the writability check would guard the wrong range
+===PHI_END===
+
+===PHI_START===
+NAME: write_preserves_views_differ_outside_writable
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_write_preserves_views_differ_outside_writable(
+    initial_view: PersistentMemoryRegionView,
+    current_view: PersistentMemoryRegionView,
+    start: nat,
+    len: nat,
+    is_writable: spec_fn(int) -> bool,
+    addr: int,
+    bytes: Seq<u8>,
+    k: int,
+)
+    requires
+        views_differ_only_where_subregion_allows(initial_view, current_view, start, len, is_writable),
+        initial_view.len() == current_view.len(),
+        start <= addr,
+        addr + bytes.len() <= start + len,
+        forall|i: int| addr <= i < addr + bytes.len() ==> is_writable(i),
+        current_view.no_outstanding_writes_in_range(addr, addr + bytes.len()),
+        0 <= k < initial_view.len(),
+        !(start <= k < start + len && is_writable(k)),
+    ensures
+        initial_view.state[k] == current_view.write(addr, bytes).state[k],
+{
+}
+```
+REASON: After writing within the writable subregion, non-writable addresses must still match the initial view — if the views_differ invariant weren't preserved through writes, the opaque_inv would break after the first mutation
+===PHI_END===
+
+===PHI_START===
+NAME: write_double_outstanding_silently_overwrites
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_write_double_outstanding_silently_overwrites(
+    byte: PersistentMemoryByte,
+    b1: u8,
+    b2: u8,
+)
+    requires
+        byte.outstanding_write.is_none(),
+    ensures
+        byte.write(b1).write(b2).outstanding_write == Some(b2),
+        byte.write(b1).write(b2).state_at_last_flush == byte.state_at_last_flush,
+{
+}
+```
+REASON: The write spec overwrites any existing outstanding_write without checking — a second write before flush silently discards the first written value, even though the `no_outstanding_writes_in_range` precondition on `PersistentMemoryRegion::write` is supposed to prevent this; if the precondition check were bypassed, data loss would occur
+===PHI_END===
+
+===PHI_START===
+NAME: write_relative_no_outstanding_forwarding
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_write_relative_no_outstanding_forwarding(
+    view: PersistentMemoryRegionView,
+    start: nat,
+    len: nat,
+    relative_addr: int,
+    bytes_len: nat,
+)
+    requires
+        start + len <= view.len(),
+        0 <= relative_addr,
+        relative_addr + bytes_len <= len,
+        get_subregion_view(view, start, len).no_outstanding_writes_in_range(relative_addr, relative_addr + bytes_len),
+    ensures
+        view.no_outstanding_writes_in_range(start + relative_addr, start + relative_addr + bytes_len),
+{
+}
+```
+REASON: The `write_relative` function checks no-outstanding-writes on the subregion view but calls `pm.write` which requires it on absolute addresses — if the subrange indexing didn't correctly forward this property, the precondition of the underlying write would not be met
+===PHI_END===

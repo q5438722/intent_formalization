@@ -1,0 +1,47 @@
+[
+  {
+    "name": "get_thread_ensures_without_wf",
+    "type": "logical",
+    "code": "proof fn phi_1_get_thread_ensures_without_wf(pm: ProcessManager, t_ptr: ThreadPtr)\n    requires\n        pm.wf(),\n        pm.thread_dom().contains(t_ptr),\n    ensures\n        pm.proc_dom().contains(pm.get_thread(t_ptr).owning_proc),\n        pm.container_dom().contains(pm.get_thread(t_ptr).owning_container),\n{\n}",
+    "reason": "The `get_thread` external_body ensures `proc_dom.contains(ret.owning_proc)` and `container_dom.contains(ret.owning_container)` but neither `threads_cpu_wf` nor any visible predicate in `wf()` actually constrains these cross-domain membership properties \u2014 they are asserted purely by the trusted external_body",
+    "entailed": true,
+    "verus_output": "_Some`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__spec_proof__impl2__container_subtree_disjoint_inv/phi_1_get_thread_ensures_without_wf.rs:641:58\n    |\n641 |             && self.process_perms@[p_ptr_j].value().ioid.is_Some()\n    |                                                          ^^^^^^^\n\nwarning: 18 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "owned_threads_not_subset_thread_dom",
+    "type": "logical",
+    "code": "proof fn phi_2_owned_threads_not_subset_thread_dom(pm: ProcessManager, c_ptr: ContainerPtr, t: ThreadPtr)\n    requires\n        pm.container_perms_wf(),\n        pm.container_fields_wf(),\n        pm.container_dom().contains(c_ptr),\n        pm.get_container(c_ptr).owned_threads@.contains(t),\n    ensures\n        pm.thread_dom().contains(t),\n{\n}",
+    "reason": "Container's `owned_threads` is a Ghost<Set<ThreadPtr>> with no predicate requiring it to be a subset of `thread_dom` \u2014 a container could claim ownership of nonexistent threads",
+    "entailed": false,
+    "verus_output": "nv/phi_2_owned_threads_not_subset_thread_dom.rs:1246:9\n     |\n1239 | proof fn phi_2_owned_threads_not_subset_thread_dom(pm: ProcessManager, c_ptr: ContainerPtr, t: ThreadPtr)\n     |       --------------------------------------------------------------------------------------------------- at the end of the function body\n...\n1246 |         pm.thread_dom().contains(t),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 18 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "scheduler_entries_in_thread_dom",
+    "type": "logical",
+    "code": "proof fn phi_3_scheduler_entries_in_thread_dom(pm: ProcessManager, c_ptr: ContainerPtr, i: int)\n    requires\n        pm.container_perms_wf(),\n        pm.container_fields_wf(),\n        pm.container_dom().contains(c_ptr),\n        0 <= i < pm.get_container(c_ptr).scheduler@.len(),\n    ensures\n        pm.thread_dom().contains(pm.get_container(c_ptr).scheduler@[i]),\n{\n}",
+    "reason": "The `scheduler` StaticLinkedList holds ThreadPtrs but `container_fields_wf` only requires `scheduler.wf()` and `scheduler.unique()` \u2014 no predicate ensures scheduler entries are valid thread pointers in `thread_dom`",
+    "entailed": false,
+    "verus_output": ":9\n     |\n1239 | proof fn phi_3_scheduler_entries_in_thread_dom(pm: ProcessManager, c_ptr: ContainerPtr, i: int)\n     |       ----------------------------------------------------------------------------------------- at the end of the function body\n...\n1246 |         pm.thread_dom().contains(pm.get_container(c_ptr).scheduler@[i]),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 18 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "owned_endpoints_not_subset_endpoint_dom",
+    "type": "logical",
+    "code": "proof fn phi_4_owned_endpoints_not_subset_endpoint_dom(pm: ProcessManager, c_ptr: ContainerPtr, e: EndpointPtr)\n    requires\n        pm.container_perms_wf(),\n        pm.container_fields_wf(),\n        pm.container_dom().contains(c_ptr),\n        pm.get_container(c_ptr).owned_endpoints@.contains(e),\n    ensures\n        pm.endpoint_perms@.dom().contains(e),\n{\n}",
+    "reason": "Container's `owned_endpoints` is a Ghost<Set<EndpointPtr>> with no predicate constraining it to be a subset of `endpoint_dom` \u2014 a container could claim ownership of endpoints that don't exist",
+    "entailed": false,
+    "verus_output": "t_endpoint_dom.rs:1246:9\n     |\n1239 | proof fn phi_4_owned_endpoints_not_subset_endpoint_dom(pm: ProcessManager, c_ptr: ContainerPtr, e: EndpointPtr)\n     |       --------------------------------------------------------------------------------------------------------- at the end of the function body\n...\n1246 |         pm.endpoint_perms@.dom().contains(e),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 18 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "get_proc_owned_threads_wf_without_process_fields",
+    "type": "logical",
+    "code": "proof fn phi_5_get_proc_owned_threads_wf_without_process_fields(pm: ProcessManager, p_ptr: ProcPtr)\n    requires\n        pm.proc_perms_wf(),\n        pm.process_fields_wf(),\n        pm.proc_dom().contains(p_ptr),\n        !pm.wf(),\n    ensures\n        pm.get_proc(p_ptr).owned_threads.wf(),\n{\n}",
+    "reason": "The `get_proc` external_body unconditionally ensures `ret.owned_threads.wf()` regardless of whether `wf()` holds \u2014 this is stronger than the spec-level `process_fields_wf` which derives the same conclusion, suggesting the external_body leaks extra guarantees beyond what the open specs establish",
+    "entailed": true,
+    "verus_output": "is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__spec_proof__impl2__container_subtree_disjoint_inv/phi_5_get_proc_owned_threads_wf_without_process_fields.rs:641:58\n    |\n641 |             && self.process_perms@[p_ptr_j].value().ioid.is_Some()\n    |                                                          ^^^^^^^\n\nwarning: 18 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

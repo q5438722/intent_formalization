@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: align_exceeds_input
+TARGET_FN: align_to_usize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_align_exceeds_input(a: usize, b: usize)
+    requires
+        b > 0,
+    ensures
+        align_to_usize(a, b) > a,
+{
+}
+```
+REASON: Aligning down should never produce a value greater than the original input
+===PHI_END===
+
+===PHI_START===
+NAME: align_result_not_multiple
+TARGET_FN: align_to_usize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_align_result_not_multiple(a: usize, b: usize)
+    requires
+        b > 0,
+    ensures
+        align_to_usize(a, b) % b != 0,
+{
+}
+```
+REASON: The result of downward alignment must be a multiple of the alignment boundary
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_idempotent_fails
+TARGET_FN: align_to_usize
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_aligned_idempotent_fails(a: usize, b: usize)
+    requires
+        b > 0,
+        aligned(a as nat, b as nat),
+    ensures
+        align_to_usize(a, b) != a,
+{
+}
+```
+REASON: If the input is already aligned, align_to_usize must be the identity—returning a different value is a spec inconsistency
+===PHI_END===
+
+===PHI_START===
+NAME: zero_not_aligned
+TARGET_FN: aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_zero_not_aligned(size: nat)
+    requires
+        size > 0,
+    ensures
+        !aligned(0, size),
+{
+}
+```
+REASON: Zero is trivially divisible by any positive number, so aligned(0, size) must be true
+===PHI_END===
+
+===PHI_START===
+NAME: align_noop_when_unaligned
+TARGET_FN: align_to_usize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_align_noop_when_unaligned(a: usize, b: usize)
+    requires
+        b > 0,
+        a % b != 0,
+    ensures
+        align_to_usize(a, b) == a,
+{
+}
+```
+REASON: When the input is not aligned, align_to_usize must adjust it downward—returning it unchanged means alignment is broken
+===PHI_END===

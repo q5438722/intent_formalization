@@ -1,0 +1,74 @@
+===PHI_START===
+NAME: smallest_sbin_negative_valid
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_smallest_sbin_negative_valid()
+    ensures
+        smallest_sbin_fitting_size(-5) == -5,
+        !valid_sbin_idx(smallest_sbin_fitting_size(-5)),
+{
+}
+```
+REASON: For negative inputs, `smallest_sbin_fitting_size` returns the input directly (since `-5 <= 8`), producing a negative sbin index that violates `valid_sbin_idx` — callers passing invalid slice counts get silently invalid indices
+===PHI_END===
+
+===PHI_START===
+NAME: smallest_sbin_zero_is_zero
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_smallest_sbin_zero_is_zero()
+    ensures
+        smallest_sbin_fitting_size(0) == 0,
+        valid_sbin_idx(0),
+{
+}
+```
+REASON: `smallest_sbin_fitting_size(0) == 0` maps a zero-size request to sbin 0 — this may be undesirable if sbin 0 is supposed to represent a specific non-zero allocation size
+===PHI_END===
+
+===PHI_START===
+NAME: property_sbin_fails_negative
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_property_sbin_fails_negative()
+    ensures
+        !property_sbin_idx_smallest_sbin_fitting_size(-1),
+{
+}
+```
+REASON: `property_sbin_idx_smallest_sbin_fitting_size(-1)` is false because `smallest_sbin_fitting_size(-1) == -1` which fails `valid_sbin_idx` — the property checker has no lower bound guard, so `check_sbin_idx` starting from negative values would fail
+===PHI_END===
+
+===PHI_START===
+NAME: pow2_negative_is_one
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_pow2_negative_is_one(e: int)
+    requires
+        e < 0,
+    ensures
+        pow2(e) == 1,
+{
+}
+```
+REASON: `pow2` returns 1 for all negative exponents — mathematically 2^(-n) is a fraction, so callers accidentally passing negative values get silently wrong results
+===PHI_END===
+
+===PHI_START===
+NAME: smallest_sbin_large_input_exceeds_max
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_smallest_sbin_large_input_exceeds_max()
+    ensures
+        smallest_sbin_fitting_size(100000) > SEGMENT_BIN_MAX as int,
+        !valid_sbin_idx(smallest_sbin_fitting_size(100000)),
+{
+}
+```
+REASON: Unlike the regular bin allocator which has BIN_HUGE as a catch-all, `smallest_sbin_fitting_size` has no upper clamp — large inputs produce sbin indices exceeding `SEGMENT_BIN_MAX`, and `property_sbin_idx_smallest_sbin_fitting_size` would be false for such inputs
+===PHI_END===

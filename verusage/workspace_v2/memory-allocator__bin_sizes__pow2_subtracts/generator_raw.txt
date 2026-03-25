@@ -1,0 +1,79 @@
+===PHI_START===
+NAME: pow2_adds_external_body_zero
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_pow2_adds_external_body_zero()
+    ensures
+        pow2(0) * pow2(0) == pow2(0),
+{
+    pow2_adds(0, 0);
+}
+```
+REASON: `pow2_adds` is `external_body` — tests that the trusted axiom is consistent at the zero boundary where `pow2(0) = 1` and `1 * 1 = 1 = pow2(0)`
+===PHI_END===
+
+===PHI_START===
+NAME: pow2_positive_external_body_negative
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_pow2_positive_external_body_negative(e: int)
+    requires
+        e < 0,
+    ensures
+        pow2(e) == 1 && pow2(e) > 0,
+{
+    pow2_positive(e);
+}
+```
+REASON: `pow2_positive` is `external_body` and trusted for all integers including negative — combined with `pow2(e < 0) == 1` by definition, this is trivially true but the axiom could be used to derive facts about negative-exponent pow2 in contexts where it shouldn't apply
+===PHI_END===
+
+===PHI_START===
+NAME: pow2_adds_inconsistency_check
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_pow2_adds_inconsistency_check(e: nat)
+    ensures
+        pow2(e as int) * 2 == pow2((e + 1) as int),
+{
+    pow2_adds(e, 1);
+}
+```
+REASON: `pow2_adds` is `external_body` with `unimplemented!()` — if its ensures clause were inconsistent with the actual `pow2` definition, it could introduce unsoundness; this tests alignment between the trusted axiom and the recursive definition
+===PHI_END===
+
+===PHI_START===
+NAME: pow2_negative_is_one
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_pow2_negative_is_one(e: int)
+    requires
+        e < 0,
+    ensures
+        pow2(e) == 1,
+{
+}
+```
+REASON: `pow2` returns 1 for all negative exponents — mathematically 2^(-n) is a fraction, so callers passing negative exponents by mistake silently get 1 instead of an error
+===PHI_END===
+
+===PHI_START===
+NAME: div2_no_upper_bound_on_x
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_div2_no_upper_bound_on_x(y: int)
+    requires
+        y > 0,
+    ensures
+        u64::MAX as int / (y * 2) == (u64::MAX as int / y) / 2,
+{
+    div2(u64::MAX, y);
+}
+```
+REASON: `div2` takes `x: u64` but the ensures operates on `x as int` — the lemma applies to `u64::MAX` divisions where `y * 2` can exceed u64 range, potentially enabling reasoning about non-realizable machine divisions
+===PHI_END===

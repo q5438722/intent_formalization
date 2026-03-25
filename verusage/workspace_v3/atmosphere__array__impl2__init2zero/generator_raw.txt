@@ -1,0 +1,101 @@
+===PHI_START===
+NAME: set_changes_other_index
+TARGET_FN: set
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_set_changes_other_index(old_seq: Seq<u8>, new_seq: Seq<u8>, i: int, j: int, out: u8, n: int)
+    requires
+        old_seq.len() == n,
+        0 <= i < n,
+        new_seq =~= old_seq.update(i, out),
+        new_seq.len() == n,
+        0 <= j < n,
+        j != i,
+    ensures
+        new_seq[j] != old_seq[j],
+{
+}
+```
+REASON: If entailed, set would corrupt elements at indices other than the one being written.
+===PHI_END===
+
+===PHI_START===
+NAME: set_value_not_written
+TARGET_FN: set
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_set_value_not_written(old_seq: Seq<u8>, new_seq: Seq<u8>, i: int, out: u8, n: int)
+    requires
+        old_seq.len() == n,
+        0 <= i < n,
+        new_seq =~= old_seq.update(i, out),
+        new_seq.len() == n,
+    ensures
+        new_seq[i] != out,
+{
+}
+```
+REASON: If entailed, set would fail to actually store the provided value at the target index.
+===PHI_END===
+
+===PHI_START===
+NAME: set_length_changes
+TARGET_FN: set
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_set_length_changes(old_seq: Seq<u8>, new_seq: Seq<u8>, i: int, out: u8, n: int)
+    requires
+        old_seq.len() == n,
+        0 <= i < n,
+        new_seq =~= old_seq.update(i, out),
+        new_seq.len() == n,
+        n > 0,
+    ensures
+        new_seq.len() != old_seq.len(),
+{
+}
+```
+REASON: If entailed, set would change the array length, violating the structural invariant.
+===PHI_END===
+
+===PHI_START===
+NAME: init2zero_forces_empty
+TARGET_FN: init2zero
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_init2zero_forces_empty(new_seq: Seq<u8>, n: int)
+    requires
+        new_seq.len() == n,
+        n <= usize::MAX,
+        forall|index: int| 0 <= index < n ==> #[trigger] new_seq[index] == 0u8,
+        n > 0,
+    ensures
+        n == 0,
+{
+}
+```
+REASON: If entailed, the init2zero postcondition would be satisfiable only for empty arrays, making it useless.
+===PHI_END===
+
+===PHI_START===
+NAME: init2zero_nonzero_element
+TARGET_FN: init2zero
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_init2zero_nonzero_element(new_seq: Seq<u8>, n: int)
+    requires
+        new_seq.len() == n,
+        n == 1,
+        forall|index: int| 0 <= index < n ==> #[trigger] new_seq[index] == 0u8,
+    ensures
+        new_seq[0] == 1u8,
+{
+}
+```
+REASON: If entailed, init2zero would allow a non-zero value at a valid index, contradicting its zeroing guarantee.
+===PHI_END===

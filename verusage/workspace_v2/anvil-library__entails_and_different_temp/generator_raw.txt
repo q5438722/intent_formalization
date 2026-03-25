@@ -1,0 +1,89 @@
+===PHI_START===
+NAME: implies_apply_closure_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_implies_apply_closure_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>)
+    requires
+        p.satisfied_by(ex),
+        (p.pred)(ex) ==> (q.pred)(ex),
+    ensures
+        q.satisfied_by(ex),
+{
+    implies_apply::<int>(ex, p, q);
+}
+```
+REASON: implies_apply is external_body bridging p.implies(q).satisfied_by(ex) through TempPred::new closure wrapping and direct implication — silently resolves closure identity mismatch
+===PHI_END===
+
+===PHI_START===
+NAME: entails_and_weakens_to_single
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_entails_and_weakens_to_single(spec1: TempPred<int>, spec2: TempPred<int>, p: TempPred<int>)
+    requires
+        spec1.entails(p),
+    ensures
+        spec1.and(spec2).entails(p),
+{
+    assert forall |ex| #[trigger] spec1.and(spec2).satisfied_by(ex) implies p.satisfied_by(ex) by {
+        implies_apply::<int>(ex, spec1, p);
+    };
+}
+```
+REASON: and-ing an arbitrary spec2 still entails p from spec1 alone — the second conjunct is completely unconstrained, meaning spec1.and(anything) entails p, weakening the combined specification's discriminating power
+===PHI_END===
+
+===PHI_START===
+NAME: entails_and_false_spec
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_entails_and_false_spec(p: TempPred<int>, q: TempPred<int>)
+    ensures
+        TempPred::<int>::new(|ex: Execution<int>| false).and(
+            TempPred::<int>::new(|ex: Execution<int>| false)
+        ).entails(p.and(q)),
+{
+}
+```
+REASON: unsatisfiable specs vacuously entail any conjunction — entails_and_different_temp propagates this without checking satisfiability, potentially hiding specification errors
+===PHI_END===
+
+===PHI_START===
+NAME: entails_and_self_redundant
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_entails_and_self_redundant(spec: TempPred<int>, p: TempPred<int>, q: TempPred<int>)
+    requires
+        spec.entails(p),
+        spec.entails(q),
+    ensures
+        spec.and(spec).entails(p.and(q)),
+{
+    entails_and_different_temp::<int>(spec, spec, p, q);
+}
+```
+REASON: using spec.and(spec) — which should be equivalent to spec — requires the external_body axiom to resolve the and-closure's intensional gap, and the result hides that spec alone should suffice
+===PHI_END===
+
+===PHI_START===
+NAME: valid_implies_entails_anything
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_valid_implies_entails_anything(p: TempPred<int>, spec: TempPred<int>)
+    requires
+        valid(p),
+    ensures
+        spec.entails(p),
+{
+    assert forall |ex| #[trigger] spec.satisfied_by(ex) implies p.satisfied_by(ex) by {
+        implies_apply::<int>(ex, spec, p);
+    };
+}
+```
+REASON: if valid(p) holds then spec.entails(p) for any spec — implies_apply resolves the closure bridge to make any valid property trivially entailed, collapsing the distinction between validity and entailment
+===PHI_END===

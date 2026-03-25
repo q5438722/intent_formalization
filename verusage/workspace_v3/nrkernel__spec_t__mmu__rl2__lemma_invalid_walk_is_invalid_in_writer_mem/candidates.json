@@ -1,0 +1,37 @@
+[
+  {
+    "name": "align_exceeds_input",
+    "target_fn": "align_to_usize",
+    "type": "behavioral",
+    "code": "proof fn phi_1_align_exceeds_input(a: usize, b: usize)\n    requires\n        b > 0,\n    ensures\n        align_to_usize(a, b) > a,\n{\n}",
+    "reason": "Downward alignment must never return a value exceeding the original input"
+  },
+  {
+    "name": "align_to_one_changes_value",
+    "target_fn": "align_to_usize",
+    "type": "boundary",
+    "code": "proof fn phi_2_align_to_one_changes_value(a: usize)\n    requires\n        a < usize::MAX,\n    ensures\n        align_to_usize(a, 1) != a,\n{\n}",
+    "reason": "Aligning to 1 should be a no-op since every integer is 1-aligned; a changed value would indicate a broken spec"
+  },
+  {
+    "name": "nonzero_align_stays_nonzero",
+    "target_fn": "align_to_usize",
+    "type": "behavioral",
+    "code": "proof fn phi_3_nonzero_align_stays_nonzero(a: usize, b: usize)\n    requires\n        a > 0,\n        b > 1,\n    ensures\n        align_to_usize(a, b) > 0,\n{\n}",
+    "reason": "A nonzero address aligned down can legitimately become zero (e.g., a=1 b=4096); if the spec claims otherwise it is too strong"
+  },
+  {
+    "name": "aligned_additive_divisors",
+    "target_fn": "aligned",
+    "type": "logical",
+    "code": "proof fn phi_4_aligned_additive_divisors(addr: nat, s1: nat, s2: nat)\n    requires\n        s1 > 0,\n        s2 > 0,\n        aligned(addr, s1),\n        aligned(addr, s2),\n    ensures\n        aligned(addr, s1 + s2),\n{\n}",
+    "reason": "Alignment to two sizes does not imply alignment to their sum (e.g., 12 is aligned to 4 and 6 but not to 10)"
+  },
+  {
+    "name": "align_result_double_aligned",
+    "target_fn": "align_to_usize",
+    "type": "logical",
+    "code": "proof fn phi_5_align_result_double_aligned(a: usize, b: usize)\n    requires\n        b > 1,\n        b <= usize::MAX / 2,\n    ensures\n        aligned(align_to_usize(a, b) as nat, (b * 2) as nat),\n{\n}",
+    "reason": "Aligning down to b does not guarantee the result is also aligned to 2b (e.g., align_to_usize(5,4)==4 but 4 is not 8-aligned)"
+  }
+]

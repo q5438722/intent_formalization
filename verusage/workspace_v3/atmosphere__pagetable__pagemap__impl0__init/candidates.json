@@ -1,0 +1,37 @@
+[
+  {
+    "name": "init_has_present_entry",
+    "target_fn": "init",
+    "type": "behavioral",
+    "code": "proof fn phi_1_init_has_present_entry(pm: PageMap)\n    requires\n        pm.wf(),\n        forall|i: int| #![trigger pm@[i].is_empty()] 0 <= i < 512 ==> pm@[i].is_empty(),\n    ensures\n        exists|i: int| 0 <= i < 512 && pm@[i].perm.present,\n{\n}",
+    "reason": "After init all entries must be empty (present==false); if a present entry exists, init failed to clear the page map"
+  },
+  {
+    "name": "init_nonzero_addr",
+    "target_fn": "init",
+    "type": "boundary",
+    "code": "proof fn phi_2_init_nonzero_addr(pm: PageMap)\n    requires\n        pm.wf(),\n        forall|i: int| #![trigger pm@[i].is_empty()] 0 <= i < 512 ==> pm@[i].is_empty(),\n    ensures\n        pm@[0].addr != 0,\n{\n}",
+    "reason": "Entry 0 should have addr==0 after init since is_empty requires addr==0; a non-zero addr would mean init left stale physical addresses"
+  },
+  {
+    "name": "init_vacuous_precondition",
+    "target_fn": "init",
+    "type": "logical",
+    "code": "proof fn phi_3_init_vacuous_precondition(pm: PageMap)\n    requires\n        pm.ar.wf(),\n        pm.spec_seq@.len() == 512,\n    ensures\n        false,\n{\n}",
+    "reason": "If init's preconditions are unsatisfiable, every postcondition holds vacuously and init can never be safely called"
+  },
+  {
+    "name": "set_modifies_other_index",
+    "target_fn": "set",
+    "type": "behavioral",
+    "code": "proof fn phi_4_set_modifies_other_index(old_s: Seq<usize>, new_s: Seq<usize>, i: int, j: int, out: usize)\n    requires\n        old_s.len() == 512,\n        0 <= i < 512,\n        0 <= j < 512,\n        i != j,\n        new_s =~= old_s.update(i, out),\n    ensures\n        new_s[j] != old_s[j],\n{\n}",
+    "reason": "set should only modify index i; if another index j changes, set has unintended side-effects corrupting unrelated page entries"
+  },
+  {
+    "name": "set_changes_length",
+    "target_fn": "set",
+    "type": "boundary",
+    "code": "proof fn phi_5_set_changes_length(old_s: Seq<usize>, new_s: Seq<usize>, i: int, out: usize)\n    requires\n        old_s.len() == 512,\n        0 <= i < 512,\n        new_s =~= old_s.update(i, out),\n        new_s.len() == 512,\n    ensures\n        new_s.len() != old_s.len(),\n{\n}",
+    "reason": "set's wf() postcondition guarantees preserved length; if length changes, the array invariant is broken and indexing becomes unsafe"
+  }
+]

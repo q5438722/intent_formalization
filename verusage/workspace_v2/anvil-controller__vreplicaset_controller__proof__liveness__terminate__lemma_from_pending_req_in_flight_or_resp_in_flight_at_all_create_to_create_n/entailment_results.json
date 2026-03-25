@@ -1,0 +1,47 @@
+[
+  {
+    "name": "lemma_specializes_any_n_without_constraint",
+    "type": "logical",
+    "code": "proof fn phi_1_lemma_specializes_any_n_without_constraint(\n    spec: TempPred<ClusterState>, vrs: VReplicaSetView, cluster: Cluster, controller_id: int\n)\n    requires\n        spec.entails(always(\n            lift_state(Cluster::pending_req_in_flight_or_resp_in_flight_at_reconcile_state(\n                controller_id,\n                vrs.object_ref(),\n                unwrap_local_state_closure(\n                    |s: VReplicaSetReconcileState| s.reconcile_step.is_AfterCreatePod()\n                )\n            )))),\n    ensures\n        spec.entails(always(\n            lift_state(Cluster::pending_req_in_flight_or_resp_in_flight_at_reconcile_state(\n                controller_id,\n                vrs.object_ref(),\n                at_step_closure(VReplicaSetRecStepView::AfterCreatePod(0))\n            )))),\n        spec.entails(always(\n            lift_state(Cluster::pending_req_in_flight_or_resp_in_flight_at_reconcile_state(\n                controller_id,\n                vrs.object_ref(),\n                at_step_closure(VReplicaSetRecStepView::AfterCreatePod(999999))\n            )))),\n{\n    lemma_from_pending_req_in_flight_or_resp_in_flight_at_all_create_to_create_n(spec, vrs, cluster, controller_id, 0);\n    lemma_from_pending_req_in_flight_or_resp_in_flight_at_all_create_to_create_n(spec, vrs, cluster, controller_id, 999999);\n}",
+    "reason": "the lemma instantiates for any n including values far beyond the actual replicas count, so the \"pending req or resp in flight\" property is claimed for AfterCreatePod(999999) which should never be a reachable reconcile state",
+    "entailed": true,
+    "verus_output": "tianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__terminate__lemma_from_pending_req_in_flight_or_resp_in_flight_at_all_create_to_create_n/phi_1_lemma_specializes_any_n_without_constraint.rs:206:1\n    |\n206 | / #[is_variant]\n207 | | pub enum APIRequest {\n208 | |     GetRequest(GetRequest),\n209 | |     ListRequest(ListRequest),\n...   |\n215 | |     GetThenUpdateRequest(GetThenUpdateRequest),\n216 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pending_req_vacuous_when_not_at_state",
+    "type": "behavioral",
+    "code": "proof fn phi_2_pending_req_vacuous_when_not_at_state(controller_id: int, key: ObjectRef, s: ClusterState)\n    requires\n        !s.ongoing_reconciles(controller_id).contains_key(key),\n    ensures\n        Cluster::pending_req_in_flight_or_resp_in_flight_at_reconcile_state(\n            controller_id, key, |_ls: ReconcileLocalState| true\n        )(s),\n{\n}",
+    "reason": "pending_req_in_flight_or_resp_in_flight_at_reconcile_state is vacuously true whenever the key has no ongoing reconcile, so the \"always\" invariant in the lemma's precondition is trivially satisfiable for non-existent reconciles \u2014 the lemma provides no guarantee when the reconcile is absent",
+    "entailed": true,
+    "verus_output": "/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__terminate__lemma_from_pending_req_in_flight_or_resp_in_flight_at_all_create_to_create_n/phi_2_pending_req_vacuous_when_not_at_state.rs:206:1\n    |\n206 | / #[is_variant]\n207 | | pub enum APIRequest {\n208 | |     GetRequest(GetRequest),\n209 | |     ListRequest(ListRequest),\n...   |\n215 | |     GetThenUpdateRequest(GetThenUpdateRequest),\n216 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "unmarshal_unwrap_undefined_on_bad_state",
+    "type": "logical",
+    "code": "proof fn phi_3_unmarshal_unwrap_undefined_on_bad_state(v1: Value, v2: Value)\n    requires\n        VReplicaSetReconcileState::unmarshal(v1) is Err,\n        VReplicaSetReconcileState::unmarshal(v2) is Err,\n    ensures\n        at_step_closure(VReplicaSetRecStepView::AfterCreatePod(0))(v1)\n            == at_step_closure(VReplicaSetRecStepView::AfterCreatePod(0))(v2),\n{\n}",
+    "reason": "unmarshal is uninterpreted so .unwrap() on Err yields an arbitrary but fixed-per-input value \u2014 at_step_closure cannot meaningfully distinguish bad states, meaning the reconcile step predicates are undefined on corrupt local state",
+    "entailed": false,
+    "verus_output": "ined_on_bad_state(v1: Value, v2: Value)\n    |         ---------------------------------------------------------------------- at the end of the function body\n...\n923 | /         at_step_closure(VReplicaSetRecStepView::AfterCreatePod(0))(v1)\n924 | |             == at_step_closure(VReplicaSetRecStepView::AfterCreatePod(0))(v2),\n    | |_____________________________________________________________________________^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "at_step_closure_conflates_steps_on_unmarshal_collision",
+    "type": "logical",
+    "code": "proof fn phi_4_at_step_closure_conflates_steps_on_unmarshal_collision(v: Value, n1: nat, n2: nat)\n    requires\n        VReplicaSetReconcileState::unmarshal(v) is Err,\n    ensures\n        at_step_closure(VReplicaSetRecStepView::AfterCreatePod(n1))(v)\n            == at_step_closure(VReplicaSetRecStepView::AfterCreatePod(n2))(v),\n{\n}",
+    "reason": "when unmarshal fails, unwrap produces the same arbitrary value regardless of which step is being tested \u2014 all step predicates collapse to the same boolean, making step-specific reasoning unsound on non-unmarshallable states",
+    "entailed": false,
+    "verus_output": " n1: nat, n2: nat)\n    |         ------------------------------------------------------------------------------------------- at the end of the function body\n...\n922 | /         at_step_closure(VReplicaSetRecStepView::AfterCreatePod(n1))(v)\n923 | |             == at_step_closure(VReplicaSetRecStepView::AfterCreatePod(n2))(v),\n    | |_____________________________________________________________________________^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "object_ref_ignores_uid",
+    "type": "behavioral",
+    "code": "proof fn phi_5_object_ref_ignores_uid(v1: VReplicaSetView, v2: VReplicaSetView)\n    requires\n        v1.metadata.name is Some,\n        v2.metadata.name is Some,\n        v1.metadata.namespace is Some,\n        v2.metadata.namespace is Some,\n        v1.metadata.name == v2.metadata.name,\n        v1.metadata.namespace == v2.metadata.namespace,\n        v1.metadata.uid != v2.metadata.uid,\n    ensures\n        v1.object_ref() == v2.object_ref(),\n{\n}",
+    "reason": "object_ref uses only kind/name/namespace and ignores uid, so a deleted-and-recreated VReplicaSet with a new uid maps to the same ObjectRef \u2014 ongoing_reconciles keyed by object_ref could conflate old and new resource instances",
+    "entailed": true,
+    "verus_output": "ml\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__terminate__lemma_from_pending_req_in_flight_or_resp_in_flight_at_all_create_to_create_n/phi_5_object_ref_ignores_uid.rs:206:1\n    |\n206 | / #[is_variant]\n207 | | pub enum APIRequest {\n208 | |     GetRequest(GetRequest),\n209 | |     ListRequest(ListRequest),\n...   |\n215 | |     GetThenUpdateRequest(GetThenUpdateRequest),\n216 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

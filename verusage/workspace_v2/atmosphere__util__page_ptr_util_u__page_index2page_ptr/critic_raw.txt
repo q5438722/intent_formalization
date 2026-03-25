@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: lemma_usize_u64_enables_unsound_cast
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `lemma_usize_u64` is an external_body axiom with no precondition, asserting `x as usize as u64 == x` for all u64 values. On a 32-bit platform this is false for any `x > u32::MAX`. Even on 64-bit platforms, this is an unverified assumption that should at minimum carry a precondition like `x as int <= usize::MAX` rather than being universally quantified.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: page_ptr_zero_valid
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: medium
+REASONING: `spec_page_index2page_ptr(0) == 0` is a direct arithmetic consequence of `0 * 4096 == 0`. Whether page index 0 should be excluded is a design decision external to this spec — the spec defines a mathematical mapping from indices to pointers, and null-pointer concerns are an implementation-level issue handled elsewhere (e.g., by starting valid page allocation at index 1).
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: page_index_valid_not_linked_to_max_usize
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The property that `spec_page_index2page_ptr(i) <= MAX_USIZE` for valid page indices is arithmetically correct: max pointer is `(2M - 1) * 4096 ≈ 8GB` which is well under `MAX_USIZE = 31GB`. While the proof path goes through `lemma_usize_u64`, the arithmetic relationship itself holds and is a desirable property confirming that page pointers fit within the system's memory bounds.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive was identified: `lemma_usize_u64` is an unconditionally-trusted external_body axiom that asserts a u64-to-usize roundtrip identity for all u64 values without any precondition, which is unsound on 32-bit platforms and represents an unverified platform assumption even on 64-bit. The other two candidates are false positives — page index 0 mapping to address 0 is a mathematical tautology (null-pointer exclusion is a separate concern), and the MAX_USIZE bound on page pointers is arithmetically valid given the constants.
+===END_SUMMARY===

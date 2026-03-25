@@ -1,0 +1,82 @@
+This round has `lemma_pt_walk` and `lemma_write_seq` as new external_body lemmas.
+
+===PHI_START===
+NAME: lemma_pt_walk_external_body_completeness
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_lemma_pt_walk_external_body_completeness(mem: PTMem, va: usize)
+    ensures
+        mem.pt_walk(va).complete,
+        0 < mem.pt_walk(va).path.len() <= 4,
+{
+    PTMem::lemma_pt_walk(mem, va);
+}
+```
+REASON: `lemma_pt_walk` is `external_body` — walk completeness and path length bounds are trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: lemma_pt_walk_path_entries_match_reads
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_lemma_pt_walk_path_entries_match_reads(mem: PTMem, va: usize, i: int)
+    requires
+        0 <= i < mem.pt_walk(va).path.len(),
+    ensures
+        mem.pt_walk(va).path[i].1 == (PDE { entry: mem.read(mem.pt_walk(va).path[i].0), layer: Ghost(i as nat) })@,
+{
+    PTMem::lemma_pt_walk(mem, va);
+}
+```
+REASON: `lemma_pt_walk` asserts path entries equal PDE views at corresponding addresses — this correspondence is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: lemma_write_seq_domain_monotonic
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_lemma_write_seq_domain_monotonic(mem: PTMem, writes: Seq<(usize, usize)>)
+    ensures
+        mem.mem.dom().subset_of(mem.write_seq(writes).mem.dom()),
+{
+    mem.lemma_write_seq(writes);
+}
+```
+REASON: `lemma_write_seq` is `external_body` — domain monotonicity (writes never remove keys) is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: lemma_pt_walk_no_directory_last
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_lemma_pt_walk_no_directory_last(mem: PTMem, va: usize)
+    ensures
+        !(mem.pt_walk(va).path.last().1 is Directory),
+{
+    PTMem::lemma_pt_walk(mem, va);
+}
+```
+REASON: `lemma_pt_walk` asserts the last path entry is never Directory — trusted without proof; if false, `Walk::result` would fall through to `arbitrary()`
+===PHI_END===
+
+===PHI_START===
+NAME: lemma_pt_walk_intermediate_present
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_lemma_pt_walk_intermediate_present(mem: PTMem, va: usize, i: int)
+    requires
+        0 <= i < mem.pt_walk(va).path.len() - 1,
+    ensures
+        mem.pt_walk(va).path[i].1 is Directory,
+        mem.read(mem.pt_walk(va).path[i].0) & 1 == 1,
+{
+    PTMem::lemma_pt_walk(mem, va);
+}
+```
+REASON: `lemma_pt_walk` asserts all intermediate entries are Directory with P bit set — trusted without proof; if false, the walk could skip non-present entries
+===PHI_END===

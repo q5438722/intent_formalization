@@ -1,0 +1,47 @@
+[
+  {
+    "name": "init_vec_all_zeros",
+    "type": "behavioral",
+    "code": "proof fn phi_1_init_vec_all_zeros(res: Seq<u8>, n: usize)\n    requires\n        res.len() == n,\n        // mimicking the post-condition world of init_vec_u8\n        forall|i: int| 0 <= i < n ==> res[i] == 0,\n    ensures\n        forall|i: int| #![auto] 0 <= i < res.len() ==> res[i] == 0,\n{\n}",
+    "reason": "The ensures only guarantees length, not that all elements are zero \u2014 the invariant asserts individual zeros but doesn't propagate to the postcondition",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "init_vec_missing_zero_guarantee",
+    "type": "behavioral",
+    "code": "exec fn phi_2_init_vec_missing_zero_guarantee()\n{\n    let v = init_vec_u8(3);\n    assert(v@.len() == 3);\n    // This should hold since we push 0, but the ensures doesn't promise it\n    // assert(v@[0] == 0);  // Cannot prove from ensures alone!\n}",
+    "reason": "The postcondition only specifies `res@.len() == n` but not that elements are initialized to zero \u2014 callers cannot rely on zero-initialization from the spec alone",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "init_vec_length_zero",
+    "type": "boundary",
+    "code": "proof fn phi_3_init_vec_length_zero()\n    ensures\n        ({\n            let n: usize = 0;\n            // init_vec_u8(0) returns a vec with len 0\n            true\n        }),\n{\n}",
+    "reason": "Calling with n=0 should produce an empty vec \u2014 testing the boundary where the loop body never executes",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "init_vec_length_exact",
+    "type": "boundary",
+    "code": "proof fn phi_4_init_vec_length_exact(n: usize)\n    ensures\n        // The ensures guarantees exactly n, not more or fewer\n        true,\n{\n}",
+    "reason": "Length should be exactly n, not approximately n \u2014 verifying the loop doesn't over- or under-count",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "init_vec_weak_ensures",
+    "type": "logical",
+    "code": "exec fn phi_5_init_vec_weak_ensures()\n{\n    let v = init_vec_u8(5);\n    assert(v@.len() == 5);\n    // The spec is too weak: we know the implementation pushes 0,\n    // but the ensures doesn't capture element values.\n    // A conforming implementation could push any u8 value.\n}",
+    "reason": "The ensures clause `res@.len() == n` is strictly weaker than the implementation behavior \u2014 any function returning a Vec of length n satisfies this spec, regardless of element values",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

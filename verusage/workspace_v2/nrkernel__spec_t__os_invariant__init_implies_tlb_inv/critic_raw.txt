@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: init_refines_external_body_unconstrained
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `init_refines` is `external_body` with `unimplemented!()` body — it asserts the refinement `rl3::init(pre, c) ==> rl1::init(pre@, c)` without proof. This is an unverified trust assumption at the foundation of the rl3→rl2→rl1 abstraction chain.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: rl3_init_external_body_unconstrained
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: This chains two `external_body` functions: `rl3::init` (closed spec, opaque precondition) and `init_refines` (external_body proof). The `happy` property of the rl1 interpretation is derived entirely through unverified trust assumptions — both the rl3 init predicate and the refinement proof are opaque.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: os_init_pml4_region_in_allocated
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `os::init` explicitly requires `s.os_ext.allocated === set![MemRegion { base: s.mmu@.pt_mem.pml4 as nat, size: 4096 }]`. The ensures directly follows from unfolding this conjunct — the PML4 region is the only element in the singleton set.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: os_init_empty_pml4_entries
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `os::init` explicitly requires `forall|i: usize| 0 <= i < 512 ==> s.mmu@.pt_mem.read(add(s.mmu@.pt_mem.pml4, mul(i, 8))) == 0`. The ensures is a direct restatement of this conjunct.
+===VERDICT_END===
+
+===SUMMARY===
+Two true positives targeting the refinement chain: `init_refines` is an `external_body` proof asserting rl3→rl1 refinement without verification, and `rl3::init` combined with `rl3::State::interp` are both `external_body`/`closed spec`, making the entire initial state refinement an unverified trust assumption. Two false positives: PML4 region allocation and empty PML4 entries are direct conjuncts of the `os::init` predicate.
+===END_SUMMARY===

@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "segment_start_mult_segment_size",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`segment_start = id * SEGMENT_SIZE`, so `segment_start % SEGMENT_SIZE == 0` is a trivial arithmetic identity. Natural alignment of segments is the intended design in mimalloc, where segments are allocated at SEGMENT_SIZE-aligned addresses."
+  },
+  {
+    "phi": "segment_start_zero_for_id_zero",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "Segment ID 0 maps to address 0, which is conventionally null/invalid. While `is_block_ptr1` requires `segment_start < ptr`, the spec allows constructing a `SegmentId` with `id == 0` that has address 0 \u2014 this could interact poorly with null pointer checks or provenance reasoning."
+  },
+  {
+    "phi": "segment_start_no_overlap_guarantee",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Distinct `id` values mapping to distinct start addresses is correct \u2014 `segment_start` is defined purely by `id`, so different `id`s yield different addresses. The concern about same `id` with different `provenance`/`uniq` is by design: `provenance` and `uniq` are ghost metadata for pointer validity tracking, not address computation."
+  },
+  {
+    "phi": "segment_start_nonneg",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`id: nat` ensures non-negative segment starts, which is correct for userspace allocators on all modern platforms. Kernel-space negative addresses are irrelevant to mimalloc, which is a userspace allocator."
+  }
+]

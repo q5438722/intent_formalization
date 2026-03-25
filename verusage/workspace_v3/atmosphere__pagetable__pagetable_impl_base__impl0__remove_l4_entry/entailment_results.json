@@ -1,0 +1,52 @@
+[
+  {
+    "name": "target_l3_is_cr3",
+    "target_fn": "remove_l4_entry",
+    "type": "behavioral",
+    "reason": "If the L4 entry's target address aliases the root cr3 pointer, removing the entry would corrupt the page table root",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "     |       -------------------------------------------------------------------------------------- at the end of the function body\n...\n1288 |         target_l3_p == pt.cr3,\n     |         ^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 52 warnings emitted\n\n"
+  },
+  {
+    "name": "preconditions_vacuous",
+    "target_fn": "remove_l4_entry",
+    "type": "logical",
+    "reason": "If the combined preconditions are unsatisfiable, the function is dead code and any postcondition holds vacuously",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": ", target_l3_p: PageMapPtr)\n     |       ------------------------------------------------------------------------------------------- at the end of the function body\n...\n1288 |         false,\n     |         ^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 52 warnings emitted\n\n"
+  },
+  {
+    "name": "l3_ptr_in_lower_tables",
+    "target_fn": "remove_l4_entry",
+    "type": "logical",
+    "reason": "If target_l3_p also appears in L2/L1 table domains, removing it from L3 tables would corrupt lower-level page tables",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "y\n...\n1288 |         pt.l2_tables@.dom().contains(target_l3_p) || pt.l1_tables@.dom().contains(target_l3_p),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 52 warnings emitted\n\n"
+  },
+  {
+    "name": "all_other_l4_entries_empty",
+    "target_fn": "remove_l4_entry",
+    "type": "behavioral",
+    "reason": "If the preconditions force all other user-space L4 entries to be non-present, the function is overly restricted to single-entry page tables",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "|                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n     |\n    ::: /home/chentianyu/intent_formalization/verus/vstd/simple_pptr.rs:269:13\n     |\n 269 |             self.is_init(),\n     |             -------------- recommendation not met\n\nerror: aborting due to 1 previous error; 52 warnings emitted\n\n"
+  },
+  {
+    "name": "kernel_l4_end_forced_zero",
+    "target_fn": "remove_l4_entry",
+    "type": "boundary",
+    "reason": "If kernel_l4_end is forced to zero, all 512 L4 entries are user-space and kernel has no reserved entries, breaking kernel/user isolation",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "    ----------------------------------------------------------------------------------------------- at the end of the function body\n...\n1288 |         pt.kernel_l4_end == 0,\n     |         ^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 52 warnings emitted\n\n"
+  }
+]

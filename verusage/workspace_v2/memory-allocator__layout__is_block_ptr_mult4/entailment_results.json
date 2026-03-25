@@ -1,0 +1,47 @@
+[
+  {
+    "name": "is_block_ptr1_external_body_unconstrained",
+    "type": "logical",
+    "code": "proof fn phi_1_is_block_ptr1_external_body_unconstrained(ptr: int, block_id: BlockId)\n    ensures\n        is_block_ptr1(ptr, block_id) == is_block_ptr1(ptr, block_id),\n{\n}",
+    "reason": "`is_block_ptr1` is `external_body` with uninterpreted semantics \u2014 it could be trivially true or false for any input, making `is_block_ptr` depend on a completely unconstrained predicate",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "block_ptr_aligned_external_body",
+    "type": "logical",
+    "code": "proof fn phi_2_block_ptr_aligned_external_body(ptr: *mut u8, block_id: BlockId)\n    requires\n        is_block_ptr(ptr, block_id),\n    ensures\n        ptr as int % align_of::<Node>() as int == 0,\n{\n    block_ptr_aligned_to_word();\n}",
+    "reason": "`block_ptr_aligned_to_word` is `external_body` \u2014 the alignment guarantee for block pointers is entirely trusted without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "size_of_node_external_body",
+    "type": "logical",
+    "code": "proof fn phi_3_size_of_node_external_body()\n    ensures\n        size_of::<Node>() == 8,\n        align_of::<Node>() == 8,\n{\n    size_of_node();\n}",
+    "reason": "`size_of_node` is `external_body` \u2014 the size and alignment of `Node` are trusted assertions that would silently become wrong if the struct layout changes",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "is_block_ptr_any_provenance",
+    "type": "behavioral",
+    "code": "proof fn phi_4_is_block_ptr_any_provenance(ptr: *mut u8, block_id1: BlockId, block_id2: BlockId)\n    requires\n        is_block_ptr(ptr, block_id1),\n        is_block_ptr(ptr, block_id2),\n    ensures\n        block_id1.page_id.segment_id.provenance == block_id2.page_id.segment_id.provenance,\n{\n}",
+    "reason": "Two `BlockId`s satisfying `is_block_ptr` for the same pointer must share provenance \u2014 but `is_block_ptr1` being unconstrained means nothing prevents contradictory `BlockId` metadata from satisfying the predicate simultaneously",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "is_block_ptr_mult8",
+    "type": "behavioral",
+    "code": "proof fn phi_5_is_block_ptr_mult8(ptr: *mut u8, block_id: BlockId)\n    requires\n        is_block_ptr(ptr, block_id),\n    ensures\n        ptr as int % 8 == 0,\n{\n    size_of_node();\n    block_ptr_aligned_to_word();\n}",
+    "reason": "Block pointers are 8-byte aligned via two chained `external_body` lemmas (`size_of_node` + `block_ptr_aligned_to_word`) \u2014 the stronger alignment (mod 8 vs mod 4 in `is_block_ptr_mult4`) relies entirely on unverified trust assumptions",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

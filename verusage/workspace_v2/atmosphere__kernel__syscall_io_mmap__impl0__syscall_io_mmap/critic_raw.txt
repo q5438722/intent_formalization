@@ -1,0 +1,17 @@
+===VERDICT_START===
+PHI: container_map_2m_allows_double_ownership
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The `container_map_2m` Ghost field has no disjointness constraint in the visible spec. The ensures clause demonstrates that two distinct containers can both contain the same page pointer, which Verus confirmed is satisfiable. A sound page allocator should enforce exclusive 2M page ownership across containers.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: container_map_1g_allows_double_ownership
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: Same pattern as container_map_2m — the `container_map_1g` Ghost field lacks any disjointness predicate. Two distinct containers can simultaneously claim the same 1G physical page, violating exclusive ownership that a page allocator should enforce.
+===VERDICT_END===
+
+===SUMMARY===
+Both candidates are true positives. The `container_map_2m` and `container_map_1g` Ghost fields mirror the same spec gap previously identified for `container_map_4k`: all three container map fields lack disjointness constraints, allowing multiple containers to claim the same physical page simultaneously. This is a systematic gap across all page sizes in the PageAllocator spec.
+===END_SUMMARY===

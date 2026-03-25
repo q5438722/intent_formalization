@@ -1,0 +1,47 @@
+[
+  {
+    "name": "page_aligned_implies_mask_identity_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_page_aligned_implies_mask_identity_external_body(addr: usize)\n    requires\n        addr <= MAX_PHYADDR,\n        aligned(addr as nat, PAGE_SIZE as nat),\n    ensures\n        addr & MASK_DIR_ADDR == addr,\n{\n    lemma_page_aligned_implies_mask_dir_addr_is_identity();\n}",
+    "reason": "`lemma_page_aligned_implies_mask_dir_addr_is_identity` is `external_body` \u2014 the bitwise identity for page-aligned addresses masked with MASK_DIR_ADDR is trusted without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 24 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "aligned_transitive_external_body",
+    "type": "logical",
+    "code": "proof fn phi_2_aligned_transitive_external_body(a: nat, b: nat, c: nat)\n    requires\n        0 < b,\n        0 < c,\n        aligned(a, b),\n        aligned(b, c),\n    ensures\n        aligned(a, c),\n{\n    aligned_transitive(a, b, c);\n}",
+    "reason": "`aligned_transitive` is `external_body` \u2014 alignment transitivity is a correct arithmetic fact but trusted without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 24 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "mask_l3_pg_addr_equals_mask_addr",
+    "type": "behavioral",
+    "code": "proof fn phi_3_mask_l3_pg_addr_equals_mask_addr(addr: usize)\n    requires\n        true,\n    ensures\n        addr & MASK_L3_PG_ADDR == addr & MASK_ADDR,\n{\n    lemma_aligned_addr_mask_facts(addr);\n}",
+    "reason": "MASK_L3_PG_ADDR and MASK_ADDR are both `bitmask_inc!(12, MAX_PHYADDR_WIDTH - 1)` \u2014 they are identical by definition, making this tautological rather than a meaningful spec property",
+    "entailed": true,
+    "verus_output": "verification results:: 24 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "max_phyaddr_width_external_body_const",
+    "type": "boundary",
+    "code": "proof fn phi_4_max_phyaddr_width_external_body_const()\n    ensures\n        32 <= MAX_PHYADDR_WIDTH,\n        MAX_PHYADDR_WIDTH <= 52,\n{\n    axiom_max_phyaddr_width_facts();\n}",
+    "reason": "`MAX_PHYADDR_WIDTH` is `external_body` const with value 52 but the axiom only guarantees 32..=52 \u2014 the spec is weaker than the implementation, leaving room for inconsistency if the actual value differs",
+    "entailed": true,
+    "verus_output": "verification results:: 24 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "l1_aligned_mask_addr_identity",
+    "type": "behavioral",
+    "code": "proof fn phi_5_l1_aligned_mask_addr_identity(addr: usize)\n    requires\n        addr <= MAX_PHYADDR,\n        aligned(addr as nat, L1_ENTRY_SIZE as nat),\n    ensures\n        addr & MASK_ADDR == addr,\n{\n    lemma_aligned_addr_mask_facts(addr);\n}",
+    "reason": "L1-aligned addresses within MAX_PHYADDR are identity under MASK_ADDR \u2014 depends on both `aligned_transitive` and `lemma_page_aligned_implies_mask_dir_addr_is_identity` external_body axioms",
+    "entailed": true,
+    "verus_output": "verification results:: 24 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

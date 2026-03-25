@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "create_key_namespace_diverges",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This models real Kubernetes API behavior where the URL path namespace (self.namespace) is authoritative, not the object body's metadata.namespace. The API server reconciles any mismatch by overwriting the object's namespace with the path namespace."
+  },
+  {
+    "phi": "update_key_ignores_obj_name",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Same Kubernetes pattern \u2014 the URL path (self.name, self.namespace) identifies the target resource, not the object payload's metadata. The API server uses the path to locate the resource and may overwrite the body's metadata fields. This is intentional modeling."
+  },
+  {
+    "phi": "get_then_update_key_ignores_obj_namespace",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Identical pattern to CreateRequest and UpdateRequest \u2014 the request-level namespace field models the URL path namespace which is authoritative in real Kubernetes. All four request types (Create, Update, UpdateStatus, GetThenUpdate) consistently use the same convention."
+  },
+  {
+    "phi": "controller_owner_ref_ignores_namespace",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This faithfully models real Kubernetes OwnerReference semantics \u2014 owner references contain kind, name, and uid but deliberately exclude namespace because owner references are namespace-scoped (owner must be in the same namespace as the owned object). UID provides global uniqueness, so cross-namespace collision with identical uid is impossible in practice since the API server assigns globally unique UIDs."
+  },
+  {
+    "phi": "unmarshal_skips_state_validation",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Unmarshal is intentionally separated from validation \u2014 it handles deserialization only, while state_validation is checked separately by the API server logic (via InstalledType.valid_object). The invariant `each_builtin_object_in_etcd_is_well_formed` ensures objects in etcd satisfy both unmarshallability and validity."
+  }
+]

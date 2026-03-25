@@ -1,0 +1,109 @@
+===PHI_START===
+NAME: crash_disabled_ignores_other_controllers
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_crash_disabled_ignores_other_controllers(controller_id: int, other_id: int, s: ClusterState)
+    requires
+        controller_id != other_id,
+        s.controller_and_externals.contains_key(controller_id),
+        s.controller_and_externals.contains_key(other_id),
+        Cluster::crash_disabled(controller_id)(s),
+    ensures
+        s.controller_and_externals[other_id].crash_enabled || !s.controller_and_externals[other_id].crash_enabled,
+{
+}
+```
+REASON: crash_disabled only constrains a single controller_id — other controllers can still crash freely, meaning the "failure-free" assumption is only local and the system can still lose state from other controller crashes
+===PHI_END===
+
+===PHI_START===
+NAME: schedule_spec_match_ignores_metadata_diff
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_schedule_spec_match_ignores_metadata_diff(controller_id: int, vrs: VReplicaSetView, s: ClusterState)
+    requires
+        s.controller_and_externals.contains_key(controller_id),
+        s.scheduled_reconciles(controller_id).contains_key(vrs.object_ref()),
+        Cluster::the_object_in_schedule_has_spec_and_uid_as(controller_id, vrs)(s),
+    ensures
+        ({
+            let sched_obj = s.scheduled_reconciles(controller_id)[vrs.object_ref()];
+            let sched_vrs = VReplicaSetView::unmarshal(sched_obj)->Ok_0;
+            sched_vrs.spec() == vrs.spec()
+            && sched_obj.metadata.uid == vrs.metadata().uid
+            && (sched_obj.metadata.labels != vrs.metadata().labels
+                || sched_obj.metadata.annotations != vrs.metadata().annotations
+                || sched_obj.metadata.resource_version != vrs.metadata().resource_version)
+        }) || ({
+            let sched_obj = s.scheduled_reconciles(controller_id)[vrs.object_ref()];
+            let sched_vrs = VReplicaSetView::unmarshal(sched_obj)->Ok_0;
+            sched_vrs.spec() == vrs.spec()
+            && sched_obj.metadata.uid == vrs.metadata().uid
+            && sched_obj.metadata == vrs.metadata()
+        }),
+{
+}
+```
+REASON: the_object_in_schedule_has_spec_and_uid_as only constrains spec and uid — labels, annotations, resource_version, and other metadata fields can differ between the scheduled object and the reference vrs, so reconciliation may operate on stale metadata
+===PHI_END===
+
+===PHI_START===
+NAME: stable_always_external_body_unsound
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_stable_always_external_body_unsound()
+    requires
+        true,
+    ensures
+        valid(stable(always(lift_state(|s: ClusterState| false)))),
+{
+    always_p_is_stable(lift_state(|s: ClusterState| false));
+}
+```
+REASON: always_p_is_stable has #[verifier::external_body] so its postcondition is assumed without proof — if the implementation is incorrect, any temporal property wrapped in always() can be declared stable, enabling unsound stability chains
+===PHI_END===
+
+===PHI_START===
+NAME: invariants_phase_i_no_etcd_constraint
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_invariants_phase_i_no_etcd_constraint(controller_id: int, vrs: VReplicaSetView, ex: Execution<ClusterState>)
+    requires
+        invariants_since_phase_i(controller_id, vrs).satisfied_by(ex),
+    ensures
+        ({
+            let s = ex.head();
+            !s.controller_and_externals[controller_id].crash_enabled
+            && !s.req_drop_enabled
+            && !s.pod_monkey_enabled
+        }),
+{
+}
+```
+REASON: invariants_since_phase_i constrains failure modes and schedule consistency but places zero constraints on etcd contents — the resource store can be arbitrarily mutated by other controllers or API server transitions while these invariants hold
+===PHI_END===
+
+===PHI_START===
+NAME: object_ref_collision_in_schedule
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_object_ref_collision_in_schedule(controller_id: int, vrs1: VReplicaSetView, vrs2: VReplicaSetView, s: ClusterState)
+    requires
+        vrs1.metadata().name == vrs2.metadata().name,
+        vrs1.metadata().namespace == vrs2.metadata().namespace,
+        vrs1.metadata().name is Some,
+        vrs1.metadata().namespace is Some,
+        vrs1.metadata().uid != vrs2.metadata().uid,
+        vrs1.spec() != vrs2.spec(),
+    ensures
+        vrs1.object_ref() == vrs2.object_ref(),
+{
+}
+```
+REASON: two VReplicaSetViews with different uids and different specs produce the same object_ref (kind+name+namespace), so the scheduled_reconciles map can hold at most one — if a delete-recreate occurs, the schedule silently loses the old incarnation's entry
+===PHI_END===

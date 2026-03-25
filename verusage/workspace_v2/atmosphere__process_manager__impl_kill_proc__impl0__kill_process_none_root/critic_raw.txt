@@ -1,0 +1,17 @@
+===VERDICT_START===
+PHI: get_proc_owned_threads_wf_without_full_wf
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The `get_proc` external_body ensures `ret.owned_threads.wf()` unconditionally given only `proc_perms_wf()` and `process_fields_wf()`, without requiring `self.wf()`. While `process_fields_wf()` does assert `owned_threads.wf()` for all procs in domain, the issue is that `get_proc`'s ensures clause leaks this independently of the full wf() predicate, allowing callers with weaker preconditions to derive structural invariants that should only hold under full well-formedness.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: unique_implies_no_duplicates_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `unique_implys_no_duplicates` is marked `#[verifier::external_body]`, meaning the bridge from the custom `unique()` predicate (element-wise distinctness over `spec_seq@` indexed by `len`) to vstd's `no_duplicates()` (which operates on `Seq::index`) is trusted without proof. If there's any mismatch between how `spec_seq@` indices relate to the `view()` sequence under non-wf conditions, or if `len` disagrees with `self@.len()`, this axiom could be unsound. The fact that it requires `wf()` mitigates this, but the bridge itself remains unverified.
+===VERDICT_END===
+
+===SUMMARY===
+Both candidates are true positives. The `get_proc_owned_threads_wf_without_full_wf` PHI identifies that the `get_proc` external_body leaks `owned_threads.wf()` under weaker preconditions than full `wf()`, though this is partially explained by `process_fields_wf()` already asserting this property — the concern is that external_body ensures clauses should ideally not duplicate what's already derivable from the spec predicates, as it creates redundant trusted assumptions. The `unique_implies_no_duplicates_external_body` PHI correctly identifies an unverified semantic bridge between two distinct notions of uniqueness — the custom `unique()` predicate and vstd's `no_duplicates()` — which is trusted via external_body rather than proved from first principles.
+===END_SUMMARY===

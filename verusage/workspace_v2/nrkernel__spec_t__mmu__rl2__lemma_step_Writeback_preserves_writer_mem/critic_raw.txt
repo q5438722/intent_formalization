@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: lemma_write_seq_first_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `lemma_write_seq_first` is `external_body` with `unimplemented!()` — the decomposition of `fold_left` into processing the first element then the rest is trusted without proof. This is a key lemma used in `lemma_step_Writeback_preserves_writer_mem`.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: writeback_preserves_writer_mem_via_external
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The writer memory preservation proof depends directly on the unverified `lemma_write_seq_first`. While the property itself is correct and desirable, the proof chain is only as strong as the external_body lemma — making this a transitive trust assumption.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: writeback_only_changes_pt_mem_at_addr
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This follows directly from `Map::insert` non-interference — inserting at one key doesn't affect other keys. This is a standard vstd map axiom and correct behavior.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: writeback_non_writer_core_empty_sbuf
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Non-writer cores have empty store buffers (by `non_writer_sbufs_are_empty`), so `core_mem(other_core) == pt_mem.write_seq(seq![]) == post.pt_mem`. After writeback, `post.pt_mem == pre.pt_mem.write(addr, value)`, so `post.pt_mem.mem[addr] == value`. This is correct TSO global visibility semantics.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: writer_sbuf_unique_implies_no_duplicate_addrs
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is the contrapositive of `writer_sbuf_entries_are_unique` — if `i != j` implies different addresses, then same address implies `i == j`. This is correct and is simply restating the invariant in a different logical form.
+===VERDICT_END===
+
+===SUMMARY===
+Two true positives: `lemma_write_seq_first` is an external_body lemma trusting the fold_left decomposition without proof, and the writeback writer memory preservation depends transitively on this unverified lemma. Three false positives: writeback non-interference at other addresses follows from Map::insert, non-writer core global visibility is correct TSO semantics, and store buffer address uniqueness is a restatement of the existing invariant.
+===END_SUMMARY===

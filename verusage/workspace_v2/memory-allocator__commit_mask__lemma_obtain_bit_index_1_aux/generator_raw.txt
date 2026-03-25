@@ -1,0 +1,104 @@
+===PHI_START===
+NAME: nonzero_has_set_bit
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_nonzero_has_set_bit(a: u64) -> (i: u64)
+    requires
+        a != 0,
+    ensures
+        i < 64,
+        is_bit_set!(a, i),
+{
+    assert(a >> 64 == 0) by (bit_vector);
+    lemma_obtain_bit_index_1_aux(a, 64)
+}
+```
+REASON: Any nonzero u64 has a set bit below 64 — this is mathematically correct and expected, serving as a sanity check that the lemma is usable at the top level
+===PHI_END===
+
+===PHI_START===
+NAME: hi_1_forces_bit_0
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_hi_1_forces_bit_0(a: u64) -> (i: u64)
+    requires
+        a != 0,
+        a >> 1 == 0,
+    ensures
+        i == 0,
+        a == 1,
+{
+    let i = lemma_obtain_bit_index_1_aux(a, 1);
+    assert(a == 1) by (bit_vector) requires a != 0, a >> 1 == 0;
+    i
+}
+```
+REASON: With hi=1 the only possible index is 0 and a must be 1 — tests that the recursion base case is tight
+===PHI_END===
+
+===PHI_START===
+NAME: result_always_less_than_64
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_result_always_less_than_64(a: u64, hi: u64) -> (i: u64)
+    requires
+        a != 0,
+        hi <= 64,
+        a >> hi == 0,
+    ensures
+        i < 64,
+{
+    lemma_obtain_bit_index_1_aux(a, hi)
+}
+```
+REASON: Since `i < hi` and `hi <= 64`, the result is always below 64 — tests that the bound propagates correctly through the ensures
+===PHI_END===
+
+===PHI_START===
+NAME: bit_set_implies_nonzero_mask
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_bit_set_implies_nonzero_mask(a: u64, hi: u64)
+    requires
+        a != 0,
+        hi <= 64,
+        a >> hi == 0,
+    ensures
+        ({
+            let i = lemma_obtain_bit_index_1_aux(a, hi);
+            a & (1u64 << i) != 0
+        }),
+{
+    let i = lemma_obtain_bit_index_1_aux(a, hi);
+    assert(a & (1u64 << i) != 0) by (bit_vector)
+        requires is_bit_set!(a, i), i < 64;
+}
+```
+REASON: `is_bit_set(a, i)` should imply `a & (1 << i) != 0` — tests that the ensures is strong enough to derive nonzero mask
+===PHI_END===
+
+===PHI_START===
+NAME: power_of_two_returns_exact_bit
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_power_of_two_returns_exact_bit()
+    ensures
+        ({
+            let i = lemma_obtain_bit_index_1_aux(8, 64);
+            i == 3
+        }),
+{
+    assert(8u64 >> 64 == 0) by (bit_vector);
+    let i = lemma_obtain_bit_index_1_aux(8, 64);
+    assert(is_bit_set!(8u64, i)) by { }
+    assert(i == 3) by (bit_vector)
+        requires is_bit_set!(8u64, i), i < 64;
+}
+```
+REASON: For a=8 (2^3) the only set bit is bit 3 — if the lemma returns a different index, the is_bit_set ensures would be violated; tests uniqueness for power-of-two inputs
+===PHI_END===

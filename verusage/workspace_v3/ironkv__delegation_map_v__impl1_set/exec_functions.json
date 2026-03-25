@@ -1,0 +1,6 @@
+[
+  {
+    "name": "set",
+    "code": "fn set(&mut self, i: usize, k: K)\n        requires old(self).valid(),\n                 i < old(self)@.len(),\n                 i > 0 ==> old(self)@[i as int - 1].cmp_spec(k).lt(),\n                 i < old(self)@.len() - 1 ==> k.cmp_spec(old(self)@[i as int + 1]).lt(),\n        ensures\n            self.valid(),\n            self@ == old(self)@.update(i as int, k),\n    {\n        self.v.set(i, k);\n\n        assert forall |m, n| 0 <= m < n < self@.len() implies #[trigger](self@[m].cmp_spec(self@[n]).lt()) by {\n            K::cmp_properties();\n        }\n\n        assert forall |i, j| 0 <= i < self@.len() && 0 <= j < self@.len() && i != j implies self@[i] != self@[j] by {\n            K::cmp_properties();\n        }\n\n    }"
+  }
+]

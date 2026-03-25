@@ -1,0 +1,37 @@
+[
+  {
+    "name": "free_ioids_not_consumed",
+    "target_fn": "alloc_iommu_table",
+    "type": "boundary",
+    "code": "proof fn phi_1_free_ioids_not_consumed(old_self: MemoryManager, new_self: MemoryManager, new_proc_ptr: ProcPtr, ret: IOid)\n    requires\n        old_self.wf(),\n        old_self.free_ioids.len() > 0,\n        new_self.wf(),\n        new_self.free_pcids =~= old_self.free_pcids,\n        new_self.iommu_tables =~= old_self.iommu_tables,\n        new_self.iommu_table_pages =~= old_self.iommu_table_pages,\n        forall|p: IOid| #![trigger new_self.ioid_active(p)] p != ret ==> new_self.ioid_active(p) == old_self.ioid_active(p),\n        new_self.ioid_active(ret),\n        !old_self.ioid_active(ret),\n    ensures\n        new_self.free_ioids.len() >= old_self.free_ioids.len(),\n{\n}",
+    "reason": "If the free ioid list never shrinks, the allocator can hand out ioids without consuming resources, allowing unbounded allocation"
+  },
+  {
+    "name": "alloc_activates_extra_pcid",
+    "target_fn": "alloc_iommu_table",
+    "type": "logical",
+    "code": "proof fn phi_2_alloc_activates_extra_pcid(old_self: MemoryManager, new_self: MemoryManager, new_proc_ptr: ProcPtr, ret: IOid, pcid: Pcid)\n    requires\n        old_self.wf(),\n        old_self.free_ioids.len() > 0,\n        new_self.wf(),\n        new_self.free_pcids =~= old_self.free_pcids,\n        new_self.page_tables =~= old_self.page_tables,\n        forall|p: Pcid| #![trigger new_self.pcid_active(p)] new_self.pcid_active(p) == old_self.pcid_active(p),\n        new_self.ioid_active(ret),\n        !old_self.ioid_active(ret),\n        !old_self.pcid_active(pcid),\n        0 <= pcid < PCID_MAX,\n    ensures\n        new_self.pcid_active(pcid),\n{\n}",
+    "reason": "If allocating an ioid causes a previously-inactive pcid to become active, ioid and pcid allocation domains are not properly isolated"
+  },
+  {
+    "name": "other_ioid_mapping_corrupted",
+    "target_fn": "alloc_iommu_table",
+    "type": "behavioral",
+    "code": "proof fn phi_3_other_ioid_mapping_corrupted(old_self: MemoryManager, new_self: MemoryManager, new_proc_ptr: ProcPtr, ret: IOid, other: IOid)\n    requires\n        old_self.wf(),\n        old_self.free_ioids.len() > 0,\n        new_self.wf(),\n        new_self.iommu_tables =~= old_self.iommu_tables,\n        forall|p: IOid| #![trigger new_self.ioid_active(p)] p != ret ==> new_self.ioid_active(p) == old_self.ioid_active(p),\n        forall|p: IOid|\n            #![trigger new_self.ioid_active(p)]\n            #![trigger new_self.get_iommu_table_mapping_by_ioid(p)]\n            new_self.ioid_active(p) && p != ret ==> old_self.get_iommu_table_mapping_by_ioid(p) == new_self.get_iommu_table_mapping_by_ioid(p),\n        new_self.ioid_active(ret),\n        !old_self.ioid_active(ret),\n        old_self.ioid_active(other),\n        other != ret,\n    ensures\n        new_self.get_iommu_table_mapping_by_ioid(other) != old_self.get_iommu_table_mapping_by_ioid(other),\n{\n}",
+    "reason": "If allocating a new ioid silently corrupts another active ioid's IOMMU page-table mapping, memory isolation between IO devices is broken"
+  },
+  {
+    "name": "alloc_wrong_proc_ptr",
+    "target_fn": "alloc_iommu_table",
+    "type": "behavioral",
+    "code": "proof fn phi_4_alloc_wrong_proc_ptr(old_self: MemoryManager, new_self: MemoryManager, new_proc_ptr: ProcPtr, ret: IOid)\n    requires\n        old_self.wf(),\n        old_self.free_ioids.len() > 0,\n        new_self.wf(),\n        new_self.ioid_active(ret),\n        !old_self.ioid_active(ret),\n        new_self.ioid_to_proc_ptr(ret) == new_proc_ptr,\n        new_proc_ptr != 0usize,\n    ensures\n        new_self.ioid_to_proc_ptr(ret) == 0usize,\n{\n}",
+    "reason": "If the newly allocated ioid is bound to a zero/null proc pointer instead of the requested one, device-to-process ownership is lost"
+  },
+  {
+    "name": "ret_mapping_nonempty",
+    "target_fn": "alloc_iommu_table",
+    "type": "logical",
+    "code": "proof fn phi_5_ret_mapping_nonempty(old_self: MemoryManager, new_self: MemoryManager, new_proc_ptr: ProcPtr, ret: IOid, va: VAddr)\n    requires\n        old_self.wf(),\n        old_self.free_ioids.len() > 0,\n        new_self.wf(),\n        new_self.iommu_tables =~= old_self.iommu_tables,\n        new_self.iommu_table_pages =~= old_self.iommu_table_pages,\n        new_self.ioid_active(ret),\n        !old_self.ioid_active(ret),\n        new_self.get_iommu_table_mapping_by_ioid(ret).dom() == Set::<PagePtr>::empty(),\n    ensures\n        new_self.get_iommu_table_mapping_by_ioid(ret).dom().contains(va),\n{\n}",
+    "reason": "If the freshly allocated IOMMU table already contains mappings, the new IO device could access stale physical memory from a prior owner, breaking DMA isolation"
+  }
+]

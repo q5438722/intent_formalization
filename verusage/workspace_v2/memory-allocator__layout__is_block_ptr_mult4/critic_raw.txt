@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: is_block_ptr1_external_body_unconstrained
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures is a tautology (`x == x`). While `is_block_ptr1` being `external_body` is noteworthy, this φ doesn't demonstrate any actual spec gap — it proves nothing beyond reflexivity.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: block_ptr_aligned_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `block_ptr_aligned_to_word` is `external_body` trusting that all block pointers are aligned to `align_of::<Node>()` without proof. This alignment property is critical for safe pointer casting and depends on unverified assumptions about the allocator's layout.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: size_of_node_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `size_of_node` is `external_body` trusting that `Node` has size 8 and alignment 8. While correct for the current single-field struct on 64-bit, this is unverified and would silently break if the struct definition changes.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: is_block_ptr_any_provenance
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This follows directly from `is_block_ptr`'s definition: both require `ptr@.provenance == block_id.page_id.segment_id.provenance`, so if both hold for the same `ptr`, the provenances must be equal. This is correct and expected — not a spec gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: is_block_ptr_mult8
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The 8-byte alignment of block pointers depends on two chained `external_body` lemmas: `size_of_node` (asserting `align_of::<Node>() == 8`) and `block_ptr_aligned_to_word` (asserting alignment to `align_of::<Node>()`). Both are trusted without proof, and the existing `is_block_ptr_mult4` only proves mod-4 alignment in the source, suggesting the stronger mod-8 property relies entirely on unverified assumptions.
+===VERDICT_END===
+
+===SUMMARY===
+Three true positives identify external_body trust gaps: `block_ptr_aligned_to_word` trusts the alignment property without proof, `size_of_node` trusts the layout of `Node`, and their combination enables the mod-8 alignment guarantee that is stronger than what the verified `is_block_ptr_mult4` proves (mod-4). Two false positives: the tautological `is_block_ptr1` reflexivity proves nothing, and the shared-provenance property is a correct consequence of `is_block_ptr`'s definition.
+===END_SUMMARY===

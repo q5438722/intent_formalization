@@ -1,0 +1,47 @@
+[
+  {
+    "name": "lemma_bits_align_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_lemma_bits_align_external_body(vaddr: usize)\n    ensures\n        l0_bits!(align_to_usize(vaddr, L1_ENTRY_SIZE)) == l0_bits!(vaddr),\n        l1_bits!(align_to_usize(vaddr, L1_ENTRY_SIZE)) == l1_bits!(vaddr),\n{\n    lemma_bits_align_to_usize(vaddr);\n}",
+    "reason": "`lemma_bits_align_to_usize` is `external_body` \u2014 all 13 bit-alignment preservation properties are trusted without proof",
+    "entailed": true,
+    "verus_output": "renamed to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_iter_walk_result_vbase_equal_aux1/phi_1_lemma_bits_align_external_body.rs:171:9\n    |\n171 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "iter_walk_path_idempotent_via_external_body",
+    "type": "logical",
+    "code": "proof fn phi_2_iter_walk_path_idempotent_via_external_body(mem: PTMem, vaddr: usize)\n    ensures\n        iter_walk(mem, iter_walk(mem, vaddr).result().vaddr()).path == iter_walk(mem, vaddr).path,\n{\n    lemma_iter_walk_result_vbase_equal_aux1(mem, vaddr);\n}",
+    "reason": "`lemma_iter_walk_result_vbase_equal_aux1` depends on the external_body `lemma_bits_align_to_usize` \u2014 the walk idempotency proof chain is only as strong as the unverified bit-alignment lemma",
+    "entailed": true,
+    "verus_output": "epr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_iter_walk_result_vbase_equal_aux1/phi_2_iter_walk_path_idempotent_via_external_body.rs:171:9\n    |\n171 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "walk_next_l0_reads_pml4_offset",
+    "type": "behavioral",
+    "code": "proof fn phi_3_walk_next_l0_reads_pml4_offset(mem: PTMem, vaddr: usize)\n    ensures\n        ({\n            reveal(walk_next);\n            let w = walk_next(mem, Walk { vaddr, path: seq![], complete: false });\n            w.path.len() == 1\n            && w.path[0].0 == add(mem.pml4, mul(l0_bits!(vaddr), WORD_SIZE))\n        }),\n{\n    reveal(walk_next);\n}",
+    "reason": "The first walk step reads from pml4 + l0_bits * 8 \u2014 tests that the L0 entry address computation is correct and the walk always produces a 1-entry path after the first step",
+    "entailed": false,
+    "verus_output": "pace_v2/nrkernel__spec_t__mmu__rl2__lemma_iter_walk_result_vbase_equal_aux1/phi_3_walk_next_l0_reads_pml4_offset.rs:493:9\n    |\n493 | /         ({\n494 | |             reveal(walk_next);\n495 | |             let w = walk_next(mem, Walk { vaddr, path: seq![], complete: false });\n496 | |             w.path.len() == 1\n497 | |             && w.path[0].0 == add(mem.pml4, mul(l0_bits!(vaddr), WORD_SIZE))\n498 | |         }),\n    | |__________^\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "all_mb0_bits_are_zero_external_body",
+    "type": "logical",
+    "code": "proof fn phi_4_all_mb0_bits_are_zero_external_body(entry: usize, layer: nat)\n    ensures\n        (PDE { entry, layer: Ghost(layer) }).all_mb0_bits_are_zero()\n        || !(PDE { entry, layer: Ghost(layer) }).all_mb0_bits_are_zero(),\n{\n}",
+    "reason": "`all_mb0_bits_are_zero` is `external_body` \u2014 the predicate governing PDE validity is entirely opaque with no specification",
+    "entailed": true,
+    "verus_output": "ed to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_iter_walk_result_vbase_equal_aux1/phi_4_all_mb0_bits_are_zero_external_body.rs:171:9\n    |\n171 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "walk_result_path_len1_page_arbitrary",
+    "type": "boundary",
+    "code": "proof fn phi_5_walk_result_path_len1_page_arbitrary(walk: Walk)\n    requires\n        walk.path.len() == 1,\n        walk.path[0].1 is Page,\n        walk.complete,\n    ensures\n        walk.result() is Valid,\n{\n}",
+    "reason": "`Walk::result` handles path lengths 2, 3, 4 for Page entries but falls through to `arbitrary()` for path.len() == 1 \u2014 a single-entry Page walk has undefined result",
+    "entailed": true,
+    "verus_output": "d to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_iter_walk_result_vbase_equal_aux1/phi_5_walk_result_path_len1_page_arbitrary.rs:171:9\n    |\n171 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

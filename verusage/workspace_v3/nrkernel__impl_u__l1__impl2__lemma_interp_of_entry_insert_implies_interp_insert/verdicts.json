@@ -1,0 +1,20 @@
+[
+  {
+    "phi": "empty_arch_satisfies_inv",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`Arch::inv()` with an empty layers sequence vacuously satisfies all quantified conditions, yet such an architecture is meaningless for x86 page tables. The spec likely intends `layers.len() > 0` (or a specific layer count). This is a genuine spec weakness \u2014 the invariant is too permissive at the boundary."
+  },
+  {
+    "phi": "unaligned_base_vaddr_well_formed",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The commented-out alignment check `//&&& aligned(self.base_vaddr, self.entry_size() * self.num_entries())` in `well_formed` is clearly intentional but disabled, allowing directories with arbitrary unaligned base addresses. This is a real spec gap \u2014 the code acknowledges alignment should be checked but currently doesn't enforce it."
+  },
+  {
+    "phi": "all_invalid_entries_satisfy_inv",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "An all-Invalid directory representing an empty (unmapped) page table region is perfectly valid and expected in a real MMU. Not every page table entry needs to map something \u2014 unmapped regions are the norm. This is not a spec gap; it's correct by design."
+  }
+]

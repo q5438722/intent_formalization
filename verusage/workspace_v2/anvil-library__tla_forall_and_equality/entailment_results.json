@@ -1,0 +1,47 @@
+[
+  {
+    "name": "tla_forall_unfold_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_1_tla_forall_unfold_intensional_bridge(ex: Execution<int>, a_to_p: spec_fn(int) -> TempPred<int>, a: int)\n    requires\n        tla_forall(a_to_p).satisfied_by(ex),\n    ensures\n        a_to_p(a).satisfied_by(ex),\n{\n    tla_forall_unfold::<int, int>(ex, a_to_p);\n}",
+    "reason": "tla_forall_unfold is external_body bridging tla_forall's TempPred::new closure-wrapped forall to a bare forall \u2014 resolves closure identity gap without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "temp_pred_equality_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_2_temp_pred_equality_intensional_bridge(p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.entails(q),\n        q.entails(p),\n    ensures\n        p == q,\n{\n    temp_pred_equality::<int>(p, q);\n}",
+    "reason": "temp_pred_equality is external_body forcing intensional equality from mutual entailment \u2014 structurally distinct closures collapsed to equal without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "mutual_entailment_derives_false_if_distinct",
+    "type": "logical",
+    "code": "proof fn phi_3_mutual_entailment_derives_false_if_distinct(p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.entails(q),\n        q.entails(p),\n        p !== q,\n    ensures\n        false,\n{\n    temp_pred_equality::<int>(p, q);\n}",
+    "reason": "temp_pred_equality forces p == q from mutual entailment \u2014 if two preds are intensionally distinct but semantically equivalent this derives false",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "tla_forall_and_equality_bridge",
+    "type": "logical",
+    "code": "proof fn phi_4_tla_forall_and_equality_bridge(a_to_p: spec_fn(int) -> TempPred<int>, q: TempPred<int>)\n    ensures\n        tla_forall(|a: int| a_to_p(a).and(q)) == tla_forall(a_to_p).and(q),\n{\n    tla_forall_and_equality::<int, int>(a_to_p, q);\n}",
+    "reason": "chains both external_body axioms to force intensional equality between tla_forall(|a| p(a).and(q)) and tla_forall(p).and(q) \u2014 structurally distinct nested closures collapsed",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "tla_forall_and_arbitrary_witness",
+    "type": "boundary",
+    "code": "proof fn phi_5_tla_forall_and_arbitrary_witness(a_to_p: spec_fn(int) -> TempPred<int>, q: TempPred<int>, ex: Execution<int>)\n    requires\n        tla_forall(|a: int| a_to_p(a).and(q)).satisfied_by(ex),\n    ensures\n        q.satisfied_by(ex),\n{\n    tla_forall_and_equality::<int, int>(a_to_p, q);\n}",
+    "reason": "the proof of tla_forall_and_equality uses arbitrary() to extract q from the conjunction \u2014 if the type A is uninhabited, tla_forall is vacuously true but q might not hold, yet the equality still forces it",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

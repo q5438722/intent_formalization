@@ -1,0 +1,47 @@
+[
+  {
+    "name": "remove_proc_owned_threads_unconstrained",
+    "type": "logical",
+    "code": "proof fn phi_1_remove_proc_owned_threads_unconstrained(\n    root_proc: ProcPtr,\n    proc_tree_dom: Set<ProcPtr>,\n    old_proc_perms: Map<ProcPtr, PointsTo<Process>>,\n    new_proc_perms: Map<ProcPtr, PointsTo<Process>>,\n    proc_ptr: ProcPtr,\n    t: ThreadPtr,\n)\n    requires\n        remove_proc_ensures(root_proc, proc_tree_dom, old_proc_perms, new_proc_perms, proc_ptr),\n        old_proc_perms[proc_ptr].value().owned_threads@.contains(t),\n    ensures\n        !new_proc_perms.dom().contains(proc_ptr) || !new_proc_perms[proc_ptr].value().owned_threads@.contains(t),\n{\n}",
+    "reason": "`remove_proc_ensures` removes the proc from the tree domain but never constrains cleanup of its `owned_threads` Ghost field \u2014 threads owned by the removed process could remain dangling",
+    "entailed": true,
+    "verus_output": "`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__process_tree__remove_proc_preserve_tree_inv_7/phi_1_remove_proc_owned_threads_unconstrained.rs:260:58\n    |\n260 |             ==> proc_perms[p_ptr].value().parent_rev_ptr.is_Some()\n    |                                                          ^^^^^^^\n\nwarning: 4 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "remove_proc_subtree_set_not_cleaned",
+    "type": "logical",
+    "code": "proof fn phi_2_remove_proc_subtree_set_not_cleaned(\n    root_proc: ProcPtr,\n    proc_tree_dom: Set<ProcPtr>,\n    old_proc_perms: Map<ProcPtr, PointsTo<Process>>,\n    new_proc_perms: Map<ProcPtr, PointsTo<Process>>,\n    proc_ptr: ProcPtr,\n    parent_ptr: ProcPtr,\n)\n    requires\n        remove_proc_ensures(root_proc, proc_tree_dom, old_proc_perms, new_proc_perms, proc_ptr),\n        old_proc_perms[proc_ptr].value().parent == Some(parent_ptr),\n        proc_tree_dom.contains(parent_ptr),\n    ensures\n        !new_proc_perms[parent_ptr].value().subtree_set@.contains(proc_ptr),\n{\n}",
+    "reason": "When a proc is removed, its parent's `subtree_set` should no longer contain the removed proc \u2014 if `remove_proc_ensures` doesn't constrain parent subtree cleanup, stale references persist",
+    "entailed": true,
+    "verus_output": "Some`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__process_tree__remove_proc_preserve_tree_inv_7/phi_2_remove_proc_subtree_set_not_cleaned.rs:260:58\n    |\n260 |             ==> proc_perms[p_ptr].value().parent_rev_ptr.is_Some()\n    |                                                          ^^^^^^^\n\nwarning: 4 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "seq_remove_lemma_external_body_unsound",
+    "type": "logical",
+    "code": "proof fn phi_3_seq_remove_lemma_external_body_unsound()\n    ensures\n        forall|s: Seq<int>, v: int, i: int|\n            #![trigger s.subrange(0,i), s.contains(v)]\n            0 <= i < s.len() && s.contains(v) && s[i] == v && s.no_duplicates()\n            ==> !s.subrange(0, i).add(s.subrange(i + 1, s.len() as int)).contains(v),\n{\n    seq_remove_lemma::<int>();\n}",
+    "reason": "`seq_remove_lemma` is external_body \u2014 if the trusted axiom is wrong about removing a unique element eliminating it from the spliced sequence, proofs depending on it (like `remove_proc_preserve_tree_inv_7`) would be unsound",
+    "entailed": true,
+    "verus_output": "e`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__process_tree__remove_proc_preserve_tree_inv_7/phi_3_seq_remove_lemma_external_body_unsound.rs:260:58\n    |\n260 |             ==> proc_perms[p_ptr].value().parent_rev_ptr.is_Some()\n    |                                                          ^^^^^^^\n\nwarning: 4 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "remove_proc_sibling_uppertree_unchanged",
+    "type": "logical",
+    "code": "proof fn phi_4_remove_proc_sibling_uppertree_unchanged(\n    root_proc: ProcPtr,\n    proc_tree_dom: Set<ProcPtr>,\n    old_proc_perms: Map<ProcPtr, PointsTo<Process>>,\n    new_proc_perms: Map<ProcPtr, PointsTo<Process>>,\n    proc_ptr: ProcPtr,\n    sibling: ProcPtr,\n)\n    requires\n        remove_proc_ensures(root_proc, proc_tree_dom, old_proc_perms, new_proc_perms, proc_ptr),\n        proc_tree_dom.contains(sibling),\n        sibling != proc_ptr,\n    ensures\n        new_proc_perms[sibling].value().uppertree_seq@ == old_proc_perms[sibling].value().uppertree_seq@,\n{\n}",
+    "reason": "`remove_proc_ensures` should preserve uppertree_seq for all non-removed procs \u2014 if it doesn't constrain this, the tree ancestry path could silently change for siblings",
+    "entailed": true,
+    "verus_output": "`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__process_tree__remove_proc_preserve_tree_inv_7/phi_4_remove_proc_sibling_uppertree_unchanged.rs:260:58\n    |\n260 |             ==> proc_perms[p_ptr].value().parent_rev_ptr.is_Some()\n    |                                                          ^^^^^^^\n\nwarning: 4 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "sll_len_without_wf_returns_value_list_len",
+    "type": "logical",
+    "code": "proof fn phi_5_sll_len_without_wf_returns_value_list_len(sll: StaticLinkedList<ProcPtr, CONTAINER_PROC_LIST_LEN>)\n    requires\n        !sll.wf(),\n    ensures\n        sll.len() == sll.value_list_len,\n{\n}",
+    "reason": "The external_body `len()` unconditionally ensures `l == self.value_list_len` regardless of `wf()` \u2014 a malformed list reports its cached length field which may disagree with actual spec_seq length, enabling inconsistent reasoning",
+    "entailed": false,
+    "verus_output": "                                                     ^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope\n    |\nhelp: you might be missing a type parameter\n    |\n476 | proof fn phi_5_sll_len_without_wf_returns_value_list_len<CONTAINER_PROC_LIST_LEN>(sll: StaticLinkedList<ProcPtr, CONTAINER_PROC_LIST_LEN>)\n    |                                                         +++++++++++++++++++++++++\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0425`.\n",
+    "timed_out": false
+  }
+]

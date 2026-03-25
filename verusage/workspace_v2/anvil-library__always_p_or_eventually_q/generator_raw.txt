@@ -1,0 +1,90 @@
+===PHI_START===
+NAME: execution_equality_forces_fn_equality
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_execution_equality_forces_fn_equality(f: spec_fn(nat) -> int, g: spec_fn(nat) -> int)
+    requires
+        forall |i: nat| #[trigger] f(i) == g(i),
+    ensures
+        f == g,
+{
+    let ex1 = Execution { nat_to_state: f };
+    let ex2 = Execution { nat_to_state: g };
+    execution_equality::<int>(ex1, ex2);
+}
+```
+REASON: execution_equality is external_body forcing intensional equality of spec_fn from pointwise extensional equivalence — two structurally distinct closures are collapsed to equal
+===PHI_END===
+
+===PHI_START===
+NAME: not_eventually_implies_always_not
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_not_eventually_implies_always_not(ex: Execution<int>, p: TempPred<int>)
+    requires
+        not(eventually(p)).satisfied_by(ex),
+    ensures
+        always(not(p)).satisfied_by(ex),
+{
+    not_eventually_unfold::<int>(ex, p);
+}
+```
+REASON: not_eventually_unfold extracts a bare forall of negations, and repacking into always(not(p)) requires the SMT solver to close the intensional gap between the always closure and the bare quantifier — if this verifies, the axiom is strong enough to enable duality rewrites
+===PHI_END===
+
+===PHI_START===
+NAME: always_p_or_eventually_q_rec_no_bound
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_always_p_or_eventually_q_rec_no_bound(ex: Execution<int>, next: TempPred<int>, p: TempPred<int>, q: TempPred<int>)
+    requires
+        forall |idx| p.satisfied_by(ex.suffix(idx)) && next.satisfied_by(ex.suffix(idx)) ==> p.satisfied_by(ex.suffix(idx + 1)) || q.satisfied_by(ex.suffix(idx + 1)),
+        forall |idx| next.satisfied_by(#[trigger] ex.suffix(idx)),
+        forall |idx| !q.satisfied_by(#[trigger] ex.suffix(idx)),
+        p.satisfied_by(ex),
+    ensures
+        forall |i: nat| p.satisfied_by(#[trigger] ex.suffix(i)),
+{
+    assert forall |i: nat| p.satisfied_by(#[trigger] ex.suffix(i)) by {
+        always_p_or_eventually_q_rec::<int>(ex, next, p, q, i);
+    };
+}
+```
+REASON: always_p_or_eventually_q_rec is external_body with a decreases clause on i but no base case verification — the induction is trusted without proof, and composing it over all i yields unbounded invariance from a single-step induction axiom
+===PHI_END===
+
+===PHI_START===
+NAME: suffix_composition_via_execution_equality
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_suffix_composition_via_execution_equality(ex: Execution<int>, i: nat, j: nat)
+    ensures
+        ex.suffix(i).suffix(j) == ex.suffix(i + j),
+{
+    execution_equality::<int>(ex.suffix(i).suffix(j), ex.suffix(i + j));
+}
+```
+REASON: ex.suffix(i).suffix(j) produces a doubly-nested closure intensionally distinct from ex.suffix(i+j) — execution_equality collapses them without proof, and always_p_or_eventually_q depends on this at every inductive step
+===PHI_END===
+
+===PHI_START===
+NAME: always_propagate_then_unfold_double_suffix
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_always_propagate_then_unfold_double_suffix(ex: Execution<int>, p: TempPred<int>, i: nat, j: nat)
+    requires
+        always(p).satisfied_by(ex),
+    ensures
+        p.satisfied_by(ex.suffix(i).suffix(j)),
+{
+    always_propagate_forwards::<int>(ex, p, i);
+    always_unfold::<int>(ex.suffix(i), p);
+}
+```
+REASON: chaining always_propagate_forwards with always_unfold yields p on doubly-nested suffix ex.suffix(i).suffix(j) which is intensionally distinct from ex.suffix(i+j) — the two external_body axioms compose to resolve arbitrary suffix nesting without an explicit composition lemma
+===PHI_END===

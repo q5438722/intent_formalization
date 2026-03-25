@@ -1,0 +1,95 @@
+Here are 5 candidate undesirable properties targeting the listed spec functions:
+
+===PHI_START===
+NAME: zero_layer_arch_satisfies_inv
+TARGET_FN: Arch::inv
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_zero_layer_arch_satisfies_inv(arch: Arch)
+    requires
+        arch.layers.len() == 0,
+    ensures
+        arch.inv(),
+{
+}
+```
+REASON: A zero-layer architecture is degenerate (no translation at all) but would satisfy the invariant since all forall-quantifiers are vacuously true
+===PHI_END===
+
+===PHI_START===
+NAME: adjacent_entry_bases_collide
+TARGET_FN: Arch::entry_base
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_adjacent_entry_bases_collide(arch: Arch, layer: nat, base: nat, i: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+        i + 1 < arch.num_entries(layer),
+    ensures
+        arch.entry_base(layer, base, i) == arch.entry_base(layer, base, (i + 1) as nat),
+{
+}
+```
+REASON: Two adjacent entries at the same layer sharing the same base address would mean distinct page table slots map the same virtual address region
+===PHI_END===
+
+===PHI_START===
+NAME: page_frame_size_zero_under_inv
+TARGET_FN: Directory::pages_match_entry_size
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_page_frame_size_zero_under_inv(d: Directory, i: nat)
+    requires
+        d.inv(),
+        i < d.entries.len(),
+        d.entries[i as int] is Page,
+    ensures
+        d.entries[i as int]->Page_0.frame.size == 0,
+{
+}
+```
+REASON: A page with a zero-size frame in a valid directory would represent a nonsensical mapping to no physical memory
+===PHI_END===
+
+===PHI_START===
+NAME: update_invalid_keeps_mapping
+TARGET_FN: Directory::update
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_update_invalid_keeps_mapping(d: Directory, j: nat)
+    requires
+        d.inv(),
+        j < d.num_entries(),
+        d.entries[j as int] is Page,
+    ensures
+        d.update(j, NodeEntry::Invalid).interp_of_entry(j) !== Map::<nat, PTE>::empty(),
+{
+}
+```
+REASON: Replacing a Page entry with Invalid should erase the mapping at that slot; a non-empty interp would mean unmapping fails to remove the translation
+===PHI_END===
+
+===PHI_START===
+NAME: nonzero_subdir_base_equals_parent
+TARGET_FN: Directory::directories_are_in_next_layer
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_nonzero_subdir_base_equals_parent(d: Directory, i: nat)
+    requires
+        d.inv(),
+        i < d.entries.len(),
+        i > 0,
+        d.entries[i as int] is Directory,
+    ensures
+        d.entries[i as int]->Directory_0.base_vaddr == d.base_vaddr,
+{
+}
+```
+REASON: A non-first subdirectory sharing the parent's base_vaddr would mean distinct directory entries govern the same virtual address range, breaking isolation
+===PHI_END===

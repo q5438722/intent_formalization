@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: repeatn_parse_length_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `RepeatN::lemma_parse_length` is `external_body` with `unimplemented!()`. While a verified helper `lemma_parse_length_helper` exists that proves the same property, it is not wired into the trait implementation. The trait obligation is fulfilled by an unverified stub.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: inner_parse_length_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `SecureSpecCombinator::lemma_parse_length` is `external_body` with `unimplemented!()` at the trait level. This is the foundational parse-length bound axiom — every combinator's length guarantee rests on this unverified assumption.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: parse_consumed_monotone
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The monotonicity proof is verified by induction: each step adds `k >= 0` (from `lemma_parse_length` on the inner combinator ensuring `k >= 0`). While it depends on the `external_body` `lemma_parse_length`, the monotonicity property itself is a correct and expected consequence given the parse-length bound. It's a downstream consequence of already-flagged axioms.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: parse_result_length_equals_count
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Base case returns `seq![]` (length 0) for `n == 0`; each recursive step calls `vs.push(v)` adding exactly one element. By induction, result length equals `n`. Correct by the closed spec structure.
+===VERDICT_END===
+
+===SUMMARY===
+Two true positives: `RepeatN::lemma_parse_length` is `external_body` despite a verified helper existing, and the trait-level `SecureSpecCombinator::lemma_parse_length` is an unverified foundational axiom. Two false positives: consumed-bytes monotonicity is a correct downstream consequence, and result-length-equals-count follows by straightforward induction on the spec.
+===END_SUMMARY===

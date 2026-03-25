@@ -1,0 +1,85 @@
+This round shows the full `lemma_pt_walk` external_body ensures. Let me target interactions between this lemma and other spec components.
+
+===PHI_START===
+NAME: lemma_pt_walk_valid_result_p_bit
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_lemma_pt_walk_valid_result_p_bit(mem: PTMem, va: usize)
+    requires
+        mem.pt_walk(va).result() is Valid,
+    ensures
+        mem.read(mem.pt_walk(va).path.last().0) & 1 == 1,
+{
+    PTMem::lemma_pt_walk(mem, va);
+}
+```
+REASON: `lemma_pt_walk` asserts that Valid walk results have P bit set in the last entry — this is trusted without proof and links walk result validity to raw memory content
+===PHI_END===
+
+===PHI_START===
+NAME: lemma_pt_walk_path_layer_matches_index
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_lemma_pt_walk_path_layer_matches_index(mem: PTMem, va: usize, i: int)
+    requires
+        0 <= i < mem.pt_walk(va).path.len(),
+    ensures
+        mem.pt_walk(va).path[i].1 == (PDE { entry: mem.read(mem.pt_walk(va).path[i].0), layer: Ghost(i as nat) })@,
+{
+    PTMem::lemma_pt_walk(mem, va);
+}
+```
+REASON: `lemma_pt_walk` asserts each path entry equals PDE view at the corresponding layer — trusted without proof; the layer index `i as nat` must match the actual nesting depth
+===PHI_END===
+
+===PHI_START===
+NAME: lemma_pt_walk_intermediate_present_and_directory
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_lemma_pt_walk_intermediate_present_and_directory(mem: PTMem, va: usize, i: int)
+    requires
+        0 <= i < mem.pt_walk(va).path.len() - 1,
+    ensures
+        mem.pt_walk(va).path[i].1 is Directory,
+        mem.read(mem.pt_walk(va).path[i].0) & 1 == 1,
+{
+    PTMem::lemma_pt_walk(mem, va);
+}
+```
+REASON: `lemma_pt_walk` asserts intermediate entries are Directory with P bit set — trusted without proof; if wrong, walk could traverse non-present or leaf entries as directories
+===PHI_END===
+
+===PHI_START===
+NAME: view_opaque_domain_equals_base_walks
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_view_opaque_domain_equals_base_walks(mem: PTMem, va: usize)
+    requires
+        mem@.contains_key(va),
+    ensures
+        mem.is_base_pt_walk(va),
+{
+    reveal(PTMem::view);
+}
+```
+REASON: After revealing the opaque `view`, domain membership should imply `is_base_pt_walk` — tests that the `Map::new` domain predicate correctly gates the view
+===PHI_END===
+
+===PHI_START===
+NAME: lemma_pt_walk_last_not_directory
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_lemma_pt_walk_last_not_directory(mem: PTMem, va: usize)
+    ensures
+        !(mem.pt_walk(va).path.last().1 is Directory),
+{
+    PTMem::lemma_pt_walk(mem, va);
+}
+```
+REASON: `lemma_pt_walk` asserts the last path entry is never Directory — trusted without proof; if violated, `Walk::result` would fall to `arbitrary()` for the non-Page case
+===PHI_END===

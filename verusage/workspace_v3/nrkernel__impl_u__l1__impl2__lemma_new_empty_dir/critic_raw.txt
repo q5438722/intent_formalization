@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: arch_inv_zero_layers
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: An empty Arch with zero layers satisfies `inv()` because the universal quantifier over layers is vacuously true, yet such an architecture cannot support any address translation. The spec is missing a `self.layers.len() > 0` lower bound, which means downstream code must guard against this degenerate case separately rather than relying on `inv()` alone.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: arch_inv_nonstandard_entry_size
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The `Arch` spec is intentionally parameterized — it models a generic multi-level page table, not exclusively x86. Allowing non-power-of-2 entry sizes in a single-layer arch is a design choice; `entry_size_is_next_layer_size` is vacuously true for the last layer by definition, and the upper bounds (`<= X86_MAX_ENTRY_SIZE`, `<= X86_NUM_ENTRIES`) still hold. Constraining to powers of 2 would be an x86-specific policy, not a spec bug.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: well_formed_unaligned_base
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The source code has a commented-out alignment check (`//&&& aligned(self.base_vaddr, self.entry_size() * self.num_entries())`) in `well_formed`. This means directories with misaligned base addresses satisfy the invariant, which is incorrect for real page tables where base addresses must be aligned to the region they cover. This is a known spec gap explicitly visible in the code.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: dir_inv_all_invalid
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: An all-Invalid directory represents a valid, empty page table level — no mappings exist at that level. This is the expected state for freshly created directories (see `new_empty_dir` and `lemma_new_empty_dir` which construct exactly this). The invariant holding for empty directories is correct and intentional.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: pages_match_vacuous_no_pages
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: A directory containing only Directory or Invalid entries has no page mappings, so `pages_match_entry_size` being vacuously true is logically correct — there are no frames to check. This is standard behavior for non-leaf levels of a page table hierarchy and is not a spec weakness.
+===VERDICT_END===
+
+===SUMMARY===
+Two true positives were identified. First, `Arch::inv()` admits zero-layer architectures that cannot perform any address translation, suggesting a missing `layers.len() > 0` lower bound. Second, `Directory::well_formed()` has a commented-out alignment check for `base_vaddr`, allowing directories with misaligned bases to satisfy the invariant — a clear spec gap visible in the source. The remaining three properties are false positives: non-power-of-2 entry sizes reflect intentional genericity, all-Invalid directories are the expected empty state (used by `new_empty_dir`), and vacuous satisfaction of `pages_match_entry_size` when no pages exist is logically sound for non-leaf page table levels.
+===END_SUMMARY===

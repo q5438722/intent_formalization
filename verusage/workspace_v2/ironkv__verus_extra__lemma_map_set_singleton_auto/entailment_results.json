@@ -1,0 +1,47 @@
+[
+  {
+    "name": "map_singleton_len_one",
+    "type": "boundary",
+    "code": "proof fn phi_1_map_singleton_len_one<A, B>(x: A, f: spec_fn(A) -> B)\n    ensures\n        set![x].map(f).len() == 1,\n{\n    lemma_map_set_singleton_auto::<A, B>();\n    assert(set![x].map(f) == set![f(x)]);\n}",
+    "reason": "Mapping a singleton set always produces a set of size 1 \u2014 this is correct but assumes the mapped result is always a single element, which is true for singletons",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "map_singleton_collapses_distinct",
+    "type": "logical",
+    "code": "proof fn phi_2_map_singleton_collapses_distinct<A, B>(x: A, y: A, f: spec_fn(A) -> B)\n    requires\n        f(x) == f(y),\n    ensures\n        set![x].map(f) == set![y].map(f),\n{\n    lemma_map_set_singleton_auto::<A, B>();\n}",
+    "reason": "Two distinct singleton sets map to the same result if `f` maps their elements to the same value \u2014 the lemma enables proving equality of mapped sets even when the source sets differ, potentially hiding distinctness of original elements",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "map_singleton_contains_only_image",
+    "type": "behavioral",
+    "code": "proof fn phi_3_map_singleton_contains_only_image<A, B>(x: A, f: spec_fn(A) -> B, b: B)\n    requires\n        b != f(x),\n    ensures\n        !set![x].map(f).contains(b),\n{\n    lemma_map_set_singleton_auto::<A, B>();\n    assert(set![x].map(f) == set![f(x)]);\n}",
+    "reason": "The mapped singleton contains only `f(x)` and nothing else \u2014 this is correct but callers might misuse it to conclude non-membership without checking if `b` is truly distinct from `f(x)` at the spec level",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "map_singleton_idempotent",
+    "type": "logical",
+    "code": "proof fn phi_4_map_singleton_idempotent<A>(x: A, f: spec_fn(A) -> A, g: spec_fn(A) -> A)\n    requires\n        g(f(x)) == f(x),\n    ensures\n        set![x].map(f).map(g) == set![x].map(f),\n{\n    lemma_map_set_singleton_auto::<A, A>();\n    assert(set![x].map(f) == set![f(x)]);\n    assert(set![f(x)].map(g) == set![g(f(x))]);\n}",
+    "reason": "Composing maps on a singleton where `g` is a fixpoint on `f(x)` yields idempotence \u2014 this follows from the lemma but the general composition `set.map(f).map(g)` lacks a corresponding axiom for non-singletons, creating an asymmetry",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "map_singleton_subset_of_any_containing_image",
+    "type": "logical",
+    "code": "proof fn phi_5_map_singleton_subset_of_any_containing_image<A, B>(x: A, f: spec_fn(A) -> B, s: Set<B>)\n    requires\n        s.contains(f(x)),\n    ensures\n        set![x].map(f).subset_of(s),\n{\n    lemma_map_set_singleton_auto::<A, B>();\n    assert(set![x].map(f) == set![f(x)]);\n    assert(set![f(x)].subset_of(s));\n}",
+    "reason": "Any set containing `f(x)` is a superset of the mapped singleton \u2014 this is a correct consequence but could be misused to establish subset relationships between unrelated sets by routing through singleton maps",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

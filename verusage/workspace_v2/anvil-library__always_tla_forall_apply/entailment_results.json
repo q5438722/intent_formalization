@@ -1,0 +1,47 @@
+[
+  {
+    "name": "entails_trans_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_1_entails_trans_intensional_bridge(p: TempPred<int>, q: TempPred<int>, r: TempPred<int>)\n    requires\n        p.entails(q),\n        q.entails(r),\n    ensures\n        p.entails(r),\n{\n    entails_trans::<int>(p, q, r);\n}",
+    "reason": "entails_trans is external_body bridging three layers of TempPred::new/implies closures \u2014 the transitivity requires resolving intensional closure identity across chained implications without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "entails_preserved_by_always_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_2_entails_preserved_by_always_intensional_bridge(p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.entails(q),\n    ensures\n        always(p).entails(always(q)),\n{\n    entails_preserved_by_always::<int>(p, q);\n}",
+    "reason": "entails_preserved_by_always is external_body lifting entailment through always \u2014 bridging the forall-over-suffix closure inside always with the entailment closure without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "tla_forall_entails_instance",
+    "type": "logical",
+    "code": "proof fn phi_3_tla_forall_entails_instance(a_to_p: spec_fn(int) -> TempPred<int>, a: int)\n    ensures\n        tla_forall(a_to_p).entails(a_to_p(a)),\n{\n}",
+    "reason": "tla_forall instantiation requires bridging the forall-inside-TempPred::new closure to a specific a_to_p(a) \u2014 if the SMT solver resolves this intensional gap automatically, the external_body axioms may be redundant for this case",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "always_tla_forall_to_tla_forall_always",
+    "type": "logical",
+    "code": "proof fn phi_4_always_tla_forall_to_tla_forall_always(spec: TempPred<int>, a_to_p: spec_fn(int) -> TempPred<int>)\n    requires\n        spec.entails(always(tla_forall(a_to_p))),\n    ensures\n        spec.entails(tla_forall(|a: int| always(a_to_p(a)))),\n{\n}",
+    "reason": "commuting always and tla_forall requires that forall-over-suffix and forall-over-A can be swapped through nested TempPred::new closures \u2014 if this verifies, the axioms are strong enough to enable quantifier reordering without an explicit commutativity lemma",
+    "entailed": false,
+    "verus_output": "rall_always.rs:99:9\n   |\n95 | proof fn phi_4_always_tla_forall_to_tla_forall_always(spec: TempPred<int>, a_to_p: spec_fn(int) -> TempPred<int>)\n   |       ----------------------------------------------------------------------------------------------------------- at the end of the function body\n...\n99 |         spec.entails(tla_forall(|a: int| always(a_to_p(a)))),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "entails_chain_collapses_arbitrary_intermediates",
+    "type": "boundary",
+    "code": "proof fn phi_5_entails_chain_collapses_arbitrary_intermediates(p: TempPred<int>, q: TempPred<int>, r: TempPred<int>, s: TempPred<int>)\n    requires\n        p.entails(q),\n        q.entails(r),\n        r.entails(s),\n    ensures\n        p.entails(s),\n{\n    entails_trans::<int>(p, q, r);\n    entails_trans::<int>(p, r, s);\n}",
+    "reason": "chaining entails_trans arbitrarily composes unverified closure-identity bridges \u2014 each application trusts the SMT solver resolves a new intensional gap, and unbounded chaining amplifies the trust surface",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

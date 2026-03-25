@@ -1,0 +1,47 @@
+[
+  {
+    "name": "lemma_write_seq_first_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_lemma_write_seq_first_external_body(m: PTMem, writes: Seq<(usize, usize)>)\n    requires\n        writes.len() > 0,\n    ensures\n        m.write_seq(writes) == m.write(writes[0].0, writes[0].1).write_seq(writes.drop_first()),\n{\n    PTMem::lemma_write_seq_first(m, writes);\n}",
+    "reason": "`lemma_write_seq_first` is `external_body` with `unimplemented!()` \u2014 the inductive decomposition of `write_seq` (popping the first element) is trusted without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "writeback_preserves_writer_mem_via_external",
+    "type": "behavioral",
+    "code": "proof fn phi_2_writeback_preserves_writer_mem_via_external(pre: State, post: State, c: Constants, core: Core, lbl: Lbl)\n    requires\n        pre.inv_sbuf_facts(c),\n        step_Writeback(pre, post, c, core, lbl),\n    ensures\n        post.writer_mem() == pre.writer_mem(),\n{\n    assert(post.writes.core == core);\n    PTMem::lemma_write_seq_first(pre.pt_mem, pre.sbuf[core]);\n}",
+    "reason": "Writer memory preservation across writeback depends on the unverified `lemma_write_seq_first` \u2014 if the fold decomposition is wrong, writeback could silently change the writer's view",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "writeback_only_changes_pt_mem_at_addr",
+    "type": "behavioral",
+    "code": "proof fn phi_3_writeback_only_changes_pt_mem_at_addr(pre: State, post: State, c: Constants, core: Core, lbl: Lbl, other_addr: usize)\n    requires\n        step_Writeback(pre, post, c, core, lbl),\n        other_addr != pre.sbuf[core][0].0,\n        pre.pt_mem.mem.contains_key(other_addr),\n    ensures\n        post.pt_mem.mem[other_addr] == pre.pt_mem.mem[other_addr],\n{\n}",
+    "reason": "Writeback should only modify the drained address \u2014 tests that `Map::insert` doesn't affect other keys in the global page table memory",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "writeback_non_writer_core_empty_sbuf",
+    "type": "boundary",
+    "code": "proof fn phi_4_writeback_non_writer_core_empty_sbuf(pre: State, post: State, c: Constants, core: Core, lbl: Lbl, other_core: Core)\n    requires\n        step_Writeback(pre, post, c, core, lbl),\n        pre.inv_sbuf_facts(c),\n        c.valid_core(other_core),\n        other_core != pre.writes.core,\n    ensures\n        post.core_mem(other_core).mem[pre.sbuf[core][0].0] == pre.sbuf[core][0].1,\n{\n}",
+    "reason": "After writeback, non-writer cores (with empty sbufs) see the newly committed value \u2014 tests that writeback makes the write globally visible to other cores",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "writer_sbuf_unique_implies_no_duplicate_addrs",
+    "type": "logical",
+    "code": "proof fn phi_5_writer_sbuf_unique_implies_no_duplicate_addrs(pre: State, i: int, j: int)\n    requires\n        pre.writer_sbuf_entries_are_unique(),\n        0 <= i < pre.writer_sbuf().len(),\n        0 <= j < pre.writer_sbuf().len(),\n        pre.writer_sbuf()[i].0 == pre.writer_sbuf()[j].0,\n    ensures\n        i == j,\n{\n}",
+    "reason": "`writer_sbuf_entries_are_unique` should enforce injectivity of addresses \u2014 tests that duplicate addresses in the store buffer are impossible",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "slice_shift_mismatch",
+    "type": "logical",
+    "code": "proof fn phi_1_slice_shift_mismatch()\n    ensures\n        SLICE_SIZE == (1u64 << SLICE_SHIFT),\n{\n    assert(1u64 << SLICE_SHIFT == 65536) by (compute);\n}",
+    "reason": "`SLICE_SIZE` is hardcoded as 65536 with a comment `(1 << SLICE_SHIFT)` but `SLICE_SHIFT = 13 + 3 = 16` and `1 << 16 = 65536` \u2014 if the shift constant were ever changed without updating the hardcoded value, they'd silently diverge",
+    "entailed": true,
+    "verus_output": "verification results:: 36 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "segment_size_alignment_equal",
+    "type": "logical",
+    "code": "proof fn phi_2_segment_size_alignment_equal()\n    ensures\n        SEGMENT_SIZE == SEGMENT_ALIGN,\n{\n}",
+    "reason": "`SEGMENT_ALIGN` is defined as `SEGMENT_SIZE` \u2014 alignment equaling size is unusual and could mask alignment bugs if the segment ever needs different alignment than its size",
+    "entailed": true,
+    "verus_output": "verification results:: 36 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "max_alloc_exceeds_segment",
+    "type": "behavioral",
+    "code": "proof fn phi_3_max_alloc_exceeds_segment()\n    ensures\n        MAX_ALLOC_SIZE as u64 > SEGMENT_SIZE,\n{\n}",
+    "reason": "`MAX_ALLOC_SIZE = isize::MAX` (~2^63) vastly exceeds `SEGMENT_SIZE` (33MB) \u2014 allocations larger than a segment require special handling, and if code assumes allocations fit in a segment, this gap could cause issues",
+    "entailed": false,
+    "verus_output": "errors\nerror: postcondition not satisfied\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__config/phi_3_max_alloc_exceeds_segment.rs:110:9\n    |\n108 | proof fn phi_3_max_alloc_exceeds_segment()\n    |       ------------------------------------ at the end of the function body\n109 |     ensures\n110 |         MAX_ALLOC_SIZE as u64 > SEGMENT_SIZE,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "huge_block_exceeds_segment",
+    "type": "boundary",
+    "code": "proof fn phi_4_huge_block_exceeds_segment()\n    ensures\n        HUGE_BLOCK_SIZE as u64 > SEGMENT_SIZE,\n{\n    assert(SEGMENT_SIZE == 33554432) by (compute);\n}",
+    "reason": "`HUGE_BLOCK_SIZE` (2 GiB = 2147483648) is ~64x larger than `SEGMENT_SIZE` (33554432) \u2014 if any code assumes huge blocks fit within a single segment, this size relationship would break that assumption",
+    "entailed": true,
+    "verus_output": "verification results:: 36 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "medium_obj_wsize_max_truncation",
+    "type": "logical",
+    "code": "proof fn phi_5_medium_obj_wsize_max_truncation()\n    ensures\n        MEDIUM_OBJ_WSIZE_MAX * (usize::BITS as u64 / 8) == MEDIUM_OBJ_SIZE_MAX,\n{\n    assert(MEDIUM_OBJ_WSIZE_MAX == 16384u64) by (compute_only);\n    assert(MEDIUM_OBJ_SIZE_MAX == 131072u64) by (compute);\n}",
+    "reason": "`MEDIUM_OBJ_WSIZE_MAX = MEDIUM_OBJ_SIZE_MAX / 8` uses integer division which truncates \u2014 if `MEDIUM_OBJ_SIZE_MAX` weren't a multiple of 8, the roundtrip `wsize * 8` wouldn't recover the original byte size",
+    "entailed": true,
+    "verus_output": "verification results:: 36 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

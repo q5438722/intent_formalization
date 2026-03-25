@@ -1,0 +1,99 @@
+===PHI_START===
+NAME: set_changes_seq_length
+TARGET_FN: set
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_set_changes_seq_length<A, const N: usize>(pre: Array<A, N>, post: Array<A, N>, i: usize, out: A)
+    requires
+        0 <= i < N,
+        pre.wf(),
+        post.seq@ =~= pre.seq@.update(i as int, out),
+        post.wf(),
+    ensures
+        post@.len() != pre@.len(),
+{
+}
+```
+REASON: Array::set should preserve sequence length; both pre and post satisfy wf so length must remain N
+===PHI_END===
+
+===PHI_START===
+NAME: set_corrupts_other_index
+TARGET_FN: set
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_set_corrupts_other_index<A, const N: usize>(pre: Array<A, N>, post: Array<A, N>, i: usize, j: usize, out: A)
+    requires
+        0 <= i < N,
+        0 <= j < N,
+        i != j,
+        pre.wf(),
+        post.seq@ =~= pre.seq@.update(i as int, out),
+        post.wf(),
+    ensures
+        post@[j as int] != pre@[j as int],
+{
+}
+```
+REASON: Updating index i must not alter any other index j; Seq::update preserves elements at positions != i
+===PHI_END===
+
+===PHI_START===
+NAME: set_value_not_stored
+TARGET_FN: set
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_set_value_not_stored<A, const N: usize>(pre: Array<A, N>, post: Array<A, N>, i: usize, out: A)
+    requires
+        0 <= i < N,
+        pre.wf(),
+        post.seq@ =~= pre.seq@.update(i as int, out),
+        post.wf(),
+    ensures
+        post@[i as int] != out,
+{
+}
+```
+REASON: The whole purpose of set is to store `out` at index i; the update spec guarantees post@[i] == out
+===PHI_END===
+
+===PHI_START===
+NAME: init_set_nonempty
+TARGET_FN: init
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_init_set_nonempty<const N: usize>(post: ArraySet<N>)
+    requires
+        post.wf(),
+        post@ == Set::<usize>::empty(),
+    ensures
+        post@.contains(0usize),
+{
+}
+```
+REASON: After init the set must be empty; if the empty set contains any element the spec is inconsistent
+===PHI_END===
+
+===PHI_START===
+NAME: init_preserves_membership
+TARGET_FN: init
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_init_preserves_membership<const N: usize>(pre: ArraySet<N>, post: ArraySet<N>, x: usize)
+    requires
+        pre.wf(),
+        post.wf(),
+        post@ == Set::<usize>::empty(),
+        pre@.contains(x),
+    ensures
+        post@.contains(x),
+{
+}
+```
+REASON: Init must clear all elements; preserving old membership would violate the emptiness postcondition
+===PHI_END===

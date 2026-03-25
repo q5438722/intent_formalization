@@ -1,0 +1,84 @@
+Interesting — `PTMem::view` is now `#[verifier(opaque)]` with a real body instead of `external_body`. New function `is_base_pt_walk` and `MAX_BASE` constant also visible.
+
+===PHI_START===
+NAME: view_domain_only_base_walks
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_view_domain_only_base_walks(mem: PTMem, va: usize)
+    requires
+        mem@.contains_key(va),
+    ensures
+        mem.is_base_pt_walk(va),
+{
+    reveal(PTMem::view);
+}
+```
+REASON: Tests that the view map domain is exactly the set of base-aligned valid walk addresses — if opaque view leaks too much through triggers this may not hold
+===PHI_END===
+
+===PHI_START===
+NAME: view_value_equals_walk_pte
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_view_value_equals_walk_pte(mem: PTMem, va: usize)
+    requires
+        mem.is_base_pt_walk(va),
+    ensures
+        mem@[va] == mem.pt_walk(va).result()->pte,
+{
+    reveal(PTMem::view);
+}
+```
+REASON: Tests that the view map values match pt_walk results — correct by construction but depends on `Map::new` axioms
+===PHI_END===
+
+===PHI_START===
+NAME: walk_result_path_len1_arbitrary
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_walk_result_path_len1_arbitrary(w: Walk)
+    requires
+        w.path.len() == 1,
+        w.path.last().1 is Page,
+    ensures
+        w.result() is Valid,
+{
+}
+```
+REASON: When path.len()==1 and last entry is Page, `Walk::result` falls into `arbitrary()` since none of the len==2/3/4 branches match — the result is unconstrained
+===PHI_END===
+
+===PHI_START===
+NAME: is_base_pt_walk_requires_max_base
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_is_base_pt_walk_requires_max_base(mem: PTMem, va: usize)
+    requires
+        va >= MAX_BASE,
+    ensures
+        !mem.is_base_pt_walk(va),
+{
+}
+```
+REASON: `is_base_pt_walk` requires `vaddr < MAX_BASE` — tests the upper bound cutoff; if MAX_BASE is underspecified, addresses above it are silently excluded from the view
+===PHI_END===
+
+===PHI_START===
+NAME: all_mb0_bits_external_body_unconstrained
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_all_mb0_bits_external_body_unconstrained(entry: usize, layer: nat)
+    requires
+        entry & 1 == 1,
+    ensures
+        (PDE { entry, layer: Ghost(layer) }).all_mb0_bits_are_zero() || !(PDE { entry, layer: Ghost(layer) }).all_mb0_bits_are_zero(),
+{
+}
+```
+REASON: `all_mb0_bits_are_zero` is `external_body` — this tautology verifies trivially but the predicate's actual behavior is completely undefined, gating all PDE validity decisions
+===PHI_END===

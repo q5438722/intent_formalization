@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: candidate_overlaps_inflight_vmem_idle_thread
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The `Idle` variant in the match arm of `candidate_mapping_overlaps_inflight_vmem` returns false (it doesn't match `Map` or `Unmap`). With only an `Idle` thread in the set, no witness satisfies the existential. Correct by construction.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: entry_size_layer_product_chain
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `x86_arch_spec` is a concrete constant with layers defined as `[L0_ENTRY_SIZE, L1_ENTRY_SIZE, L2_ENTRY_SIZE, L3_ENTRY_SIZE]` with `num_entries: 512` at each level. The chain `L0 = 512*L1 = 512^2*L2 = 512^3*L3` follows directly from the constant definitions `L0 = 512*L1`, `L1 = 512*L2`, `L2 = 512*L3`.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: rl2_interp_preserves_writes_field
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The `rl2::State::interp()` function explicitly sets `writes: self.writes` in the constructed `rl1::State`. The ensures is a direct restatement of the interp definition.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: nat_keys_preserves_membership
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `nat_keys` defines its domain as `|k: nat| k <= usize::MAX && m.contains_key(k as usize)`. For any `k: usize`, `k as nat <= usize::MAX` holds, and `m.contains_key(k)` implies `m.contains_key((k as nat) as usize)`. Correct by Map::new axioms.
+===VERDICT_END===
+
+===SUMMARY===
+All four candidates are false positives. Idle threads not triggering inflight overlap follows from the match arm structure. Entry size chain is correct by the concrete constant definitions. The rl2→rl1 interp preserving writes is explicit in the interp function. And nat_keys membership preservation follows from the Map::new domain predicate and usize-to-nat round-tripping.
+===END_SUMMARY===

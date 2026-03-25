@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: result_exceeds_input
+TARGET_FN: align_to_usize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_result_exceeds_input(a: usize, b: usize)
+    requires
+        b > 0,
+    ensures
+        align_to_usize(a, b) > a,
+{
+}
+```
+REASON: Floor-alignment must never produce a value larger than the input
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_value_changes
+TARGET_FN: align_to_usize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_aligned_value_changes(a: usize, b: usize)
+    requires
+        b > 0,
+        a % b == 0,
+    ensures
+        align_to_usize(a, b) != a,
+{
+}
+```
+REASON: Aligning an already-aligned value should be a no-op; changing it indicates a broken spec
+===PHI_END===
+
+===PHI_START===
+NAME: not_idempotent
+TARGET_FN: align_to_usize
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_not_idempotent(a: usize, b: usize)
+    requires
+        b > 0,
+    ensures
+        align_to_usize(align_to_usize(a, b), b) != align_to_usize(a, b),
+{
+}
+```
+REASON: Floor-alignment must be idempotent; a second application should not change the result
+===PHI_END===
+
+===PHI_START===
+NAME: excess_rounding
+TARGET_FN: align_to_usize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_excess_rounding(a: usize, b: usize)
+    requires
+        b > 0,
+        a >= b,
+    ensures
+        a - align_to_usize(a, b) >= b,
+{
+}
+```
+REASON: The rounding-down distance must be strictly less than the alignment unit; rounding by b or more skips an entire block
+===PHI_END===
+
+===PHI_START===
+NAME: align_zero_nonzero
+TARGET_FN: align_to_usize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_align_zero_nonzero(b: usize)
+    requires
+        b > 0,
+    ensures
+        align_to_usize(0usize, b) != 0usize,
+{
+}
+```
+REASON: Zero is a multiple of every positive integer, so aligning zero must yield zero
+===PHI_END===

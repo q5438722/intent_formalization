@@ -1,0 +1,91 @@
+===PHI_START===
+NAME: mod_mult_zero_implies_mod_zero_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_mod_mult_zero_implies_mod_zero_external_body(a: nat, b: nat, c: nat)
+    requires
+        aligned(a, b * c),
+        b > 0,
+        c > 0,
+    ensures
+        aligned(a, b),
+{
+    mod_mult_zero_implies_mod_zero(a, b, c);
+}
+```
+REASON: `mod_mult_zero_implies_mod_zero` is `external_body` — divisibility by a product implies divisibility by a factor, trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_product_implies_factor
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_aligned_product_implies_factor(base: nat, entry_size: nat, a: nat)
+    requires
+        entry_size > 0,
+        a > 0,
+        aligned(base, entry_size * a),
+    ensures
+        aligned(base, entry_size),
+{
+    mod_mult_zero_implies_mod_zero(base, entry_size, a);
+}
+```
+REASON: Alignment to `entry_size * a` implies alignment to `entry_size` — depends on the external_body axiom
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_product_implies_second_factor
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_aligned_product_implies_second_factor(a: nat, b: nat, c: nat)
+    requires
+        aligned(a, b * c),
+        b > 0,
+        c > 0,
+    ensures
+        aligned(a, c),
+{
+    assert(b * c == c * b) by (nonlinear_arith);
+    mod_mult_zero_implies_mod_zero(a, c, b);
+}
+```
+REASON: The external_body axiom composes with commutativity to derive alignment to either factor — doubles the unverified trust surface
+===PHI_END===
+
+===PHI_START===
+NAME: nat_mul_commutative
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_nat_mul_commutative(a: nat, b: nat)
+    ensures
+        nat_mul(a, b) == nat_mul(b, a),
+{
+    lemma_entry_base_from_index_support(0, 0, 1);
+}
+```
+REASON: `nat_mul` commutativity is a verified consequence — tests the auxiliary trigger function
+===PHI_END===
+
+===PHI_START===
+NAME: entry_base_aligned_support
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_entry_base_aligned_support(base: nat, entry_size: nat, a: nat)
+    requires
+        entry_size > 0,
+        a > 0,
+        aligned(base, nat_mul(entry_size, a)),
+    ensures
+        aligned(base, entry_size),
+{
+    lemma_entry_base_from_index_support(base, 0, entry_size);
+}
+```
+REASON: The lemma's universal quantifier over `nat_mul` triggers to derive alignment to `entry_size` — the entire chain depends on the external_body
+===PHI_END===

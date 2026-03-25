@@ -1,0 +1,47 @@
+[
+  {
+    "name": "stable_target_any_execution",
+    "type": "logical",
+    "code": "proof fn phi_1_stable_target_any_execution(p: TempPred<int>, a_to_q: spec_fn(int) -> TempPred<int>, ex: Execution<int>)\n    requires\n        forall |a: int| #[trigger] valid(stable(p.leads_to(a_to_q(a)))),\n    ensures\n        stable(tla_forall(|a: int| p.leads_to(a_to_q(a)))).satisfied_by(ex),\n{\n    tla_forall_a_p_leads_to_q_a_is_stable::<int, int>(p, a_to_q);\n}",
+    "reason": "the verified proof derives stability of tla_forall(leads_to) from component stability entirely through SMT closure unfolding \u2014 if SMT incorrectly resolves nested TempPred::new/always/eventually/implies closures, this propagates unsound stability",
+    "entailed": true,
+    "verus_output": "|a: A| (forall |a: A| #[trigger] valid(stable(p.leads_to(a_to_q(a))))) implies\n   |             ^^^^^^\n   |\n   = help: If you didn't mean to assume the antecedent, we're very curious to hear why! To tell us, please open an issue on the Verus issue tracker on github with the title `Don't always make assert forall assume the antecedent`. If no one opens such an issue, we'll soon change the behavior of Verus to always assume the antecedent of the outermost implication\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "leads_to_preserved_at_suffix",
+    "type": "behavioral",
+    "code": "proof fn phi_2_leads_to_preserved_at_suffix(p: TempPred<int>, q: TempPred<int>, ex: Execution<int>, i: nat)\n    requires\n        valid(stable(p.leads_to(q))),\n        p.leads_to(q).satisfied_by(ex),\n    ensures\n        p.leads_to(q).satisfied_by(ex.suffix(i)),\n{\n    tla_forall_a_p_leads_to_q_a_is_stable::<int, int>(p, |_a: int| q);\n}",
+    "reason": "using the lemma with a constant a_to_q derives that a single leads_to is preserved at any suffix \u2014 if the closure identity between |_a| q and the inner tla_forall projection is resolved incorrectly by SMT, this is unsound",
+    "entailed": false,
+    "verus_output": "o_preserved_at_suffix.rs:102:9\n    |\n 97 | proof fn phi_2_leads_to_preserved_at_suffix(p: TempPred<int>, q: TempPred<int>, ex: Execution<int>, i: nat)\n    |       ----------------------------------------------------------------------------------------------------- at the end of the function body\n...\n102 |         p.leads_to(q).satisfied_by(ex.suffix(i)),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "always_leads_to_from_stable",
+    "type": "behavioral",
+    "code": "proof fn phi_3_always_leads_to_from_stable(p: TempPred<int>, q: TempPred<int>, ex: Execution<int>)\n    requires\n        valid(stable(p.leads_to(q))),\n        p.leads_to(q).satisfied_by(ex),\n    ensures\n        always(p.leads_to(q)).satisfied_by(ex),\n{\n    assert(stable(p.leads_to(q)).satisfied_by(ex));\n}",
+    "reason": "stable(X).satisfied_by(ex) should mean X(ex) ==> always(X)(ex), but extracting always from the nested closure wrapping requires SMT to resolve stable's implies/always closure chain \u2014 if this resolves incorrectly it gives always for free",
+    "entailed": true,
+    "verus_output": "|a: A| (forall |a: A| #[trigger] valid(stable(p.leads_to(a_to_q(a))))) implies\n   |             ^^^^^^\n   |\n   = help: If you didn't mean to assume the antecedent, we're very curious to hear why! To tell us, please open an issue on the Verus issue tracker on github with the title `Don't always make assert forall assume the antecedent`. If no one opens such an issue, we'll soon change the behavior of Verus to always assume the antecedent of the outermost implication\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "tla_forall_leads_to_from_components",
+    "type": "logical",
+    "code": "proof fn phi_4_tla_forall_leads_to_from_components(p: TempPred<int>, a_to_q: spec_fn(int) -> TempPred<int>, ex: Execution<int>)\n    requires\n        forall |a: int| #[trigger] valid(stable(p.leads_to(a_to_q(a)))),\n        forall |a: int| #[trigger] p.leads_to(a_to_q(a)).satisfied_by(ex),\n    ensures\n        always(tla_forall(|a: int| p.leads_to(a_to_q(a)))).satisfied_by(ex),\n{\n    tla_forall_a_p_leads_to_q_a_is_stable::<int, int>(p, a_to_q);\n}",
+    "reason": "chaining stability with componentwise satisfaction yields always(tla_forall(leads_to)) \u2014 this lifts infinitely many temporal properties into a single always-forall through SMT-resolved closure nesting without external_body but relying on deep intensional reasoning",
+    "entailed": false,
+    "verus_output": "p: TempPred<int>, a_to_q: spec_fn(int) -> TempPred<int>, ex: Execution<int>)\n    |       ------------------------------------------------------------------------------------------------------------------------- at the end of the function body\n...\n102 |         always(tla_forall(|a: int| p.leads_to(a_to_q(a)))).satisfied_by(ex),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "vacuous_stable_any_pred",
+    "type": "boundary",
+    "code": "proof fn phi_5_vacuous_stable_any_pred(p: TempPred<int>, q: TempPred<int>, ex: Execution<int>)\n    requires\n        valid(stable(p.leads_to(q))),\n        !p.leads_to(q).satisfied_by(ex),\n    ensures\n        stable(p.leads_to(q)).satisfied_by(ex),\n{\n}",
+    "reason": "stable(X) = X ==> always(X), so when X is false the implication is vacuously true \u2014 stable is trivially satisfied for any execution where the predicate fails, which means valid(stable(X)) gives no information about executions where X doesn't hold",
+    "entailed": true,
+    "verus_output": "|a: A| (forall |a: A| #[trigger] valid(stable(p.leads_to(a_to_q(a))))) implies\n   |             ^^^^^^\n   |\n   = help: If you didn't mean to assume the antecedent, we're very curious to hear why! To tell us, please open an issue on the Verus issue tracker on github with the title `Don't always make assert forall assume the antecedent`. If no one opens such an issue, we'll soon change the behavior of Verus to always assume the antecedent of the outermost implication\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

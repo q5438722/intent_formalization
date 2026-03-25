@@ -1,0 +1,82 @@
+===PHI_START===
+NAME: splice_preserves_length
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_splice_preserves_length(data: Seq<u8>, pos: usize, v: Seq<u8>)
+    requires
+        pos + v.len() <= data.len(),
+    ensures
+        seq_splice(data, pos, v).len() == data.len(),
+{
+}
+```
+REASON: Splicing should preserve the total length — if it didn't, the ensures `data@.len() == old(data)@.len()` would be inconsistent with `data@ == seq_splice(...)`
+===PHI_END===
+
+===PHI_START===
+NAME: splice_empty_is_identity
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_splice_empty_is_identity(data: Seq<u8>, pos: usize)
+    requires
+        pos as int <= data.len(),
+    ensures
+        seq_splice(data, pos, Seq::<u8>::empty()) =~= data,
+{
+}
+```
+REASON: Splicing an empty sequence at any valid position should be the identity — if it modified data, zero-length set_range calls would corrupt the buffer
+===PHI_END===
+
+===PHI_START===
+NAME: splice_overwrites_range
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_splice_overwrites_range(data: Seq<u8>, pos: usize, v: Seq<u8>, k: int)
+    requires
+        pos + v.len() <= data.len(),
+        0 <= k < v.len(),
+    ensures
+        seq_splice(data, pos, v)[pos + k] == v[k],
+{
+}
+```
+REASON: The spliced region should contain exactly the input bytes — if indexing into the splice didn't yield the input, set_range would silently corrupt data
+===PHI_END===
+
+===PHI_START===
+NAME: splice_preserves_before
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_splice_preserves_before(data: Seq<u8>, pos: usize, v: Seq<u8>, k: int)
+    requires
+        pos + v.len() <= data.len(),
+        0 <= k < pos,
+    ensures
+        seq_splice(data, pos, v)[k] == data[k],
+{
+}
+```
+REASON: Bytes before the splice position should be unchanged — if they were modified, set_range would have out-of-bounds side effects
+===PHI_END===
+
+===PHI_START===
+NAME: splice_preserves_after
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_splice_preserves_after(data: Seq<u8>, pos: usize, v: Seq<u8>, k: int)
+    requires
+        pos + v.len() <= data.len(),
+        (pos + v.len()) as int <= k < data.len(),
+    ensures
+        seq_splice(data, pos, v)[k] == data[k],
+{
+}
+```
+REASON: Bytes after the splice region should be unchanged — if they were modified, set_range would corrupt trailing data
+===PHI_END===

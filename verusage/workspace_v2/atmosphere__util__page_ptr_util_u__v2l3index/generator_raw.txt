@@ -1,0 +1,87 @@
+===PHI_START===
+NAME: va_1g_valid_equals_spec_va_2m_valid
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_va_1g_valid_equals_spec_va_2m_valid(va: usize)
+    ensures
+        va_1g_valid(va) == spec_va_2m_valid(va),
+{
+}
+```
+REASON: `va_1g_valid` has `when_used_as_spec(spec_va_2m_valid)` instead of `spec_va_1g_valid` — copy-paste bug makes 1GB validation resolve to 2MB validation in spec context
+===PHI_END===
+
+===PHI_START===
+NAME: va_1g_accepts_non_1g_aligned
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_va_1g_accepts_non_1g_aligned(va: usize)
+    requires
+        spec_va_2m_valid(va),
+        !spec_va_1g_valid(va),
+    ensures
+        va_1g_valid(va),
+{
+}
+```
+REASON: A 2MB-aligned but non-1GB-aligned address passes `va_1g_valid` due to the wrong `when_used_as_spec` annotation, allowing misaligned addresses into 1GB page operations
+===PHI_END===
+
+===PHI_START===
+NAME: v2l3index_weakened_precondition
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_v2l3index_weakened_precondition(va: usize)
+    requires
+        spec_va_2m_valid(va),
+        !spec_va_4k_valid(va),
+        !spec_va_1g_valid(va),
+    ensures
+        va_4k_valid(va) || va_2m_valid(va) || va_1g_valid(va),
+{
+}
+```
+REASON: `v2l3index`'s precondition is weaker than intended because `va_1g_valid` resolves to `spec_va_2m_valid`, so any 2MB-valid address satisfies the disjunction through the 1GB path even without actual 1GB alignment
+===PHI_END===
+
+===PHI_START===
+NAME: spec_va_1g_implies_2m
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_spec_va_1g_implies_2m(va: usize)
+    requires
+        spec_va_1g_valid(va),
+    ensures
+        spec_va_2m_valid(va),
+{
+    assert(
+        forall|x: u64| (x & (!0x0000_fffc_0000_0000u64) == 0) ==> (x & (!0x0000_ffff_ffe0_0000u64) == 0)
+    ) by (bit_vector);
+}
+```
+REASON: 1GB alignment implies 2MB alignment (stricter mask subsumes weaker mask), so the `va_1g_valid` bug makes the 1GB and 2MB paths fully equivalent — hiding that 1GB checks are never actually performed
+===PHI_END===
+
+===PHI_START===
+NAME: v2l3index_1g_path_nonzero_result
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_v2l3index_1g_path_nonzero_result(va: usize)
+    requires
+        spec_va_2m_valid(va),
+        spec_v2l3index(va) != 0,
+        !spec_va_1g_valid(va),
+    ensures
+        va_1g_valid(va),
+        v2l3index(va) == spec_v2l3index(va),
+        spec_v2l3index(va) != 0,
+{
+}
+```
+REASON: A 2MB-aligned address with nonzero L3 index (i.e. not 1GB-aligned) passes `va_1g_valid` and enters `v2l3index` — callers expecting `va_1g_valid` to guarantee L3 index is meaningful for 1GB pages get incorrect results
+===PHI_END===

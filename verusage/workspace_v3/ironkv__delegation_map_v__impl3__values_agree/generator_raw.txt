@@ -1,0 +1,100 @@
+===PHI_START===
+NAME: always_agrees
+TARGET_FN: values_agree
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_always_agrees<K: KeyTrait + VerusClone>(s: StrictlyOrderedMap<K>, lo: usize, hi: usize, v: EndPoint, ret: (bool, bool))
+    requires
+        s.valid(),
+        0 <= lo <= hi < s.keys@.len(),
+        ret.0 == (forall |i| #![auto] lo <= i <= hi ==> s.vals@[i]@ == v@),
+        !ret.0 ==> (ret.1 == (s.vals@[hi as int]@ != v@ && forall |i| #![auto] lo <= i < hi ==> s.vals@[i]@ == v@)),
+    ensures
+        ret.0 == true,
+{
+}
+```
+REASON: Would mean the spec is vacuous and values_agree can never report a mismatch
+===PHI_END===
+
+===PHI_START===
+NAME: single_element_always_matches
+TARGET_FN: values_agree
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_single_element_always_matches<K: KeyTrait + VerusClone>(s: StrictlyOrderedMap<K>, lo: usize, hi: usize, v: EndPoint, ret: (bool, bool))
+    requires
+        s.valid(),
+        lo == hi,
+        0 <= lo <= hi < s.keys@.len(),
+        ret.0 == (forall |i| #![auto] lo <= i <= hi ==> s.vals@[i]@ == v@),
+        !ret.0 ==> (ret.1 == (s.vals@[hi as int]@ != v@ && forall |i| #![auto] lo <= i < hi ==> s.vals@[i]@ == v@)),
+    ensures
+        ret.0 == true,
+{
+}
+```
+REASON: Would mean a single-element range can never detect a mismatch, collapsing the boundary case
+===PHI_END===
+
+===PHI_START===
+NAME: mismatch_implies_last_only
+TARGET_FN: values_agree
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_mismatch_implies_last_only<K: KeyTrait + VerusClone>(s: StrictlyOrderedMap<K>, lo: usize, hi: usize, v: EndPoint, ret: (bool, bool))
+    requires
+        s.valid(),
+        0 <= lo <= hi < s.keys@.len(),
+        ret.0 == (forall |i| #![auto] lo <= i <= hi ==> s.vals@[i]@ == v@),
+        !ret.0 ==> (ret.1 == (s.vals@[hi as int]@ != v@ && forall |i| #![auto] lo <= i < hi ==> s.vals@[i]@ == v@)),
+    ensures
+        !ret.0 ==> ret.1,
+{
+}
+```
+REASON: Would mean the spec cannot express an early (before hi) mismatch, losing the ret.1==false distinction
+===PHI_END===
+
+===PHI_START===
+NAME: both_false_impossible
+TARGET_FN: values_agree
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_both_false_impossible<K: KeyTrait + VerusClone>(s: StrictlyOrderedMap<K>, lo: usize, hi: usize, v: EndPoint, ret: (bool, bool))
+    requires
+        s.valid(),
+        0 <= lo <= hi < s.keys@.len(),
+        ret.0 == (forall |i| #![auto] lo <= i <= hi ==> s.vals@[i]@ == v@),
+        !ret.0 ==> (ret.1 == (s.vals@[hi as int]@ != v@ && forall |i| #![auto] lo <= i < hi ==> s.vals@[i]@ == v@)),
+    ensures
+        !(ret.0 == false && ret.1 == false),
+{
+}
+```
+REASON: Would mean early-mismatch case (false,false) is unreachable, contradicting the implementation's explicit return path
+===PHI_END===
+
+===PHI_START===
+NAME: second_true_implies_first
+TARGET_FN: values_agree
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_second_true_implies_first<K: KeyTrait + VerusClone>(s: StrictlyOrderedMap<K>, lo: usize, hi: usize, v: EndPoint, ret: (bool, bool))
+    requires
+        s.valid(),
+        0 <= lo <= hi < s.keys@.len(),
+        ret.0 == (forall |i| #![auto] lo <= i <= hi ==> s.vals@[i]@ == v@),
+        !ret.0 ==> (ret.1 == (s.vals@[hi as int]@ != v@ && forall |i| #![auto] lo <= i < hi ==> s.vals@[i]@ == v@)),
+    ensures
+        ret.1 ==> ret.0,
+{
+}
+```
+REASON: Would mean ret.1==true can never co-occur with a mismatch, destroying the "only-last-differs" signal
+===PHI_END===

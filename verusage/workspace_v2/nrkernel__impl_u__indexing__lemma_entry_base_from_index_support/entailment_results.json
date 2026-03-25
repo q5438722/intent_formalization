@@ -1,0 +1,47 @@
+[
+  {
+    "name": "mod_mult_zero_implies_mod_zero_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_mod_mult_zero_implies_mod_zero_external_body(a: nat, b: nat, c: nat)\n    requires\n        aligned(a, b * c),\n        b > 0,\n        c > 0,\n    ensures\n        aligned(a, b),\n{\n    mod_mult_zero_implies_mod_zero(a, b, c);\n}",
+    "reason": "`mod_mult_zero_implies_mod_zero` is `external_body` \u2014 divisibility by a product implies divisibility by a factor, trusted without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "aligned_product_implies_factor",
+    "type": "behavioral",
+    "code": "proof fn phi_2_aligned_product_implies_factor(base: nat, entry_size: nat, a: nat)\n    requires\n        entry_size > 0,\n        a > 0,\n        aligned(base, entry_size * a),\n    ensures\n        aligned(base, entry_size),\n{\n    mod_mult_zero_implies_mod_zero(base, entry_size, a);\n}",
+    "reason": "Alignment to `entry_size * a` implies alignment to `entry_size` \u2014 depends on the external_body axiom",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "aligned_product_implies_second_factor",
+    "type": "logical",
+    "code": "proof fn phi_3_aligned_product_implies_second_factor(a: nat, b: nat, c: nat)\n    requires\n        aligned(a, b * c),\n        b > 0,\n        c > 0,\n    ensures\n        aligned(a, c),\n{\n    assert(b * c == c * b) by (nonlinear_arith);\n    mod_mult_zero_implies_mod_zero(a, c, b);\n}",
+    "reason": "The external_body axiom composes with commutativity to derive alignment to either factor \u2014 doubles the unverified trust surface",
+    "entailed": true,
+    "verus_output": "verification results:: 5 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "nat_mul_commutative",
+    "type": "boundary",
+    "code": "proof fn phi_4_nat_mul_commutative(a: nat, b: nat)\n    ensures\n        nat_mul(a, b) == nat_mul(b, a),\n{\n    lemma_entry_base_from_index_support(0, 0, 1);\n}",
+    "reason": "`nat_mul` commutativity is a verified consequence \u2014 tests the auxiliary trigger function",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "entry_base_aligned_support",
+    "type": "behavioral",
+    "code": "proof fn phi_5_entry_base_aligned_support(base: nat, entry_size: nat, a: nat)\n    requires\n        entry_size > 0,\n        a > 0,\n        aligned(base, nat_mul(entry_size, a)),\n    ensures\n        aligned(base, entry_size),\n{\n    lemma_entry_base_from_index_support(base, 0, entry_size);\n}",
+    "reason": "The lemma's universal quantifier over `nat_mul` triggers to derive alignment to `entry_size` \u2014 the entire chain depends on the external_body",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,91 @@
+===PHI_START===
+NAME: entry_base_collision
+TARGET_FN: Arch::entry_base
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_entry_base_collision(arch: Arch, layer: nat, base: nat, i: nat, j: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+        i < arch.num_entries(layer),
+        j < arch.num_entries(layer),
+        i != j,
+    ensures
+        arch.entry_base(layer, base, i) == arch.entry_base(layer, base, j),
+{
+}
+```
+REASON: Different indices should map to distinct base addresses; collision would allow overlapping memory regions
+===PHI_END===
+
+===PHI_START===
+NAME: arch_inv_allows_zero_layers
+TARGET_FN: Arch::inv
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_arch_inv_allows_zero_layers(arch: Arch)
+    requires
+        arch.inv(),
+    ensures
+        arch.layers.len() == 0,
+{
+}
+```
+REASON: A valid architecture with zero layers is degenerate and maps no address space, suggesting inv is too permissive
+===PHI_END===
+
+===PHI_START===
+NAME: interp_maps_below_base
+TARGET_FN: Directory::interp
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_interp_maps_below_base(d: Directory, base: nat, pte: PTE)
+    requires
+        d.inv(),
+        d.interp().contains_pair(base, pte),
+    ensures
+        base < d.base_vaddr,
+{
+}
+```
+REASON: Interpreted mappings should only cover addresses at or above the directory's base_vaddr; mapping below would be unsound
+===PHI_END===
+
+===PHI_START===
+NAME: page_zero_frame_size
+TARGET_FN: Directory::pages_match_entry_size
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_page_zero_frame_size(d: Directory, i: nat)
+    requires
+        d.inv(),
+        i < d.entries.len(),
+        d.entries[i as int] is Page,
+    ensures
+        d.entries[i as int]->Page_0.frame.size == 0nat,
+{
+}
+```
+REASON: A page frame with zero size under a valid invariant means the page maps no memory, which defeats the purpose of the mapping
+===PHI_END===
+
+===PHI_START===
+NAME: well_formed_exceeds_max_entries
+TARGET_FN: Directory::well_formed
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_well_formed_exceeds_max_entries(d: Directory)
+    requires
+        d.well_formed(),
+    ensures
+        d.num_entries() > X86_NUM_ENTRIES,
+{
+}
+```
+REASON: A well-formed directory should not have more entries than the x86 architectural maximum of 512
+===PHI_END===

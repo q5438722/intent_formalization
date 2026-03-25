@@ -1,0 +1,87 @@
+===PHI_START===
+NAME: temp_pred_equality_collapses_distinct
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_temp_pred_equality_collapses_distinct()
+    ensures
+        TempPred::<int>::new(|ex: Execution<int>| true) == TempPred::<int>::new(|ex: Execution<int>| true),
+{
+    let p = TempPred::<int>::new(|ex: Execution<int>| true);
+    let q = TempPred::<int>::new(|ex: Execution<int>| true);
+    temp_pred_equality::<int>(p, q);
+}
+```
+REASON: temp_pred_equality is external_body and equates structurally distinct TempPred values (different closure allocations) based only on extensional equivalence — this axiom could unsoundly collapse distinct spec_fn identities that Verus normally distinguishes intensionally
+===PHI_END===
+
+===PHI_START===
+NAME: entails_antisymmetry_forces_equality
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_entails_antisymmetry_forces_equality(p: TempPred<int>, q: TempPred<int>)
+    requires
+        p.entails(q),
+        q.entails(p),
+    ensures
+        p.pred == q.pred,
+{
+    temp_pred_equality::<int>(p, q);
+}
+```
+REASON: mutual entailment only guarantees extensional equivalence of predicates, but temp_pred_equality forces intensional equality of the underlying spec_fn fields — this conflates logical equivalence with structural identity
+===PHI_END===
+
+===PHI_START===
+NAME: a_to_temp_pred_equality_forces_fn_equality
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_a_to_temp_pred_equality_forces_fn_equality(
+    p: spec_fn(bool) -> TempPred<int>,
+    q: spec_fn(bool) -> TempPred<int>,
+)
+    requires
+        forall |a: bool| #[trigger] p(a).entails(q(a)) && q(a).entails(p(a)),
+    ensures
+        p == q,
+{
+    a_to_temp_pred_equality::<int, bool>(p, q);
+}
+```
+REASON: extensional equivalence of TempPred outputs is lifted to full equality of higher-order functions, which could equate functions that differ on non-TempPred-observable behavior or internal representation
+===PHI_END===
+
+===PHI_START===
+NAME: trivial_mutual_entailment
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_trivial_mutual_entailment()
+    ensures
+        TempPred::<int>::new(|ex: Execution<int>| false) == TempPred::<int>::new(|ex: Execution<int>| false),
+{
+    let p = TempPred::<int>::new(|ex: Execution<int>| false);
+    let q = TempPred::<int>::new(|ex: Execution<int>| false);
+    temp_pred_equality::<int>(p, q);
+}
+```
+REASON: two independently constructed always-false predicates are forced equal, demonstrating the axiom equates any two extensionally equivalent closures regardless of provenance — could mask distinct failure modes
+===PHI_END===
+
+===PHI_START===
+NAME: valid_false_implies_anything
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_valid_false_implies_anything(q: TempPred<int>)
+    requires
+        valid::<int>(TempPred::new(|ex: Execution<int>| false)),
+    ensures
+        valid::<int>(q),
+{
+}
+```
+REASON: if valid(false) were ever provable (e.g. via unsound external_body chain), every temporal property would follow — the spec has no guard preventing valid from being instantiated on contradictory predicates
+===PHI_END===

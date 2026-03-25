@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "va_1g_valid_resolves_to_spec_va_2m_valid",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`va_1g_valid` has `#[verifier(when_used_as_spec(spec_va_2m_valid))]` \u2014 clearly a copy-paste bug from `va_2m_valid`. In spec context, `va_1g_valid(va)` resolves to `spec_va_2m_valid(va)` instead of `spec_va_1g_valid(va)`, silently degrading all 1GB validation to 2MB validation."
+  },
+  {
+    "phi": "va_1g_accepts_2m_aligned_not_1g",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Direct consequence of the copy-paste bug: a 2MB-aligned but non-1GB-aligned address passes `va_1g_valid` in spec context, allowing misaligned addresses into 1GB page operations."
+  },
+  {
+    "phi": "v2l4index_precond_weakened_by_1g_bug",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Downstream impact of the same bug: `v2l4index`'s precondition disjunct `va_1g_valid(va)` resolves to `spec_va_2m_valid(va)`, making the precondition strictly weaker than intended and admitting addresses that aren't actually 1GB-aligned through the 1GB path."
+  },
+  {
+    "phi": "v2l4index_lower_bound_is_one",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is the intended design: `KERNEL_MEM_END_L4INDEX = 1` deliberately excludes L4 index 0 to restrict valid virtual addresses to kernel-space. The lower bound of 1 is a correct and desirable invariant, not a spec gap."
+  },
+  {
+    "phi": "spec_va_1g_valid_implies_2m_valid",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is a correct mathematical property: 1GB alignment (zeroing more low bits) strictly implies 2MB alignment. While it explains why the copy-paste bug is hard to detect, the implication itself is a desirable and true property of the alignment hierarchy, not a spec defect."
+  }
+]

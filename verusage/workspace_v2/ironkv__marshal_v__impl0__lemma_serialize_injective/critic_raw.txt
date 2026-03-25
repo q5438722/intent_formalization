@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: usize_serialize_injective_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The `usize::lemma_serialize_injective` is marked `external_body` despite being straightforwardly provable from the u64 implementation (usize serializes as `(*self as u64).ghost_serialize()` and u64 injectivity is already proved). This is a missed proof opportunity that leaves a trusted assumption where none is needed.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: usize_distinct_values_same_serialize
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This merely confirms that values outside the marshalable domain are correctly flagged as non-marshalable. The `is_marshalable` guard is the intended mechanism to exclude such values, and the behavior of `ghost_serialize` on non-marshalable inputs is intentionally unspecified (via `recommends`).
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: u64_all_marshalable
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Every u64 being marshalable is the correct and intended design — u64 has a fixed-size 8-byte LE encoding that always succeeds. Buffer sizing is a separate concern handled by serialization length, not by `is_marshalable`.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: usize_ghost_serialize_len_equals_u64
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is a correct and expected consequence of usize serializing via cast to u64, which always produces 8 bytes of LE encoding. The fixed length is a desirable property of the serialization format, not a spec gap.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: `usize::lemma_serialize_injective` is unnecessarily `external_body` when it could be proved from the existing u64 injectivity proof, creating an unneeded trusted assumption. The remaining three candidates are false positives — non-marshalable exclusion, universal u64 marshalability, and fixed 8-byte serialization length are all correct, expected properties of the serialization design.
+===END_SUMMARY===

@@ -1,0 +1,17 @@
+===VERDICT_START===
+PHI: rl2_interp_loses_sbuf_for_non_writer
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The rl2→rl1 refinement explicitly sets `pt_mem: self.writer_mem()` which unfolds to `self.pt_mem.write_seq(self.sbuf[self.writes.core])`. This is the intentional design of the refinement — rl1 abstracts away non-writer store buffers by collapsing to the writer's view. This is correct TSO abstraction.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: valid_core_delegates_to_common
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `os::Constants::valid_core` is defined as `self.common.valid_core(core)`. Two constants sharing the same `common` field will trivially agree on core validity. This is correct by construction — core validity is a hardware/topology property independent of OS-level thread configuration.
+===VERDICT_END===
+
+===SUMMARY===
+Both candidates are false positives. The rl2→rl1 refinement intentionally abstracts non-writer store buffers as part of the TSO model, and valid_core delegation to common constants is correct since core validity is a hardware-level property.
+===END_SUMMARY===

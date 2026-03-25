@@ -1,0 +1,47 @@
+[
+  {
+    "name": "view_equal_symmetric_no_marshalable",
+    "type": "logical",
+    "code": "proof fn phi_1_view_equal_symmetric_no_marshalable(a: usize, b: usize)\n    requires\n        !a.is_marshalable(),\n        !b.is_marshalable(),\n    ensures\n        a.view_equal(&b) == b.view_equal(&a),\n{\n    a.lemma_view_equal_symmetric(&b);\n}",
+    "reason": "The trait-level `lemma_view_equal_symmetric` is external_body with no preconditions \u2014 it asserts symmetry unconditionally, but for usize this follows trivially from `===` symmetry, making the external_body trust unnecessary but harmless",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "prefix_free_no_marshalable_guard",
+    "type": "logical",
+    "code": "proof fn phi_2_prefix_free_no_marshalable_guard(a: usize, b: usize)\n    requires\n        !a.view_equal(&b),\n        !a.is_marshalable(),\n        !b.is_marshalable(),\n        a.ghost_serialize().len() <= b.ghost_serialize().len(),\n    ensures\n        a.ghost_serialize() != b.ghost_serialize().subrange(0, a.ghost_serialize().len() as int),\n{\n    a.lemma_serialization_is_not_a_prefix_of(&b);\n}",
+    "reason": "`lemma_serialization_is_not_a_prefix_of` does not require `is_marshalable` \u2014 it claims prefix-freedom for non-marshalable values where `ghost_serialize` is only guarded by `recommends`, making claims about under-specified serialization outputs",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "same_views_serialize_equal_no_marshalable",
+    "type": "logical",
+    "code": "proof fn phi_3_same_views_serialize_equal_no_marshalable(a: usize, b: usize)\n    requires\n        a.view_equal(&b),\n        !a.is_marshalable(),\n    ensures\n        a.ghost_serialize() == b.ghost_serialize(),\n{\n    a.lemma_same_views_serialize_the_same(&b);\n}",
+    "reason": "`lemma_same_views_serialize_the_same` ensures serialize equality from only `view_equal` without requiring `is_marshalable` \u2014 for non-marshalable values the trait-level `ghost_serialize` is under-specified, so this asserts equality of unconstrained outputs",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "tuple_prefix_free_proven_from_external_body_components",
+    "type": "logical",
+    "code": "proof fn phi_4_tuple_prefix_free_proven_from_external_body_components(a: (u64, u64), b: (u64, u64))\n    requires\n        !a.view_equal(&b),\n        a.ghost_serialize().len() <= b.ghost_serialize().len(),\n    ensures\n        a.ghost_serialize() != b.ghost_serialize().subrange(0, a.ghost_serialize().len() as int),\n{\n    a.lemma_serialization_is_not_a_prefix_of(&b);\n}",
+    "reason": "The tuple's `lemma_serialization_is_not_a_prefix_of` is fully verified but relies on component-level external_body lemmas (`lemma_serialization_is_not_a_prefix_of` and `lemma_same_views_serialize_the_same`) \u2014 the verified proof only transfers trust from unverified component axioms",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "view_equal_reflexive_from_symmetry_and_serialize",
+    "type": "logical",
+    "code": "proof fn phi_5_view_equal_reflexive_from_symmetry_and_serialize(a: (u64, u64))\n    requires\n        a.is_marshalable(),\n    ensures\n        a.view_equal(&a),\n{\n}",
+    "reason": "Reflexivity of `view_equal` for tuples follows from component reflexivity (u64's `self@ === other@`), which is trivially true \u2014 but the trait has no axiom requiring reflexivity, so if a custom impl violated it, `lemma_same_views_serialize_the_same`'s precondition would never be satisfiable for self-comparison",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

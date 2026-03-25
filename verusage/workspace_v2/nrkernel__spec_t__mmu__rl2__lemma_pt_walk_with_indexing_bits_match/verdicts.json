@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "lemma_bits_align_external_body_word_size",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`lemma_bits_align_to_usize` is `external_body` with `unimplemented!()` \u2014 all bit-alignment preservation properties are trusted without proof. 8-byte alignment zeroes only bits 0-2, which should indeed preserve bits 12+ (all indexing bits), but this is unverified."
+  },
+  {
+    "phi": "indexing_bits_match_implies_same_path",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is a correct and desirable property \u2014 if two addresses have matching page table indices at all relevant levels, they must traverse the same path through the page table hierarchy. The proof is verified by Verus (not external_body); it merely uses the alignment lemma as a broadcast hint. The property itself follows from `pt_walk`'s structure."
+  },
+  {
+    "phi": "indexing_bits_match_implies_same_pte",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is fundamental page table semantics \u2014 all virtual addresses within the same page must map to the same physical frame with the same flags. The proof is verified by Verus; the external_body dependency is only the alignment broadcast hint."
+  },
+  {
+    "phi": "walk_path_determines_validity_symmetry",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Validity symmetry for addresses sharing indexing bits is correct \u2014 if two addresses index the same page table entries, they must both be valid or both be invalid. This follows directly from the verified `lemma_pt_walk_with_indexing_bits_match`."
+  }
+]

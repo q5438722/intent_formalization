@@ -1,0 +1,44 @@
+Looking at the five candidate properties targeting `syscall_new_thread_with_endpoint`, I need to assess whether the spec relation combined with `wf()` preconditions is satisfiable, and what each φ actually reveals.
+
+Key observations: (1) φ1 claims the syscall *always* errors, (2) φ5 claims *every* container's pages change — an implausibly universal claim that strongly signals vacuous preconditions, (3) heavy use of `external_body closed spec fn wf()` creates opportunity for unsatisfiable spec conjunctions.
+
+---
+
+===VERDICT_START===
+PHI: always_returns_error
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: A syscall named `syscall_new_thread_with_endpoint` that takes meaningful parameters (thread pointer, endpoint index) should be able to succeed in some valid system state. If this property verifies, the spec is either vacuous (preconditions unsatisfiable) or unconditionally returns error, both of which are real spec defects. This is the root-cause finding.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: success_returns_same_thread_ptr
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Given that φ1 (always_returns_error) verifies, the precondition `ret != Error` in this property is never satisfiable. The property is vacuously true — it says nothing about the success path because the success path is unreachable. This is a symptom of φ1's root cause, not an independent aliasing bug.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: error_changes_thread_dom
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: medium
+REASONING: While error-path side effects would be a genuine bug, the simultaneous provability of φ5 (all containers' pages change universally) strongly indicates the full precondition set (wf + spec relation) is unsatisfiable, rendering this vacuously true. If the spec relation were satisfiable on the error path, it would be implausible for every container's pages to also change. This is a vacuous consequence, not an independent rollback-semantics violation.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: success_thread_dom_unchanged
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Like φ2, this property's distinguishing precondition (`ret != Error`) is unsatisfiable given φ1. The property is vacuously true because no successful execution exists. It does not independently demonstrate that thread creation is a no-op; it is entirely subsumed by the root cause identified in φ1.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: container_pages_modified
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The claim that page ownership changes for *every* container in the system is implausibly strong — no reasonable thread-creation spec would modify all containers' pages. This universal provability is the strongest evidence that the conjunction of `wf()` and `syscall_new_thread_with_endpoint_spec` is unsatisfiable, making this vacuously true. The property confirms the vacuity identified by φ1 rather than revealing an independent page-ownership bug.
+===VERDICT_END===
+
+===SUMMARY===
+The five properties collectively reveal a single root-cause defect: the specification for `syscall_new_thread_with_endpoint` is vacuous. The conjunction of `old_os.wf()`, `new_os.wf()`, and `syscall_new_thread_with_endpoint_spec(...)` is most likely unsatisfiable, probably due to contradictions among the many `external_body` closed spec `wf()` functions and their interaction with the spec relation. This makes all five properties vacuously true. Only φ1 (always_returns_error) is a TRUE_POSITIVE because it directly identifies the root issue — a thread-creation syscall that can never succeed. The remaining four (φ2–φ5) are FALSE_POSITIVES: φ2 and φ4 are vacuous because they condition on unreachable success paths, while φ3 and φ5 are vacuous because no valid pre/post state pair exists (φ5's implausible universal quantification over all containers confirms this). The fix should target the spec relation or the `wf()` invariants to ensure the preconditions are jointly satisfiable and that the success path is reachable.
+===END_SUMMARY===

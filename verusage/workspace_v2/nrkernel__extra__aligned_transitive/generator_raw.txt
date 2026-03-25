@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: lemma_aligned_iff_eq_mul_div_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_lemma_aligned_iff_eq_mul_div_external_body(a: nat, b: nat)
+    requires
+        b > 0,
+    ensures
+        aligned(a, b) <==> a == b * (a / b),
+{
+    lemma_aligned_iff_eq_mul_div(a, b);
+}
+```
+REASON: `lemma_aligned_iff_eq_mul_div` is `external_body` — the equivalence between `a % b == 0` and `a == b * (a / b)` is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_transitive_verified
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_aligned_transitive_verified(a: nat, b: nat, c: nat)
+    requires
+        0 < b,
+        0 < c,
+        aligned(a, b),
+        aligned(b, c),
+    ensures
+        aligned(a, c),
+{
+    aligned_transitive(a, b, c);
+}
+```
+REASON: Transitivity of alignment depends on the external_body `lemma_aligned_iff_eq_mul_div` — the proof is verified but its foundation is unverified
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_zero
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_aligned_zero(b: nat)
+    requires
+        b > 0,
+    ensures
+        aligned(0, b),
+{
+}
+```
+REASON: Zero is aligned to every nonzero size — tests the trivial base case of the alignment spec
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_self
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_aligned_self(a: nat)
+    requires
+        a > 0,
+    ensures
+        aligned(a, a),
+{
+}
+```
+REASON: Every nonzero value is self-aligned — tests the `a % a == 0` tautology
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_mul_div_roundtrip
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_aligned_mul_div_roundtrip(a: nat, b: nat)
+    requires
+        b > 0,
+        aligned(a, b),
+    ensures
+        a == b * (a / b),
+{
+    lemma_aligned_iff_eq_mul_div(a, b);
+}
+```
+REASON: When aligned, `a` equals `b * (a / b)` exactly — the forward direction of the biconditional relies on the external_body axiom
+===PHI_END===

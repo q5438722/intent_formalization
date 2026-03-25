@@ -1,0 +1,90 @@
+Looking at the `create_iommu_table_entry` spec, I'll generate 5 candidates testing whether the ensures clauses accidentally entail undesirable properties.
+
+===PHI_START===
+NAME: alloc_always_max
+TARGET_FN: create_iommu_table_entry
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_alloc_always_max(ret_0: usize, old_free: usize, new_free: usize)
+    requires
+        ret_0 <= 3,
+        old_free >= 3,
+        new_free == old_free - ret_0,
+    ensures
+        ret_0 == 3,
+{
+}
+```
+REASON: If entailed, the function always allocates 3 pages and never reuses existing intermediate page table entries
+===PHI_END===
+
+===PHI_START===
+NAME: alloc_always_zero
+TARGET_FN: create_iommu_table_entry
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_alloc_always_zero(ret_0: usize, old_free: usize, new_free: usize)
+    requires
+        ret_0 <= 3,
+        old_free >= 3,
+        new_free == old_free - ret_0,
+    ensures
+        ret_0 == 0,
+{
+}
+```
+REASON: If entailed, the function never allocates any pages making it a no-op that cannot create new table structure
+===PHI_END===
+
+===PHI_START===
+NAME: no_partial_alloc
+TARGET_FN: create_iommu_table_entry
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_no_partial_alloc(ret_0: usize)
+    requires
+        ret_0 <= 3,
+    ensures
+        ret_0 == 0 || ret_0 == 3,
+{
+}
+```
+REASON: If entailed, partial reuse of existing L4/L3/L2 tables is impossible — the function either does nothing or allocates all three levels
+===PHI_END===
+
+===PHI_START===
+NAME: va_indices_all_zero
+TARGET_FN: create_iommu_table_entry
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_va_indices_all_zero(va: VAddr)
+    requires
+        va_4k_valid(va),
+    ensures
+        spec_va2index(va).0 == 0 && spec_va2index(va).1 == 0 && spec_va2index(va).2 == 0,
+{
+}
+```
+REASON: If entailed, va_4k_valid is so restrictive that all valid VAs decompose to index (0,0,0,_), collapsing the entire IOMMU address space to a single L2 entry
+===PHI_END===
+
+===PHI_START===
+NAME: mem_valid_only_zero
+TARGET_FN: create_iommu_table_entry
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_mem_valid_only_zero(addr: PAddr)
+    requires
+        MEM_valid(addr),
+    ensures
+        addr == 0,
+{
+}
+```
+REASON: If entailed, MEM_valid is vacuously satisfied only by zero, making every page entry address (including the returned L2 ptr ret.1) null
+===PHI_END===

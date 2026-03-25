@@ -1,0 +1,105 @@
+===PHI_START===
+NAME: pigeonhole_missing_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_pigeonhole_missing_external_body(m: Map<nat, nat>, missing: nat, len: nat)
+    requires
+        forall |i: nat| (0 <= i < len <==> m.dom().contains(i)),
+        forall |i: nat| (#[trigger] m.dom().contains(i) ==> (
+            0 <= m[i] < len && m[i] != missing
+        )),
+        0 <= missing < len,
+    ensures ({
+        let (i, j) = pigeonhole_missing_idx_implies_double(m, missing, len);
+        i != j && m.dom().contains(i) && m.dom().contains(j) && m[i] == m[j]
+    }),
+{
+    let _ = pigeonhole_missing_idx_implies_double(m, missing, len);
+}
+```
+REASON: `pigeonhole_missing_idx_implies_double` is `external_body` — the entire pigeonhole principle is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: pigeonhole_len_0
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_pigeonhole_len_0(m: Map<nat, nat>)
+    requires
+        forall |i: nat| (0 <= i < 1 <==> m.dom().contains(i)),
+        forall |i: nat| #[trigger] m.dom().contains(i) ==> 0 <= m[i] < 0,
+    ensures ({
+        let (i, j) = pigeonhole_too_many_elements_implies_double(m, 0);
+        i != j && m[i] == m[j]
+    }),
+{
+    let _ = pigeonhole_too_many_elements_implies_double(m, 0);
+}
+```
+REASON: With `len == 0`, we need `m[0] < 0` for `nat` which is impossible — the precondition is vacuously false, so the lemma proves anything
+===PHI_END===
+
+===PHI_START===
+NAME: pigeonhole_dup_in_range
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_pigeonhole_dup_in_range(m: Map<nat, nat>, len: nat)
+    requires
+        forall |i: nat| (0 <= i < len + 1 <==> m.dom().contains(i)),
+        forall |i: nat| #[trigger] m.dom().contains(i) ==> 0 <= m[i] < len,
+    ensures ({
+        let (i, j) = pigeonhole_too_many_elements_implies_double(m, len);
+        0 <= i < len + 1 && 0 <= j < len + 1
+    }),
+{
+    let (i, j) = pigeonhole_too_many_elements_implies_double(m, len);
+}
+```
+REASON: Both duplicate indices are in `[0, len+1)` — follows from `m.dom().contains(i/j)` and the domain biconditional, but the ensures doesn't state this explicitly
+===PHI_END===
+
+===PHI_START===
+NAME: pigeonhole_dup_value_range
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_pigeonhole_dup_value_range(m: Map<nat, nat>, len: nat)
+    requires
+        forall |i: nat| (0 <= i < len + 1 <==> m.dom().contains(i)),
+        forall |i: nat| #[trigger] m.dom().contains(i) ==> 0 <= m[i] < len,
+    ensures ({
+        let (i, j) = pigeonhole_too_many_elements_implies_double(m, len);
+        0 <= m[i] < len
+    }),
+{
+    let (i, j) = pigeonhole_too_many_elements_implies_double(m, len);
+}
+```
+REASON: The duplicated value is within `[0, len)` — follows from the precondition on `m`'s values, confirming the collision is among valid target values
+===PHI_END===
+
+===PHI_START===
+NAME: pigeonhole_missing_returns_not_missing
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_pigeonhole_missing_returns_not_missing(m: Map<nat, nat>, missing: nat, len: nat)
+    requires
+        forall |i: nat| (0 <= i < len <==> m.dom().contains(i)),
+        forall |i: nat| (#[trigger] m.dom().contains(i) ==> (
+            0 <= m[i] < len && m[i] != missing
+        )),
+        0 <= missing < len,
+    ensures ({
+        let (i, j) = pigeonhole_missing_idx_implies_double(m, missing, len);
+        m[i] != missing && m[j] != missing
+    }),
+{
+    let (i, j) = pigeonhole_missing_idx_implies_double(m, missing, len);
+}
+```
+REASON: The duplicate value avoids the missing index — follows from the precondition but confirms the external_body-trusted pigeonhole correctly respects the exclusion
+===PHI_END===

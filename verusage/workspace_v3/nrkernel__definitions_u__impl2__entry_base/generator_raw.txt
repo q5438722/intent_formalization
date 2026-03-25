@@ -1,0 +1,97 @@
+===PHI_START===
+NAME: entry_base_idx_zero_not_base
+TARGET_FN: ArchExec::entry_base
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_entry_base_idx_zero_not_base(arch: ArchExec, layer: usize, base: usize)
+    requires
+        arch@.inv(),
+        layer < arch@.layers.len(),
+        base <= MAX_BASE,
+        base > 0,
+    ensures
+        arch@.entry_base(layer as nat, base as nat, 0) != base,
+{
+}
+```
+REASON: entry_base with idx=0 must equal base; if this verifies, the spec is inconsistent
+===PHI_END===
+
+===PHI_START===
+NAME: entry_base_exceeds_double_max
+TARGET_FN: ArchExec::entry_base
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_entry_base_exceeds_double_max(arch: ArchExec, layer: usize, base: usize, idx: usize)
+    requires
+        arch@.inv(),
+        layer < arch@.layers.len(),
+        base <= MAX_BASE,
+        idx <= X86_NUM_ENTRIES,
+    ensures
+        arch@.entry_base(layer as nat, base as nat, idx as nat) > 2 * MAX_BASE,
+{
+}
+```
+REASON: Under valid preconditions the result should be bounded by 2*MAX_BASE; provability means the spec allows unbounded results
+===PHI_END===
+
+===PHI_START===
+NAME: entry_base_collision_different_indices
+TARGET_FN: entry_base (Arch spec)
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_entry_base_collision_different_indices(arch: Arch, layer: nat, base: nat, i: nat, j: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+        i < arch.num_entries(layer),
+        j < arch.num_entries(layer),
+        i != j,
+        base <= MAX_BASE,
+    ensures
+        arch.entry_base(layer, base, i) == arch.entry_base(layer, base, j),
+{
+}
+```
+REASON: Distinct indices must map to distinct entry bases; provability means the address space has collisions
+===PHI_END===
+
+===PHI_START===
+NAME: inv_allows_zero_entry_size
+TARGET_FN: inv
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_inv_allows_zero_entry_size(arch: Arch, i: nat)
+    requires
+        arch.inv(),
+        i < arch.layers.len(),
+    ensures
+        arch.entry_size(i) == 0nat,
+{
+}
+```
+REASON: inv requires 0 < entry_size(i); if this verifies, the invariant fails to exclude degenerate layers
+===PHI_END===
+
+===PHI_START===
+NAME: layer_size_not_multiplicative
+TARGET_FN: entry_size_is_next_layer_size
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_layer_size_not_multiplicative(arch: Arch, i: nat)
+    requires
+        arch.inv(),
+        i + 1 < arch.layers.len(),
+    ensures
+        arch.entry_size(i) != arch.entry_size((i + 1) as nat) * arch.num_entries((i + 1) as nat),
+{
+}
+```
+REASON: inv enforces the multiplicative layer-size relation; provability means the structural invariant is vacuous or contradictory
+===PHI_END===

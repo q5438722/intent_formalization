@@ -1,0 +1,89 @@
+===PHI_START===
+NAME: align_exceeds_input
+TARGET_FN: align_to_usize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_align_exceeds_input(a: usize, b: usize)
+    requires
+        b > 0,
+    ensures
+        align_to_usize(a, b) > a,
+{
+}
+```
+REASON: Downward alignment must never return a value exceeding the original input
+===PHI_END===
+
+===PHI_START===
+NAME: align_to_one_changes_value
+TARGET_FN: align_to_usize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_align_to_one_changes_value(a: usize)
+    requires
+        a < usize::MAX,
+    ensures
+        align_to_usize(a, 1) != a,
+{
+}
+```
+REASON: Aligning to 1 should be a no-op since every integer is 1-aligned; a changed value would indicate a broken spec
+===PHI_END===
+
+===PHI_START===
+NAME: nonzero_align_stays_nonzero
+TARGET_FN: align_to_usize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_nonzero_align_stays_nonzero(a: usize, b: usize)
+    requires
+        a > 0,
+        b > 1,
+    ensures
+        align_to_usize(a, b) > 0,
+{
+}
+```
+REASON: A nonzero address aligned down can legitimately become zero (e.g., a=1 b=4096); if the spec claims otherwise it is too strong
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_additive_divisors
+TARGET_FN: aligned
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_aligned_additive_divisors(addr: nat, s1: nat, s2: nat)
+    requires
+        s1 > 0,
+        s2 > 0,
+        aligned(addr, s1),
+        aligned(addr, s2),
+    ensures
+        aligned(addr, s1 + s2),
+{
+}
+```
+REASON: Alignment to two sizes does not imply alignment to their sum (e.g., 12 is aligned to 4 and 6 but not to 10)
+===PHI_END===
+
+===PHI_START===
+NAME: align_result_double_aligned
+TARGET_FN: align_to_usize
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_align_result_double_aligned(a: usize, b: usize)
+    requires
+        b > 1,
+        b <= usize::MAX / 2,
+    ensures
+        aligned(align_to_usize(a, b) as nat, (b * 2) as nat),
+{
+}
+```
+REASON: Aligning down to b does not guarantee the result is also aligned to 2b (e.g., align_to_usize(5,4)==4 but 4 is not 8-aligned)
+===PHI_END===

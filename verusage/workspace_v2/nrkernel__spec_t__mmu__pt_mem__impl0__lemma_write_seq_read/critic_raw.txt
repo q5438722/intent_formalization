@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: write_seq_read_unique_key
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: A single-element write_seq correctly returning the written value is the expected and desirable behavior of sequential writes. This is basic correctness, not a spec gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: write_seq_read_requires_uniqueness
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Last-write-wins for duplicate keys is standard map semantics via `fold_left`. This is correct behavior — sequential writes to the same address naturally result in the last value persisting.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: write_seq_read_does_not_require_domain
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `PTMem` is a low-level memory abstraction using `Map<usize, usize>`. Bounds checking on valid page table addresses is enforced at higher layers. The lemma correctly describes write behavior regardless of prior domain membership.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: write_seq_drop_last_preserves_earlier
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Writes to distinct addresses not interfering with each other is correct and desirable behavior. This validates that the inductive proof correctly handles the non-overwritten case.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: write_seq_empty_no_effect
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: An empty write sequence producing no changes is the correct base case for `fold_left`. This is standard and expected behavior.
+===VERDICT_END===
+
+===SUMMARY===
+All five candidates are false positives. The `PTMem` write/write_seq operations and the `lemma_write_seq_read` lemma exhibit correct, expected behavior: single writes store values, last-write-wins for duplicates, disjoint writes don't interfere, domain expansion is handled at higher layers, and empty sequences are identity. No spec gaps found in this batch.
+===END_SUMMARY===

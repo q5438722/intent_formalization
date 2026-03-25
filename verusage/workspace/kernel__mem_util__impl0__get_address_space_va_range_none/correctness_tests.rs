@@ -2188,146 +2188,230 @@ pub fn va_4k_valid(va: usize) -> (ret: bool)
 }
 
 
+// ============================================================
+// BOUNDARY TESTS - Violate preconditions (requires)
+// ============================================================
 
-// ===================== CORRECTNESS TESTS =====================
-// We cannot call exec fn from proof fn, so we test the spec/postcondition formula directly.
-// The postcondition is:
-//   ret == (forall|i: int| #![auto] 0 <= i < va_range.len 
-//           ==> self.get_address_space(target_proc_ptr).dom().contains(va_range@[i]) == false)
-
-// Test 1: If postcondition says ret=true, then each individual VA is not in the address space
-proof fn test_true_ret_implies_no_mapping(
-    kernel: Kernel, target_proc_ptr: ProcPtr, va_range: VaRange4K, ret: bool, idx: int
-)
+// SHOULD FAIL: Missing kernel.wf() precondition
+proof fn test_boundary_missing_wf(kernel: Kernel, proc_ptr: ProcPtr, va_range: VaRange4K)
     requires
-        kernel.wf(),
-        kernel.proc_dom().contains(target_proc_ptr),
-        va_range.wf(),
-        ret == (forall|i: int|
-            #![auto]
-            0 <= i < va_range.len ==> kernel.get_address_space(target_proc_ptr).dom().contains(va_range@[i]) == false),
-        ret == true,
-        0 <= idx < va_range.len,
-{
-    assert(kernel.get_address_space(target_proc_ptr).dom().contains(va_range@[idx]) == false);
-}
-
-// Test 2: If postcondition says ret=false, then there exists a mapped VA
-proof fn test_false_ret_implies_some_mapping(
-    kernel: Kernel, target_proc_ptr: ProcPtr, va_range: VaRange4K, ret: bool
-)
-    requires
-        kernel.wf(),
-        kernel.proc_dom().contains(target_proc_ptr),
-        va_range.wf(),
-        ret == (forall|i: int|
-            #![auto]
-            0 <= i < va_range.len ==> kernel.get_address_space(target_proc_ptr).dom().contains(va_range@[i]) == false),
-        ret == false,
-{
-    assert(exists|i: int|
-        #![auto]
-        0 <= i < va_range.len && kernel.get_address_space(target_proc_ptr).dom().contains(va_range@[i]) == true);
-}
-
-// Test 3: Empty range (len=0) always yields ret=true (vacuously)
-proof fn test_empty_range_yields_true(
-    kernel: Kernel, target_proc_ptr: ProcPtr, va_range: VaRange4K, ret: bool
-)
-    requires
-        kernel.wf(),
-        kernel.proc_dom().contains(target_proc_ptr),
-        va_range.wf(),
-        va_range.len == 0,
-        ret == (forall|i: int|
-            #![auto]
-            0 <= i < va_range.len ==> kernel.get_address_space(target_proc_ptr).dom().contains(va_range@[i]) == false),
-{
-    assert(ret == true);
-}
-
-// Test 4: If all VAs in range are unmapped, ret is true
-proof fn test_all_unmapped_implies_true(
-    kernel: Kernel, target_proc_ptr: ProcPtr, va_range: VaRange4K, ret: bool
-)
-    requires
-        kernel.wf(),
-        kernel.proc_dom().contains(target_proc_ptr),
-        va_range.wf(),
-        forall|i: int|
-            #![auto]
-            0 <= i < va_range.len ==> kernel.get_address_space(target_proc_ptr).dom().contains(va_range@[i]) == false,
-        ret == (forall|i: int|
-            #![auto]
-            0 <= i < va_range.len ==> kernel.get_address_space(target_proc_ptr).dom().contains(va_range@[i]) == false),
-{
-    assert(ret == true);
-}
-
-// Test 5: If one VA in range is mapped, ret is false
-proof fn test_one_mapped_implies_false(
-    kernel: Kernel, target_proc_ptr: ProcPtr, va_range: VaRange4K, ret: bool, witness_idx: int
-)
-    requires
-        kernel.wf(),
-        kernel.proc_dom().contains(target_proc_ptr),
-        va_range.wf(),
-        0 <= witness_idx < va_range.len,
-        kernel.get_address_space(target_proc_ptr).dom().contains(va_range@[witness_idx]) == true,
-        ret == (forall|i: int|
-            #![auto]
-            0 <= i < va_range.len ==> kernel.get_address_space(target_proc_ptr).dom().contains(va_range@[i]) == false),
-{
-    assert(ret == false);
-}
-
-// Test 6: The postcondition is deterministic — same inputs yield same ret
-proof fn test_postcondition_deterministic(
-    kernel: Kernel, target_proc_ptr: ProcPtr, va_range: VaRange4K, ret1: bool, ret2: bool
-)
-    requires
-        kernel.wf(),
-        kernel.proc_dom().contains(target_proc_ptr),
-        va_range.wf(),
-        ret1 == (forall|i: int|
-            #![auto]
-            0 <= i < va_range.len ==> kernel.get_address_space(target_proc_ptr).dom().contains(va_range@[i]) == false),
-        ret2 == (forall|i: int|
-            #![auto]
-            0 <= i < va_range.len ==> kernel.get_address_space(target_proc_ptr).dom().contains(va_range@[i]) == false),
-{
-    assert(ret1 == ret2);
-}
-
-// Test 7: If ret is true for range of length n, it's also "true" for any sub-index
-proof fn test_true_ret_all_indices(
-    kernel: Kernel, target_proc_ptr: ProcPtr, va_range: VaRange4K, ret: bool
-)
-    requires
-        kernel.wf(),
-        kernel.proc_dom().contains(target_proc_ptr),
+        kernel.proc_dom().contains(proc_ptr),
         va_range.wf(),
         va_range.len > 0,
-        ret == (forall|i: int|
-            #![auto]
-            0 <= i < va_range.len ==> kernel.get_address_space(target_proc_ptr).dom().contains(va_range@[i]) == false),
-        ret == true,
 {
-    // Check first and last element specifically
-    assert(kernel.get_address_space(target_proc_ptr).dom().contains(va_range@[0]) == false);
-    assert(kernel.get_address_space(target_proc_ptr).dom().contains(va_range@[(va_range.len - 1) as int]) == false);
+    assert(
+        kernel.get_address_space(proc_ptr).dom().contains(va_range@[0]) == false
+    );
 }
 
-// Test 8: get_address_space is consistent with mem_man.get_pagetable_mapping_by_pcid
-proof fn test_get_address_space_definition(
-    kernel: Kernel, target_proc_ptr: ProcPtr
+// SHOULD FAIL: proc_ptr not in proc_dom
+proof fn test_boundary_proc_not_in_domain(kernel: Kernel, proc_ptr: ProcPtr, va_range: VaRange4K)
+    requires
+        kernel.wf(),
+        !kernel.proc_dom().contains(proc_ptr),
+        va_range.wf(),
+        va_range.len > 0,
+{
+    assert(
+        kernel.get_address_space(proc_ptr).dom().contains(va_range@[0]) == false
+    );
+}
+
+// SHOULD FAIL: va_range not well-formed
+proof fn test_boundary_va_range_not_wf(kernel: Kernel, proc_ptr: ProcPtr, va_range: VaRange4K)
+    requires
+        kernel.wf(),
+        kernel.proc_dom().contains(proc_ptr),
+        va_range.len > 0,
+{
+    assert(
+        spec_va_4k_valid(va_range@[0])
+    );
+}
+
+// SHOULD FAIL: Access va_range at out-of-bounds index
+proof fn test_boundary_va_range_oob(kernel: Kernel, proc_ptr: ProcPtr, va_range: VaRange4K)
+    requires
+        kernel.wf(),
+        kernel.proc_dom().contains(proc_ptr),
+        va_range.wf(),
+        va_range.len > 0,
+{
+    assert(
+        kernel.get_address_space(proc_ptr).dom().contains(va_range@[va_range.len as int]) == false
+    );
+}
+
+// SHOULD FAIL: VaRange4K view length matches len field without wf()
+proof fn test_boundary_va_range_view_len_no_wf(va_range: VaRange4K)
+    requires
+        va_range.len > 0,
+{
+    assert(va_range@.len() == va_range.len);
+}
+
+// ============================================================
+// BEHAVIORAL MUTATION TESTS - Mutate expected outputs
+// ============================================================
+
+// SHOULD FAIL: Assert all VAs are always unmapped
+proof fn test_mutation_always_unmapped(kernel: Kernel, proc_ptr: ProcPtr, va_range: VaRange4K)
+    requires
+        kernel.wf(),
+        kernel.proc_dom().contains(proc_ptr),
+        va_range.wf(),
+{
+    assert(
+        forall|i: int| #![auto]
+            0 <= i < va_range.len ==> kernel.get_address_space(proc_ptr).dom().contains(va_range@[i]) == false
+    );
+}
+
+// SHOULD FAIL: Assert some VA is always mapped
+proof fn test_mutation_always_mapped(kernel: Kernel, proc_ptr: ProcPtr, va_range: VaRange4K)
+    requires
+        kernel.wf(),
+        kernel.proc_dom().contains(proc_ptr),
+        va_range.wf(),
+        va_range.len > 0,
+{
+    assert(
+        exists|i: int| 0 <= i < va_range.len && kernel.get_address_space(proc_ptr).dom().contains(va_range@[i])
+    );
+}
+
+// SHOULD FAIL: First element unmapped implies all unmapped
+proof fn test_mutation_first_element_sufficient(kernel: Kernel, proc_ptr: ProcPtr, va_range: VaRange4K)
+    requires
+        kernel.wf(),
+        kernel.proc_dom().contains(proc_ptr),
+        va_range.wf(),
+        va_range.len > 1,
+        kernel.get_address_space(proc_ptr).dom().contains(va_range@[0]) == false,
+{
+    assert(
+        forall|i: int| #![auto]
+            0 <= i < va_range.len ==> kernel.get_address_space(proc_ptr).dom().contains(va_range@[i]) == false
+    );
+}
+
+// SHOULD FAIL: Invert containment check
+proof fn test_mutation_inverted_containment(kernel: Kernel, proc_ptr: ProcPtr, va_range: VaRange4K)
+    requires
+        kernel.wf(),
+        kernel.proc_dom().contains(proc_ptr),
+        va_range.wf(),
+        va_range.len > 0,
+        forall|i: int| #![auto]
+            0 <= i < va_range.len ==> kernel.get_address_space(proc_ptr).dom().contains(va_range@[i]) == false,
+{
+    assert(
+        kernel.get_address_space(proc_ptr).dom().contains(va_range@[0]) == true
+    );
+}
+
+// SHOULD FAIL: Off-by-one range
+proof fn test_mutation_off_by_one(kernel: Kernel, proc_ptr: ProcPtr, va_range: VaRange4K)
+    requires
+        kernel.wf(),
+        kernel.proc_dom().contains(proc_ptr),
+        va_range.wf(),
+        va_range.len > 1,
+        forall|i: int| #![auto]
+            0 <= i < va_range.len - 1 ==> kernel.get_address_space(proc_ptr).dom().contains(va_range@[i]) == false,
+{
+    assert(
+        kernel.get_address_space(proc_ptr).dom().contains(va_range@[(va_range.len - 1) as int]) == false
+    );
+}
+
+// ============================================================
+// LOGICAL TESTS - Unintended reasoning
+// ============================================================
+
+// SHOULD FAIL: Cross-process address space determinism
+proof fn test_logical_cross_proc_determinism(
+    kernel: Kernel, proc_ptr_a: ProcPtr, proc_ptr_b: ProcPtr, va: VAddr
 )
     requires
         kernel.wf(),
-        kernel.proc_dom().contains(target_proc_ptr),
+        kernel.proc_dom().contains(proc_ptr_a),
+        kernel.proc_dom().contains(proc_ptr_b),
+        proc_ptr_a != proc_ptr_b,
+        kernel.get_address_space(proc_ptr_a).dom().contains(va) == false,
 {
-    // get_address_space is defined as mem_man.get_pagetable_mapping_by_pcid(self.get_proc(p_ptr).pcid)
-    assert(kernel.get_address_space(target_proc_ptr) == kernel.mem_man.get_pagetable_mapping_by_pcid(kernel.get_proc(target_proc_ptr).pcid));
+    assert(
+        kernel.get_address_space(proc_ptr_b).dom().contains(va) == false
+    );
+}
+
+// SHOULD FAIL: Range unmapped implies out-of-range address also unmapped
+proof fn test_logical_range_implies_empty_space(
+    kernel: Kernel, proc_ptr: ProcPtr, va_range: VaRange4K, other_va: VAddr
+)
+    requires
+        kernel.wf(),
+        kernel.proc_dom().contains(proc_ptr),
+        va_range.wf(),
+        va_range.len > 0,
+        forall|i: int| #![auto]
+            0 <= i < va_range.len ==> kernel.get_address_space(proc_ptr).dom().contains(va_range@[i]) == false,
+        forall|i: int| #![auto]
+            0 <= i < va_range.len ==> va_range@[i] != other_va,
+        spec_va_4k_valid(other_va),
+{
+    assert(
+        kernel.get_address_space(proc_ptr).dom().contains(other_va) == false
+    );
+}
+
+// SHOULD FAIL: No spatial locality - adjacent VA unmapped does not follow
+proof fn test_logical_no_spatial_locality(
+    kernel: Kernel, proc_ptr: ProcPtr, va: VAddr
+)
+    requires
+        kernel.wf(),
+        kernel.proc_dom().contains(proc_ptr),
+        spec_va_4k_valid(va),
+        spec_va_4k_valid((va + 4096) as usize),
+        kernel.get_address_space(proc_ptr).dom().contains(va) == false,
+{
+    assert(
+        kernel.get_address_space(proc_ptr).dom().contains((va + 4096) as usize) == false
+    );
+}
+
+// SHOULD FAIL: Single element unmapped does not imply all unmapped
+proof fn test_logical_subrange_does_not_imply_full(
+    kernel: Kernel, proc_ptr: ProcPtr, va_range: VaRange4K
+)
+    requires
+        kernel.wf(),
+        kernel.proc_dom().contains(proc_ptr),
+        va_range.wf(),
+        va_range.len >= 2,
+        kernel.get_address_space(proc_ptr).dom().contains(va_range@[0]) == false,
+{
+    assert(
+        kernel.get_address_space(proc_ptr).dom().contains(va_range@[1]) == false
+    );
+}
+
+// SHOULD FAIL: Address space emptiness implies page allocator is empty
+proof fn test_logical_cross_function_page_alloc(
+    kernel: Kernel, proc_ptr: ProcPtr, va_range: VaRange4K
+)
+    requires
+        kernel.wf(),
+        kernel.proc_dom().contains(proc_ptr),
+        va_range.wf(),
+        va_range.len > 0,
+        forall|i: int| #![auto]
+            0 <= i < va_range.len ==> kernel.get_address_space(proc_ptr).dom().contains(va_range@[i]) == false,
+{
+    assert(
+        kernel.page_alloc.mapped_pages_4k() =~= Set::<PagePtr>::empty()
+    );
 }
 
 }

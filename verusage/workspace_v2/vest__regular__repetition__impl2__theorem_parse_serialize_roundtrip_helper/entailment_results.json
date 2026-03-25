@@ -1,0 +1,47 @@
+[
+  {
+    "name": "parse_serialize_roundtrip_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_parse_serialize_roundtrip_external_body<C: SecureSpecCombinator>(c: &RepeatN<C>, buf: Seq<u8>, n: int, vs: Seq<C::Type>)\n    requires\n        c.requires(),\n        c.spec_parse(buf) == Some((n, vs)),\n    ensures\n        c.wf(vs),\n        c.spec_serialize(vs) == buf.take(n),\n{\n    c.theorem_parse_serialize_roundtrip(buf);\n}",
+    "reason": "`RepeatN::theorem_parse_serialize_roundtrip` is `external_body` with `unimplemented!()` \u2014 the parse-serialize roundtrip is trusted without proof despite a verified helper existing",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "parse_length_external_body",
+    "type": "logical",
+    "code": "proof fn phi_2_parse_length_external_body<C: SecureSpecCombinator>(c: &RepeatN<C>, s: Seq<u8>, n: int, vs: Seq<C::Type>)\n    requires\n        c.requires(),\n        c.spec_parse(s) == Some((n, vs)),\n    ensures\n        0 <= n <= s.len(),\n{\n    c.lemma_parse_length(s);\n}",
+    "reason": "`RepeatN::lemma_parse_length` is `external_body` with `unimplemented!()` \u2014 the parse length bound is trusted without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "parse_length_helper_external_body",
+    "type": "logical",
+    "code": "proof fn phi_3_parse_length_helper_external_body<C: SecureSpecCombinator>(c: &RepeatN<C>, s: Seq<u8>, n: usize, m: int, vs: Seq<C::Type>)\n    requires\n        c.requires(),\n        c.spec_parse_helper(s, n) == Some((m, vs)),\n    ensures\n        0 <= m <= s.len(),\n{\n    c.lemma_parse_length_helper(s, n);\n}",
+    "reason": "`lemma_parse_length_helper` is `external_body` with `unimplemented!()` \u2014 the helper parse length bound is trusted and used as a critical dependency in the verified roundtrip helper",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "serialize_ignores_count_field",
+    "type": "logical",
+    "code": "proof fn phi_4_serialize_ignores_count_field<C: SecureSpecCombinator>(c: &C, vs: Seq<C::Type>, n1: usize, n2: usize)\n    ensures\n        RepeatN(*c, n1).spec_serialize(vs) == RepeatN(*c, n2).spec_serialize(vs),\n{\n}",
+    "reason": "`spec_serialize` uses `fold_left` over `vs` without referencing `self.1` \u2014 the count field is completely ignored during serialization",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "wf_implies_all_inner_wf",
+    "type": "behavioral",
+    "code": "proof fn phi_5_wf_implies_all_inner_wf<C: SecureSpecCombinator>(c: &RepeatN<C>, vs: Seq<C::Type>, i: int)\n    requires\n        c.wf(vs),\n        0 <= i < vs.len(),\n    ensures\n        c.0.wf(vs[i]),\n{\n}",
+    "reason": "Well-formedness of the sequence implies well-formedness of each element \u2014 if the inner wf were not propagated, serializing individual elements could produce incorrect bytes",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

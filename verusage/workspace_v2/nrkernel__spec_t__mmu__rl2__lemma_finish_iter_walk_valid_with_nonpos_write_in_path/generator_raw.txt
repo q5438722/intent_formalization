@@ -1,0 +1,97 @@
+===PHI_START===
+NAME: walk_next_preserves_vaddr
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_walk_next_preserves_vaddr(mem: PTMem, walk: Walk)
+    requires
+        !walk.complete,
+        walk.path.len() < 4,
+    ensures
+        ({
+            reveal(walk_next);
+            walk_next(mem, walk).vaddr == walk.vaddr
+        }),
+{
+    reveal(walk_next);
+}
+```
+REASON: `walk_next` should preserve the virtual address being walked — if it changes vaddr, the walk diverges from its original translation target
+===PHI_END===
+
+===PHI_START===
+NAME: walk_next_increments_path_len
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_walk_next_increments_path_len(mem: PTMem, walk: Walk)
+    requires
+        !walk.complete,
+        walk.path.len() < 4,
+    ensures
+        ({
+            reveal(walk_next);
+            walk_next(mem, walk).path.len() == walk.path.len() + 1
+        }),
+{
+    reveal(walk_next);
+}
+```
+REASON: Each `walk_next` step should append exactly one entry — growing by more or fewer would break the 4-level page table traversal
+===PHI_END===
+
+===PHI_START===
+NAME: finish_iter_walk_always_complete
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_finish_iter_walk_always_complete(mem: PTMem, walk: Walk)
+    requires
+        walk.path.len() == 0,
+        !walk.complete,
+    ensures
+        finish_iter_walk(mem, walk).complete,
+{
+    reveal(walk_next);
+}
+```
+REASON: Starting from an empty incomplete walk, `finish_iter_walk` applies up to 4 steps — the walk should always complete since every non-Directory PDE sets complete=true and after 4 levels there are no more Directory options
+===PHI_END===
+
+===PHI_START===
+NAME: all_mb0_bits_are_zero_external_body_unsound
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_all_mb0_bits_are_zero_external_body_unsound(entry: usize, layer: nat)
+    ensures
+        (PDE { entry, layer: Ghost(layer) }).all_mb0_bits_are_zero() ==>
+        (PDE { entry, layer: Ghost(layer) }).all_mb0_bits_are_zero(),
+{
+}
+```
+REASON: `all_mb0_bits_are_zero` is `external_body` with `unimplemented!()` — the predicate is entirely opaque with no body constraining its value
+===PHI_END===
+
+===PHI_START===
+NAME: nonpos_write_invalidates_only_at_idx
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_nonpos_write_invalidates_only_at_idx(mem: PTMem, c: Constants, walk: Walk, wraddr: usize, value: usize, idx: nat)
+    requires
+        walk.path.len() <= idx < finish_iter_walk(mem, walk).path.len(),
+        finish_iter_walk(mem, walk).path[idx as int].0 == wraddr,
+        forall|j| #![auto] walk.path.len() <= j < idx ==> finish_iter_walk(mem, walk).path[j].0 != wraddr,
+        mem.read(wraddr) & 1 == 1,
+        value & 1 == 0,
+        finish_iter_walk(mem, walk).result() is Valid,
+    ensures
+        finish_iter_walk(mem.write(wraddr, value), walk).result() is Invalid,
+{
+    assert(bit!(0usize) == 1) by (bit_vector);
+    reveal(walk_next);
+}
+```
+REASON: Duplicate of existing lemma — if Verus verifies this, it confirms the lemma but also that clearing the P bit at any ancestor in the walk path always invalidates, with no mechanism for a sibling entry to "rescue" the walk
+===PHI_END===

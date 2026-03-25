@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "page_entry_to_map_entry_drops_present",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`spec_page_entry_to_map_entry` copies addr, write, and execute_disable but silently drops the present bit. A non-present page entry produces a MapEntry indistinguishable from a present one, which could mask bugs where non-present entries are accidentally used as valid mappings."
+  },
+  {
+    "phi": "is_empty_l4_dom_unbounded",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`is_empty` clears l3/l2/l1 domains and all mappings but never constrains `l4_table@.dom()`. An \"empty\" page table's `page_closure()` can contain arbitrary extra L4 pointers beyond cr3, potentially interfering with page ownership disjointness invariants."
+  },
+  {
+    "phi": "resolve_l4_returns_non_present_kernel",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`spec_resolve_mapping_l4` returns `Some` for kernel-range indices (`l4i < kernel_l4_end`) even when `present == false`. Downstream resolution functions (L3, L2, L1) then dereference the returned entry's `addr` to look up sub-tables, treating a non-present entry as a valid page table pointer \u2014 this is a real spec gap that could lead to unsound reasoning about kernel address space resolution."
+  },
+  {
+    "phi": "resolve_1g_and_l3_mutual_exclusion_by_ps",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This confirms the correct and intended behavior: `spec_resolve_mapping_1g_l3` requires `ps == true` while `spec_resolve_mapping_l3` requires `ps == false`, ensuring mutual exclusion between 1GB hugepage and non-hugepage L3 resolution. This is a desirable property."
+  }
+]

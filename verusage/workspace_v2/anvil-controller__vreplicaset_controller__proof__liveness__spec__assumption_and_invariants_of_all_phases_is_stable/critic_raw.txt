@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: unmarshal_skips_state_validation
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Unmarshal is intentionally a parsing/deserialization step separate from validation. In Kubernetes, state validation is performed at admission time, not during unmarshalling — this separation is by design.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: create_key_namespace_diverges
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `CreateRequest::key()` derives namespace from `self.namespace` rather than `self.obj.metadata.namespace`. If these diverge, the object is stored under a key that doesn't match its own metadata, which could lead to inconsistent lookups or stale references.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: object_ref_ignores_uid
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `ObjectRef` is intentionally defined as (kind, name, namespace) to serve as a logical key for resource lookup. UID-based identity tracking is handled separately via `metadata.uid` and owner references — `ObjectRef` is a namespace-scoped name, not a unique incarnation identifier.
+===VERDICT_END===
+
+===SUMMARY===
+Of the 3 candidates, 1 is a true positive: `create_key_namespace_diverges` highlights that `CreateRequest::key()` uses `self.namespace` instead of `self.obj.metadata.namespace`, allowing the storage key to diverge from the object's own metadata. The other 2 are false positives — `unmarshal_skips_state_validation` reflects the intentional separation of deserialization from admission validation, and `object_ref_ignores_uid` reflects the standard Kubernetes design where `ObjectRef` is a namespace-scoped name key, not a UID-based incarnation identifier.
+===END_SUMMARY===

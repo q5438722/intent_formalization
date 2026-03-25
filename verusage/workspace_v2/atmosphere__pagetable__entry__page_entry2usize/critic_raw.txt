@@ -1,0 +1,17 @@
+===VERDICT_START===
+PHI: page_entry2usize_missing_user_ensures
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures clause `usize2page_entry_perm(ret) =~= pe.perm` already covers all fields including user. The individual field ensures are redundant convenience; the "asymmetry" of omitting one is a style issue, not a spec gap. The property trivially follows from the requires.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: execute_disable_bit63_overlaps_addr
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is exactly how x86-64 page table entries work by hardware design. Bit 63 is the NX/XD bit and bits 51:12 are the physical address — they occupy non-overlapping bit positions. MEM_MASK correctly extracts bits 47:12 for the address while PAGE_ENTRY_EXECUTE_MASK extracts bit 63. There is no overlap; the spec faithfully models the hardware encoding.
+===VERDICT_END===
+
+===SUMMARY===
+Both candidates are false positives. The missing-user-ensures observation is a trivial consequence of the existing `usize2page_entry_perm(ret) =~= pe.perm` postcondition that already covers all permission fields. The bit-63 overlap concern reflects correct x86-64 hardware design where the NX bit (63) and the physical address field (bits 47:12) occupy entirely separate bit positions within the page table entry encoding.
+===END_SUMMARY===

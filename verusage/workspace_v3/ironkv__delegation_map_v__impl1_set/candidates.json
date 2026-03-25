@@ -1,0 +1,37 @@
+[
+  {
+    "name": "length_increases_after_set",
+    "target_fn": "set",
+    "type": "behavioral",
+    "code": "proof fn phi_1_length_increases_after_set<K: KeyTrait + VerusClone>(pre: Seq<K>, post: Seq<K>, i: int, k: K)\n    requires\n        sorted(pre),\n        pre.no_duplicates(),\n        0 <= i < pre.len(),\n        i > 0 ==> pre[i - 1].cmp_spec(k).lt(),\n        i < pre.len() - 1 ==> k.cmp_spec(pre[i + 1]).lt(),\n        sorted(post),\n        post.no_duplicates(),\n        post == pre.update(i, k),\n    ensures\n        post.len() > pre.len(),\n{\n}",
+    "reason": "set should preserve length; if the spec entails a length increase the ensures is wrong"
+  },
+  {
+    "name": "frame_violation_other_index",
+    "target_fn": "set",
+    "type": "logical",
+    "code": "proof fn phi_2_frame_violation_other_index<K: KeyTrait + VerusClone>(pre: Seq<K>, post: Seq<K>, i: int, j: int, k: K)\n    requires\n        sorted(pre),\n        pre.no_duplicates(),\n        0 <= i < pre.len(),\n        i > 0 ==> pre[i - 1].cmp_spec(k).lt(),\n        i < pre.len() - 1 ==> k.cmp_spec(pre[i + 1]).lt(),\n        sorted(post),\n        post.no_duplicates(),\n        post == pre.update(i, k),\n        0 <= j < pre.len(),\n        j != i,\n    ensures\n        post[j] != pre[j],\n{\n}",
+    "reason": "Elements at untouched indices must be preserved; a frame violation means the update spec is too weak"
+  },
+  {
+    "name": "target_element_not_k",
+    "target_fn": "set",
+    "type": "behavioral",
+    "code": "proof fn phi_3_target_element_not_k<K: KeyTrait + VerusClone>(pre: Seq<K>, post: Seq<K>, i: int, k: K)\n    requires\n        sorted(pre),\n        pre.no_duplicates(),\n        0 <= i < pre.len(),\n        i > 0 ==> pre[i - 1].cmp_spec(k).lt(),\n        i < pre.len() - 1 ==> k.cmp_spec(pre[i + 1]).lt(),\n        sorted(post),\n        post.no_duplicates(),\n        post == pre.update(i, k),\n    ensures\n        post[i] != k,\n{\n}",
+    "reason": "After set the element at index i must equal k; if the spec allows otherwise the update semantics are broken"
+  },
+  {
+    "name": "single_element_vacuous",
+    "target_fn": "set",
+    "type": "boundary",
+    "code": "proof fn phi_4_single_element_vacuous<K: KeyTrait + VerusClone>(pre: Seq<K>, post: Seq<K>, k: K)\n    requires\n        sorted(pre),\n        pre.no_duplicates(),\n        pre.len() == 1,\n        sorted(post),\n        post.no_duplicates(),\n        post == pre.update(0int, k),\n    ensures\n        false,\n{\n}",
+    "reason": "A single-element vec is a valid boundary case for set at index 0; if the spec is vacuously satisfiable here the preconditions are inconsistent"
+  },
+  {
+    "name": "sortedness_broken_in_result",
+    "target_fn": "set",
+    "type": "logical",
+    "code": "proof fn phi_5_sortedness_broken_in_result<K: KeyTrait + VerusClone>(pre: Seq<K>, post: Seq<K>, i: int, k: K)\n    requires\n        sorted(pre),\n        pre.no_duplicates(),\n        pre.len() >= 2,\n        0 <= i < pre.len(),\n        i > 0 ==> pre[i - 1].cmp_spec(k).lt(),\n        i < pre.len() - 1 ==> k.cmp_spec(pre[i + 1]).lt(),\n        sorted(post),\n        post.no_duplicates(),\n        post == pre.update(i, k),\n    ensures\n        exists |m: int, n: int| 0 <= m < n < post.len() && !post[m].cmp_spec(post[n]).lt(),\n{\n}",
+    "reason": "The post-state must be strictly sorted; if the spec entails the existence of an unsorted pair then valid() is not truly maintained"
+  }
+]

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "lemma_write_seq_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_lemma_write_seq_external_body(pt: PTMem, writes: Seq<(usize, usize)>)\n    ensures\n        pt.write_seq(writes).pml4 == pt.pml4,\n        pt.mem.dom().subset_of(pt.write_seq(writes).mem.dom()),\n{\n    pt.lemma_write_seq(writes);\n}",
+    "reason": "`lemma_write_seq` is `external_body` with `unimplemented!()` \u2014 pml4 preservation and domain monotonicity are trusted without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "valid_core_external_body_unconstrained",
+    "type": "logical",
+    "code": "proof fn phi_2_valid_core_external_body_unconstrained(c: Constants, core1: Core, core2: Core)\n    requires\n        core1.node_id != core2.node_id,\n    ensures\n        c.valid_core(core1) == c.valid_core(core2),\n{\n}",
+    "reason": "`valid_core` is `external_body` with no spec body \u2014 completely opaque, the SMT solver could derive anything about core validity",
+    "entailed": false,
+    "verus_output": "_lemma_core_mem_pm14/phi_2_valid_core_external_body_unconstrained.rs:222:9\n    |\n218 | proof fn phi_2_valid_core_external_body_unconstrained(c: Constants, core1: Core, core2: Core)\n    |       --------------------------------------------------------------------------------------- at the end of the function body\n...\n222 |         c.valid_core(core1) == c.valid_core(core2),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "core_mem_ignores_other_sbufs",
+    "type": "behavioral",
+    "code": "proof fn phi_3_core_mem_ignores_other_sbufs(s: State, c1: Core, c2: Core)\n    requires\n        c1 !== c2,\n        s.sbuf.contains_key(c1),\n        s.sbuf.contains_key(c2),\n        s.sbuf[c2].len() > 0,\n    ensures\n        s.core_mem(c1) == (State { sbuf: s.sbuf.insert(c2, Seq::empty()), ..s }).core_mem(c1),\n{\n}",
+    "reason": "`core_mem` only applies the store buffer of the given core \u2014 modifications to other cores' store buffers are invisible, meaning each core sees a potentially stale view of page table memory",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "core_mem_pml4_relies_on_external_body",
+    "type": "logical",
+    "code": "proof fn phi_4_core_mem_pml4_relies_on_external_body(state: State, c: Constants, core: Core)\n    requires\n        c.valid_core(core),\n    ensures\n        state.core_mem(core).pml4 == state.pt_mem.pml4,\n{\n    lemma_core_mem_pml4(state, c, core);\n}",
+    "reason": "The proof that `core_mem` preserves `pml4` depends on `lemma_write_seq` (external_body) \u2014 the entire per-core memory consistency guarantee rests on an unverified lemma",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "writes_tso_not_connected_to_sbuf",
+    "type": "behavioral",
+    "code": "proof fn phi_5_writes_tso_not_connected_to_sbuf(s: State, core: Core, addr: usize, value: usize)\n    requires\n        s.sbuf.contains_key(core),\n    ensures\n        ({\n            let s2 = State {\n                pt_mem: s.pt_mem,\n                sbuf: s.sbuf.insert(core, s.sbuf[core].push((addr, value))),\n                writes: s.writes,\n                ..s\n            };\n            s2.writes.tso === s.writes.tso\n        }),\n{\n}",
+    "reason": "Adding to a core's store buffer doesn't update `writes.tso` \u2014 the TSO tracking set and the actual store buffers are disconnected spec-level fields with no invariant linking them",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

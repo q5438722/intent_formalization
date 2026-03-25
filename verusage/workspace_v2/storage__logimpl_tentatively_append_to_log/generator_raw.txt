@@ -1,0 +1,148 @@
+===PHI_START===
+NAME: lemma_tentatively_append_external_body_invariant
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_lemma_tentatively_append_external_body_invariant(
+    pm_region_view: PersistentMemoryRegionView,
+    bytes_to_append: Seq<u8>,
+    prev_info: LogInfo,
+    prev_state: AbstractLogState,
+)
+    requires
+        pm_region_view.len() == prev_info.log_area_len,
+        info_consistent_with_log_area(pm_region_view, prev_info, prev_state),
+        ({
+            let log_area_len = prev_info.log_area_len;
+            let num_bytes = bytes_to_append.len();
+            let max_len_without_wrapping = log_area_len - relative_log_pos_to_log_area_offset(
+                prev_info.log_plus_pending_length as int,
+                prev_info.head_log_area_offset as int,
+                log_area_len as int,
+            );
+            &&& 0 < num_bytes <= max_len_without_wrapping
+            &&& prev_info.log_plus_pending_length + num_bytes <= log_area_len
+            &&& prev_info.head + prev_info.log_plus_pending_length + num_bytes <= u128::MAX
+        }),
+    ensures
+        ({
+            let log_area_len = prev_info.log_area_len;
+            let num_bytes = bytes_to_append.len();
+            let new_info = prev_info.tentatively_append(num_bytes as u64);
+            let new_state = prev_state.tentatively_append(bytes_to_append);
+            let write_addr = relative_log_pos_to_log_area_offset(
+                prev_info.log_plus_pending_length as int,
+                prev_info.head_log_area_offset as int,
+                log_area_len as int,
+            );
+            let pm_region_view2 = pm_region_view.write(write_addr, bytes_to_append);
+            info_consistent_with_log_area(pm_region_view2, new_info, new_state)
+        }),
+{
+    lemma_tentatively_append(pm_region_view, bytes_to_append, prev_info, prev_state);
+}
+```
+REASON: `lemma_tentatively_append` is `external_body` — the invariant preservation after non-wrapping append is trusted without proof; if the circular buffer arithmetic or persistent memory state tracking is wrong, log corruption goes undetected
+===PHI_END===
+
+===PHI_START===
+NAME: lemma_tentatively_append_wrapping_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_lemma_tentatively_append_wrapping_external_body(
+    pm_region_view: PersistentMemoryRegionView,
+    bytes_to_append: Seq<u8>,
+    prev_info: LogInfo,
+    prev_state: AbstractLogState,
+)
+    requires
+        pm_region_view.len() == prev_info.log_area_len,
+        info_consistent_with_log_area(pm_region_view, prev_info, prev_state),
+        ({
+            let log_area_len = prev_info.log_area_len;
+            let num_bytes = bytes_to_append.len();
+            let max_len_without_wrapping = log_area_len - relative_log_pos_to_log_area_offset(
+                prev_info.log_plus_pending_length as int,
+                prev_info.head_log_area_offset as int,
+                log_area_len as int,
+            );
+            &&& num_bytes > max_len_without_wrapping
+            &&& prev_info.head + prev_info.log_plus_pending_length + num_bytes <= u128::MAX
+            &&& num_bytes <= log_area_len - prev_info.log_plus_pending_length
+        }),
+    ensures
+        ({
+            let log_area_len = prev_info.log_area_len;
+            let max_len_without_wrapping = log_area_len - relative_log_pos_to_log_area_offset(
+                prev_info.log_plus_pending_length as int,
+                prev_info.head_log_area_offset as int,
+                log_area_len as int,
+            );
+            let bytes_part1 = bytes_to_append.subrange(0, max_len_without_wrapping as int);
+            let bytes_part2 = bytes_to_append.subrange(max_len_without_wrapping as int, bytes_to_append.len() as int);
+            let write_addr = relative_log_pos_to_log_area_offset(
+                prev_info.log_plus_pending_length as int,
+                prev_info.head_log_area_offset as int,
+                log_area_len as int,
+            );
+            let pm2 = pm_region_view.write(write_addr, bytes_part1);
+            pm2.no_outstanding_writes_in_range(0, bytes_part2.len())
+        }),
+{
+    lemma_tentatively_append_wrapping(pm_region_view, bytes_to_append, prev_info, prev_state);
+}
+```
+REASON: `lemma_tentatively_append_wrapping` is `external_body` — the wrapping case asserts no outstanding writes in the wrap-around target range without proof; if the invariant doesn't guarantee this for the beginning of the log area, a crash could corrupt already-flushed data
+===PHI_END===
+
+===PHI_START===
+NAME: subregion_start_len_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_subregion_start_len_external_body(sub: WriteRestrictedPersistentMemorySubregion)
+    ensures
+        sub.start() + sub.len() >= sub.start(),
+{
+}
+```
+REASON: `start()` and `len()` are both `external_body` closed specs — any property about their relationship is trusted; if `start + len` could overflow or `len` could be inconsistent with the actual subregion, writes would target wrong addresses
+===PHI_END===
+
+===PHI_START===
+NAME: write_preserves_length
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_write_preserves_length(view: PersistentMemoryRegionView, addr: int, bytes: Seq<u8>)
+    requires
+        bytes.len() > 0,
+        0 <= addr,
+        addr + bytes.len() <= view.len(),
+    ensures
+        view.write(addr, bytes).len() == view.len(),
+{
+}
+```
+REASON: Writing to a persistent memory region should not change its length — if the map-based write accidentally altered the sequence length, all offset calculations would be invalidated
+===PHI_END===
+
+===PHI_START===
+NAME: write_within_range_has_outstanding
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_write_within_range_has_outstanding(view: PersistentMemoryRegionView, addr: int, bytes: Seq<u8>, k: int)
+    requires
+        0 <= addr,
+        addr + bytes.len() <= view.len(),
+        bytes.len() > 0,
+        addr <= k < addr + bytes.len(),
+    ensures
+        view.write(addr, bytes).state[k].outstanding_write == Some(bytes[k - addr]),
+{
+}
+```
+REASON: After writing, positions within the range should have the new byte as an outstanding write — if `PersistentMemoryByte::write` didn't properly record the outstanding write, flush_byte would return stale data
+===PHI_END===

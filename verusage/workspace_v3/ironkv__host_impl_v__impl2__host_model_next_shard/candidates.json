@@ -1,0 +1,37 @@
+[
+  {
+    "name": "send_shard_empty_output",
+    "target_fn": "next_shard",
+    "type": "behavioral",
+    "code": "proof fn phi_1_send_shard_empty_output(\n    pre: AbstractHostState, post: AbstractHostState, out: Set<Packet>,\n    kr: KeyRange<AbstractKey>, recipient: AbstractEndPoint,\n    sm: SingleMessage<Message>,\n)\n    requires\n        pre.delegation_map.is_complete(),\n        next_shard(pre, post, out, kr, recipient, sm, true),\n    ensures\n        out == Set::<Packet>::empty(),\n{\n}",
+    "reason": "If a shard with should_send=true produces empty output, recipients never receive delegated data, breaking liveness."
+  },
+  {
+    "name": "send_always_produces_message",
+    "target_fn": "send_single_message",
+    "type": "boundary",
+    "code": "proof fn phi_2_send_always_produces_message(\n    pre: SingleDelivery<Message>, post: SingleDelivery<Message>,\n    m: Message, dst: AbstractEndPoint,\n    sm: Option<SingleMessage<Message>>, params: AbstractParameters,\n)\n    requires\n        SingleDelivery::send_single_message(pre, post, m, dst, sm, params),\n    ensures\n        sm.is_Some(),\n{\n}",
+    "reason": "If send_single_message always yields Some, the max_seqno overflow guard is vacuous and unbounded sends are possible."
+  },
+  {
+    "name": "missing_ack_nonzero",
+    "target_fn": "ack_state_lookup",
+    "type": "logical",
+    "code": "proof fn phi_3_missing_ack_nonzero(\n    src: AbstractEndPoint,\n    send_state: SendState<Message>,\n)\n    requires\n        !send_state.contains_key(src),\n    ensures\n        ack_state_lookup::<Message>(src, send_state).num_packets_acked != 0,\n{\n}",
+    "reason": "A missing key returning nonzero acked count would fabricate acknowledgment history, corrupting retransmission logic."
+  },
+  {
+    "name": "reject_modifies_hashtable",
+    "target_fn": "next_shard_wrapper",
+    "type": "behavioral",
+    "code": "proof fn phi_4_reject_modifies_hashtable(\n    pre: AbstractHostState, post: AbstractHostState, pkt: Packet, out: Set<Packet>,\n)\n    requires\n        pre.delegation_map.is_complete(),\n        pkt.msg is Message,\n        pkt.msg.arrow_Message_m() is Shard,\n        next_shard_wrapper_must_reject(pre, pkt.msg.arrow_Message_m()),\n        next_shard_wrapper(pre, post, pkt, out),\n    ensures\n        post.h != pre.h,\n{\n}",
+    "reason": "If a rejected shard still mutates the hashtable, data is silently lost without any corresponding delegation transfer."
+  },
+  {
+    "name": "no_send_changes_hashtable",
+    "target_fn": "next_shard",
+    "type": "boundary",
+    "code": "proof fn phi_5_no_send_changes_hashtable(\n    pre: AbstractHostState, post: AbstractHostState, out: Set<Packet>,\n    kr: KeyRange<AbstractKey>, recipient: AbstractEndPoint,\n    sm: SingleMessage<Message>,\n)\n    requires\n        pre.delegation_map.is_complete(),\n        next_shard(pre, post, out, kr, recipient, sm, false),\n    ensures\n        post.h != pre.h,\n{\n}",
+    "reason": "If should_send=false still removes keys from h, data is destroyed without being delegated, causing permanent key loss."
+  }
+]

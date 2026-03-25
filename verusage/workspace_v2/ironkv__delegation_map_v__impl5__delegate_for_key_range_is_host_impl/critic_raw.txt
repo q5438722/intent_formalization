@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: delegate_for_key_range_vacuous_end_end
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Vacuous truth over an empty range is standard. When both lo and hi are end iterators, no key satisfies `between`, so `delegate_for_key_range_is_host` holds trivially for any destination. This is expected behavior for empty ranges.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: delegate_for_key_range_contradictory_dsts
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The range [k, k) is empty because `between(new_spec(k), new_spec(k), new_spec(k))` requires `k < k` which is false. Vacuous truth over an empty domain simultaneously satisfying contradictory predicates is standard logic, not a spec gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: abstract_delegation_map_complete_unchecked
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This directly follows from `DelegationMap::valid` requiring `self@.dom().is_full()` and `forall |k| self@[k].valid_physical_address()`. These are the intended invariants of a valid delegation map — every key must be delegated to a valid endpoint. The ghost field concern is the standard Verus pattern, not a spec issue.
+===VERDICT_END===
+
+===SUMMARY===
+All three candidates are false positives. The first two exploit vacuous truth over empty/degenerate key ranges, which is standard logical behavior and not a spec weakness. The third simply restates invariants that are explicitly part of the `DelegationMap::valid` definition. No real spec issues were identified.
+===END_SUMMARY===

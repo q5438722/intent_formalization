@@ -1,0 +1,52 @@
+[
+  {
+    "name": "always_false",
+    "target_fn": "container_check_is_ancestor",
+    "type": "behavioral",
+    "reason": "If subtree_set is always empty the ancestor check is vacuously false, breaking all hierarchy queries",
+    "entailed": false,
+    "verified": 21,
+    "errors": 1,
+    "output_tail": "------------- at the end of the function body\n...\n1271 |         !pm.get_container(ancestor_ptr).subtree_set@.contains(child_ptr),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 18 warnings emitted\n\n"
+  },
+  {
+    "name": "always_true",
+    "target_fn": "container_check_is_ancestor",
+    "type": "behavioral",
+    "reason": "If every container is trivially an ancestor of every other, isolation between containers is completely broken",
+    "entailed": false,
+    "verified": 21,
+    "errors": 1,
+    "output_tail": "--------------- at the end of the function body\n...\n1271 |         pm.get_container(ancestor_ptr).subtree_set@.contains(child_ptr),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 18 warnings emitted\n\n"
+  },
+  {
+    "name": "symmetric_ancestry",
+    "target_fn": "container_check_is_ancestor",
+    "type": "logical",
+    "reason": "Ancestry in a tree must be antisymmetric; symmetry would mean every ancestor relationship is cyclic, destroying the tree structure",
+    "entailed": false,
+    "verified": 21,
+    "errors": 1,
+    "output_tail": "----------------------------------------------------- at the end of the function body\n...\n1273 |         pm.get_container(b).subtree_set@.contains(a),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 18 warnings emitted\n\n"
+  },
+  {
+    "name": "deeper_node_is_ancestor",
+    "target_fn": "container_check_is_ancestor",
+    "type": "boundary",
+    "reason": "A strictly-deeper-or-equal node cannot be a proper ancestor of a shallower node; if the spec allows this the depth-based early-return optimization is unsound",
+    "entailed": false,
+    "verified": 21,
+    "errors": 1,
+    "output_tail": "--------------- at the end of the function body\n...\n1273 |         pm.get_container(ancestor_ptr).subtree_set@.contains(child_ptr),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 18 warnings emitted\n\n"
+  },
+  {
+    "name": "same_depth_implies_ancestor",
+    "target_fn": "container_check_is_ancestor",
+    "type": "boundary",
+    "reason": "Distinct containers at the same depth in a tree are siblings or cousins and cannot be ancestors of each other; entailment would indicate a broken depth invariant",
+    "entailed": false,
+    "verified": 21,
+    "errors": 1,
+    "output_tail": "----------------------------------------------------- at the end of the function body\n...\n1273 |         pm.get_container(a).subtree_set@.contains(b),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 18 warnings emitted\n\n"
+  }
+]

@@ -1,0 +1,37 @@
+[
+  {
+    "name": "align_exceeds_input",
+    "target_fn": "align_to_usize",
+    "type": "behavioral",
+    "code": "proof fn phi_1_align_exceeds_input(a: usize, b: usize)\n    requires\n        b > 0,\n        a >= b,\n    ensures\n        align_to_usize(a, b) > a,\n{\n}",
+    "reason": "Alignment (round-down) must never produce a value larger than the original address"
+  },
+  {
+    "name": "aligned_input_changes",
+    "target_fn": "align_to_usize",
+    "type": "boundary",
+    "code": "proof fn phi_2_aligned_input_changes(a: usize, b: usize)\n    requires\n        b > 0,\n        a % b == 0,\n    ensures\n        align_to_usize(a, b) != a,\n{\n}",
+    "reason": "Aligning an already-aligned value must be a no-op; changing it would corrupt valid base addresses"
+  },
+  {
+    "name": "result_not_multiple",
+    "target_fn": "align_to_usize",
+    "type": "logical",
+    "code": "proof fn phi_3_result_not_multiple(a: usize, b: usize)\n    requires\n        b > 0,\n    ensures\n        align_to_usize(a, b) % b != 0,\n{\n}",
+    "reason": "The whole point of alignment is that the result is divisible by the alignment size; violating this breaks page-boundary invariants"
+  },
+  {
+    "name": "excessive_rounding",
+    "target_fn": "align_to_usize",
+    "type": "behavioral",
+    "code": "proof fn phi_4_excessive_rounding(a: usize, b: usize)\n    requires\n        b > 0,\n        a >= b,\n    ensures\n        a - align_to_usize(a, b) >= b,\n{\n}",
+    "reason": "Rounding down by b or more means skipping an entire alignment block, losing a valid mapping region"
+  },
+  {
+    "name": "not_idempotent",
+    "target_fn": "align_to_usize",
+    "type": "logical",
+    "code": "proof fn phi_5_not_idempotent(a: usize, b: usize)\n    requires\n        b > 0,\n    ensures\n        align_to_usize(align_to_usize(a, b), b) != align_to_usize(a, b),\n{\n}",
+    "reason": "Alignment must be idempotent; a double-align changing the result would mean walk result vbase addresses are unstable"
+  }
+]

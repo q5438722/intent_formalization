@@ -1,0 +1,85 @@
+===PHI_START===
+NAME: create_key_namespace_diverges
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_create_key_namespace_diverges(req: CreateRequest)
+    requires
+        req.obj.metadata.namespace is Some,
+        req.namespace != req.obj.metadata.namespace->0,
+    ensures
+        req.key().namespace != req.obj.metadata.namespace->0,
+{
+}
+```
+REASON: CreateRequest::key uses self.namespace instead of self.obj.metadata.namespace, so the key can silently disagree with the object's own namespace metadata
+===PHI_END===
+
+===PHI_START===
+NAME: update_key_ignores_obj_namespace
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_update_key_ignores_obj_namespace(req: UpdateRequest)
+    requires
+        req.obj.metadata.namespace is Some,
+        req.namespace != req.obj.metadata.namespace->0,
+    ensures
+        req.key().namespace != req.obj.metadata.namespace->0,
+{
+}
+```
+REASON: UpdateRequest::key uses self.namespace and self.name rather than the object's own metadata, allowing the key to reference a different resource than what the object describes
+===PHI_END===
+
+===PHI_START===
+NAME: update_key_ignores_obj_name
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_update_key_ignores_obj_name(req: UpdateRequest)
+    requires
+        req.obj.metadata.name is Some,
+        req.name != req.obj.metadata.name->0,
+    ensures
+        req.key().name != req.obj.metadata.name->0,
+{
+}
+```
+REASON: UpdateRequest::key uses self.name not self.obj.metadata.name, so an update request can target a different name than the object payload carries — the object could overwrite a resource it doesn't represent
+===PHI_END===
+
+===PHI_START===
+NAME: marshal_unmarshal_no_roundtrip
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_marshal_unmarshal_no_roundtrip(v: VReplicaSetView)
+    requires
+        v.metadata.name is Some,
+        v.metadata.namespace is Some,
+    ensures
+        VReplicaSetView::unmarshal(v.marshal()) is Ok ==>
+            VReplicaSetView::unmarshal(v.marshal())->Ok_0.spec() == v.spec()
+            && VReplicaSetView::unmarshal(v.marshal())->Ok_0.metadata() == v.metadata(),
+{
+}
+```
+REASON: marshal_spec/unmarshal_spec are uninterpreted with no roundtrip axiom — the solver can satisfy this vacuously by making unmarshal always fail, meaning no actual roundtrip guarantee exists
+===PHI_END===
+
+===PHI_START===
+NAME: reconcile_id_allocator_no_uniqueness
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_reconcile_id_allocator_no_uniqueness(a1: ReconcileIdAllocator, a2: ReconcileIdAllocator)
+    requires
+        a1.reconcile_id_counter == a2.reconcile_id_counter,
+    ensures
+        a1.allocate().1 == a2.allocate().1,
+{
+}
+```
+REASON: two independent ReconcileIdAllocators with the same counter produce identical reconcile IDs — there is no global uniqueness mechanism, so concurrent controllers can allocate colliding IDs
+===PHI_END===

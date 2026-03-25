@@ -1,0 +1,47 @@
+[
+  {
+    "name": "always_unfold_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_1_always_unfold_intensional_bridge(ex: Execution<int>, p: TempPred<int>, i: nat)\n    requires\n        always(p).satisfied_by(ex),\n    ensures\n        p.satisfied_by(ex.suffix(i)),\n{\n    always_unfold::<int>(ex, p);\n}",
+    "reason": "always_unfold is external_body bridging always's TempPred::new closure-wrapped forall to a bare forall \u2014 resolves closure identity gap without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "implies_apply_closure_bridge",
+    "type": "logical",
+    "code": "proof fn phi_2_implies_apply_closure_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.implies(q).satisfied_by(ex),\n        p.satisfied_by(ex),\n    ensures\n        q.satisfied_by(ex),\n{\n    implies_apply::<int>(ex, p, q);\n}",
+    "reason": "implies_apply is external_body bridging p.implies(q)'s TempPred::new closure-wrapped implication to modus ponens \u2014 resolves closure identity gap without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "eventually_proved_by_witness_closure_bridge",
+    "type": "logical",
+    "code": "proof fn phi_3_eventually_proved_by_witness_closure_bridge(ex: Execution<int>, p: TempPred<int>, witness_idx: nat)\n    requires\n        p.satisfied_by(ex.suffix(witness_idx)),\n    ensures\n        eventually(p).satisfied_by(ex),\n{\n    eventually_proved_by_witness::<int>(ex, p, witness_idx);\n}",
+    "reason": "eventually_proved_by_witness is external_body bridging a concrete witness to eventually's TempPred::new closure-wrapped existential \u2014 resolves closure identity gap without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "always_p_or_eventually_q_induction_bridge",
+    "type": "logical",
+    "code": "proof fn phi_4_always_p_or_eventually_q_induction_bridge(ex: Execution<int>, next: TempPred<int>, p: TempPred<int>, q: TempPred<int>)\n    requires\n        always(p.and(next).implies(later(p).or(later(q)))).satisfied_by(ex),\n        always(next).satisfied_by(ex),\n    ensures\n        always(p.implies(always(p).or(eventually(q)))).satisfied_by(ex),\n{\n    always_p_or_eventually_q::<int>(ex, next, p, q);\n}",
+    "reason": "always_p_or_eventually_q is external_body performing temporal induction \u2014 derives always(p => \u25a1p \u2228 \u25c7q) from a step condition, bridging multiple layers of closure nesting (always/implies/or/later/eventually) without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "transform_leads_to_with_until_bridge",
+    "type": "behavioral",
+    "code": "proof fn phi_5_transform_leads_to_with_until_bridge(spec: TempPred<int>, next: TempPred<int>, p1: TempPred<int>, q1: TempPred<int>, p2: TempPred<int>, q2: TempPred<int>, ex: Execution<int>)\n    requires\n        spec.entails(p1.leads_to(q1)),\n        spec.entails(always(p2.and(next).implies(later(p2).or(later(q2))))),\n        spec.entails(always(next)),\n        spec.satisfied_by(ex),\n    ensures\n        p1.and(p2).leads_to((q1.and(p2)).or(q2)).satisfied_by(ex),\n{\n    transform_leads_to_with_until::<int>(spec, next, p1, q1, p2, q2);\n}",
+    "reason": "chains all four external_body axioms to derive that p1\u2227p2 leads to (q1\u2227p2)\u2228q2 \u2014 if any intensional bridge is unsound, this enables combining leads-to with persistence/until reasoning unsoundly",
+    "entailed": false,
+    "verus_output": " TempPred<int>, q2: TempPred<int>, ex: Execution<int>)\n    |       --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- at the end of the function body\n...\n169 |         p1.and(p2).leads_to((q1.and(p2)).or(q2)).satisfied_by(ex),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,47 @@
+===VERDICT_START===
+PHI: smallest_bin_fitting_size_roundtrip
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This confirms the allocator's fundamental correctness property — the bin returned for a given size can actually hold that size. This is a desirable soundness check, not a spec gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: pfd_lower_upper_coverage
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `pfd_lower(bin_idx) > pfd_upper(bin_idx - 1)` means there's a gap: word sizes equal to `pfd_upper(bin_idx - 1) + 1` through `pfd_lower(bin_idx) - 1` fall in neither bin. Specifically, `pfd_lower(n) = size_of_bin(n-1)/8 + 1` while `pfd_upper(n-1) = size_of_bin(n-1)/8`, so the gap is exactly zero (off by the `+1`). Wait — `pfd_lower(n) = pfd_upper(n-1) + 1`, which means they're contiguous with no overlap, which is actually correct for exclusive lower / inclusive upper bounds. This is the expected coverage property.
+===VERDICT_END===
+
+Let me reconsider φ2 more carefully. `pfd_lower(bin_idx) = size_of_bin(bin_idx - 1) / 8 + 1` and `pfd_upper(bin_idx - 1) = size_of_bin(bin_idx - 1) / 8`. So `pfd_lower(bin_idx) = pfd_upper(bin_idx - 1) + 1`, meaning `pfd_lower(bin_idx) > pfd_upper(bin_idx - 1)` by exactly 1. This is tight contiguous coverage.
+
+===VERDICT_START===
+PHI: pfd_lower_upper_coverage
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `pfd_lower(n) = pfd_upper(n-1) + 1` by definition — the bins are contiguously packed with no gaps. The strict inequality `>` by exactly 1 confirms correct non-overlapping coverage between adjacent bins.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: size_of_bin_monotone
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Monotonicity of bin sizes is a fundamental design invariant for the allocator's bin selection logic. This is a desirable property confirmed by the concrete constant values.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: size_of_bin_divisible_by_8
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Word-alignment (8-byte divisibility) of all bin sizes is an essential allocator invariant ensuring returned blocks satisfy alignment requirements. Confirmed by all 73 concrete bin size values.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: pfd_lower_leq_upper
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Each bin must represent a non-empty range of word sizes. `pfd_lower <= pfd_upper` confirms every bin can serve at least one word-size class — a fundamental allocator correctness property.
+===VERDICT_END===
+
+===SUMMARY===
+All five candidates are false positives — they verify essential allocator correctness invariants: bin sizes are monotone and word-aligned, bins have non-empty ranges with contiguous coverage, and the smallest-bin-fitting-size function returns bins large enough to hold the requested size. These are desirable properties, not spec gaps.
+===END_SUMMARY===

@@ -1,0 +1,98 @@
+===PHI_START===
+NAME: option_none_some_empty_serialize_differ
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_option_none_some_empty_serialize_differ()
+    ensures
+        ({
+            let none_val: Option<Vec<u8>> = None;
+            let some_empty: Option<Vec<u8>> = Some(Vec::empty());
+            none_val.ghost_serialize() != some_empty.ghost_serialize()
+        }),
+{
+    assert(spec_u64_to_le_bytes(0).len() == 8) by {
+        lemma_auto_spec_u64_to_from_le_bytes();
+    }
+}
+```
+REASON: None serializes to `[0]` (1 byte) while Some(empty_vec) serializes to `[1] + len_prefix(0)` (9 bytes) — the tag byte distinguishes them, but the asymmetric lengths mean deserializing from a fixed-size buffer could silently truncate or misparse
+===PHI_END===
+
+===PHI_START===
+NAME: tuple_serialize_no_length_prefix
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_tuple_serialize_no_length_prefix(a1: Vec<u8>, a2: Vec<u8>, b1: Vec<u8>, b2: Vec<u8>)
+    requires
+        a1.is_marshalable(),
+        a2.is_marshalable(),
+        b1.is_marshalable(),
+        b2.is_marshalable(),
+        a1@ != b1@,
+        a1.ghost_serialize() + a2.ghost_serialize() == b1.ghost_serialize() + b2.ghost_serialize(),
+    ensures
+        (a1, a2).ghost_serialize() == (b1, b2).ghost_serialize(),
+{
+}
+```
+REASON: Tuple serialization is simple concatenation `a.serialize() + b.serialize()` — two distinct pairs with different first elements can produce identical serialized bytes if the length-prefixed Vec<u8> fields happen to align, violating injectivity of tuple serialization at the composite level
+===PHI_END===
+
+===PHI_START===
+NAME: csingle_message_seqno_truncation
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_csingle_message_seqno_truncation()
+    ensures
+        ({
+            let msg1 = CSingleMessage::Ack { ack_seqno: 0 };
+            let msg2 = CSingleMessage::Ack { ack_seqno: 0 };
+            msg1@ == msg2@
+        }),
+        ({
+            let msg = CSingleMessage::Ack { ack_seqno: u64::MAX };
+            msg@.get_Ack_ack_seqno() == u64::MAX as nat
+        }),
+{
+}
+```
+REASON: CSingleMessage::view casts `ack_seqno` from u64 to nat via `as nat` — the abstract SingleMessage uses nat for seqno, so two different protocol implementations could disagree on seqno overflow semantics since the concrete type silently caps at u64::MAX
+===PHI_END===
+
+===PHI_START===
+NAME: ghost_serialize_trait_uninterpreted
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_ghost_serialize_trait_uninterpreted()
+    ensures
+        ({
+            let x: u64 = 42;
+            x.ghost_serialize().len() == 8
+        }),
+{
+    lemma_auto_spec_u64_to_from_le_bytes();
+}
+```
+REASON: The trait-level `ghost_serialize` is `external_body` with an uninterpreted default — the u64 impl overrides it with `spec_u64_to_le_bytes`, but any code calling through the trait (not the concrete impl) could get the uninterpreted version, silently losing the 8-byte length guarantee
+===PHI_END===
+
+===PHI_START===
+NAME: abstractify_cmessage_seq_loses_duplicates
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_abstractify_cmessage_seq_loses_duplicates(m1: CSingleMessage, m2: CSingleMessage)
+    requires
+        m1@ == m2@,
+    ensures
+        abstractify_cmessage_seq(seq![m1, m2]).len() == 2,
+        abstractify_cmessage_seq(seq![m1, m2])[0] == abstractify_cmessage_seq(seq![m1, m2])[1],
+{
+}
+```
+REASON: `abstractify_cmessage_seq` preserves sequence length including duplicates, but `abstractify_seq_of_cpackets_to_set_of_sht_packets` converts to a Set which deduplicates — two functions on the same conceptual data use different collection types, so duplicate-counting invariants silently disagree between Seq-based and Set-based abstractions
+===PHI_END===

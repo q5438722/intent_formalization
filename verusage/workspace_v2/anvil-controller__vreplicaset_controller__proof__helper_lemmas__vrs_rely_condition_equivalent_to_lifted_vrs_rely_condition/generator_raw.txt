@@ -1,0 +1,88 @@
+===PHI_START===
+NAME: update_key_obj_kind_mismatch
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_update_key_obj_kind_mismatch(req: UpdateRequest, req2: UpdateStatusRequest)
+    requires
+        req.obj.kind != req2.obj.kind,
+        req.namespace == req2.namespace,
+        req.name == req2.name,
+    ensures
+        req.key() != req2.key(),
+{
+}
+```
+REASON: both key() methods pull kind from self.obj.kind — an update and update-status for the same name/namespace but different obj kinds produce different keys, meaning a status update could target a different key than the corresponding object update
+===PHI_END===
+
+===PHI_START===
+NAME: rely_create_vacuous_for_non_pod
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_rely_create_vacuous_for_non_pod(req: CreateRequest, s: ClusterState)
+    requires
+        req.obj.kind != Kind::PodKind,
+    ensures
+        vrs_rely_create_req(req)(s),
+{
+}
+```
+REASON: vrs_rely_create_req guards everything behind req.obj.kind == PodKind — for non-Pod creates the rely is vacuously true, meaning other controllers can create arbitrary non-Pod resources with VRS owner references unchecked
+===PHI_END===
+
+===PHI_START===
+NAME: rely_update_allows_unowned_pod_update
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_rely_update_allows_unowned_pod_update(req: UpdateRequest, s: ClusterState)
+    requires
+        req.obj.kind == Kind::PodKind,
+        req.obj.metadata.resource_version is Some,
+        !s.resources().contains_key(req.key()),
+    ensures
+        vrs_rely_update_req(req)(s),
+{
+}
+```
+REASON: the update rely checks properties of the etcd object at req.key() but guards them behind s.resources().contains_key — if the key doesn't exist in etcd, the entire anti-interference check is bypassed, allowing arbitrary pod updates to pass the rely
+===PHI_END===
+
+===PHI_START===
+NAME: controller_owner_ref_ignores_uid_in_rely
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_controller_owner_ref_ignores_uid_in_rely(req: CreateRequest, vrs1: VReplicaSetView, vrs2: VReplicaSetView, s: ClusterState)
+    requires
+        vrs1.metadata.name == vrs2.metadata.name,
+        vrs1.metadata.uid != vrs2.metadata.uid,
+        vrs_rely_create_req(req)(s),
+        req.obj.kind == Kind::PodKind,
+        req.obj.metadata.owner_references is Some,
+        req.obj.metadata.owner_references->0.contains(vrs1.controller_owner_ref()),
+    ensures
+        !req.obj.metadata.owner_references->0.contains(vrs2.controller_owner_ref()),
+{
+}
+```
+REASON: controller_owner_ref includes uid so two VRSs with the same name but different uids produce different owner refs — the rely blocks one but not the other, yet the rely's existential quantifier over VReplicaSetView should arguably block both since they share the same name
+===PHI_END===
+
+===PHI_START===
+NAME: is_controller_id_ignores_object_ref
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_is_controller_id_ignores_object_ref(id: int, ref1: ObjectRef, ref2: ObjectRef)
+    requires
+        ref1 != ref2,
+    ensures
+        HostId::Controller(id, ref1).is_controller_id(id) == HostId::Controller(id, ref2).is_controller_id(id),
+{
+}
+```
+REASON: is_controller_id only checks the integer id and ignores the ObjectRef — two controller hosts with the same id but different ObjectRefs are considered the same controller, which could conflate messages from different reconcile loops
+===PHI_END===

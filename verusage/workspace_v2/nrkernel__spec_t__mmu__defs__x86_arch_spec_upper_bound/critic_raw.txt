@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: arch_inv_allows_single_layer
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The `Arch` structure is designed to be generic over different page table configurations. A single-layer page table is a valid (if simple) architecture. The `inv` invariant correctly constrains entry sizes and counts — a single layer with valid parameters is not a spec gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: arch_inv_allows_empty_layers
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: An architecture with zero layers represents a page table that maps nothing — `upper_vaddr(0, 0)` would access out-of-bounds on the empty sequence. While `inv` uses `<=` for `layers.len()`, allowing zero layers is likely unintended since a page table must have at least one level to function. The invariant should require `self.layers.len() > 0`.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: entry_size_is_next_layer_vacuous_at_last
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is correct by design. The last layer has no "next layer" to relate to, so the implication `i + 1 < self.layers.len() ==> ...` is vacuously true. The leaf layer's entry size is independently constrained by `0 < self.entry_size(i) <= X86_MAX_ENTRY_SIZE` in `inv`.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: max_base_equals_upper_vaddr
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This equality is intentional and verified by `x86_arch_spec_upper_bound`. `MAX_BASE` represents the upper bound of the virtual address space, which is exactly `upper_vaddr(0, 0)` — the total addressable space from the root of the page table. These aren't meant to be different bounds.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: `Arch::inv` allows an architecture with zero layers, which is likely unintended since a functional page table requires at least one level. Three false positives: single-layer architectures are valid, the last layer's vacuous `entry_size_is_next_layer_size` is by design, and `MAX_BASE` equaling `upper_vaddr(0, 0)` is intentional and explicitly verified.
+===END_SUMMARY===

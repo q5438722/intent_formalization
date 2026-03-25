@@ -1,0 +1,47 @@
+[
+  {
+    "name": "page_aligned_mask_dir_identity",
+    "type": "behavioral",
+    "code": "proof fn phi_1_page_aligned_mask_dir_identity(addr: usize)\n    requires\n        addr <= MAX_PHYADDR,\n        aligned(addr as nat, PAGE_SIZE as nat),\n    ensures\n        addr & MASK_DIR_ADDR == addr,\n{\n    lemma_page_aligned_implies_mask_dir_addr_is_identity();\n}",
+    "reason": "Page-aligned addresses within MAX_PHYADDR are identity under MASK_DIR_ADDR \u2014 verified consequence of the bitvector proof",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "mask_dir_addr_equals_mask_addr",
+    "type": "logical",
+    "code": "proof fn phi_2_mask_dir_addr_equals_mask_addr()\n    ensures\n        MASK_DIR_ADDR == MASK_ADDR,\n{\n}",
+    "reason": "MASK_DIR_ADDR is defined as MASK_ADDR \u2014 tests that the alias is correctly propagated",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "max_phyaddr_width_range",
+    "type": "boundary",
+    "code": "proof fn phi_3_max_phyaddr_width_range()\n    ensures\n        32 <= MAX_PHYADDR_WIDTH,\n        MAX_PHYADDR_WIDTH <= 52,\n{\n    axiom_max_phyaddr_width_facts();\n}",
+    "reason": "`MAX_PHYADDR_WIDTH` is `external_body` with value 52 but axiom only constrains to 32..=52 \u2014 spec is weaker than implementation",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "max_phyaddr_positive",
+    "type": "boundary",
+    "code": "proof fn phi_4_max_phyaddr_positive()\n    ensures\n        MAX_PHYADDR > 0,\n{\n    axiom_max_phyaddr_width_facts();\n    assert(1usize << 32 == 0x100000000) by (compute);\n    assert(forall|m:usize,n:usize| n < m < 64 ==> 1usize << n < 1usize << m) by (bit_vector);\n}",
+    "reason": "MAX_PHYADDR must be positive since it's `(1 << width) - 1` with width >= 32 \u2014 tests the arithmetic chain",
+    "entailed": true,
+    "verus_output": "verification results:: 12 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "zero_is_page_aligned_and_masked",
+    "type": "boundary",
+    "code": "proof fn phi_5_zero_is_page_aligned_and_masked()\n    ensures\n        aligned(0nat, PAGE_SIZE as nat),\n        0usize & MASK_DIR_ADDR == 0usize,\n{\n    lemma_page_aligned_implies_mask_dir_addr_is_identity();\n}",
+    "reason": "Zero is trivially page-aligned and masked to itself \u2014 boundary case for the mask identity lemma",
+    "entailed": false,
+    "verus_output": "--> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__impl_u__l2_impl__lemma_page_aligned_implies_mask_dir_addr_is_identity/phi_5_zero_is_page_aligned_and_masked.rs:96:9\n   |\n93 | proof fn phi_5_zero_is_page_aligned_and_masked()\n   |       ------------------------------------------ at the end of the function body\n...\n96 |         0usize & MASK_DIR_ADDR == 0usize,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

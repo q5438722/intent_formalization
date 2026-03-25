@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: create_key_namespace_disagrees_with_obj
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: CreateRequest::key uses self.namespace rather than self.obj.metadata.namespace, so these can diverge. This means the key used for storage lookups may not match the object's own namespace metadata, which is a real inconsistency risk. However, in practice the API server likely normalizes this — the concern is that the spec doesn't enforce agreement.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: interference_check_ignores_uid
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The interference predicate matches on owner_ref.name and kind but never checks uid. In Kubernetes, a resource can be deleted and recreated with the same name but a different uid, making uid the true identity. This means the interference check cannot distinguish between the old and new VReplicaSet, which is a genuine spec weakness.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: create_interference_ignores_uid
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: Same root cause as the delete case — the create interference predicate checks owner_ref.name but not owner_ref.uid. A recreated VRS with the same name would pass the interference check for a different VRS instance, allowing cross-generation interference. This is the same uid-blindness issue manifesting in the create path.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: lifted_action_trivially_holds_on_stuttering
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: In TLA+-style specifications, action predicates are expected to hold on stuttering steps (where the state doesn't change). The lifted action checks the state invariant on both s and s_prime independently, which is standard — stuttering steps preserving invariants is a fundamental TLA+ property, not a weakness.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: object_ref_name_eq_ignores_uid
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: ObjectRef is defined as (kind, name, namespace) without uid, making it unable to distinguish between different incarnations of a resource with the same name. This is the structural root cause behind the interference check issues — the spec's identity model is name-based rather than uid-based, which conflates distinct resource instances throughout the verification.
+===VERDICT_END===
+
+===SUMMARY===
+Four of five candidates are true positives revealing a systematic spec weakness: the identity and interference model is name-based (via ObjectRef) rather than uid-based. ObjectRef ignores uid entirely (φ5), which propagates into both the create and delete interference checks (φ2, φ3) that cannot distinguish between different incarnations of a VReplicaSet with the same name. The CreateRequest key namespace divergence (φ1) is a separate but real concern about internal consistency between request fields. The only false positive is the stuttering step property (φ4), which is expected TLA+-style behavior. The core finding is that the spec's name-based identity model creates a potential soundness gap when resources are deleted and recreated with the same name but different uids.
+===END_SUMMARY===

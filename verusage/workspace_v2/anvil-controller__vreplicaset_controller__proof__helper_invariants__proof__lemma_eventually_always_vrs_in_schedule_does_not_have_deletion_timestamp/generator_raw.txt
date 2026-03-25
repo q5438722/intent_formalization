@@ -1,0 +1,80 @@
+===PHI_START===
+NAME: unmarshal_marshal_roundtrip
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_unmarshal_marshal_roundtrip<T: ResourceView>(o: T)
+    requires
+        true,
+    ensures
+        T::unmarshal(o.marshal()) is Ok,
+{
+}
+```
+REASON: no marshal_preserves_integrity proof or axiom exists in this version — marshal_spec/unmarshal_spec are fully uninterpreted with zero roundtrip guarantees, so this should be unprovable
+===PHI_END===
+
+===PHI_START===
+NAME: unmarshal_spec_and_status_jointly_total
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_unmarshal_spec_and_status_jointly_total<T: ResourceView>(obj: DynamicObjectView)
+    requires
+        obj.kind == T::kind(),
+    ensures
+        T::unmarshal_spec(obj.spec) is Ok && T::unmarshal_status(obj.status) is Ok,
+{
+}
+```
+REASON: both unmarshal functions are uninterpreted with no totality axiom — matching kind should not guarantee that arbitrary spec and status Values can be successfully decoded
+===PHI_END===
+
+===PHI_START===
+NAME: get_then_update_key_matches_get_then_delete
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_get_then_update_key_matches_get_then_delete(gu: GetThenUpdateRequest, gd: GetThenDeleteRequest)
+    requires
+        gu.obj.kind == gd.key.kind,
+        gu.namespace == gd.key.namespace,
+    ensures
+        gu.key() == gd.key(),
+{
+}
+```
+REASON: GetThenUpdateRequest::key uses self.name while GetThenDeleteRequest::key returns self.key which has its own name — matching kind and namespace does NOT imply the name components agree
+===PHI_END===
+
+===PHI_START===
+NAME: allocate_ids_never_collide
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_allocate_ids_never_collide(a1: ReconcileIdAllocator, a2: ReconcileIdAllocator)
+    requires
+        a1.reconcile_id_counter != a2.reconcile_id_counter,
+    ensures
+        a1.allocate().0.allocate().1 != a2.allocate().1,
+{
+}
+```
+REASON: a1 allocates twice yielding counter+1, a2 allocates once yielding its counter — if a1.counter+1 == a2.counter they collide, so distinct initial counters do NOT prevent collision after different numbers of allocations
+===PHI_END===
+
+===PHI_START===
+NAME: update_key_determines_obj_kind
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_update_key_determines_obj_kind(r1: UpdateRequest, r2: UpdateStatusRequest)
+    requires
+        r1.key() == r2.key(),
+    ensures
+        r1.obj.metadata == r2.obj.metadata,
+{
+}
+```
+REASON: key() only constrains obj.kind, namespace, and name — equal keys say nothing about the obj.metadata fields which are independent struct members
+===PHI_END===

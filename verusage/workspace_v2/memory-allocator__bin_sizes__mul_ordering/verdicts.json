@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "pow2_negative_is_one",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`pow2` returns 1 for all negative exponents, which is mathematically incorrect (2^(-n) = 1/2^n). Callers passing negative exponents by mistake silently get 1, and no precondition guards against this misuse."
+  },
+  {
+    "phi": "pow2_non_injective_at_zero",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "Direct consequence of `pow2_negative_is_one` \u2014 all non-positive inputs collapse to 1. This non-injectivity means `pow2(0) == pow2(-1)`, which could mask off-by-one errors in callers near the e=0 boundary."
+  },
+  {
+    "phi": "div2_no_upper_bound_on_x",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The lemma `div2` operates on mathematical integers in the ensures clause \u2014 `x as int / (y * 2) == (x as int / y) / 2` is a correct arithmetic identity for all positive `y`. The `x: u64` parameter simply bounds the numerator; `y` being unbounded is not a soundness issue since the property holds for all positive integers."
+  },
+  {
+    "phi": "mul_assoc_smuggles_commutativity",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Multiplication of natural numbers is commutative \u2014 this is a correct mathematical fact. The `mul_assoc` lemma proving `(x*y)*z == y*(x*z)` implicitly uses commutativity via `nonlinear_arith`, but deriving `x*y == y*x` from it is not a soundness gap; it's a true property of nat multiplication."
+  }
+]

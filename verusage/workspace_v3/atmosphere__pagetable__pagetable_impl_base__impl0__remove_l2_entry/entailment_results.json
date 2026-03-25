@@ -1,0 +1,52 @@
+[
+  {
+    "name": "closure_loses_l2_table_page",
+    "target_fn": "remove_l2_entry",
+    "type": "behavioral",
+    "reason": "Removing an L2 entry should only evict the L1 page from the closure, not the L2 table page itself",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "geMapPtr,\n1430 | |     target_l2_p: PageMapPtr,\n1431 | | )\n     | |_- at the end of the function body\n...\n1438 |           !new_closure.contains(target_l2_p),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 66 warnings emitted\n\n"
+  },
+  {
+    "name": "l1_page_still_in_closure",
+    "target_fn": "remove_l2_entry",
+    "type": "boundary",
+    "reason": "After removal the L1 page must not remain in the page closure or the page table leaks a page frame",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "t<PagePtr>,\n1429 | |     target_l1_p: PageMapPtr,\n1430 | | )\n     | |_- at the end of the function body\n...\n1435 |           new_closure.contains(target_l1_p),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 66 warnings emitted\n\n"
+  },
+  {
+    "name": "mapping_4k_gains_entry",
+    "target_fn": "remove_l2_entry",
+    "type": "logical",
+    "reason": "Removing an L2 entry must never introduce a new 4K mapping that did not previously exist",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "4k: Map<VAddr, MapEntry>,\n1429 | |     va: VAddr,\n1430 | | )\n     | |_- at the end of the function body\n...\n1435 |           new_mapping_4k.dom().contains(va),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 66 warnings emitted\n\n"
+  },
+  {
+    "name": "mapping_2m_loses_entry",
+    "target_fn": "remove_l2_entry",
+    "type": "behavioral",
+    "reason": "Removing an L2-to-L1 link must not destroy any existing 2M large-page mappings",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": ": Map<VAddr, MapEntry>,\n1429 | |     va: VAddr,\n1430 | | )\n     | |_- at the end of the function body\n...\n1435 |           !new_mapping_2m.dom().contains(va),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 66 warnings emitted\n\n"
+  },
+  {
+    "name": "closure_gains_new_page",
+    "target_fn": "remove_l2_entry",
+    "type": "logical",
+    "reason": "A removal operation must never grow the page closure with pages that were not previously tracked",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "     target_l1_p: PageMapPtr,\n1430 | |     new_p: PageMapPtr,\n1431 | | )\n     | |_- at the end of the function body\n...\n1437 |           new_closure.contains(new_p),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 66 warnings emitted\n\n"
+  }
+]

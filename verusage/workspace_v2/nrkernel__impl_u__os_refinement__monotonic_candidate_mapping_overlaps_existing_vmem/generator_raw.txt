@@ -1,0 +1,90 @@
+===PHI_START===
+NAME: overlap_zero_size_reflexive
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_overlap_zero_size_reflexive(base: nat)
+    ensures
+        overlap(MemRegion { base: base, size: 0 }, MemRegion { base: base, size: 0 }),
+{
+}
+```
+REASON: Two zero-size regions at the same base are considered overlapping via the `region1.base == region2.base` branch — empty intervals should not overlap
+===PHI_END===
+
+===PHI_START===
+NAME: overlap_not_symmetric
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_overlap_not_symmetric(a: nat, b: nat)
+    requires
+        a < b,
+        b < a + 1,
+    ensures
+        overlap(MemRegion { base: a, size: 1 }, MemRegion { base: b, size: 0 }),
+        !overlap(MemRegion { base: b, size: 0 }, MemRegion { base: a, size: 1 }),
+{
+}
+```
+REASON: `overlap` is not symmetric — a zero-size region inside a non-zero region is detected in one direction but not the other
+===PHI_END===
+
+===PHI_START===
+NAME: candidate_overlap_zero_size_self
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_candidate_overlap_zero_size_self(base: nat, pte: PTE)
+    requires
+        pte.frame.size == 0,
+    ensures
+        candidate_mapping_overlaps_existing_vmem(
+            Map::empty().insert(base, pte),
+            base,
+            pte,
+        ),
+{
+}
+```
+REASON: A zero-size PTE at a base overlaps itself — could block re-insertion of sentinel/empty mappings at the same address
+===PHI_END===
+
+===PHI_START===
+NAME: monotonic_does_not_require_key_preservation
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_monotonic_does_not_require_key_preservation(base: nat, pte1: PTE, pte2: PTE)
+    requires
+        pte1.frame.size > 0,
+        pte2.frame.size > 0,
+        overlap(MemRegion { base: base, size: pte1.frame.size }, MemRegion { base: base, size: pte2.frame.size }),
+    ensures
+        candidate_mapping_overlaps_existing_vmem(
+            Map::empty().insert(base, pte1).insert(base, pte2),
+            base,
+            pte2,
+        ),
+{
+}
+```
+REASON: Submap monotonicity holds even when mappings2 overwrites a key from mappings1 — the lemma's `submap_of` precondition doesn't account for value changes at existing keys
+===PHI_END===
+
+===PHI_START===
+NAME: overlap_asymmetric_containment
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_overlap_asymmetric_containment(a: nat, sz: nat)
+    requires
+        sz > 0,
+    ensures
+        overlap(MemRegion { base: a, size: sz }, MemRegion { base: a + sz, size: 0 }),
+        !overlap(MemRegion { base: a + sz, size: 0 }, MemRegion { base: a, size: sz }),
+{
+}
+```
+REASON: A zero-size region at the exclusive upper bound of another region is detected as overlapping in one direction but not the reverse — `overlap` is asymmetric at boundary points
+===PHI_END===

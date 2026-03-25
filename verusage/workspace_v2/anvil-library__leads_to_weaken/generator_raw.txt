@@ -1,0 +1,87 @@
+===PHI_START===
+NAME: always_implies_to_leads_to_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_always_implies_to_leads_to_intensional_bridge(spec: TempPred<int>, p: TempPred<int>, q: TempPred<int>)
+    requires
+        spec.entails(always(p.implies(q))),
+    ensures
+        spec.entails(p.leads_to(q)),
+{
+    always_implies_to_leads_to::<int>(spec, p, q);
+}
+```
+REASON: always_implies_to_leads_to is external_body lifting always(p=>q) to p.leads_to(q) — the leads_to definition wraps always/implies/eventually in nested closures creating intensional gaps resolved without proof
+===PHI_END===
+
+===PHI_START===
+NAME: leads_to_trans_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_leads_to_trans_intensional_bridge(spec: TempPred<int>, p: TempPred<int>, q: TempPred<int>, r: TempPred<int>)
+    requires
+        spec.entails(p.leads_to(q)),
+        spec.entails(q.leads_to(r)),
+    ensures
+        spec.entails(p.leads_to(r)),
+{
+    leads_to_trans::<int>(spec, p, q, r);
+}
+```
+REASON: leads_to_trans is external_body composing two leads_to through nested always/implies/eventually closures — bridges intensional gaps without proof
+===PHI_END===
+
+===PHI_START===
+NAME: implication_strengthens_to_leads_to
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_implication_strengthens_to_leads_to(spec: TempPred<int>, p: TempPred<int>)
+    requires
+        spec.entails(always(p.implies(p))),
+    ensures
+        spec.entails(p.leads_to(p)),
+{
+    always_implies_to_leads_to::<int>(spec, p, p);
+}
+```
+REASON: always_implies_to_leads_to converts a trivial tautology always(p=>p) into p.leads_to(p) which asserts eventual reachability — the axiom silently upgrades logical implication to temporal liveness without requiring a witness
+===PHI_END===
+
+===PHI_START===
+NAME: false_spec_any_leads_to
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_false_spec_any_leads_to(p: TempPred<int>, q: TempPred<int>)
+    requires
+        TempPred::<int>::new(|ex: Execution<int>| false).entails(always(p.implies(q))),
+    ensures
+        TempPred::<int>::new(|ex: Execution<int>| false).entails(p.leads_to(q)),
+{
+    always_implies_to_leads_to::<int>(TempPred::new(|ex: Execution<int>| false), p, q);
+}
+```
+REASON: an unsatisfiable spec vacuously entails any always-implication and thus any leads_to — the external_body axiom propagates vacuous truth without detecting spec inconsistency
+===PHI_END===
+
+===PHI_START===
+NAME: weaken_to_trivial
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_weaken_to_trivial(spec: TempPred<int>, p: TempPred<int>, q: TempPred<int>)
+    requires
+        spec.entails(always(p.implies(p))),
+        spec.entails(always(q.implies(q))),
+        spec.entails(p.leads_to(q)),
+    ensures
+        spec.entails(p.leads_to(q)),
+{
+    leads_to_weaken::<int>(spec, p, q, p, q);
+}
+```
+REASON: leads_to_weaken with identity implications should be a no-op but exercises both external_body axioms — if either axiom has unintended side effects this would expose them
+===PHI_END===

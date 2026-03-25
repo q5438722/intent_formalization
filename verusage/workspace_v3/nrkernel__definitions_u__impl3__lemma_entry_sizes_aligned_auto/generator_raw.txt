@@ -1,0 +1,95 @@
+===PHI_START===
+NAME: empty_arch_satisfies_inv
+TARGET_FN: inv
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_empty_arch_satisfies_inv()
+    ensures
+        exists|a: Arch| a.layers.len() == 0 && a.inv(),
+{
+    let a = Arch { layers: Seq::empty() };
+    assert(a.inv());
+}
+```
+REASON: An architecture with zero layers should not satisfy the invariant, as it represents no valid address translation
+===PHI_END===
+
+===PHI_START===
+NAME: zero_aligned_to_everything
+TARGET_FN: aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_zero_aligned_to_everything(size: nat)
+    requires
+        size > 0,
+    ensures
+        aligned(0, size),
+{
+}
+```
+REASON: Address 0 being aligned to every nonzero size could mask null-pointer or zero-base-address bugs in callers
+===PHI_END===
+
+===PHI_START===
+NAME: inv_allows_unit_entry_size
+TARGET_FN: inv
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_inv_allows_unit_entry_size()
+    ensures
+        exists|a: Arch|
+            a.inv() && a.layers.len() > 0 && a.entry_size(0) == 1,
+{
+    let layer = ArchLayer { entry_size: 1, num_entries: 1 };
+    let a = Arch { layers: seq![layer] };
+    assert(a.entry_size(0) == 1);
+    assert(a.inv());
+}
+```
+REASON: An entry size of 1 byte is physically meaningless for page tables; inv should enforce a minimum granularity such as 4096
+===PHI_END===
+
+===PHI_START===
+NAME: inv_allows_single_entry_layer
+TARGET_FN: num_entries
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_inv_allows_single_entry_layer()
+    ensures
+        exists|a: Arch|
+            a.inv() && a.layers.len() > 0 && a.num_entries(0) == 1,
+{
+    let layer = ArchLayer { entry_size: 1, num_entries: 1 };
+    let a = Arch { layers: seq![layer] };
+    assert(a.num_entries(0) == 1);
+    assert(a.inv());
+}
+```
+REASON: A layer with only 1 entry is degenerate and does not meaningfully partition the address space
+===PHI_END===
+
+===PHI_START===
+NAME: entry_size_next_layer_vacuous_single
+TARGET_FN: entry_size_is_next_layer_size
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_entry_size_next_layer_vacuous_single()
+    ensures
+        exists|a: Arch|
+            a.inv() && a.layers.len() == 1
+            && a.entry_size(0) != a.entry_size(0) * a.num_entries(0),
+{
+    let layer = ArchLayer { entry_size: 3, num_entries: 2 };
+    let a = Arch { layers: seq![layer] };
+    assert(a.entry_size_is_next_layer_size(0));
+    assert(a.inv());
+    assert(a.entry_size(0) != a.entry_size(0) * a.num_entries(0));
+}
+```
+REASON: For a single-layer arch the next-layer constraint is vacuously true, allowing entry_size and num_entries to be completely unrelated, potentially hiding inconsistencies
+===PHI_END===

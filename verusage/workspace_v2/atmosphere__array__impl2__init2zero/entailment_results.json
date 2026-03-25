@@ -1,0 +1,47 @@
+[
+  {
+    "name": "set_no_length_preservation_check",
+    "type": "logical",
+    "code": "proof fn phi_1_set_no_length_preservation_check<A>(old_arr: Array<A, 5>, new_arr: Array<A, 5>, i: usize, v: A)\n    requires\n        old_arr.wf(),\n        0 <= i < 5,\n        new_arr.seq@ =~= old_arr.seq@.update(i as int, v),\n        new_arr.wf(),\n    ensures\n        new_arr.seq@.len() == old_arr.seq@.len(),\n{\n}",
+    "reason": "set's ensures guarantee wf() on the output, but the length preservation is derived from Seq::update semantics \u2014 if update had a different axiomatization, wf() alone wouldn't catch length changes",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "set_frame_only_from_extensional_eq",
+    "type": "behavioral",
+    "code": "proof fn phi_2_set_frame_only_from_extensional_eq<A>(old_arr: Array<A, 5>, new_arr: Array<A, 5>, i: usize, v: A, j: usize)\n    requires\n        old_arr.wf(),\n        0 <= i < 5,\n        0 <= j < 5,\n        i != j,\n        new_arr.seq@ =~= old_arr.seq@.update(i as int, v),\n    ensures\n        new_arr.seq@[j as int] == old_arr.seq@[j as int],\n{\n}",
+    "reason": "The frame condition (untouched indices preserved) relies entirely on vstd Seq::update axioms \u2014 set's external_body provides no independent frame guarantee beyond extensional equality",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "set_external_body_ar_ghost_desync",
+    "type": "logical",
+    "code": "proof fn phi_3_set_external_body_ar_ghost_desync<A>(arr: Array<A, 5>, i: usize, v: A)\n    requires\n        arr.wf(),\n        0 <= i < 5,\n    ensures\n        ({\n            let new_seq = arr.seq@.update(i as int, v);\n            new_seq.len() == 5\n        }),\n{\n}",
+    "reason": "set's external_body ensures only constrain the Ghost<Seq<A>> field \u2014 the concrete `ar: [A;N]` array is never mentioned in ensures, so ghost and runtime could desync",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "init2zero_accepts_empty_array",
+    "type": "boundary",
+    "code": "proof fn phi_4_init2zero_accepts_empty_array(arr: Array<u8, 0>)\n    requires\n        arr.wf(),\n        0usize <= usize::MAX,\n    ensures\n        arr.wf(),\n{\n}",
+    "reason": "init2zero requires N <= usize::MAX which is always true for usize \u2014 the vacuous forall on empty arrays means init2zero \"succeeds\" with no actual work, potentially masking off-by-one issues",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "set_arbitrary_value_no_bounds_on_A",
+    "type": "boundary",
+    "code": "proof fn phi_5_set_arbitrary_value_no_bounds_on_A(arr: Array<u8, 5>, i: usize)\n    requires\n        arr.wf(),\n        0 <= i < 5,\n    ensures\n        ({\n            let new_seq = arr.seq@.update(i as int, 255u8);\n            new_seq[i as int] == 255u8\n        }),\n{\n}",
+    "reason": "set's external_body places no domain constraint on the value being written \u2014 any A is accepted, meaning the spec trusts that the runtime array can store arbitrary values without validation",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

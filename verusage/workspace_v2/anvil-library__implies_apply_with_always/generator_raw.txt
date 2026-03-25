@@ -1,0 +1,35 @@
+## File 1: execution_equality
+
+===PHI_START===
+NAME: execution_equality_forces_fn_equality
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_execution_equality_forces_fn_equality(f: spec_fn(nat) -> int, g: spec_fn(nat) -> int)
+    requires
+        forall |i: nat| #[trigger] f(i) == g(i),
+    ensures
+        f == g,
+{
+    let ex1 = Execution { nat_to_state: f };
+    let ex2 = Execution { nat_to_state: g };
+    execution_equality::<int>(ex1, ex2);
+}
+```
+REASON: execution_equality uses extensional equality (=~=) to collapse pointwise-equal spec_fn into intensional equality — structurally distinct closures become equal
+===PHI_END===
+
+===PHI_START===
+NAME: extensional_equality_is_builtin
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_extensional_equality_is_builtin(f: spec_fn(nat) -> int, g: spec_fn(nat) -> int)
+    requires
+        forall |i: nat| #[trigger] f(i) == g(i),
+    ensures
+        f =~= g,
+{
+}
+```
+REASON: if Verus's SMT solver directly proves f =~= g from pointwise equality, then execution_equality is redundant — but if it does, this confirms

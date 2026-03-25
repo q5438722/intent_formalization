@@ -1,0 +1,47 @@
+[
+  {
+    "name": "temp_pred_equality_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_1_temp_pred_equality_intensional_bridge(p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.entails(q),\n        q.entails(p),\n    ensures\n        p == q,\n{\n    temp_pred_equality::<int>(p, q);\n}",
+    "reason": "temp_pred_equality is external_body forcing intensional equality from mutual entailment \u2014 structurally distinct closures collapsed to equal without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "always_and_equality_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_2_always_and_equality_intensional_bridge(p: TempPred<int>, q: TempPred<int>)\n    ensures\n        always(p.and(q)) == always(p).and(always(q)),\n{\n    always_and_equality::<int>(p, q);\n}",
+    "reason": "always_and_equality is external_body forcing intensional equality between always(p.and(q)) and always(p).and(always(q)) \u2014 structurally distinct nested TempPred::new closures collapsed without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "entails_and_temp_closure_bridge",
+    "type": "logical",
+    "code": "proof fn phi_3_entails_and_temp_closure_bridge(spec: TempPred<int>, p: TempPred<int>, q: TempPred<int>)\n    requires\n        spec.entails(p),\n        spec.entails(q),\n    ensures\n        spec.entails(p.and(q)),\n{\n    entails_and_temp::<int>(spec, p, q);\n}",
+    "reason": "entails_and_temp is external_body combining two entailments into conjunction entailment \u2014 requires resolving that p.and(q)'s TempPred::new closure evaluates to the conjunction of individual closure results",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "mutual_entailment_derives_false_if_distinct",
+    "type": "logical",
+    "code": "proof fn phi_4_mutual_entailment_derives_false_if_distinct(p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.entails(q),\n        q.entails(p),\n        p !== q,\n    ensures\n        false,\n{\n    temp_pred_equality::<int>(p, q);\n}",
+    "reason": "temp_pred_equality forces p == q from mutual entailment \u2014 if two preds are intensionally distinct but semantically equivalent this derives false",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "strengthen_next_equality_chain",
+    "type": "behavioral",
+    "code": "proof fn phi_5_strengthen_next_equality_chain(spec: TempPred<int>, next: ActionPred<int>, inv: StatePred<int>, next_and_inv: ActionPred<int>)\n    requires\n        spec.entails(always(lift_action(next))),\n        spec.entails(always(lift_state(inv))),\n        lift_action(next_and_inv).entails(lift_action(next).and(lift_state(inv))),\n        lift_action(next).and(lift_state(inv)).entails(lift_action(next_and_inv)),\n    ensures\n        spec.entails(always(lift_action(next_and_inv))),\n{\n    strengthen_next::<int>(spec, next, inv, next_and_inv);\n}",
+    "reason": "strengthen_next chains all three external_body axioms to substitute always(lift_action(next_and_inv)) for always(lift_action(next).and(lift_state(inv))) \u2014 the intensional equality forced by temp_pred_equality propagates through always_and_equality's closure gap",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

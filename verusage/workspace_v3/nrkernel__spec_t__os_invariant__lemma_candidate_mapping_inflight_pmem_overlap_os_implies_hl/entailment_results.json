@@ -1,0 +1,52 @@
+[
+  {
+    "name": "aligned_zero_size",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "reason": "If aligned(addr, 0) is always true, any address is vacuously \"aligned\" to size zero, which is meaningless and could mask alignment-check bugs.",
+    "entailed": false,
+    "verified": 13,
+    "errors": 1,
+    "output_tail": " proof fn phi_1_aligned_zero_size(addr: nat)\n     |       ------------------------------------- at the end of the function body\n1048 |     ensures\n1049 |         aligned(addr, 0),\n     |         ^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n"
+  },
+  {
+    "name": "inv_allows_empty_arch",
+    "target_fn": "inv",
+    "type": "boundary",
+    "reason": "If an architecture with zero layers satisfies inv(), the invariant is too weak\u2014an empty page table hierarchy is nonsensical and would let downstream proofs vacuously hold.",
+    "entailed": true,
+    "verified": 14,
+    "errors": 0,
+    "output_tail": "invariant__lemma_candidate_mapping_inflight_pmem_overlap_os_implies_hl/phi_2_inv_allows_empty_arch.rs:975:65\n    |\n975 | ...                   &&& overlap(candidate.frame, result.get_Ok_0().frame)\n    |                                                           ^^^^^^^^\n\nwarning: 2 warnings emitted\n\n"
+  },
+  {
+    "name": "upper_vaddr_equals_base",
+    "target_fn": "upper_vaddr",
+    "type": "behavioral",
+    "reason": "If upper_vaddr equals the base, the mapped address range has zero size, meaning the layer maps nothing\u2014defeating the purpose of the page table level.",
+    "entailed": false,
+    "verified": 13,
+    "errors": 1,
+    "output_tail": "  |       ---------------------------------------------------------------- at the end of the function body\n...\n1052 |         a.upper_vaddr(layer, base) == base,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n"
+  },
+  {
+    "name": "entry_base_ignores_base",
+    "target_fn": "entry_base",
+    "type": "logical",
+    "reason": "entry_base at index 0 must equal the base address; if it doesn't, the arithmetic is broken and all derived virtual addresses would be shifted incorrectly.",
+    "entailed": false,
+    "verified": 13,
+    "errors": 1,
+    "output_tail": "      ---------------------------------------------------------------- at the end of the function body\n...\n1053 |         a.entry_base(layer, base, 0) != base,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n"
+  },
+  {
+    "name": "child_layer_entry_not_smaller",
+    "target_fn": "entry_size_is_next_layer_size",
+    "type": "logical",
+    "reason": "In a well-formed page table hierarchy, inner layers must map strictly smaller regions than outer layers; if a child layer's entry_size is >= the parent's, the hierarchical decomposition is violated.",
+    "entailed": false,
+    "verified": 13,
+    "errors": 1,
+    "output_tail": "------------------------------------------------ at the end of the function body\n...\n1052 |         a.entry_size((i + 1) as nat) >= a.entry_size(i),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n"
+  }
+]

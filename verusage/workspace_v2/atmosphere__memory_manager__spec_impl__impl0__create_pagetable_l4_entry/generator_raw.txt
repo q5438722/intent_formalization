@@ -1,0 +1,82 @@
+===PHI_START===
+NAME: usize2pa_mem_valid_unconditional
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)
+    ensures
+        MEM_valid(usize2pa(v)),
+{
+}
+```
+REASON: usize2pa's external_body unconditionally ensures MEM_valid(ret) for ANY input — arbitrary usize values produce "valid" physical addresses without proof
+===PHI_END===
+
+===PHI_START===
+NAME: zero_entry_is_empty
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_zero_entry_is_empty()
+    ensures
+        usize2page_entry(0usize).is_empty(),
+{
+}
+```
+REASON: Relies on two independent external_body claims (usize2page_entry and usize2pa) both correctly handling zero — if either is wrong the combined property is unsound
+===PHI_END===
+
+===PHI_START===
+NAME: pci_bitmap_wf_domain_exact_size
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_pci_bitmap_wf_domain_exact_size(bm: PCIBitMap, ioid: IOid, bus: u8, dev: u8, fun: u8)
+    requires
+        bm.wf(),
+        bm.ghost_map@.dom().contains((ioid, bus, dev, fun)),
+    ensures
+        0 <= ioid < IOID_MAX,
+        0 <= bus < 256,
+        0 <= dev < 32,
+        0 <= fun < 8,
+{
+}
+```
+REASON: PCIBitMap::wf uses biconditional so domain membership implies bounds — but u8 already constrains bus < 256, dev < 32, fun < 8 are NOT implied by u8 type alone, so wf silently accepts out-of-spec device/function numbers if ghost_map is constructed carelessly
+===PHI_END===
+
+===PHI_START===
+NAME: root_table_resolve_no_ensures
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_root_table_resolve_no_ensures(rt: RootTable, bus: u8, dev: u8, fun: u8)
+    requires
+        rt.wf(),
+        0 <= bus < 256,
+        0 <= dev < 32,
+        0 <= fun < 8,
+    ensures
+        rt.resolve(bus, dev, fun).is_Some() || rt.resolve(bus, dev, fun).is_None(),
+{
+}
+```
+REASON: RootTable::resolve is a closed external_body spec with NO ensures clauses — it returns Option<(IOid, usize)> but nothing constrains the IOid to be valid or the usize to be meaningful
+===PHI_END===
+
+===PHI_START===
+NAME: page_closure_includes_l4_unconditionally
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_page_closure_includes_l4_unconditionally(pt: PageTable, p: PageMapPtr)
+    requires
+        pt.l4_table@.dom().contains(p),
+    ensures
+        pt.page_closure().contains(p),
+{
+}
+```
+REASON: page_closure absorbs all l4_table domain pointers unconditionally — if l4_table domain overlaps with l3/l2/l1 domains, page_closure silently merges them with no disjointness check
+===PHI_END===

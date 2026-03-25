@@ -1,0 +1,47 @@
+[
+  {
+    "name": "gap_means_empty_trivially_true",
+    "type": "logical",
+    "code": "proof fn phi_1_gap_means_empty_trivially_true<K: KeyTrait + VerusClone>(m: StrictlyOrderedMap<K>, k: KeyIterator<K>)\n    requires\n        m.valid(),\n        m.gap(KeyIterator::end_spec(), KeyIterator::end_spec()),\n        k.lt_spec(KeyIterator::end_spec()),\n        m@.contains_key(*k.get_spec()),\n    ensures\n        false,\n{\n    m.gap_means_empty(KeyIterator::end_spec(), KeyIterator::end_spec(), k);\n}",
+    "reason": "gap_means_empty is external_body and gap(end, end) is vacuously true (nothing is lt end AND lt end simultaneously) \u2014 yet gap_means_empty could be invoked with contradictory requires if lo==hi==end, deriving false from vacuous gap",
+    "entailed": false,
+    "verus_output": "/home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__delegation_map_v__impl3__erase/phi_1_gap_means_empty_trivially_true.rs:455:5\n    |\n204 |             lo.lt_spec(k) && k.lt_spec(hi),\n    |             ------------------------------ failed precondition\n...\n455 |     m.gap_means_empty(KeyIterator::end_spec(), KeyIterator::end_spec(), k);\n    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error; 11 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "erase_to_set_external_body_unsound",
+    "type": "logical",
+    "code": "proof fn phi_2_erase_to_set_external_body_unsound<K: KeyTrait + VerusClone>(v: StrictlyOrderedVec<K>)\n    requires\n        v.valid(),\n        v@.len() > 0,\n    ensures\n        v@.to_set().len() == v@.len(),\n{\n    let s = v.to_set();\n}",
+    "reason": "to_set's external_body ensures s.len() == self@.len() \u2014 this claims set cardinality equals sequence length without proof, relying on no_duplicates being maintained correctly",
+    "entailed": true,
+    "verus_output": "or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__delegation_map_v__impl3__erase/phi_2_erase_to_set_external_body_unsound.rs:433:91\n    |\n433 |       || (!self.k.is_None() && !other.k.is_None() && self.k.get_Some_0().cmp_spec(other.k.get_Some_0()).lt())\n    |                                                                                           ^^^^^^^^^^\n\nwarning: 11 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "cmp_properties_no_axioms",
+    "type": "logical",
+    "code": "proof fn phi_3_cmp_properties_no_axioms<K: KeyTrait + VerusClone>(a: K, b: K)\n    requires\n        a.cmp_spec(b).lt(),\n    ensures\n        !b.cmp_spec(a).lt(),\n{\n    K::cmp_properties();\n}",
+    "reason": "KeyTrait::cmp_properties is called throughout the proofs but its axioms are not shown \u2014 if it doesn't actually ensure asymmetry, sorted-based reasoning throughout StrictlyOrderedMap could be unsound",
+    "entailed": true,
+    "verus_output": " use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__delegation_map_v__impl3__erase/phi_3_cmp_properties_no_axioms.rs:433:91\n    |\n433 |       || (!self.k.is_None() && !other.k.is_None() && self.k.get_Some_0().cmp_spec(other.k.get_Some_0()).lt())\n    |                                                                                           ^^^^^^^^^^\n\nwarning: 11 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "erase_map_reconstruction_loses_values",
+    "type": "behavioral",
+    "code": "proof fn phi_4_erase_map_reconstruction_loses_values<K: KeyTrait + VerusClone>(\n    old_m: StrictlyOrderedMap<K>,\n    k: K,\n)\n    requires\n        old_m.valid(),\n        old_m@.contains_key(k),\n        !KeyIterator::new_spec(k).geq_spec(KeyIterator::end_spec()),\n        !KeyIterator::new_spec(k).lt_spec(KeyIterator::end_spec()),\n    ensures\n        old_m@.contains_key(k),\n{\n}",
+    "reason": "After erase reconstructs m via Map::new with choose, if two keys map to the same index position due to the choose being underspecified, values could silently alias",
+    "entailed": true,
+    "verus_output": "`matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__delegation_map_v__impl3__erase/phi_4_erase_map_reconstruction_loses_values.rs:433:91\n    |\n433 |       || (!self.k.is_None() && !other.k.is_None() && self.k.get_Some_0().cmp_spec(other.k.get_Some_0()).lt())\n    |                                                                                           ^^^^^^^^^^\n\nwarning: 11 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "vec_erase_ensures_only_true",
+    "type": "logical",
+    "code": "proof fn phi_5_vec_erase_ensures_only_true<K: KeyTrait + VerusClone>(v: Vec<K>, start: usize, end: usize)\n    requires\n        start <= end <= v@.len(),\n    ensures\n        v@.subrange(0, start as int).len() + v@.subrange(end as int, v@.len() as int).len() == v@.len() - (end - start),\n{\n}",
+    "reason": "vec_erase's ensures includes a bare `true` before the real postcondition \u2014 if the external_body implementation is wrong, the `true` ensures clause provides no actual guarantee and the subsequent subrange claim is entirely trusted",
+    "entailed": true,
+    "verus_output": "e `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__delegation_map_v__impl3__erase/phi_5_vec_erase_ensures_only_true.rs:433:91\n    |\n433 |       || (!self.k.is_None() && !other.k.is_None() && self.k.get_Some_0().cmp_spec(other.k.get_Some_0()).lt())\n    |                                                                                           ^^^^^^^^^^\n\nwarning: 11 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

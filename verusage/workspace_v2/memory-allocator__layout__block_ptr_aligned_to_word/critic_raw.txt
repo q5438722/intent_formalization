@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: const_facts_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `const_facts` is `external_body` trusting 11 constant equalities without proof. These could be verified by `compute` (as the non-external version in the other file does), so using `external_body` is an unnecessary trust gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: mod_mul_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `mod_mul` is `external_body` trusting the property `b % c == 0 ==> (a*b) % c == 0` without proof. While mathematically correct, this is a fundamental arithmetic lemma that should be provable via nonlinear_arith, and `block_ptr_aligned_to_word` critically depends on it.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: block_start_no_overflow_check
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This just confirms that `block_start` at segment 0, page 0, block 0 equals `start_offset(8)` — which is the correct and expected computation. The overflow concern is addressed by `is_block_ptr1` which constrains `ptr <= segment_start + SEGMENT_SIZE < usize::MAX`.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: size_of_node_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `size_of_node` is `external_body` trusting that `Node` (containing a single `*mut Node`) has size 8 and alignment 8. While correct for the current struct definition on 64-bit, this is an unverified assumption that would silently break if the struct changes.
+===VERDICT_END===
+
+===SUMMARY===
+Three true positives identify external_body trust gaps: `const_facts` trusts constant equalities that could be verified by `compute`, `mod_mul` trusts a provable arithmetic property, and `size_of_node` trusts layout facts about the `Node` struct. One false positive: `block_start_no_overflow_check` is a correct computation result, and the overflow concern is already handled by `is_block_ptr1`'s range constraints.
+===END_SUMMARY===

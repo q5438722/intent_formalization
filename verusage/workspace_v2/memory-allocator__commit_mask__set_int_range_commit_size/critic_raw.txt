@@ -1,0 +1,17 @@
+===VERDICT_START===
+PHI: bytes_contains_all_below_commit_size
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is the intended design — `bytes` maps commit mask bits to address ranges, where each bit covers a COMMIT_SIZE (65536-byte) region. The `set_int_range_commit_size` proof in the source file proves exactly this property, confirming it's the expected behavior.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: segment_start_external_body_unconstrained
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `segment_start` is `external_body` with no postconditions whatsoever — it provides no injectivity guarantee (distinct segment IDs could map to the same address) and no alignment or range constraints. This is a real spec weakness, though the missing constraints may be established elsewhere in the full codebase.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: `segment_start` is an `external_body` function with no postconditions, leaving the mapping from segment IDs to addresses completely unconstrained — different IDs could overlap, and addresses have no alignment guarantees. The other candidate is a false positive — the `bytes` behavior of mapping a single bit to a full COMMIT_SIZE region is the intended design, confirmed by the existing `set_int_range_commit_size` proof in the source.
+===END_SUMMARY===

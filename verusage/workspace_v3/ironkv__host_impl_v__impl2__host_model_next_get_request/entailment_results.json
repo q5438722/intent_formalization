@@ -1,0 +1,52 @@
+[
+  {
+    "name": "get_reply_empty_output_when_should_send",
+    "target_fn": "next_get_request_reply",
+    "type": "behavioral",
+    "reason": "A successful get-request reply (should_send=true) must emit exactly one packet; an empty output set would mean the response is silently dropped",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": " sm: SingleMessage<Message>, m: Message, out: Set<Packet>,\n1535 | | )\n     | |_- at the end of the function body\n...\n1541 |           out == Set::<Packet>::empty(),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 8 warnings emitted\n\n"
+  },
+  {
+    "name": "send_exceeds_max_seqno_still_sends",
+    "target_fn": "send_single_message",
+    "type": "boundary",
+    "reason": "When the sequence number exceeds max_seqno the protocol must suppress sending; allowing Some(sm) would violate the flow-control bound",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "Point,\n1534 | |     sm: Option<SingleMessage<Message>>,\n1535 | |     params: AbstractParameters,\n1536 | | )\n     | |_- at the end of the function body\n...\n1542 |           sm is Some,\n     |           ^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 8 warnings emitted\n\n"
+  },
+  {
+    "name": "redirect_modifies_received_requests",
+    "target_fn": "next_get_request_reply",
+    "type": "logical",
+    "reason": "A redirected request is not served locally, so received_requests must stay unchanged; mutation here would miscount application-level requests",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "age, out: Set<Packet>,\n1535 | | )\n     | |_- at the end of the function body\n...\n1542 |           post.received_requests != pre.received_requests,\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 8 warnings emitted\n\n"
+  },
+  {
+    "name": "lookup_none_despite_key_present",
+    "target_fn": "hashtable_lookup",
+    "type": "behavioral",
+    "reason": "Looking up a key known to be in the hashtable must return Some; returning None would lose stored data and break get-request correctness",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "    |       ---------------------------------------------------------------------- at the end of the function body\n...\n1535 |         hashtable_lookup(h, k) is None,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 8 warnings emitted\n\n"
+  },
+  {
+    "name": "get_request_changes_hashtable",
+    "target_fn": "next_get_request",
+    "type": "logical",
+    "reason": "A read-only GetRequest must never mutate the hashtable; allowing h to change would turn a get into an implicit write",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "bstractHostState, post: AbstractHostState,\n1533 | |     pkt: Packet, out: Set<Packet>,\n1534 | | )\n     | |_- at the end of the function body\n...\n1540 |           post.h != pre.h,\n     |           ^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 8 warnings emitted\n\n"
+  }
+]

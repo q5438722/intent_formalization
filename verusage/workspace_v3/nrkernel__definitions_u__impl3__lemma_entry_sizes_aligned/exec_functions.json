@@ -1,0 +1,22 @@
+[
+  {
+    "name": "aligned",
+    "code": "pub open spec(checked) fn aligned(addr: nat, size: nat) -> bool {\n    addr % size == 0\n}"
+  },
+  {
+    "name": "entry_size",
+    "code": "pub open spec(checked) fn entry_size(self, layer: nat) -> nat\n        recommends\n            layer < self.layers.len(),\n    {\n        self.layers[layer as int].entry_size\n    }"
+  },
+  {
+    "name": "num_entries",
+    "code": "pub open spec(checked) fn num_entries(self, layer: nat) -> nat\n        recommends\n            layer < self.layers.len(),\n    {\n        self.layers.index(layer as int).num_entries\n    }"
+  },
+  {
+    "name": "inv",
+    "code": "pub open spec(checked) fn inv(&self) -> bool {\n        &&& self.layers.len() <= X86_NUM_LAYERS\n        &&& forall|i: nat|\n            #![trigger self.entry_size(i)]\n            #![trigger self.num_entries(i)]\n            i < self.layers.len() ==> {\n                &&& 0 < self.entry_size(i) <= X86_MAX_ENTRY_SIZE\n                &&& 0 < self.num_entries(i) <= X86_NUM_ENTRIES\n                &&& self.entry_size_is_next_layer_size(i)\n            }\n    }"
+  },
+  {
+    "name": "entry_size_is_next_layer_size",
+    "code": "pub open spec(checked) fn entry_size_is_next_layer_size(self, i: nat) -> bool\n        recommends\n            i < self.layers.len(),\n    {\n        i + 1 < self.layers.len() ==> self.entry_size(i) == self.entry_size((i + 1) as nat)\n            * self.num_entries((i + 1) as nat)\n    }"
+  }
+]

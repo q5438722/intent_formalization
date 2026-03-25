@@ -1,0 +1,132 @@
+Here are 5 candidate undesirable properties targeting `kill_process_none_root`:
+
+===PHI_START===
+NAME: parent_also_removed
+TARGET_FN: kill_process_none_root
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_parent_also_removed(old_pm: ProcessManager, new_pm: ProcessManager, proc_ptr: ProcPtr)
+    requires
+        old_pm.wf(),
+        old_pm.proc_dom().contains(proc_ptr),
+        old_pm.get_proc(proc_ptr).owned_threads@ == Seq::<ThreadPtr>::empty(),
+        old_pm.get_proc(proc_ptr).children@ == Seq::<ProcPtr>::empty(),
+        old_pm.get_proc(proc_ptr).depth != 0,
+        new_pm.wf(),
+        new_pm.proc_dom() == old_pm.proc_dom().remove(proc_ptr),
+    ensures
+        !new_pm.proc_dom().contains(old_pm.get_proc(proc_ptr).parent.unwrap()),
+{
+}
+```
+REASON: Killing a leaf process should never remove its parent from the process domain
+===PHI_END===
+
+===PHI_START===
+NAME: parent_children_fully_cleared
+TARGET_FN: kill_process_none_root
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_parent_children_fully_cleared(old_pm: ProcessManager, new_pm: ProcessManager, proc_ptr: ProcPtr)
+    requires
+        old_pm.wf(),
+        old_pm.proc_dom().contains(proc_ptr),
+        old_pm.get_proc(proc_ptr).owned_threads@ == Seq::<ThreadPtr>::empty(),
+        old_pm.get_proc(proc_ptr).children@ == Seq::<ProcPtr>::empty(),
+        old_pm.get_proc(proc_ptr).depth != 0,
+        new_pm.wf(),
+        new_pm.proc_dom() == old_pm.proc_dom().remove(proc_ptr),
+        new_pm.get_proc(old_pm.get_proc(proc_ptr).parent.unwrap()).children@ =~=
+            old_pm.get_proc(old_pm.get_proc(proc_ptr).parent.unwrap()).children@.remove_value(proc_ptr),
+        new_pm.get_proc(old_pm.get_proc(proc_ptr).parent.unwrap()).children.len() ==
+            old_pm.get_proc(old_pm.get_proc(proc_ptr).parent.unwrap()).children.len() - 1,
+    ensures
+        new_pm.get_proc(old_pm.get_proc(proc_ptr).parent.unwrap()).children@ =~= Seq::<ProcPtr>::empty(),
+{
+}
+```
+REASON: Parent should only lose the killed child, not have all its children cleared
+===PHI_END===
+
+===PHI_START===
+NAME: container_dom_shrinks
+TARGET_FN: kill_process_none_root
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_container_dom_shrinks(old_pm: ProcessManager, new_pm: ProcessManager, proc_ptr: ProcPtr, ret_page: PagePtr)
+    requires
+        old_pm.wf(),
+        old_pm.proc_dom().contains(proc_ptr),
+        old_pm.get_proc(proc_ptr).owned_threads@ == Seq::<ThreadPtr>::empty(),
+        old_pm.get_proc(proc_ptr).children@ == Seq::<ProcPtr>::empty(),
+        old_pm.get_proc(proc_ptr).depth != 0,
+        new_pm.wf(),
+        new_pm.proc_dom() == old_pm.proc_dom().remove(proc_ptr),
+        new_pm.page_closure() =~= old_pm.page_closure().remove(ret_page),
+        old_pm.page_closure().contains(ret_page),
+        old_pm.container_dom().contains(ret_page) == false,
+    ensures
+        exists|c: ContainerPtr| old_pm.container_dom().contains(c) && !new_pm.container_dom().contains(c),
+{
+}
+```
+REASON: Killing a process must never remove any container from the container domain
+===PHI_END===
+
+===PHI_START===
+NAME: endpoint_dom_shrinks
+TARGET_FN: kill_process_none_root
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_endpoint_dom_shrinks(old_pm: ProcessManager, new_pm: ProcessManager, proc_ptr: ProcPtr)
+    requires
+        old_pm.wf(),
+        old_pm.proc_dom().contains(proc_ptr),
+        old_pm.get_proc(proc_ptr).owned_threads@ == Seq::<ThreadPtr>::empty(),
+        old_pm.get_proc(proc_ptr).children@ == Seq::<ProcPtr>::empty(),
+        old_pm.get_proc(proc_ptr).depth != 0,
+        new_pm.wf(),
+        new_pm.container_dom() == old_pm.container_dom(),
+        new_pm.proc_dom() == old_pm.proc_dom().remove(proc_ptr),
+        new_pm.thread_dom() == old_pm.thread_dom(),
+    ensures
+        exists|e: EndpointPtr| old_pm.endpoint_perms@.dom().contains(e) && !new_pm.endpoint_perms@.dom().contains(e),
+{
+}
+```
+REASON: Killing a threadless childless process should never destroy any endpoint
+===PHI_END===
+
+===PHI_START===
+NAME: returned_page_differs_from_proc
+TARGET_FN: kill_process_none_root
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_returned_page_differs_from_proc(old_pm: ProcessManager, new_pm: ProcessManager, proc_ptr: ProcPtr, ret_page: PagePtr)
+    requires
+        old_pm.wf(),
+        old_pm.proc_dom().contains(proc_ptr),
+        old_pm.get_proc(proc_ptr).owned_threads@ == Seq::<ThreadPtr>::empty(),
+        old_pm.get_proc(proc_ptr).children@ == Seq::<ProcPtr>::empty(),
+        old_pm.get_proc(proc_ptr).depth != 0,
+        new_pm.wf(),
+        new_pm.container_dom() == old_pm.container_dom(),
+        new_pm.proc_dom() == old_pm.proc_dom().remove(proc_ptr),
+        new_pm.thread_dom() == old_pm.thread_dom(),
+        new_pm.page_closure() =~= old_pm.page_closure().remove(ret_page),
+        old_pm.page_closure().contains(ret_page),
+        old_pm.container_dom().contains(ret_page) == false,
+        old_pm.memory_disjoint(),
+        new_pm.memory_disjoint(),
+    ensures
+        ret_page != proc_ptr,
+{
+}
+```
+REASON: The freed page should be the process's own backing page, not some unrelated page
+===PHI_END===

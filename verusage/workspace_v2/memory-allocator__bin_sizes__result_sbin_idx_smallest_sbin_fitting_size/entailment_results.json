@@ -1,0 +1,47 @@
+[
+  {
+    "name": "smallest_sbin_negative_valid",
+    "type": "boundary",
+    "code": "proof fn phi_1_smallest_sbin_negative_valid()\n    ensures\n        smallest_sbin_fitting_size(-5) == -5,\n        !valid_sbin_idx(smallest_sbin_fitting_size(-5)),\n{\n}",
+    "reason": "For negative inputs, `smallest_sbin_fitting_size` returns the input directly (since `-5 <= 8`), producing a negative sbin index that violates `valid_sbin_idx` \u2014 callers passing invalid slice counts get silently invalid indices",
+    "entailed": true,
+    "verus_output": "verification results:: 18 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "smallest_sbin_zero_is_zero",
+    "type": "boundary",
+    "code": "proof fn phi_2_smallest_sbin_zero_is_zero()\n    ensures\n        smallest_sbin_fitting_size(0) == 0,\n        valid_sbin_idx(0),\n{\n}",
+    "reason": "`smallest_sbin_fitting_size(0) == 0` maps a zero-size request to sbin 0 \u2014 this may be undesirable if sbin 0 is supposed to represent a specific non-zero allocation size",
+    "entailed": true,
+    "verus_output": "verification results:: 18 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "property_sbin_fails_negative",
+    "type": "boundary",
+    "code": "proof fn phi_3_property_sbin_fails_negative()\n    ensures\n        !property_sbin_idx_smallest_sbin_fitting_size(-1),\n{\n}",
+    "reason": "`property_sbin_idx_smallest_sbin_fitting_size(-1)` is false because `smallest_sbin_fitting_size(-1) == -1` which fails `valid_sbin_idx` \u2014 the property checker has no lower bound guard, so `check_sbin_idx` starting from negative values would fail",
+    "entailed": true,
+    "verus_output": "verification results:: 18 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "pow2_negative_is_one",
+    "type": "boundary",
+    "code": "proof fn phi_4_pow2_negative_is_one(e: int)\n    requires\n        e < 0,\n    ensures\n        pow2(e) == 1,\n{\n}",
+    "reason": "`pow2` returns 1 for all negative exponents \u2014 mathematically 2^(-n) is a fraction, so callers accidentally passing negative values get silently wrong results",
+    "entailed": true,
+    "verus_output": "verification results:: 18 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "smallest_sbin_large_input_exceeds_max",
+    "type": "behavioral",
+    "code": "proof fn phi_5_smallest_sbin_large_input_exceeds_max()\n    ensures\n        smallest_sbin_fitting_size(100000) > SEGMENT_BIN_MAX as int,\n        !valid_sbin_idx(smallest_sbin_fitting_size(100000)),\n{\n}",
+    "reason": "Unlike the regular bin allocator which has BIN_HUGE as a catch-all, `smallest_sbin_fitting_size` has no upper clamp \u2014 large inputs produce sbin indices exceeding `SEGMENT_BIN_MAX`, and `property_sbin_idx_smallest_sbin_fitting_size` would be false for such inputs",
+    "entailed": false,
+    "verus_output": "space_v2/memory-allocator__bin_sizes__result_sbin_idx_smallest_sbin_fitting_size/phi_5_smallest_sbin_large_input_exceeds_max.rs:221:9\n    |\n218 | proof fn phi_5_smallest_sbin_large_input_exceeds_max()\n    |       ------------------------------------------------ at the end of the function body\n...\n221 |         !valid_sbin_idx(smallest_sbin_fitting_size(100000)),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 2 previous errors\n\n",
+    "timed_out": false
+  }
+]

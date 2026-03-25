@@ -1,0 +1,81 @@
+===PHI_START===
+NAME: sub_distribute_commuted
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_sub_distribute_commuted(a: int, b: int, c: int)
+    ensures
+        c * a - c * b == (a - b) * c,
+{
+    sub_distribute(a, b, c);
+    assert(a * c == c * a) by(nonlinear_arith);
+    assert(b * c == c * b) by(nonlinear_arith);
+}
+```
+REASON: Commutativity combined with sub_distribute derives `c*a - c*b == (a-b)*c` — a correct mathematical identity, testing that the lemma composes with basic arithmetic
+===PHI_END===
+
+===PHI_START===
+NAME: sub_distribute_zero_c
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_sub_distribute_zero_c(a: int, b: int)
+    ensures
+        a * 0 - b * 0 == 0,
+{
+    sub_distribute(a, b, 0);
+}
+```
+REASON: With `c == 0`, the lemma yields `0 - 0 == 0` — trivially true but a degenerate case where the distributive law provides no useful information
+===PHI_END===
+
+===PHI_START===
+NAME: sub_distribute_self
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_sub_distribute_self(a: int, c: int)
+    ensures
+        a * c - a * c == 0,
+{
+    sub_distribute(a, a, c);
+}
+```
+REASON: When `a == b`, the result is `0 == 0 * c == 0` — trivially true, testing the degenerate case where subtraction cancels
+===PHI_END===
+
+===PHI_START===
+NAME: sub_distribute_negative
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_sub_distribute_negative(a: int, b: int, c: int)
+    requires
+        a < b,
+        c > 0,
+    ensures
+        a * c - b * c < 0,
+{
+    sub_distribute(a, b, c);
+    assert((a - b) * c < 0) by(nonlinear_arith)
+        requires a < b, c > 0;
+}
+```
+REASON: The lemma enables deriving sign information — when `a < b` and `c > 0`, `a*c - b*c` is negative, which is correct but shows the lemma's power extends beyond simple factoring
+===PHI_END===
+
+===PHI_START===
+NAME: sub_distribute_factor_extraction
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_sub_distribute_factor_extraction(n: int, c: int)
+    ensures
+        (n + 1) * c - n * c == c,
+{
+    sub_distribute(n + 1, n, c);
+}
+```
+REASON: Setting `a = n+1, b = n` yields `(n+1)*c - n*c == c` — this extracts a single factor, which is correct but shows the lemma can derive stepping relationships between consecutive multiples
+===PHI_END===

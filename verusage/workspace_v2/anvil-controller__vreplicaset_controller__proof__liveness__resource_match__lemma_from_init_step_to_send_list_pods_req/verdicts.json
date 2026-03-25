@@ -1,0 +1,20 @@
+[
+  {
+    "phi": "unmarshal_skips_state_validation",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Unmarshal is intentionally a parsing/deserialization step separate from validation. In Kubernetes, state validation is performed at admission time, not during unmarshalling \u2014 this separation is by design."
+  },
+  {
+    "phi": "create_key_namespace_diverges",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`CreateRequest::key()` derives namespace from `self.namespace` rather than `self.obj.metadata.namespace`. If these diverge, the object is stored under a key that doesn't match its own metadata, which could lead to inconsistent lookups or stale references."
+  },
+  {
+    "phi": "object_ref_ignores_uid",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`ObjectRef` is intentionally defined as (kind, name, namespace) to serve as a logical key for resource lookup. UID-based identity tracking is handled separately via `metadata.uid` and owner references \u2014 `ObjectRef` is a namespace-scoped name, not a unique incarnation identifier."
+  }
+]

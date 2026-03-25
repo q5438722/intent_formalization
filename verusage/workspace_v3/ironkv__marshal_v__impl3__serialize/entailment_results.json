@@ -1,0 +1,52 @@
+[
+  {
+    "name": "none_serialize_empty",
+    "target_fn": "serialize",
+    "type": "behavioral",
+    "reason": "Serializing None should append a tag byte, so output length must grow \u2014 being equal would mean nothing was written.",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "st_data: Seq<u8>)\n    |       -------------------------------------------------------------------- at the end of the function body\n...\n174 |         post_data.len() == pre_data.len(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "some_none_same_serialization",
+    "target_fn": "serialize",
+    "type": "logical",
+    "reason": "Some(v) and None must serialize differently to be distinguishable; equal serialization would break round-trip decoding.",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "---------------- at the end of the function body\n...\n173 |         Option::Some(v).ghost_serialize() == Option::<u64>::None.ghost_serialize(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "some_tag_byte_is_zero",
+    "target_fn": "serialize",
+    "type": "boundary",
+    "reason": "The Some variant should use tag byte 1, not 0; tag 0 is reserved for None and would make them indistinguishable.",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "e_is_zero(v: u64)\n    |       -------------------------------------- at the end of the function body\n...\n172 |         Option::Some(v).ghost_serialize().first() == 0u8,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "serialize_length_at_most_one",
+    "target_fn": "serialize",
+    "type": "behavioral",
+    "reason": "Some(v) serialization must include both the tag byte and v's payload; length \u2264 1 would mean the inner value is lost.",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "t_most_one(v: u64)\n    |       --------------------------------------------- at the end of the function body\n...\n172 |         Option::Some(v).ghost_serialize().len() <= 1,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "data_prefix_corrupted",
+    "target_fn": "serialize",
+    "type": "logical",
+    "reason": "The spec guarantees the original data prefix is preserved; if the first byte differs, serialize has corrupted pre-existing data.",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "\n    |       ----------------------------------------------------------------------------- at the end of the function body\n...\n175 |         post_data.first() != pre_data.first(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

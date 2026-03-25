@@ -1,0 +1,52 @@
+[
+  {
+    "name": "same_proc_loses_src_mapping",
+    "target_fn": "share_mapping",
+    "type": "behavioral",
+    "reason": "If sharing within the same process causes the pre-existing source VA mapping to vanish, the source loses access to its own page",
+    "entailed": false,
+    "verified": 43,
+    "errors": 1,
+    "output_tail": " |     entry: MapEntry,\n2917 | | )\n     | |_- at the end of the function body\n...\n2925 |           new_addr_space.dom().contains(src_va) == false,\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 34 warnings emitted\n\n"
+  },
+  {
+    "name": "target_as_empty_after_share",
+    "target_fn": "share_mapping",
+    "type": "boundary",
+    "reason": "If the target address space becomes empty after inserting a shared mapping, all previously existing mappings of the target process are destroyed",
+    "entailed": false,
+    "verified": 43,
+    "errors": 1,
+    "output_tail": "ntry: MapEntry,\n2916 | | )\n     | |_- at the end of the function body\n...\n2922 |           new_addr_space =~= Map::<VAddr, MapEntry>::empty(),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 34 warnings emitted\n\n"
+  },
+  {
+    "name": "other_page_mapping_affected",
+    "target_fn": "share_mapping",
+    "type": "logical",
+    "reason": "If sharing a mapping mutates the reverse-mapping set of an unrelated physical page, page tracking is corrupted and could lead to use-after-free",
+    "entailed": false,
+    "verified": 43,
+    "errors": 1,
+    "output_tail": "   |\n2917 | |     target_va: VAddr,\n2918 | | )\n     | |_- at the end of the function body\n...\n2930 |           new_pm[other_page] != old_pm[other_page],\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 34 warnings emitted\n\n"
+  },
+  {
+    "name": "shared_entry_gains_write",
+    "target_fn": "share_mapping",
+    "type": "behavioral",
+    "reason": "If a read-only shared mapping is silently promoted to writable, the target process gains unauthorized write access to the shared page",
+    "entailed": false,
+    "verified": 43,
+    "errors": 1,
+    "output_tail": " VAddr,\n2915 | |     entry: MapEntry,\n2916 | | )\n     | |_- at the end of the function body\n...\n2922 |           new_addr_space[target_va].write == true,\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 34 warnings emitted\n\n"
+  },
+  {
+    "name": "refcount_double_increment",
+    "target_fn": "share_mapping",
+    "type": "logical",
+    "reason": "If the reference counter increases by two or more for a single share operation, the page can never be fully freed, causing a permanent memory leak",
+    "entailed": false,
+    "verified": 43,
+    "errors": 1,
+    "output_tail": "_refcount: usize,\n2913 | |     new_refcount: usize,\n2914 | | )\n     | |_- at the end of the function body\n...\n2919 |           new_refcount >= old_refcount + 2,\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 34 warnings emitted\n\n"
+  }
+]

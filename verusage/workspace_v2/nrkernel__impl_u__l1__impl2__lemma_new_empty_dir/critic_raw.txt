@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: lemma_entry_base_support_nat_mul_commutative_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `lemma_entry_base_from_index_support` is `external_body` with `unimplemented!()` body — the universally quantified `nat_mul(a, b) == a * b` and commutativity are trusted without proof. While arithmetically correct, these are foundational axioms injected into the SMT context without verification.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: lemma_entry_base_from_index_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `lemma_entry_base_from_index` is `external_body` with `unimplemented!()` body — strict monotonicity and gap-free properties of `entry_base_from_index`/`next_entry_base_from_index` are trusted without proof. These are correct arithmetic consequences of `base + idx * entry_size` but unverified.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: lemma_new_seq_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `lemma_new_seq` is `external_body` with `unimplemented!()` body — the length and element-equality properties of the recursive `new_seq` function are trusted without proof. The recursive definition is straightforward but the inductive proof is missing.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: new_empty_dir_misaligned_base
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The commented-out `aligned(self.base_vaddr, self.entry_size() * self.num_entries())` in `well_formed()` allows any `base_vaddr` including 7. The `new_empty_dir` inherits `entry_base(entry)` which equals `7 + 0 * entry_size = 7` — propagating misalignment to subdirectories.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: aligned_divisibility_external_body
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is a direct consequence of the same `lemma_entry_base_from_index_support` external_body already captured by φ1. The alignment divisibility property is just one of the universally quantified ensures clauses — no new trust assumption beyond what φ1 already flags.
+===VERDICT_END===
+
+===SUMMARY===
+Four true positives: three `external_body` axioms (`lemma_entry_base_from_index_support` for nat_mul identities, `lemma_entry_base_from_index` for entry base ordering, and `lemma_new_seq` for sequence construction) trust correct but unproven arithmetic/structural properties, and the commented-out alignment constraint allows misaligned base addresses to propagate through `new_empty_dir`. One false positive: the alignment divisibility property is a redundant consequence of the same external_body already captured.
+===END_SUMMARY===

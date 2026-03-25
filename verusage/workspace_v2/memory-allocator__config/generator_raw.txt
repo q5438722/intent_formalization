@@ -1,0 +1,73 @@
+===PHI_START===
+NAME: slice_shift_mismatch
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_slice_shift_mismatch()
+    ensures
+        SLICE_SIZE == (1u64 << SLICE_SHIFT),
+{
+    assert(1u64 << SLICE_SHIFT == 65536) by (compute);
+}
+```
+REASON: `SLICE_SIZE` is hardcoded as 65536 with a comment `(1 << SLICE_SHIFT)` but `SLICE_SHIFT = 13 + 3 = 16` and `1 << 16 = 65536` — if the shift constant were ever changed without updating the hardcoded value, they'd silently diverge
+===PHI_END===
+
+===PHI_START===
+NAME: segment_size_alignment_equal
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_segment_size_alignment_equal()
+    ensures
+        SEGMENT_SIZE == SEGMENT_ALIGN,
+{
+}
+```
+REASON: `SEGMENT_ALIGN` is defined as `SEGMENT_SIZE` — alignment equaling size is unusual and could mask alignment bugs if the segment ever needs different alignment than its size
+===PHI_END===
+
+===PHI_START===
+NAME: max_alloc_exceeds_segment
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_max_alloc_exceeds_segment()
+    ensures
+        MAX_ALLOC_SIZE as u64 > SEGMENT_SIZE,
+{
+}
+```
+REASON: `MAX_ALLOC_SIZE = isize::MAX` (~2^63) vastly exceeds `SEGMENT_SIZE` (33MB) — allocations larger than a segment require special handling, and if code assumes allocations fit in a segment, this gap could cause issues
+===PHI_END===
+
+===PHI_START===
+NAME: huge_block_exceeds_segment
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_huge_block_exceeds_segment()
+    ensures
+        HUGE_BLOCK_SIZE as u64 > SEGMENT_SIZE,
+{
+    assert(SEGMENT_SIZE == 33554432) by (compute);
+}
+```
+REASON: `HUGE_BLOCK_SIZE` (2 GiB = 2147483648) is ~64x larger than `SEGMENT_SIZE` (33554432) — if any code assumes huge blocks fit within a single segment, this size relationship would break that assumption
+===PHI_END===
+
+===PHI_START===
+NAME: medium_obj_wsize_max_truncation
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_medium_obj_wsize_max_truncation()
+    ensures
+        MEDIUM_OBJ_WSIZE_MAX * (usize::BITS as u64 / 8) == MEDIUM_OBJ_SIZE_MAX,
+{
+    assert(MEDIUM_OBJ_WSIZE_MAX == 16384u64) by (compute_only);
+    assert(MEDIUM_OBJ_SIZE_MAX == 131072u64) by (compute);
+}
+```
+REASON: `MEDIUM_OBJ_WSIZE_MAX = MEDIUM_OBJ_SIZE_MAX / 8` uses integer division which truncates — if `MEDIUM_OBJ_SIZE_MAX` weren't a multiple of 8, the roundtrip `wsize * 8` wouldn't recover the original byte size
+===PHI_END===

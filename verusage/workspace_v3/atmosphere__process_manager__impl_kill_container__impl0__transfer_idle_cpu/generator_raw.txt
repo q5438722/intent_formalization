@@ -1,0 +1,117 @@
+Looking at `transfer_idle_cpu`'s preconditions and the body assertions, here are 5 candidate undesirable properties:
+
+===PHI_START===
+NAME: preconditions_unsatisfiable
+TARGET_FN: transfer_idle_cpu
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_preconditions_unsatisfiable(pm: &ProcessManager, container_ptr: ContainerPtr, cpu_id: CpuId)
+    requires
+        pm.wf(),
+        0 <= cpu_id < NUM_CPUS,
+        pm.container_dom().contains(container_ptr),
+        pm.get_container(container_ptr).owned_cpus@.contains(cpu_id),
+        pm.get_cpu(cpu_id).current_thread.is_None(),
+        pm.get_container(container_ptr).depth != 0,
+        pm.root_container != container_ptr,
+    ensures
+        false,
+{
+}
+```
+REASON: If provable, the preconditions are contradictory and transfer_idle_cpu can never be called.
+===PHI_END===
+
+===PHI_START===
+NAME: self_parent_loop
+TARGET_FN: transfer_idle_cpu
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_self_parent_loop(pm: &ProcessManager, container_ptr: ContainerPtr, cpu_id: CpuId)
+    requires
+        pm.wf(),
+        0 <= cpu_id < NUM_CPUS,
+        pm.container_dom().contains(container_ptr),
+        pm.get_container(container_ptr).owned_cpus@.contains(cpu_id),
+        pm.get_cpu(cpu_id).current_thread.is_None(),
+        pm.get_container(container_ptr).depth != 0,
+        pm.root_container != container_ptr,
+    ensures
+        pm.get_container(container_ptr).parent == Some(container_ptr),
+{
+}
+```
+REASON: If provable, a container can be its own parent, making the CPU transfer a no-op and breaking the tree structure.
+===PHI_END===
+
+===PHI_START===
+NAME: parent_not_in_domain
+TARGET_FN: transfer_idle_cpu
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_parent_not_in_domain(pm: &ProcessManager, container_ptr: ContainerPtr, cpu_id: CpuId)
+    requires
+        pm.wf(),
+        0 <= cpu_id < NUM_CPUS,
+        pm.container_dom().contains(container_ptr),
+        pm.get_container(container_ptr).owned_cpus@.contains(cpu_id),
+        pm.get_cpu(cpu_id).current_thread.is_None(),
+        pm.get_container(container_ptr).depth != 0,
+        pm.root_container != container_ptr,
+    ensures
+        pm.get_container(container_ptr).parent.is_Some()
+            && !pm.container_dom().contains(pm.get_container(container_ptr).parent.unwrap()),
+{
+}
+```
+REASON: If provable, the parent container is not in the domain, so inserting the CPU into the parent would access invalid memory.
+===PHI_END===
+
+===PHI_START===
+NAME: depth_exceeds_container_count
+TARGET_FN: transfer_idle_cpu
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_depth_exceeds_container_count(pm: &ProcessManager, container_ptr: ContainerPtr, cpu_id: CpuId)
+    requires
+        pm.wf(),
+        0 <= cpu_id < NUM_CPUS,
+        pm.container_dom().contains(container_ptr),
+        pm.get_container(container_ptr).owned_cpus@.contains(cpu_id),
+        pm.get_cpu(cpu_id).current_thread.is_None(),
+        pm.get_container(container_ptr).depth != 0,
+        pm.root_container != container_ptr,
+    ensures
+        pm.get_container(container_ptr).depth as int > pm.container_dom().len(),
+{
+}
+```
+REASON: If provable, tree depth exceeds the number of containers, indicating a malformed container tree invariant.
+===PHI_END===
+
+===PHI_START===
+NAME: cpu_owner_mismatch
+TARGET_FN: transfer_idle_cpu
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_cpu_owner_mismatch(pm: &ProcessManager, container_ptr: ContainerPtr, cpu_id: CpuId)
+    requires
+        pm.wf(),
+        0 <= cpu_id < NUM_CPUS,
+        pm.container_dom().contains(container_ptr),
+        pm.get_container(container_ptr).owned_cpus@.contains(cpu_id),
+        pm.get_cpu(cpu_id).current_thread.is_None(),
+        pm.get_container(container_ptr).depth != 0,
+        pm.root_container != container_ptr,
+    ensures
+        pm.get_cpu(cpu_id).owning_container != container_ptr,
+{
+}
+```
+REASON: If provable, cpu_list and container owned_cpus are inconsistent—the CPU is listed under a container that the cpu_list disagrees with.
+===PHI_END===

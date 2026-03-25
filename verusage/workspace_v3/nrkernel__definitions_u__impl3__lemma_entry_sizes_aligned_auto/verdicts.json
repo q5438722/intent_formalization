@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "empty_arch_satisfies_inv",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The invariant uses a vacuously-true universal quantifier when `layers.len() == 0`, so an empty Arch trivially satisfies `inv()`. An empty architecture represents no address translation and is almost certainly not a valid configuration the spec should admit. The `inv` should require `self.layers.len() > 0`."
+  },
+  {
+    "phi": "zero_aligned_to_everything",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`0 % size == 0` for any nonzero size is a basic mathematical fact. The `aligned` function is a pure spec function, and address 0 being aligned is standard \u2014 callers that need to exclude zero addresses should do so in their own preconditions, not in the alignment definition."
+  },
+  {
+    "phi": "inv_allows_unit_entry_size",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "The invariant only requires `0 < entry_size <= X86_MAX_ENTRY_SIZE`, so an entry size of 1 byte is permitted. For x86 page tables the minimum meaningful granularity is 4096 bytes; allowing sub-page entry sizes means the spec is weaker than the hardware reality it models. The invariant should enforce a minimum entry size (e.g., 4096)."
+  },
+  {
+    "phi": "inv_allows_single_entry_layer",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "While a single-entry layer is degenerate, the spec is designed to be generic over architectures, and `num_entries >= 1` is a reasonable lower bound. A layer with 1 entry is not inherently unsound \u2014 it just maps a single contiguous region, which could be a valid (if unusual) architectural choice. This is a design decision, not a spec gap."
+  },
+  {
+    "phi": "entry_size_next_layer_vacuous_single",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The `entry_size_is_next_layer_size` constraint is an implication that is vacuously true when there is no next layer. For a single-layer architecture, this means `entry_size` and `num_entries` are completely unconstrained relative to each other (e.g., entry_size=3, num_entries=2 is valid). This undermines the structural consistency the invariant is supposed to enforce \u2014 a single-layer arch should still have a meaningful relationship between its parameters."
+  }
+]

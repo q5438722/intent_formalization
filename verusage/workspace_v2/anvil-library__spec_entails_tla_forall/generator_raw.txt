@@ -1,0 +1,45 @@
+===PHI_START===
+NAME: implies_apply_closure_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_implies_apply_closure_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>)
+    requires
+        p.implies(q).satisfied_by(ex),
+        p.satisfied_by(ex),
+    ensures
+        q.satisfied_by(ex),
+{
+    implies_apply::<int>(ex, p, q);
+}
+```
+REASON: implies_apply is external_body bridging p.implies(q).satisfied_by(ex) through TempPred::new closure wrapping to modus ponens — resolves closure identity mismatch without proof
+===PHI_END===
+
+===PHI_START===
+NAME: spec_entails_tla_forall_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_spec_entails_tla_forall_bridge(spec: TempPred<int>, a_to_p: spec_fn(int) -> TempPred<int>)
+    requires
+        forall |a: int| spec.entails(#[trigger] a_to_p(a)),
+    ensures
+        spec.entails(tla_forall(a_to_p)),
+{
+    spec_entails_tla_forall::<int, int>(spec, a_to_p);
+}
+```
+REASON: spec_entails_tla_forall combines pointwise entailments into tla_forall entailment — relies on implies_apply's closure bridge to resolve tla_forall's TempPred::new forall-wrapping
+===PHI_END===
+
+===PHI_START===
+NAME: tla_forall_from_single_pred
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_tla_forall_from_single_pred(spec: TempPred<int>, p: TempPred<int>)
+    requires
+        spec.entails(p),
+    ensures
+        spec.entails(tla_forall

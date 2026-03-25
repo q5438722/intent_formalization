@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize2pa_mem_valid_unconditional",
+    "type": "logical",
+    "code": "proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body ensures MEM_valid(ret) for ALL inputs \u2014 trusts without proof that masking any arbitrary usize yields a valid physical address",
+    "entailed": false,
+    "verus_output": "ization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__create_entry_l3/phi_1_usize2pa_mem_valid_unconditional.rs:1303:9\n     |\n1301 | proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n     |       --------------------------------------------------- at the end of the function body\n1302 |     ensures\n1303 |         MEM_valid(usize2pa(v)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 60 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pcid_ioid_wf_excludes_both_none",
+    "type": "boundary",
+    "code": "proof fn phi_2_pcid_ioid_wf_excludes_both_none(pt: PageTable)\n    requires\n        pt.pcid_ioid_wf(),\n    ensures\n        pt.pcid.is_Some() || pt.ioid.is_Some(),\n{\n}",
+    "reason": "pcid_ioid_wf uses `!=` (XOR), so it forbids both being None \u2014 a page table must always have either a PCID or an IOID, which may be too strong if unassigned page tables should be representable",
+    "entailed": true,
+    "verus_output": "oth_none.rs:68:10\n   |\n68 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__create_entry_l3/phi_2_pcid_ioid_wf_excludes_both_none.rs:77:10\n   |\n77 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 62 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_closure_includes_cr3",
+    "type": "behavioral",
+    "code": "proof fn phi_3_page_closure_includes_cr3(pt: PageTable)\n    requires\n        pt.wf_l4(),\n    ensures\n        pt.page_closure().contains(pt.cr3),\n{\n}",
+    "reason": "page_closure includes l4_table's domain which contains cr3 \u2014 the root page table pointer is counted as a \"page\" in the closure, potentially conflating metadata pages with data pages and interfering with disjointness reasoning against allocated pages",
+    "entailed": true,
+    "verus_output": "e_includes_cr3.rs:68:10\n   |\n68 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__create_entry_l3/phi_3_page_closure_includes_cr3.rs:77:10\n   |\n77 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 60 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "l4_dom_singleton_but_closure_unbounded",
+    "type": "logical",
+    "code": "proof fn phi_4_l4_dom_singleton_but_closure_unbounded(pt: PageTable, p: PageMapPtr)\n    requires\n        pt.wf_l4(),\n        pt.l3_tables@.dom().contains(p),\n    ensures\n        pt.page_closure().contains(p),\n        pt.page_closure().contains(pt.cr3),\n{\n}",
+    "reason": "page_closure is the union of all table domains \u2014 any pointer in l3/l2/l1 domains is in the closure alongside cr3, but there is no constraint that these domains are disjoint from each other or from the l4 domain at the page_closure level",
+    "entailed": true,
+    "verus_output": "d.rs:68:10\n   |\n68 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__create_entry_l3/phi_4_l4_dom_singleton_but_closure_unbounded.rs:77:10\n   |\n77 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 60 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "tlb_submap_no_wf_required",
+    "type": "behavioral",
+    "code": "proof fn phi_5_tlb_submap_no_wf_required(pt: PageTable, cpu: CpuId, va: VAddr)\n    requires\n        pt.tlb_wf(),\n        pt.tlb_submap_of_mapping(),\n        0 <= cpu < NUM_CPUS,\n        pt.tlb_mapping_4k@[cpu as int].dom().contains(va),\n    ensures\n        pt.mapping_4k@.dom().contains(va),\n        pt.tlb_mapping_4k@[cpu as int][va] == pt.mapping_4k@[va],\n{\n}",
+    "reason": "tlb_submap_of_mapping ensures TLB entries are submaps of the full mapping without requiring the full page table wf() \u2014 TLB consistency is asserted independently of structural well-formedness, potentially allowing stale TLB entries when the page table structure is broken",
+    "entailed": false,
+    "verus_output": "entry_l3/phi_5_tlb_submap_no_wf_required.rs:1309:9\n     |\n1301 | proof fn phi_5_tlb_submap_no_wf_required(pt: PageTable, cpu: CpuId, va: VAddr)\n     |       ------------------------------------------------------------------------ at the end of the function body\n...\n1309 |         pt.tlb_mapping_4k@[cpu as int][va] == pt.mapping_4k@[va],\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 60 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

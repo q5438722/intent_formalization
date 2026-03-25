@@ -1,0 +1,47 @@
+[
+  {
+    "name": "interp_aux_key_from_entry",
+    "type": "behavioral",
+    "code": "proof fn phi_1_interp_aux_key_from_entry(d: Directory, va: nat)\n    requires\n        d.inv(),\n        d.interp_aux(0).contains_key(va),\n    ensures\n        exists|i: nat| #![auto] 0 <= i < d.num_entries() && d.interp_of_entry(i).contains_key(va),\n{\n    d.lemma_interp_aux_contains_implies_interp_of_entry_contains(0);\n}",
+    "reason": "Every key in the full interpretation comes from some entry \u2014 direct consequence of the verified lemma",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "interp_aux_pair_from_entry",
+    "type": "behavioral",
+    "code": "proof fn phi_2_interp_aux_pair_from_entry(d: Directory, va: nat, pte: PTE)\n    requires\n        d.inv(),\n        d.interp_aux(0).contains_pair(va, pte),\n    ensures\n        exists|i: nat| #![auto] 0 <= i < d.num_entries() && d.interp_of_entry(i).contains_pair(va, pte),\n{\n    d.lemma_interp_aux_contains_implies_interp_of_entry_contains(0);\n}",
+    "reason": "Every key-value pair in the interpretation comes from some entry \u2014 tests that union_prefer_right doesn't fabricate new pairs",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_entry_contains_base_key",
+    "type": "boundary",
+    "code": "proof fn phi_3_page_entry_contains_base_key(d: Directory, i: nat)\n    requires\n        d.inv(),\n        i < d.entries.len(),\n        d.entries[i as int] is Page,\n    ensures\n        d.interp_of_entry(i).contains_key(d.entry_base(i)),\n{\n}",
+    "reason": "A page entry always contributes its entry_base as a key \u2014 tests the open spec singleton map definition",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "invalid_entry_empty_interp",
+    "type": "boundary",
+    "code": "proof fn phi_4_invalid_entry_empty_interp(d: Directory, i: nat)\n    requires\n        d.inv(),\n        i < d.entries.len(),\n        d.entries[i as int] is Invalid,\n    ensures\n        d.interp_of_entry(i) === Map::<nat, PTE>::empty(),\n{\n}",
+    "reason": "Invalid entries contribute nothing to the interpretation \u2014 tests the open spec definition",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "interp_aux_superset_of_entry",
+    "type": "logical",
+    "code": "proof fn phi_5_interp_aux_superset_of_entry(d: Directory, i: nat, va: nat, pte: PTE)\n    requires\n        d.inv(),\n        i < d.entries.len(),\n        d.interp_of_entry(i).contains_pair(va, pte),\n    ensures\n        d.interp_aux(0).contains_key(va),\n{\n    d.lemma_interp_aux_contains_implies_interp_of_entry_contains(0);\n}",
+    "reason": "Every entry's keys appear in the full interpretation \u2014 tests that union_prefer_right preserves all keys from earlier entries",
+    "entailed": false,
+    "verus_output": "1__impl2__lemma_interp_aux_contains_implies_interp_of_entry_contains/phi_5_interp_aux_superset_of_entry.rs:268:9\n    |\n262 | proof fn phi_5_interp_aux_superset_of_entry(d: Directory, i: nat, va: nat, pte: PTE)\n    |       ------------------------------------------------------------------------------ at the end of the function body\n...\n268 |         d.interp_aux(0).contains_key(va),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

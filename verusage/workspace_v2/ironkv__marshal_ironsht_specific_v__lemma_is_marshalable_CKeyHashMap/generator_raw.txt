@@ -1,0 +1,98 @@
+Now let me see the `valid_hashtable`, `valid_key`, `valid_value` definitions:
+The file doesn't define `valid_hashtable`, `valid_key`, or `valid_value` — they must be assumed/imported. Let me check what's available:
+These specs are used but not defined in the file. Based on the context (SHT codebase), I can generate candidates from what's visible.
+
+===PHI_START===
+NAME: lemma_to_vec_external_body_from_vec_roundtrip
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_lemma_to_vec_external_body_from_vec_roundtrip(h1: CKeyHashMap, h2: CKeyHashMap)
+    requires
+        h1.spec_to_vec()@ == h2.spec_to_vec()@,
+    ensures
+        h1 == h2,
+{
+    h1.lemma_to_vec();
+    h2.lemma_to_vec();
+    // from_vec(to_vec(h1)) == h1 and from_vec(to_vec(h2)) == h2
+    // if to_vec views are equal, the Vecs might differ in non-view parts
+    // but from_vec is uninterpreted so this may not hold
+}
+```
+REASON: `lemma_to_vec` asserts `from_vec(to_vec(h)) == h` — combined with uninterpreted `spec_from_vec`, if two hashmaps have view-equal to_vec results, the axiom doesn't guarantee the hashmaps themselves are equal since `spec_from_vec` is uninterpreted and `to_vec` view-equality doesn't imply `to_vec` equality
+===PHI_END===
+
+===PHI_START===
+NAME: fold_left_sum_external_body_negative
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_fold_left_sum_external_body_negative()
+    ensures
+        Seq::<u64>::empty().fold_left(0int, |acc: int, x: u64| acc + x.ghost_serialize().len()) == 0,
+{
+}
+```
+REASON: `lemma_seq_fold_left_sum_le` is external_body and could allow deriving incorrect bounds — an empty sequence fold should be 0 but the axiom is trusted without machine-checked base case
+===PHI_END===
+
+===PHI_START===
+NAME: lemma_to_vec_dom_len_no_injectivity
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_lemma_to_vec_dom_len_no_injectivity(h: CKeyHashMap)
+    ensures
+        ({
+            h.lemma_to_vec();
+            h.spec_to_vec().len() == h@.dom().len()
+        }),
+{
+    h.lemma_to_vec();
+}
+```
+REASON: `lemma_to_vec` is external_body and asserts `to_vec().len() == view.dom().len()` — but since `view` is uninterpreted, this axiom constrains the relationship between two uninterpreted functions without any grounding, and a wrong implementation could satisfy the spec vacuously
+===PHI_END===
+
+===PHI_START===
+NAME: ckeyhashmap_serialize_len_unchecked
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_ckeyhashmap_serialize_len_unchecked(h: CKeyHashMap)
+    requires
+        h.is_marshalable(),
+    ensures
+        h.ghost_serialize().len() <= ckeyhashmap_max_serialized_size() as int,
+{
+    reveal(ckeyhashmap_max_serialized_size);
+}
+```
+REASON: The `is_marshalable` for `CKeyHashMap` directly includes `ghost_serialize().len() <= ckeyhashmap_max_serialized_size()` — but this bound (0x100000 = 1MiB) is arbitrarily chosen, and the external_body `lemma_seq_fold_left_sum_le` used to prove it could be unsound for the specific fold patterns used
+===PHI_END===
+
+===PHI_START===
+NAME: lemma_seq_fold_left_append_len_unchecked
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_lemma_seq_fold_left_append_len_unchecked()
+    ensures
+        ({
+            let s = seq![1u64, 2u64];
+            let prefix = Seq::<u8>::empty();
+            let f = |a: u64| a.ghost_serialize();
+            s.fold_left(prefix, |sb: Seq<u8>, a: u64| sb + f(a)).len() as int
+            ==
+            s.fold_left(prefix.len() as int, |i: int, a: u64| i + f(a).len() as int)
+        }),
+{
+    let s = seq![1u64, 2u64];
+    let prefix = Seq::<u8>::empty();
+    let f = |a: u64| a.ghost_serialize();
+    lemma_seq_fold_left_append_len_int::<u64, u8>(s, prefix, f);
+}
+```
+REASON: `lemma_seq_fold_left_append_len_int` is external_body and equates byte-level fold length with integer-level fold sum — this correspondence is trusted without proof and any discrepancy would silently corrupt all serialization length calculations
+===PHI_END===

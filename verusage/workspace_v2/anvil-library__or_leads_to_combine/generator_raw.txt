@@ -1,0 +1,89 @@
+===PHI_START===
+NAME: leads_to_unfold_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_leads_to_unfold_intensional_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>, i: nat)
+    requires
+        p.leads_to(q).satisfied_by(ex),
+    ensures
+        p.implies(eventually(q)).satisfied_by(ex.suffix(i)),
+{
+    leads_to_unfold::<int>(ex, p, q);
+}
+```
+REASON: leads_to_unfold is external_body bridging the forall inside always's TempPred::new closure to a bare forall in the ensures — intensionally distinct formulations equated without proof
+===PHI_END===
+
+===PHI_START===
+NAME: implies_apply_closure_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_implies_apply_closure_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>)
+    requires
+        p.satisfied_by(ex),
+        (p.pred)(ex) ==> (q.pred)(ex),
+    ensures
+        q.satisfied_by(ex),
+{
+    implies_apply::<int>(ex, p, q);
+}
+```
+REASON: implies_apply is external_body bridging p.implies(q).satisfied_by(ex) through TempPred::new closure wrapping — resolves closure identity mismatch without proof
+===PHI_END===
+
+===PHI_START===
+NAME: or_leads_to_combine_false_spec
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_or_leads_to_combine_false_spec(p: TempPred<int>, q: TempPred<int>, r: TempPred<int>)
+    requires
+        TempPred::<int>::new(|ex: Execution<int>| false).entails(p.leads_to(r)),
+        TempPred::<int>::new(|ex: Execution<int>| false).entails(q.leads_to(r)),
+    ensures
+        TempPred::<int>::new(|ex: Execution<int>| false).entails(p.or(q).leads_to(r)),
+{
+    or_leads_to_combine::<int>(TempPred::new(|ex: Execution<int>| false), p, q, r);
+}
+```
+REASON: an unsatisfiable spec vacuously entails any leads_to — the lemma propagates vacuous truth without detecting spec inconsistency
+===PHI_END===
+
+===PHI_START===
+NAME: or_leads_to_self
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_or_leads_to_self(spec: TempPred<int>, p: TempPred<int>, q: TempPred<int>)
+    requires
+        spec.entails(p.leads_to(p.or(q))),
+        spec.entails(q.leads_to(p.or(q))),
+    ensures
+        spec.entails(p.or(q).leads_to(p.or(q))),
+{
+    or_leads_to_combine::<int>(spec, p, q, p.or(q));
+}
+```
+REASON: or_leads_to_combine can derive reflexive leads_to for any disjunction given component leads_to premises — if the component premises are themselves derived from unsound axioms this amplifies the unsoundness
+===PHI_END===
+
+===PHI_START===
+NAME: leads_to_unfold_at_zero
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_leads_to_unfold_at_zero(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>)
+    requires
+        p.leads_to(q).satisfied_by(ex),
+        p.satisfied_by(ex),
+    ensures
+        eventually(q).satisfied_by(ex),
+{
+    leads_to_unfold::<int>(ex, p, q);
+    implies_apply::<int>(ex, p, eventually(q));
+}
+```
+REASON: combining leads_to_unfold at suffix(0) with implies_apply extracts eventually(q) from p at the current state — chains two external_body axioms to derive a temporal liveness conclusion
+===PHI_END===

@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "trivial_not_found",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The spec allows returning (512, 0) for any input, satisfying the postcondition vacuously since the forall over an empty range is trivially true. This means the function could always claim \"no run found\" without actually scanning. The spec lacks a completeness guarantee (e.g., count == 0 implies no set bits from idx onward)."
+  },
+  {
+    "phi": "run_before_search",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The ensures clause places no constraint relating `next_idx` to `idx`. The spec allows returning a run starting before the search position, violating the implicit forward-scan contract. The source comments even acknowledge this: `//forall |t| idx <= t < next_idx ==> !self@.contains(t)` is commented out."
+  },
+  {
+    "phi": "non_maximal_run",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The spec guarantees that returned bits are set but not that the count is maximal. A conforming implementation could return count=1 when the actual contiguous run is longer. The source comments explicitly acknowledge this: \"Likewise we could have a condition that `count` is not smaller than necessary.\""
+  },
+  {
+    "phi": "skipped_earlier_run",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Since the spec doesn't require `next_idx` to be the first set bit at or after `idx`, it allows skipping an earlier run entirely. This is the same root cause as run_before_search \u2014 the commented-out `forall |t| idx <= t < next_idx ==> !self@.contains(t)` would prevent this."
+  }
+]

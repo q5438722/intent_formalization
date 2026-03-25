@@ -1,0 +1,83 @@
+===PHI_START===
+NAME: filter_subset_containment
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_filter_subset_containment(s: Seq<int>, pred: spec_fn(int) -> bool, e: int)
+    requires
+        s.filter(pred).contains(e),
+    ensures
+        s.contains(e),
+{
+    seq_filter_is_a_subset_of_original_seq(s, pred);
+}
+```
+REASON: direct instantiation of the first ensures clause — tests that the universally quantified containment property holds at a specific element
+===PHI_END===
+
+===PHI_START===
+NAME: filter_elements_satisfy_pred
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_filter_elements_satisfy_pred(s: Seq<int>, pred: spec_fn(int) -> bool, e: int)
+    requires
+        s.filter(pred).contains(e),
+    ensures
+        pred(e),
+{
+    reveal(Seq::filter);
+}
+```
+REASON: filtered elements should satisfy the predicate — tests that filter's definition correctly restricts membership
+===PHI_END===
+
+===PHI_START===
+NAME: filter_len_leq_original
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_filter_len_leq_original(s: Seq<int>, pred: spec_fn(int) -> bool)
+    ensures
+        s.filter(pred).len() <= s.len(),
+    decreases s.len(),
+{
+    reveal(Seq::filter);
+    if s.len() != 0 {
+        phi_3_filter_len_leq_original(s.drop_last(), pred);
+    }
+}
+```
+REASON: filter should never produce a longer sequence than the original
+===PHI_END===
+
+===PHI_START===
+NAME: filter_empty_is_empty
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_filter_empty_is_empty(pred: spec_fn(int) -> bool)
+    ensures
+        Seq::<int>::empty().filter(pred).len() == 0,
+{
+    reveal(Seq::filter);
+}
+```
+REASON: filtering an empty sequence should produce empty — tests base case of filter definition
+===PHI_END===
+
+===PHI_START===
+NAME: filter_preserves_order
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_filter_preserves_order(s: Seq<int>, pred: spec_fn(int) -> bool, i: int, j: int)
+    requires
+        0 <= i < j < s.filter(pred).len(),
+    ensures
+        exists |ii: int, jj: int| 0 <= ii < jj < s.len() && s[ii] == s.filter(pred)[i] && s[jj] == s.filter(pred)[j],
+{
+}
+```
+REASON: filter should preserve relative ordering of elements — if it doesn't, the subset relationship is weaker than expected
+===PHI_END===

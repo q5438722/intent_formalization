@@ -1,0 +1,47 @@
+[
+  {
+    "name": "leads_to_unfold_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_1_leads_to_unfold_intensional_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>, i: nat)\n    requires\n        p.leads_to(q).satisfied_by(ex),\n    ensures\n        p.implies(eventually(q)).satisfied_by(ex.suffix(i)),\n{\n    leads_to_unfold::<int>(ex, p, q);\n}",
+    "reason": "leads_to_unfold is external_body bridging the forall inside always's TempPred::new closure to a bare forall in the ensures \u2014 intensionally distinct formulations equated without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "implies_apply_closure_bridge",
+    "type": "logical",
+    "code": "proof fn phi_2_implies_apply_closure_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.satisfied_by(ex),\n        (p.pred)(ex) ==> (q.pred)(ex),\n    ensures\n        q.satisfied_by(ex),\n{\n    implies_apply::<int>(ex, p, q);\n}",
+    "reason": "implies_apply is external_body bridging p.implies(q).satisfied_by(ex) through TempPred::new closure wrapping \u2014 resolves closure identity mismatch without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "next_preserves_inv_rec_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_3_next_preserves_inv_rec_intensional_bridge(ex: Execution<int>, next: TempPred<int>, inv: TempPred<int>, i: nat)\n    requires\n        inv.satisfied_by(ex),\n        forall |idx: nat| next.satisfied_by(#[trigger] ex.suffix(idx)),\n        forall |idx: nat| inv.satisfied_by(#[trigger] ex.suffix(idx)) && next.satisfied_by(ex.suffix(idx))\n            ==> inv.satisfied_by(ex.suffix(idx + 1)),\n    ensures\n        inv.satisfied_by(ex.suffix(i)),\n{\n    next_preserves_inv_rec::<int>(ex, next, inv, i);\n}",
+    "reason": "next_preserves_inv_rec is external_body performing induction on suffix chains \u2014 bridges intensional gaps in suffix composition and closure evaluation at each inductive step without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "execution_equality_forces_fn_equality",
+    "type": "logical",
+    "code": "proof fn phi_4_execution_equality_forces_fn_equality(f: spec_fn(nat) -> int, g: spec_fn(nat) -> int)\n    requires\n        forall |i: nat| #[trigger] f(i) == g(i),\n    ensures\n        f == g,\n{\n    let ex1 = Execution { nat_to_state: f };\n    let ex2 = Execution { nat_to_state: g };\n    execution_equality::<int>(ex1, ex2);\n}",
+    "reason": "execution_equality forces intensional equality of spec_fn from pointwise extensional equivalence \u2014 structurally distinct closures collapsed to equal without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "always_propagate_forwards_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_5_always_propagate_forwards_intensional_bridge(ex: Execution<int>, p: TempPred<int>, i: nat, j: nat)\n    requires\n        always(p).satisfied_by(ex),\n    ensures\n        always(p).satisfied_by(ex.suffix(i)),\n{\n    always_propagate_forwards::<int>(ex, p, i);\n}",
+    "reason": "always_propagate_forwards is external_body shifting always(p) to a suffix \u2014 requires resolving that always's forall over ex.suffix(i).suffix(j) equals forall over ex.suffix(i+j), bridging intensional closure gaps without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

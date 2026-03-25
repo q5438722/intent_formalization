@@ -1,0 +1,31 @@
+Looking at this carefully, I need to analyze whether `MASK_L2_PG_ADDR_SPEC` can actually equal `0xFFFF_FFFF_FFFF_FFFF`.
+
+Let me trace the macro expansion:
+
+`bitmask_inc!(21usize, MAX_PHYADDR_WIDTH - 1)` expands to:
+```
+(!(!0usize << ((MAX_PHYADDR_WIDTH - 1 + 1usize) - 21usize))) << 21usize
+```
+which simplifies to:
+```
+(!(!0usize << (MAX_PHYADDR_WIDTH - 21))) << 21
+```
+
+For any `MAX_PHYADDR_WIDTH` in [32, 52] (per the axiom):
+- Shift amount = `MAX_PHYADDR_WIDTH - 21` ∈ [11, 31]
+- `!0usize << shift` clears the lower `shift` bits
+- `NOT` of that gives `shift` ones in low positions
+- Final `<< 21` sets bits 21 through `(MAX_PHYADDR_WIDTH - 1)`, **always clearing bits 0–20**
+
+The lower 21 bits are **always zero**, so the result can never be `0xFFFF_FFFF_FFFF_FFFF` for any valid `MAX_PHYADDR_WIDTH`. Z3's bitvector reasoning handles this directly — there is no satisfying assignment.
+
+===VERDICT_START===
+PHI: mask_all_ones
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The `bitmask_inc!` macro's final `<< 21` unconditionally clears bits 0–20, making an all-ones result impossible for any `MAX_PHYADDR_WIDTH` in [32, 52]. Z3 bitvector reasoning will reject this proof obligation; the property cannot actually be verified from the given spec, so it does not indicate a real spec weakness.
+===VERDICT_END===
+
+===SUMMARY===
+The single candidate property `mask_all_ones` is a false positive. The claim that `MASK_L2_PG_ADDR_SPEC == 0xFFFF_FFFF_FFFF_FFFF` is arithmetically impossible: the `bitmask_inc!` macro's final left-shift by 21 always zeros out bits 0–20, and the axiom-constrained `MAX_PHYADDR_WIDTH` (32–52) means bits above index `MAX_PHYADDR_WIDTH - 1` are also zero. The mask correctly isolates bits [21, MAX_PHYADDR_WIDTH − 1], which is the expected physical-address field for an L2 page-table entry. No spec issue exists.
+===END_SUMMARY===

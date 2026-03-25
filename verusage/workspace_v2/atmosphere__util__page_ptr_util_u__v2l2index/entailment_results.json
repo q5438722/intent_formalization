@@ -1,0 +1,47 @@
+[
+  {
+    "name": "va_1g_valid_returns_spec_va_2m_valid",
+    "type": "logical",
+    "code": "proof fn phi_1_va_1g_valid_returns_spec_va_2m_valid(va: usize)\n    ensures\n        va_1g_valid(va) == spec_va_2m_valid(va),\n{\n}",
+    "reason": "`va_1g_valid` has `when_used_as_spec(spec_va_2m_valid)` instead of `spec_va_1g_valid` \u2014 a copy-paste bug that silently makes `va_1g_valid` behave as 2MB validation, weakening all 1GB page checks",
+    "entailed": true,
+    "verus_output": "verification results:: 8 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "va_1g_valid_not_spec_va_1g_valid",
+    "type": "behavioral",
+    "code": "proof fn phi_2_va_1g_valid_not_spec_va_1g_valid(va: usize)\n    requires\n        spec_va_2m_valid(va),\n        !spec_va_1g_valid(va),\n    ensures\n        va_1g_valid(va),\n{\n}",
+    "reason": "A 2MB-aligned address that is NOT 1GB-aligned would still pass `va_1g_valid` due to the wrong `when_used_as_spec` annotation, allowing misaligned addresses into 1GB page operations",
+    "entailed": true,
+    "verus_output": "verification results:: 8 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "v2l2index_accepts_non_1g_via_va_1g",
+    "type": "logical",
+    "code": "proof fn phi_3_v2l2index_accepts_non_1g_via_va_1g(va: usize)\n    requires\n        spec_va_2m_valid(va),\n        !spec_va_1g_valid(va),\n    ensures\n        va_4k_valid(va) || va_2m_valid(va) || va_1g_valid(va),\n{\n}",
+    "reason": "`v2l2index` requires `va_1g_valid(va)` as one disjunct, but since `va_1g_valid` resolves to `spec_va_2m_valid`, any 2MB-valid address satisfies the precondition through the 1GB path even when it's not actually 1GB-aligned",
+    "entailed": true,
+    "verus_output": "verification results:: 8 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "spec_va_4k_valid_implies_2m_implies_1g_chain",
+    "type": "logical",
+    "code": "proof fn phi_4_spec_va_4k_valid_implies_2m_implies_1g_chain(va: usize)\n    requires\n        spec_va_1g_valid(va),\n    ensures\n        spec_va_2m_valid(va),\n{\n}",
+    "reason": "Since `MEM_1g_MASK` zeroes more low bits than `MEM_2m_MASK`, 1GB-validity should imply 2MB-validity \u2014 but this containment relationship is never formally established and relies on bitwise reasoning about the mask constants",
+    "entailed": false,
+    "verus_output": "  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__util__page_ptr_util_u__v2l2index/phi_4_spec_va_4k_valid_implies_2m_implies_1g_chain.rs:87:9\n   |\n83 | proof fn phi_4_spec_va_4k_valid_implies_2m_implies_1g_chain(va: usize)\n   |       ---------------------------------------------------------------- at the end of the function body\n...\n87 |         spec_va_2m_valid(va),\n   |         ^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "kernel_mem_end_l4index_allows_low_addresses",
+    "type": "boundary",
+    "code": "proof fn phi_5_kernel_mem_end_l4index_allows_low_addresses(va: usize)\n    requires\n        spec_va_4k_valid(va),\n    ensures\n        (va as u64 >> 39u64 & 0x1ffu64) >= 1u64,\n{\n}",
+    "reason": "`KERNEL_MEM_END_L4INDEX = 1` means L4 index 1 and above are valid \u2014 with index 0 excluded, the lowest ~512GB of virtual address space is blocked, but index 1 starts at a very low address (512GB) which may still overlap with user-space mappings on some configurations",
+    "entailed": true,
+    "verus_output": "verification results:: 8 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

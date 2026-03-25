@@ -1,0 +1,100 @@
+===PHI_START===
+NAME: subtract_mod_eq_zero_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_subtract_mod_eq_zero_external_body(a: nat, b: nat, c: nat)
+    requires
+        aligned(a, c),
+        aligned(b, c),
+        a <= b,
+        c > 0,
+    ensures
+        aligned((b - a) as nat, c),
+{
+    subtract_mod_eq_zero(a, b, c);
+}
+```
+REASON: `subtract_mod_eq_zero` is `external_body` — closure of alignment under subtraction is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: div_mul_cancel_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_div_mul_cancel_external_body(a: nat, b: nat)
+    requires
+        aligned(a, b),
+        b != 0,
+    ensures
+        a / b * b == a,
+{
+    div_mul_cancel(a, b);
+}
+```
+REASON: `div_mul_cancel` is `external_body` — the division-multiplication roundtrip for aligned values is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_addr_equals_entry_base
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_aligned_addr_equals_entry_base(base: nat, addr: nat, entry_size: nat, num_entries: nat)
+    requires
+        addr >= base,
+        addr < entry_base_from_index(base, num_entries, entry_size),
+        entry_size > 0,
+        aligned(base, entry_size),
+        aligned(addr, entry_size),
+    ensures
+        addr == entry_base_from_index(base, index_from_base_and_addr(base, addr, entry_size), entry_size),
+{
+    lemma_index_from_base_and_addr(base, addr, entry_size, num_entries);
+}
+```
+REASON: An aligned address equals the entry base at its index — depends on both `subtract_mod_eq_zero` and `div_mul_cancel` external_body axioms
+===PHI_END===
+
+===PHI_START===
+NAME: index_in_bounds
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_index_in_bounds(base: nat, addr: nat, entry_size: nat, num_entries: nat)
+    requires
+        addr >= base,
+        addr < entry_base_from_index(base, num_entries, entry_size),
+        entry_size > 0,
+    ensures
+        index_from_base_and_addr(base, addr, entry_size) < num_entries,
+{
+    lemma_index_from_base_and_addr(base, addr, entry_size, num_entries);
+}
+```
+REASON: The computed index is always within bounds — verified by nonlinear_arith without external_body dependency
+===PHI_END===
+
+===PHI_START===
+NAME: addr_between_entry_bases
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_addr_between_entry_bases(base: nat, addr: nat, entry_size: nat, num_entries: nat)
+    requires
+        addr >= base,
+        addr < entry_base_from_index(base, num_entries, entry_size),
+        entry_size > 0,
+    ensures
+        between(
+            addr,
+            entry_base_from_index(base, index_from_base_and_addr(base, addr, entry_size), entry_size),
+            next_entry_base_from_index(base, index_from_base_and_addr(base, addr, entry_size), entry_size),
+        ),
+{
+    lemma_index_from_base_and_addr(base, addr, entry_size, num_entries);
+}
+```
+REASON: Any address falls between consecutive entry bases at its index — verified by nonlinear_arith, tests the floor-division localization property
+===PHI_END===

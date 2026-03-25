@@ -1,0 +1,47 @@
+[
+  {
+    "name": "insert_value_in_values_trivial",
+    "type": "logical",
+    "code": "proof fn phi_1_insert_value_in_values_trivial(map: Map<int, int>, key: int, value: int)\n    ensures\n        map.insert(key, value).values().contains(value),\n{\n    lemma_map_insert_value(map, key, value);\n}",
+    "reason": "The lemma has no preconditions \u2014 it universally proves that any inserted value appears in the map's values; this is a correct Map axiom consequence, not a spec gap",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "insert_preserves_other_values",
+    "type": "behavioral",
+    "code": "proof fn phi_2_insert_preserves_other_values(map: Map<int, int>, key1: int, key2: int, val1: int, val2: int)\n    requires\n        map.contains_key(key2),\n        map[key2] == val2,\n        key1 != key2,\n    ensures\n        map.insert(key1, val1).values().contains(val2),\n{\n}",
+    "reason": "Inserting at a different key should preserve existing values in the values set \u2014 tests that Map insert doesn't drop other entries; if existing values disappeared, the map would be lossy",
+    "entailed": false,
+    "verus_output": "i_2_insert_preserves_other_values.rs:27:9\n   |\n21 | proof fn phi_2_insert_preserves_other_values(map: Map<int, int>, key1: int, key2: int, val1: int, val2: int)\n   |       ------------------------------------------------------------------------------------------------------ at the end of the function body\n...\n27 |         map.insert(key1, val1).values().contains(val2),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "insert_overwrite_removes_old_value",
+    "type": "behavioral",
+    "code": "proof fn phi_3_insert_overwrite_removes_old_value(map: Map<int, int>, key: int, old_val: int, new_val: int)\n    requires\n        map === Map::empty().insert(key, old_val),\n        old_val != new_val,\n    ensures\n        !map.insert(key, new_val).values().contains(old_val),\n{\n}",
+    "reason": "Overwriting the only key's value should remove the old value from values \u2014 tests that values() correctly reflects the updated map; if old values lingered, the values set would be stale",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "empty_map_no_values",
+    "type": "boundary",
+    "code": "proof fn phi_4_empty_map_no_values(v: int)\n    ensures\n        !Map::<int, int>::empty().values().contains(v),\n{\n}",
+    "reason": "An empty map should have no values \u2014 tests the base case; if empty maps had phantom values, the lemma's conclusion would be trivially true for wrong reasons",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "insert_same_key_twice_last_wins",
+    "type": "behavioral",
+    "code": "proof fn phi_5_insert_same_key_twice_last_wins(map: Map<int, int>, key: int, val1: int, val2: int)\n    ensures\n        map.insert(key, val1).insert(key, val2)[key] == val2,\n{\n}",
+    "reason": "Double insert at the same key should result in last-write-wins \u2014 tests that the second insert fully overwrites the first; if the first persisted, the map would have nondeterministic reads",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

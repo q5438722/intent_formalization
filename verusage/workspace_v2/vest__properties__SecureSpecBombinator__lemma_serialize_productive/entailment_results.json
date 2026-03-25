@@ -1,0 +1,47 @@
+[
+  {
+    "name": "roundtrip_external_body_trusted",
+    "type": "logical",
+    "code": "proof fn phi_1_roundtrip_external_body_trusted<C: SecureSpecCombinator>(\n    c: &C,\n    v: C::Type,\n)\n    requires\n        c.requires(),\n        c.wf(v),\n    ensures\n        c.spec_parse(c.spec_serialize(v)) == Some((c.spec_serialize(v).len() as int, v)),\n{\n    c.theorem_serialize_parse_roundtrip(v);\n}",
+    "reason": "`theorem_serialize_parse_roundtrip` is `external_body` with `unimplemented!()` \u2014 the fundamental serialize-parse roundtrip correctness is entirely trusted without verification",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "parse_productive_external_body_trusted",
+    "type": "logical",
+    "code": "proof fn phi_2_parse_productive_external_body_trusted<C: SecureSpecCombinator>(\n    c: &C,\n    s: Seq<u8>,\n    n: int,\n    v: C::Type,\n)\n    requires\n        c.requires(),\n        c.is_productive(),\n        c.spec_parse(s) == Some((n, v)),\n    ensures\n        n > 0,\n{\n    c.lemma_parse_productive(s);\n}",
+    "reason": "`lemma_parse_productive` is `external_body` with `unimplemented!()` \u2014 the productivity guarantee (parse consumes >0 bytes) is trusted without proof, allowing a non-productive parser to be accepted as productive",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "serialize_productive_from_two_externals",
+    "type": "logical",
+    "code": "proof fn phi_3_serialize_productive_from_two_externals<C: SecureSpecCombinator>(\n    c: &C,\n    v: C::Type,\n)\n    requires\n        c.requires(),\n        c.wf(v),\n        c.is_productive(),\n    ensures\n        c.spec_serialize(v).len() > 0,\n{\n    c.lemma_serialize_productive(v);\n}",
+    "reason": "Serialize productivity chains two `external_body` axioms (roundtrip + parse_productive) \u2014 if either trusted axiom is wrong, a zero-length serialization would be accepted for a supposedly productive combinator",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "wf_default_true_vacuous",
+    "type": "logical",
+    "code": "proof fn phi_4_wf_default_true_vacuous<C: SpecCombinator>(\n    c: &C,\n    v: C::Type,\n)\n    ensures\n        c.wf(v),\n{\n}",
+    "reason": "The default `wf` returns `true` for all values \u2014 any combinator that forgets to override `wf` has the roundtrip and productivity theorems' preconditions trivially satisfied for ALL values including malformed ones",
+    "entailed": false,
+    "verus_output": "ion not satisfied\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/vest__properties__SecureSpecBombinator__lemma_serialize_productive/phi_4_wf_default_true_vacuous.rs:77:9\n   |\n72 |   proof fn phi_4_wf_default_true_vacuous<C: SpecCombinator>(\n   |  _______-\n73 | |     c: &C,\n74 | |     v: C::Type,\n75 | | )\n   | |_- at the end of the function body\n76 |       ensures\n77 |           c.wf(v),\n   |           ^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "requires_default_true_vacuous",
+    "type": "logical",
+    "code": "proof fn phi_5_requires_default_true_vacuous<C: SpecCombinator>(\n    c: &C,\n)\n    ensures\n        c.requires(),\n{\n}",
+    "reason": "The default `requires` returns `true` unconditionally \u2014 any combinator needing initialization constraints but forgetting to override `requires` has all proof obligations trivially dischargeable",
+    "entailed": false,
+    "verus_output": "tion not satisfied\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/vest__properties__SecureSpecBombinator__lemma_serialize_productive/phi_5_requires_default_true_vacuous.rs:76:9\n   |\n72 |   proof fn phi_5_requires_default_true_vacuous<C: SpecCombinator>(\n   |  _______-\n73 | |     c: &C,\n74 | | )\n   | |_- at the end of the function body\n75 |       ensures\n76 |           c.requires(),\n   |           ^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

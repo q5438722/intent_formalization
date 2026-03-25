@@ -1,0 +1,47 @@
+[
+  {
+    "name": "u64_serialize_external_body_unimplemented",
+    "type": "logical",
+    "code": "proof fn phi_1_u64_serialize_external_body_unimplemented(a: u64)\n    requires\n        a.is_marshalable(),\n    ensures\n        a.ghost_serialize().len() == 8,\n{\n    lemma_auto_spec_u64_to_from_le_bytes();\n}",
+    "reason": "`u64::serialize` is `external_body` with `unimplemented!()` \u2014 the exec body panics at runtime while the spec ensures (prefix preservation + appended serialization) are trusted without verification",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "usize_serialize_external_body_unimplemented",
+    "type": "logical",
+    "code": "proof fn phi_2_usize_serialize_external_body_unimplemented(a: usize)\n    requires\n        a.is_marshalable(),\n    ensures\n        a.ghost_serialize().len() == 8,\n{\n    lemma_auto_spec_u64_to_from_le_bytes();\n}",
+    "reason": "`usize::serialize` is `external_body` with `unimplemented!()` \u2014 the exec body panics at runtime while the trait-level ensures clauses are trusted without any implementation",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "vec_u8_serialize_external_body_unimplemented",
+    "type": "logical",
+    "code": "proof fn phi_3_vec_u8_serialize_external_body_unimplemented(v: Vec<u8>)\n    requires\n        v.is_marshalable(),\n    ensures\n        v.ghost_serialize().len() == (v@.len() as usize).ghost_serialize().len() + v@.len(),\n{\n}",
+    "reason": "`Vec<u8>::serialize` is `external_body` with `unimplemented!()` \u2014 the spec-exec correspondence for length-prefixed byte vector serialization is entirely trusted, and the exec body panics at runtime",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "fold_left_append_right_external_body",
+    "type": "logical",
+    "code": "proof fn phi_4_fold_left_append_right_external_body(s: Seq<u64>)\n    requires\n        s.len() > 0,\n    ensures\n        s.subrange(0, s.len() - 1).fold_left(Seq::<u8>::empty(), |acc: Seq<u8>, a: u64| acc + a.ghost_serialize())\n            + s[s.len() - 1].ghost_serialize()\n        ==\n        s.fold_left(Seq::<u8>::empty(), |acc: Seq<u8>, a: u64| acc + a.ghost_serialize()),\n{\n    let f = |a: u64| a.ghost_serialize();\n    assert((|acc: Seq<u8>, a: u64| acc + f(a)) =~= (|acc: Seq<u8>, a: u64| acc + a.ghost_serialize()));\n    lemma_seq_fold_left_append_right::<u64, u8>(s, Seq::<u8>::empty(), f);\n}",
+    "reason": "`lemma_seq_fold_left_append_right` is `external_body` \u2014 the fold decomposition (prefix fold + last element = full fold) is entirely trusted, and if incorrect would silently corrupt all Vec<T>::serialize proofs",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "trait_serialize_external_body_default",
+    "type": "logical",
+    "code": "proof fn phi_5_trait_serialize_external_body_default(a: u64, data_old: Seq<u8>)\n    requires\n        a.is_marshalable(),\n    ensures\n        ({\n            let new_len = data_old.len() + a.ghost_serialize().len();\n            new_len >= data_old.len()\n        }),\n{\n    lemma_auto_spec_u64_to_from_le_bytes();\n}",
+    "reason": "The trait-level `Marshalable::serialize` is `external_body` \u2014 the default impl is `unimplemented!()` and all ensures clauses (prefix preservation, appended serialization) are globally trusted for any type that doesn't override with a verified implementation",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

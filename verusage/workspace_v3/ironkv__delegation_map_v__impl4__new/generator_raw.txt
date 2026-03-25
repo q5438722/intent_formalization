@@ -1,0 +1,90 @@
+===PHI_START===
+NAME: get_vacuous_precondition
+TARGET_FN: get
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_get_vacuous_precondition<K: KeyTrait + VerusClone>()
+    ensures
+        forall |ki: KeyIterator<K>| ki.is_end_spec(),
+{
+    // If every KeyIterator is at the end, get's precondition is unsatisfiable
+    // and the ensures is vacuously true.
+}
+```
+REASON: If all KeyIterators are always at end, get() can never be called and its ensures is never tested
+
+===PHI_END===
+
+===PHI_START===
+NAME: is_end_always_true
+TARGET_FN: is_end
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_is_end_always_true<K: KeyTrait + VerusClone>(ki: KeyIterator<K>)
+    ensures
+        ki.is_end_spec() == true,
+{
+}
+```
+REASON: If is_end always returns true then no KeyIterator ever holds a valid key, making all key-based operations unreachable
+
+===PHI_END===
+
+===PHI_START===
+NAME: is_end_always_false
+TARGET_FN: is_end
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_is_end_always_false<K: KeyTrait + VerusClone>(ki: KeyIterator<K>)
+    ensures
+        ki.is_end_spec() == false,
+{
+}
+```
+REASON: If is_end always returns false then the end-of-iteration sentinel is unrepresentable, breaking termination of key iteration
+
+===PHI_END===
+
+===PHI_START===
+NAME: new_delegation_map_empty
+TARGET_FN: new
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_new_delegation_map_empty<K: KeyTrait + VerusClone>(k_zero: K, id_zero: ID, k: K)
+    requires
+        k_zero == K::zero_spec(),
+        id_zero@.valid_physical_address(),
+    ensures
+        Map::<K, AbstractEndPoint>::total(|k: K| id_zero@)[k] != id_zero@,
+{
+}
+```
+REASON: If the total map disagrees with id_zero@ at any key, new()'s ensures that every key maps to id_zero@ would be contradictory or wrong
+
+===PHI_END===
+
+===PHI_START===
+NAME: new_valid_implies_lows_empty
+TARGET_FN: new
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_new_valid_implies_lows_empty<K: KeyTrait + VerusClone>(k_zero: K, id_zero: ID)
+    requires
+        k_zero == K::zero_spec(),
+        id_zero@.valid_physical_address(),
+    ensures
+        ({
+            let s = DelegationMap::<K>::new(k_zero, id_zero);
+            s.lows@.dom().len() == 0
+        }),
+{
+}
+```
+REASON: If the backing lows map is empty after construction, the invariant that lows contains zero_spec() is violated, meaning valid() is trivially false or broken
+
+===PHI_END===

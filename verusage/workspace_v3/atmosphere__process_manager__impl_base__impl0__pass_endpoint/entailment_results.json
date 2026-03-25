@@ -1,0 +1,52 @@
+[
+  {
+    "name": "src_loses_descriptor",
+    "target_fn": "pass_endpoint",
+    "type": "behavioral",
+    "reason": "If the source thread's descriptor is cleared, pass_endpoint would behave as a move instead of a share, violating the intended reference-counting semantics",
+    "entailed": false,
+    "verified": 21,
+    "errors": 1,
+    "output_tail": "       new_pm.get_thread(src_thread_ptr).endpoint_descriptors@[src_endpoint_index as int].is_None(),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 26 warnings emitted\n\n"
+  },
+  {
+    "name": "dst_slot_stays_empty",
+    "target_fn": "pass_endpoint",
+    "type": "boundary",
+    "reason": "If the destination slot remains None after the pass, the endpoint was never actually transferred and the operation is a no-op",
+    "entailed": false,
+    "verified": 21,
+    "errors": 1,
+    "output_tail": "       new_pm.get_thread(dst_thread_ptr).endpoint_descriptors@[dst_endpoint_index as int].is_None(),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 26 warnings emitted\n\n"
+  },
+  {
+    "name": "owning_threads_lose_member",
+    "target_fn": "pass_endpoint",
+    "type": "logical",
+    "reason": "If existing owning thread pairs are lost during the set insert, passing an endpoint would silently revoke other threads' references, breaking isolation",
+    "entailed": false,
+    "verified": 21,
+    "errors": 1,
+    "output_tail": "nd of the function body\n...\n1791 |           !new_pm.get_endpoint(endpoint_ptr).owning_threads@.contains(witness_pair),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 24 warnings emitted\n\n"
+  },
+  {
+    "name": "other_descriptor_changed",
+    "target_fn": "thread_set_endpoint_descriptor",
+    "type": "boundary",
+    "reason": "If updating one descriptor index corrupts an unrelated index, a single pass_endpoint call could silently destroy other endpoint references held by the thread",
+    "entailed": false,
+    "verified": 21,
+    "errors": 1,
+    "output_tail": "- at the end of the function body\n...\n1784 |           new_perm.value().endpoint_descriptors@[other_index as int].is_None(),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 25 warnings emitted\n\n"
+  },
+  {
+    "name": "set_to_some_becomes_none",
+    "target_fn": "thread_set_endpoint_descriptor",
+    "type": "behavioral",
+    "reason": "If writing Some(endpoint_ptr) at an index produces None, the descriptor update silently drops endpoint references, making pass_endpoint appear to succeed while losing the endpoint",
+    "entailed": false,
+    "verified": 21,
+    "errors": 1,
+    "output_tail": "he end of the function body\n...\n1780 |           new_perm.value().endpoint_descriptors@[endpoint_index as int].is_None(),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 24 warnings emitted\n\n"
+  }
+]

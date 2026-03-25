@@ -1,0 +1,47 @@
+[
+  {
+    "name": "unmarshal_skips_state_validation",
+    "type": "behavioral",
+    "code": "proof fn phi_1_unmarshal_skips_state_validation(obj: DynamicObjectView)\n    requires\n        obj.kind == PodView::kind(),\n        PodView::unmarshal_spec(obj.spec) is Ok,\n        PodView::unmarshal_status(obj.status) is Ok,\n    ensures\n        PodView::unmarshal(obj) is Ok,\n{\n}",
+    "reason": "unmarshal succeeds when kind/spec/status parse but never checks state_validation \u2014 pods with spec == None can be unmarshalled despite failing state_validation",
+    "entailed": true,
+    "verus_output": "rus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__spec__derived_invariants_since_beginning_is_stable/phi_1_unmarshal_skips_state_validation.rs:272:1\n    |\n272 | / #[is_variant]\n273 | | pub enum APIRequest {\n274 | |     GetRequest(GetRequest),\n275 | |     ListRequest(ListRequest),\n...   |\n281 | |     GetThenUpdateRequest(GetThenUpdateRequest),\n282 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "label_selector_none_matches_everything",
+    "type": "behavioral",
+    "code": "proof fn phi_2_label_selector_none_matches_everything(labels: Map<StringView, StringView>)\n    requires\n        true,\n    ensures\n        (LabelSelectorView { match_labels: None }).matches(labels),\n{\n}",
+    "reason": "a LabelSelectorView with match_labels == None matches every label set including empty \u2014 this means a selector with no constraints selects all pods which may be unintended",
+    "entailed": true,
+    "verus_output": "ide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__spec__derived_invariants_since_beginning_is_stable/phi_2_label_selector_none_matches_everything.rs:272:1\n    |\n272 | / #[is_variant]\n273 | | pub enum APIRequest {\n274 | |     GetRequest(GetRequest),\n275 | |     ListRequest(ListRequest),\n...   |\n281 | |     GetThenUpdateRequest(GetThenUpdateRequest),\n282 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "label_selector_empty_map_matches_everything",
+    "type": "boundary",
+    "code": "proof fn phi_3_label_selector_empty_map_matches_everything(labels: Map<StringView, StringView>)\n    requires\n        true,\n    ensures\n        (LabelSelectorView { match_labels: Some(Map::empty()) }).matches(labels),\n{\n}",
+    "reason": "a selector with an empty match_labels map vacuously matches all label sets \u2014 the forall over an empty domain is trivially true, making Some(empty) and None equivalent",
+    "entailed": true,
+    "verus_output": "atatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__spec__derived_invariants_since_beginning_is_stable/phi_3_label_selector_empty_map_matches_everything.rs:272:1\n    |\n272 | / #[is_variant]\n273 | | pub enum APIRequest {\n274 | |     GetRequest(GetRequest),\n275 | |     ListRequest(ListRequest),\n...   |\n281 | |     GetThenUpdateRequest(GetThenUpdateRequest),\n282 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "object_ref_ignores_uid",
+    "type": "logical",
+    "code": "proof fn phi_4_object_ref_ignores_uid(p1: PodView, p2: PodView)\n    requires\n        p1.metadata.name == p2.metadata.name,\n        p1.metadata.namespace == p2.metadata.namespace,\n        p1.metadata.uid != p2.metadata.uid,\n        p1.metadata.name is Some,\n        p1.metadata.namespace is Some,\n    ensures\n        p1.object_ref() == p2.object_ref(),\n{\n}",
+    "reason": "object_ref is (kind, name, namespace) ignoring uid \u2014 two distinct resource incarnations with different uids produce identical ObjectRefs conflating identity across delete-recreate cycles",
+    "entailed": true,
+    "verus_output": "thub.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__spec__derived_invariants_since_beginning_is_stable/phi_4_object_ref_ignores_uid.rs:272:1\n    |\n272 | / #[is_variant]\n273 | | pub enum APIRequest {\n274 | |     GetRequest(GetRequest),\n275 | |     ListRequest(ListRequest),\n...   |\n281 | |     GetThenUpdateRequest(GetThenUpdateRequest),\n282 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "create_key_namespace_diverges",
+    "type": "behavioral",
+    "code": "proof fn phi_5_create_key_namespace_diverges(req: CreateRequest)\n    requires\n        req.obj.metadata.namespace is Some,\n        req.namespace != req.obj.metadata.namespace->0,\n    ensures\n        req.key().namespace != req.obj.metadata.namespace->0,\n{\n}",
+    "reason": "CreateRequest::key uses self.namespace not self.obj.metadata.namespace \u2014 these can diverge so the key does not faithfully represent the object's actual namespace",
+    "entailed": true,
+    "verus_output": "/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__spec__derived_invariants_since_beginning_is_stable/phi_5_create_key_namespace_diverges.rs:272:1\n    |\n272 | / #[is_variant]\n273 | | pub enum APIRequest {\n274 | |     GetRequest(GetRequest),\n275 | |     ListRequest(ListRequest),\n...   |\n281 | |     GetThenUpdateRequest(GetThenUpdateRequest),\n282 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

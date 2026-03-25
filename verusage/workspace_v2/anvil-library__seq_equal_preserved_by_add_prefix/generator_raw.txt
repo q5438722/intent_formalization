@@ -1,0 +1,82 @@
+===PHI_START===
+NAME: prefix_cancel_left
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_prefix_cancel_left(prefix: Seq<int>, s1: Seq<int>, s2: Seq<int>)
+    requires
+        prefix + s1 == prefix + s2,
+    ensures
+        s1 == s2,
+{
+    seq_equal_preserved_by_add_prefix(prefix, s1, s2);
+}
+```
+REASON: tests the cancellation direction directly — if this direction is broken the biconditional is unsound
+===PHI_END===
+
+===PHI_START===
+NAME: different_len_suffix_different_concat
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_different_len_suffix_different_concat(prefix: Seq<int>, s1: Seq<int>, s2: Seq<int>)
+    requires
+        s1.len() != s2.len(),
+    ensures
+        prefix + s1 != prefix + s2,
+{
+    seq_equal_preserved_by_add_prefix(prefix, s1, s2);
+}
+```
+REASON: sequences of different lengths appended to the same prefix should produce different results
+===PHI_END===
+
+===PHI_START===
+NAME: empty_prefix_identity
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_empty_prefix_identity(s: Seq<int>)
+    ensures
+        Seq::<int>::empty() + s == s,
+{
+}
+```
+REASON: empty prefix concatenation should be identity — foundational axiom the lemma depends on
+===PHI_END===
+
+===PHI_START===
+NAME: prefix_strictly_extends
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_prefix_strictly_extends(prefix: Seq<int>, s: Seq<int>)
+    requires
+        s.len() > 0,
+    ensures
+        prefix != prefix + s,
+{
+}
+```
+REASON: a nonempty suffix should make the concatenation differ from the prefix alone
+===PHI_END===
+
+===PHI_START===
+NAME: concat_preserves_first_element
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_concat_preserves_first_element(prefix: Seq<int>, s1: Seq<int>, s2: Seq<int>)
+    requires
+        s1.len() > 0,
+        s2.len() > 0,
+        s1[0] != s2[0],
+    ensures
+        prefix + s1 != prefix + s2,
+{
+    seq_equal_preserved_by_add_prefix(prefix, s1, s2);
+}
+```
+REASON: if suffixes differ at first element then concatenations must differ — tests that element-level inequality propagates
+===PHI_END===

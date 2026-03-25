@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "create_key_namespace_diverges",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This models real Kubernetes API behavior where the URL path namespace is authoritative. The API server uses the request-level namespace, not the object body's metadata.namespace, to determine resource placement."
+  },
+  {
+    "phi": "update_key_ignores_obj_name",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Same Kubernetes convention \u2014 the URL path parameters (name, namespace) identify the target resource, not the object payload's metadata. The API server reconciles any mismatch by using the path-level identifiers."
+  },
+  {
+    "phi": "create_interference_vacuous_non_pod",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The VReplicaSet controller only manages Pods, so the interference predicates intentionally scope their protection to PodKind. Non-Pod resources with VRS owner references are irrelevant to VRS reconciliation correctness and are handled by other controllers' own invariants."
+  },
+  {
+    "phi": "controller_owner_ref_ignores_namespace",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This faithfully models Kubernetes OwnerReference semantics which include kind, name, and uid but not namespace. Owner references are namespace-scoped (owner must be in the same namespace), and uid provides global uniqueness, so cross-namespace collision with identical uid is impossible under the API server's uid allocation invariant."
+  },
+  {
+    "phi": "update_status_interference_missing_key_check",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "When the key is absent from etcd, an UpdateStatusRequest will fail at the API server (ObjectNotFound), so it cannot actually interfere with any existing VRS-owned pod. The predicate being vacuously true for nonexistent resources is correct \u2014 there is no pod to protect."
+  }
+]

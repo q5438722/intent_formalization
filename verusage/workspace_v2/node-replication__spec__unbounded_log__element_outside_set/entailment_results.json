@@ -1,0 +1,47 @@
+[
+  {
+    "name": "max_of_set_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_max_of_set_external_body(s: Set<nat>)\n    requires\n        s.finite(),\n    ensures ({\n        let r = max_of_set(s);\n        forall|x: nat| #[trigger] s.contains(x) ==> x <= r\n    }),\n{\n    let _ = max_of_set(s);\n}",
+    "reason": "`max_of_set` is `external_body` \u2014 the existence of an upper bound for any finite nat set is trusted without proof",
+    "entailed": false,
+    "verus_output": "error: cannot call function `phi_1_max_of_set_external_body::max_of_set` with mode proof\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/node-replication__spec__unbounded_log__element_outside_set/phi_1_max_of_set_external_body.rs:34:17\n   |\n34 |         let r = max_of_set(s);\n   |                 ^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "element_outside_any_finite_set",
+    "type": "behavioral",
+    "code": "proof fn phi_2_element_outside_any_finite_set(s: Set<nat>)\n    requires\n        s.finite(),\n    ensures ({\n        let r = element_outside_set(s);\n        !s.contains(r)\n    }),\n{\n    let _ = element_outside_set(s);\n}",
+    "reason": "Any finite set of nats has an element outside it \u2014 this depends entirely on the unverified `max_of_set` external_body",
+    "entailed": false,
+    "verus_output": "error: cannot call function `phi_2_element_outside_any_finite_set::element_outside_set` with mode proof\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/node-replication__spec__unbounded_log__element_outside_set/phi_2_element_outside_any_finite_set.rs:34:17\n   |\n34 |         let r = element_outside_set(s);\n   |                 ^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "max_of_empty_set_unconstrained",
+    "type": "boundary",
+    "code": "proof fn phi_3_max_of_empty_set_unconstrained(r1: nat, r2: nat)\n    requires\n        r1 != r2,\n    ensures ({\n        let m = max_of_set(Set::empty());\n        m <= m  // vacuously satisfies ensures, but the return value is unconstrained\n    }),\n{\n    let _ = max_of_set(Set::<nat>::empty());\n}",
+    "reason": "For the empty set, `max_of_set` returns an arbitrary nat since the ensures is vacuously true \u2014 the \"maximum\" of an empty set is undefined but the spec produces a concrete value",
+    "entailed": false,
+    "verus_output": "error: cannot call function `phi_3_max_of_empty_set_unconstrained::max_of_set` with mode proof\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/node-replication__spec__unbounded_log__element_outside_set/phi_3_max_of_empty_set_unconstrained.rs:34:17\n   |\n34 |         let m = max_of_set(Set::empty());\n   |                 ^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "max_not_tight_upper_bound",
+    "type": "logical",
+    "code": "proof fn phi_4_max_not_tight_upper_bound(s: Set<nat>, x: nat)\n    requires\n        s.finite(),\n        s.contains(x),\n    ensures\n        x <= max_of_set(s),\n{\n    let _ = max_of_set(s);\n}",
+    "reason": "`max_of_set` guarantees an upper bound but not the least upper bound \u2014 the returned value could be arbitrarily larger than the actual maximum, and this is trusted without proof",
+    "entailed": false,
+    "verus_output": "error: cannot call function `phi_4_max_not_tight_upper_bound::max_of_set` with mode proof\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/node-replication__spec__unbounded_log__element_outside_set/phi_4_max_not_tight_upper_bound.rs:35:14\n   |\n35 |         x <= max_of_set(s),\n   |              ^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "element_outside_set_is_beyond_max",
+    "type": "behavioral",
+    "code": "proof fn phi_5_element_outside_set_is_beyond_max(s: Set<nat>)\n    requires\n        s.finite(),\n    ensures\n        element_outside_set(s) == max_of_set(s) + 1,\n        forall|x: nat| #[trigger] s.contains(x) ==> x < element_outside_set(s),\n{\n    let _ = element_outside_set(s);\n    let _ = max_of_set(s);\n}",
+    "reason": "The witness for \"element outside the set\" is strictly greater than every element \u2014 this strong ordering property is a consequence of the unverified `max_of_set` axiom",
+    "entailed": false,
+    "verus_output": "error: cannot call function `phi_5_element_outside_set_is_beyond_max::element_outside_set` with mode proof\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/node-replication__spec__unbounded_log__element_outside_set/phi_5_element_outside_set_is_beyond_max.rs:34:9\n   |\n34 |         element_outside_set(s) == max_of_set(s) + 1,\n   |         ^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: lemma_view_addr_aligned_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `lemma_view_addr_aligned` is `external_body` with `unimplemented!()` — directory address 4KB-alignment and overflow bounds are asserted from PDE bitmask extraction without bitvector proof. This is a critical trust assumption since pt_walk uses these addresses to compute next-level table locations.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: lemma_bit_indices_less_512_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `lemma_bit_indices_less_512` is `external_body` with `unimplemented!()` — the <512 bound for 9-bit field extraction is provable by `by (bit_vector)` but is instead trusted without proof. This bound is used to ensure page table index validity throughout pt_walk.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: pt_walk_l0_addr_in_pml4_range
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `pt_walk` defines `l0_addr = add(self.pml4, l0_idx)` and constructs the path with `l0_addr` as the first entry's address in all branches. This is correct by construction — the ensures is a direct read-back of the definition.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: write_seq_idle_plus_write_seq
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: Both `lemma_write_seq` (domain monotonicity) and `lemma_write_seq_idle` (read frame) are `external_body` with `unimplemented!()`. This chains two unverified assumptions to establish that disjoint-address writes preserve both domain membership and read values — a compound trust assumption.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: page_addr_aligned_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: Same as `lemma_view_addr_aligned_external_body` but for Page entries — page frame address 4KB-alignment and overflow bounds from bitmask extraction are trusted without proof. This is essential for walk result correctness since page addresses feed into physical address computation.
+===VERDICT_END===
+
+===SUMMARY===
+Four true positives targeting external_body lemmas: `lemma_view_addr_aligned` trusts both directory and page address alignment/overflow bounds from bitmask extraction without bitvector proof, `lemma_bit_indices_less_512` trusts the 9-bit index bound, and the combination of `lemma_write_seq` + `lemma_write_seq_idle` chains two unverified assumptions. One false positive: the L0 address computation is correct by construction from `pt_walk`'s definition.
+===END_SUMMARY===

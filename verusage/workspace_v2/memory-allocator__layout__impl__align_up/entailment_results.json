@@ -1,0 +1,47 @@
+[
+  {
+    "name": "bitand_rounding_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_bitand_rounding_external_body(x: usize, y: usize)\n    requires\n        y != 0,\n        y & sub(y, 1) == 0,\n    ensures\n        x & !sub(y, 1) == (x / y) * y,\n{\n    bitand_with_mask_gives_rounding(x, y);\n}",
+    "reason": "`bitand_with_mask_gives_rounding` is `external_body` \u2014 the bitwise rounding equivalence for power-of-two alignment is trusted without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "mul_mod_right_external_body",
+    "type": "logical",
+    "code": "proof fn phi_2_mul_mod_right_external_body(a: int, b: int)\n    requires\n        b != 0,\n    ensures\n        (a * b) % b == 0,\n{\n    mul_mod_right(a, b);\n}",
+    "reason": "`mul_mod_right` is `external_body` \u2014 the modular arithmetic property is trusted without proof and used to establish `res % y == 0` in `align_up`",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "align_up_equals_x_when_aligned",
+    "type": "behavioral",
+    "code": "proof fn phi_3_align_up_equals_x_when_aligned()\n    ensures\n        ({\n            let x: usize = 128;\n            let y: usize = 64;\n            let res = ((x + y - 1) as int / y as int) * y;\n            res == x\n        }),\n{\n}",
+    "reason": "When `x` is already aligned to `y`, `align_up` returns `x` unchanged \u2014 verifying this is expected behavior, not a gap",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "align_up_zero_input",
+    "type": "boundary",
+    "code": "proof fn phi_4_align_up_zero_input()\n    ensures\n        ({\n            let x: usize = 0;\n            let y: usize = 16;\n            let res = ((x + y - 1) as int / y as int) * y;\n            res == 0\n        }),\n{\n}",
+    "reason": "`align_up(0, y)` returns 0 \u2014 `(0 + 15) / 16 * 16 == 0`, so aligning zero up gives zero; this is correct but could be surprising if a caller expects a non-zero aligned result",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "align_up_overflow_boundary",
+    "type": "boundary",
+    "code": "proof fn phi_5_align_up_overflow_boundary(x: usize, y: usize)\n    requires\n        y != 0,\n        x + y - 1 <= usize::MAX,\n    ensures\n        ((x + y - 1) as int / y as int) * y <= usize::MAX,\n{\n    assert(0 <= ((x + y - 1) as int / y as int) * y <= x + y - 1) by(nonlinear_arith)\n        requires y > 0, x >= 0;\n}",
+    "reason": "The result is bounded by `x + y - 1 <= usize::MAX`, so the aligned-up value fits in `usize` \u2014 but the precondition `x + y - 1 <= usize::MAX` is the caller's burden, and if it's not checked at runtime, `x + mask` could overflow",
+    "entailed": true,
+    "verus_output": "verification results:: 5 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

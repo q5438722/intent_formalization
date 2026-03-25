@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "inv_allows_empty_arch",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The `inv()` predicate uses `<=` for layer count and a vacuously-true universal quantifier over an empty sequence, so an `Arch` with zero layers satisfies it. A real x86 MMU architecture must have at least one layer (typically 4), so `inv` is too weak \u2014 it should require `self.layers.len() > 0`."
+  },
+  {
+    "phi": "aligned_zero_to_any",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`0 % s == 0` for any `s > 0` is a standard mathematical fact. Address zero being aligned is correct and expected \u2014 the `aligned` function is a pure math predicate, and any MMU policy restricting address zero would be enforced elsewhere, not in the alignment definition."
+  },
+  {
+    "phi": "inv_allows_unit_entry_size",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "The invariant permits `entry_size: 1` and `num_entries: 1`, which represents a 1-byte page with a single entry \u2014 physically impossible on x86 where the minimum page size is 4K. The `inv` should enforce a minimum entry size (e.g., 4096) for the leaf layer to reflect actual hardware constraints."
+  },
+  {
+    "phi": "inv_allows_equal_consecutive_entry_sizes",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "When `num_entries` is 1, the constraint `entry_size(i) == entry_size(i+1) * num_entries(i+1)` degenerates to equal entry sizes across layers. This violates the hierarchical structure where each deeper layer must map a strictly smaller region. The invariant should require `num_entries > 1` or `entry_size` strictly decreasing."
+  },
+  {
+    "phi": "last_layer_max_entry_size",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "A single-layer architecture where each entry maps 512 GB is accepted by `inv`, but on x86 the leaf-level page size is 4K (or at most 1G for huge pages). The invariant's upper bound `X86_MAX_ENTRY_SIZE` is meant for the top layer, not for leaf entries. Without constraining the last layer's entry size to realistic page sizes, the spec is too permissive."
+  }
+]

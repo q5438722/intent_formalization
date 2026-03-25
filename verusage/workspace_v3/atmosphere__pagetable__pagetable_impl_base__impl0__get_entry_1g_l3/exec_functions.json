@@ -1,0 +1,6 @@
+[
+  {
+    "name": "get_entry_1g_l3",
+    "code": "pub fn get_entry_1g_l3(\n        &self,\n        target_l4i: L4Index,\n        target_l3i: L3Index,\n        l4_entry: &PageEntry,\n    ) -> (ret: Option<PageEntry>)\n        requires\n            self.wf(),\n            self.kernel_l4_end <= target_l4i < 512,\n            0 <= target_l3i < 512,\n            self.spec_resolve_mapping_l4(target_l4i) =~= Some(*l4_entry),\n        ensures\n            self.spec_resolve_mapping_1g_l3(target_l4i, target_l3i) =~= ret,\n    {\n        broadcast use PageTable::reveal_page_table_wf;\n        broadcast use PageTable::reveal_page_table_levels_wf;\n        broadcast use PageTable::reveal_page_table_disjoint_wf;\n        broadcast use PageTable::reveal_page_table_mappings_wf;\n        broadcast use PageTable::reveal_page_table_addtional_wf;\n\n        let tracked l3_perm = self.l3_tables.borrow().tracked_borrow(l4_entry.addr);\n        let l3_tbl: &PageMap = PPtr::<PageMap>::from_usize(l4_entry.addr).borrow(Tracked(l3_perm));\n        let l3_entry = l3_tbl.get(target_l3i);\n        if l3_entry.perm.present && l3_entry.perm.ps {\n            Some(l3_entry)\n        } else {\n            None\n        }\n    }"
+  }
+]

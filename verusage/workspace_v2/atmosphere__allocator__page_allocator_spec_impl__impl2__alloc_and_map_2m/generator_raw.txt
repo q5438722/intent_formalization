@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: container_map_2m_subset_allocated_4k
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_container_map_2m_subset_allocated_4k(alloc: PageAllocator)
+    requires
+        alloc.wf(),
+    ensures
+        alloc.container_map_2m@.dom().subset_of(alloc.allocated_pages_4k@),
+{
+}
+```
+REASON: container_wf checks container_map_2m domain against allocated_pages_4k instead of allocated_pages_2m — likely copy-paste bug
+===PHI_END===
+
+===PHI_START===
+NAME: container_map_1g_subset_allocated_4k
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_container_map_1g_subset_allocated_4k(alloc: PageAllocator)
+    requires
+        alloc.wf(),
+    ensures
+        alloc.container_map_1g@.dom().subset_of(alloc.allocated_pages_4k@),
+{
+}
+```
+REASON: container_wf checks container_map_1g domain against allocated_pages_4k instead of allocated_pages_1g — likely copy-paste bug
+===PHI_END===
+
+===PHI_START===
+NAME: wf_to_no_duplicates_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_wf_to_no_duplicates_external_body(sll: StaticLinkedList<usize, 10>)
+    requires
+        sll.wf(),
+    ensures
+        sll.spec_seq@.no_duplicates(),
+{
+    sll.wf_to_no_duplicates();
+}
+```
+REASON: wf_to_no_duplicates is external_body — unverified claim that wf() implies no_duplicates on ghost sequence
+===PHI_END===
+
+===PHI_START===
+NAME: pop_external_body_node_ref_preserved
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_pop_external_body_node_ref_preserved(sll: StaticLinkedList<usize, 10>, sll2: StaticLinkedList<usize, 10>, v: usize)
+    requires
+        sll.wf(),
+        sll.len() > 0,
+        sll.unique(),
+        sll@.skip(1).contains(v),
+        sll2.wf(),
+        sll2@ == sll@.skip(1),
+    ensures
+        sll.get_node_ref(v) == sll2.get_node_ref(v),
+{
+}
+```
+REASON: pop's external_body postcondition claims node refs are preserved after mutation — unverified that internal linked list indices remain stable across structural changes
+===PHI_END===
+
+===PHI_START===
+NAME: sll_wf_opaque_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_sll_wf_opaque_external_body(sll: StaticLinkedList<usize, 10>)
+    requires
+        sll.wf(),
+    ensures
+        sll.len() == sll@.len(),
+{
+    let _ = sll.len();
+}
+```
+REASON: StaticLinkedList::wf() is external_body closed spec — completely opaque, properties gated on it are unverified trust assumptions
+===PHI_END===

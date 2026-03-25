@@ -1,0 +1,52 @@
+[
+  {
+    "name": "send_shard_empty_output",
+    "target_fn": "next_shard",
+    "type": "behavioral",
+    "reason": "If a shard with should_send=true produces empty output, recipients never receive delegated data, breaking liveness.",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "AbstractEndPoint,\n1771 | |     sm: SingleMessage<Message>,\n1772 | | )\n     | |_- at the end of the function body\n...\n1777 |           out == Set::<Packet>::empty(),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 8 warnings emitted\n\n"
+  },
+  {
+    "name": "send_always_produces_message",
+    "target_fn": "send_single_message",
+    "type": "boundary",
+    "reason": "If send_single_message always yields Some, the max_seqno overflow guard is vacuous and unbounded sends are possible.",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "stractEndPoint,\n1771 | |     sm: Option<SingleMessage<Message>>, params: AbstractParameters,\n1772 | | )\n     | |_- at the end of the function body\n...\n1776 |           sm.is_Some(),\n     |           ^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 9 warnings emitted\n\n"
+  },
+  {
+    "name": "missing_ack_nonzero",
+    "target_fn": "ack_state_lookup",
+    "type": "logical",
+    "reason": "A missing key returning nonzero acked count would fabricate acknowledgment history, corrupting retransmission logic.",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": " |_- at the end of the function body\n...\n1775 |           ack_state_lookup::<Message>(src, send_state).num_packets_acked != 0,\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 8 warnings emitted\n\n"
+  },
+  {
+    "name": "reject_modifies_hashtable",
+    "target_fn": "next_shard_wrapper",
+    "type": "behavioral",
+    "reason": "If a rejected shard still mutates the hashtable, data is silently lost without any corresponding delegation transfer.",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": " |     pre: AbstractHostState, post: AbstractHostState, pkt: Packet, out: Set<Packet>,\n1770 | | )\n     | |_- at the end of the function body\n...\n1778 |           post.h != pre.h,\n     |           ^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 8 warnings emitted\n\n"
+  },
+  {
+    "name": "no_send_changes_hashtable",
+    "target_fn": "next_shard",
+    "type": "boundary",
+    "reason": "If should_send=false still removes keys from h, data is destroyed without being delegated, causing permanent key loss.",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "ge<AbstractKey>, recipient: AbstractEndPoint,\n1771 | |     sm: SingleMessage<Message>,\n1772 | | )\n     | |_- at the end of the function body\n...\n1777 |           post.h != pre.h,\n     |           ^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 8 warnings emitted\n\n"
+  }
+]

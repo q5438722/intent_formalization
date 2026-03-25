@@ -1,0 +1,52 @@
+[
+  {
+    "name": "only_zero_aligned",
+    "target_fn": "aligned",
+    "type": "behavioral",
+    "reason": "If provable, aligned would be trivially unsatisfiable for any nonzero address, making all page-table alignment constraints vacuous.",
+    "entailed": false,
+    "verified": 6,
+    "errors": 1,
+    "output_tail": "ned.rs:342:9\n    |\n337 | proof fn phi_1_only_zero_aligned(addr: nat, size: nat)\n    |       ------------------------------------------------ at the end of the function body\n...\n342 |         addr == 0nat,\n    |         ^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "4k_implies_8k_aligned",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "reason": "4K-alignment must not entail 8K-alignment; if provable, the pml4 alignment invariant would silently impose a stronger-than-intended constraint.",
+    "entailed": false,
+    "verified": 6,
+    "errors": 1,
+    "output_tail": "ned.rs:341:9\n    |\n337 | proof fn phi_2_4k_implies_8k_aligned(addr: nat)\n    |       ----------------------------------------- at the end of the function body\n...\n341 |         aligned(addr, 8192),\n    |         ^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "unique_alignment_size",
+    "target_fn": "aligned",
+    "type": "logical",
+    "reason": "An address can be aligned to multiple sizes (e.g., 0 is aligned to every size); if provable, aligned would be inconsistent.",
+    "entailed": false,
+    "verified": 6,
+    "errors": 1,
+    "output_tail": "45:9\n    |\n337 | proof fn phi_3_unique_alignment_size(addr: nat, s1: nat, s2: nat)\n    |       ----------------------------------------------------------- at the end of the function body\n...\n345 |         false,\n    |         ^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "self_alignment_false",
+    "target_fn": "aligned",
+    "type": "behavioral",
+    "reason": "Every nonzero n satisfies n % n == 0, so aligned(n,n) must be true; if refuted, the modulus definition is broken.",
+    "entailed": false,
+    "verified": 6,
+    "errors": 1,
+    "output_tail": "lse.rs:341:9\n    |\n337 | proof fn phi_4_self_alignment_false(size: nat)\n    |       ---------------------------------------- at the end of the function body\n...\n341 |         !aligned(size, size),\n    |         ^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "aligned_bounded_by_size",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "reason": "Aligned addresses are unbounded multiples of the alignment; if provable, any address beyond 4096 would be wrongly excluded from valid page-table bases.",
+    "entailed": false,
+    "verified": 6,
+    "errors": 1,
+    "output_tail": "by_size.rs:341:9\n    |\n337 | proof fn phi_5_aligned_bounded_by_size(addr: nat)\n    |       ------------------------------------------- at the end of the function body\n...\n341 |         addr <= 4096nat,\n    |         ^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

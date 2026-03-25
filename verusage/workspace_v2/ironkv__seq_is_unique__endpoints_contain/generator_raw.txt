@@ -1,0 +1,79 @@
+===PHI_START===
+NAME: do_end_points_match_external_body_unimplemented
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_do_end_points_match_external_body_unimplemented(e1: EndPoint, e2: EndPoint)
+    requires
+        e1.id@ =~= e2.id@,
+    ensures
+        e1@ == e2@,
+{
+}
+```
+REASON: `do_end_points_match` is `external_body` with `unimplemented!()` — the exec body panics at runtime while the ensures clause (`eq == (e1@ == e2@)`) is trusted without verification
+===PHI_END===
+
+===PHI_START===
+NAME: abstractify_empty_is_empty
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_abstractify_empty_is_empty()
+    ensures
+        abstractify_end_points(Vec::new()) =~= Seq::<AbstractEndPoint>::empty(),
+{
+}
+```
+REASON: If an empty vector of endpoints doesn't abstractify to an empty sequence, the mapping function would be unsound for the base case
+===PHI_END===
+
+===PHI_START===
+NAME: abstractify_preserves_length
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_abstractify_preserves_length(endpoints: Vec<EndPoint>)
+    ensures
+        abstractify_end_points(endpoints).len() == endpoints@.len(),
+{
+}
+```
+REASON: If abstractification changed the length, it would violate the bijection between concrete and abstract endpoint sequences, breaking the containment check in `endpoints_contain`
+===PHI_END===
+
+===PHI_START===
+NAME: endpoints_contain_false_for_absent
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_endpoints_contain_false_for_absent(endpoints: Vec<EndPoint>, ep: EndPoint)
+    requires
+        endpoints@.len() > 0,
+        forall|i: int| 0 <= i < endpoints@.len() ==> endpoints@[i]@.id != ep@.id,
+    ensures
+        !abstractify_end_points(endpoints).contains(ep@),
+{
+    assert forall|i: int| 0 <= i < abstractify_end_points(endpoints).len() implies abstractify_end_points(endpoints)[i] != ep@ by {
+        assert(abstractify_end_points(endpoints)[i] == endpoints@[i]@);
+    }
+}
+```
+REASON: If distinct concrete IDs could abstractify to equal abstract endpoints, the containment check would have false positives — indicating the view function or AbstractEndPoint equality is too coarse
+===PHI_END===
+
+===PHI_START===
+NAME: view_preserves_id_identity
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_view_preserves_id_identity(e1: EndPoint, e2: EndPoint)
+    requires
+        e1@.id =~= e2@.id,
+    ensures
+        e1@ == e2@,
+{
+}
+```
+REASON: If two endpoints with extensionally equal id sequences had different abstract views, the `do_end_points_match` ensures clause would be inconsistent with structural equality of `AbstractEndPoint`
+===PHI_END===

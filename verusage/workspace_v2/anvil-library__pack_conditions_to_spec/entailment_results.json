@@ -1,0 +1,47 @@
+[
+  {
+    "name": "leads_to_unfold_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_1_leads_to_unfold_intensional_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>, i: nat)\n    requires\n        p.leads_to(q).satisfied_by(ex),\n    ensures\n        p.implies(eventually(q)).satisfied_by(ex.suffix(i)),\n{\n    leads_to_unfold::<int>(ex, p, q);\n}",
+    "reason": "leads_to_unfold is external_body bridging always's TempPred::new closure-wrapped forall to a bare forall in ensures \u2014 intensionally distinct formulations equated without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "implies_apply_closure_bridge",
+    "type": "logical",
+    "code": "proof fn phi_2_implies_apply_closure_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.satisfied_by(ex),\n        (p.pred)(ex) ==> (q.pred)(ex),\n    ensures\n        q.satisfied_by(ex),\n{\n    implies_apply::<int>(ex, p, q);\n}",
+    "reason": "implies_apply is external_body bridging p.implies(q).satisfied_by(ex) through TempPred::new closure wrapping \u2014 resolves closure identity mismatch without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "always_propagate_forwards_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_3_always_propagate_forwards_intensional_bridge(ex: Execution<int>, p: TempPred<int>, i: nat, j: nat)\n    requires\n        always(p).satisfied_by(ex),\n    ensures\n        always(p).satisfied_by(ex.suffix(i)),\n{\n    always_propagate_forwards::<int>(ex, p, i);\n}",
+    "reason": "always_propagate_forwards is external_body shifting always(p) to a suffix \u2014 requires resolving that forall over ex.suffix(i).suffix(j) equals forall over ex.suffix(i+j) through intensional closure gaps",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "pack_conditions_weakens_spec",
+    "type": "behavioral",
+    "code": "proof fn phi_4_pack_conditions_weakens_spec(spec: TempPred<int>, c: TempPred<int>, p: TempPred<int>, q: TempPred<int>)\n    requires\n        spec.entails(p.and(c).leads_to(q)),\n    ensures\n        spec.and(always(c)).entails(p.leads_to(q)),\n{\n    pack_conditions_to_spec::<int>(spec, c, p, q);\n}",
+    "reason": "pack_conditions_to_spec strengthens the spec with always(c) to remove c from the leads_to antecedent \u2014 if always(c) is unsatisfiable this vacuously proves any leads_to, silently discarding the condition",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "false_spec_any_leads_to",
+    "type": "boundary",
+    "code": "proof fn phi_5_false_spec_any_leads_to(p: TempPred<int>, q: TempPred<int>)\n    requires\n        TempPred::<int>::new(|ex: Execution<int>| false).entails(p.and(TempPred::new(|ex: Execution<int>| false)).leads_to(q)),\n    ensures\n        TempPred::<int>::new(|ex: Execution<int>| false).and(always(TempPred::new(|ex: Execution<int>| false))).entails(p.leads_to(q)),\n{\n    pack_conditions_to_spec::<int>(TempPred::new(|ex: Execution<int>| false), TempPred::new(|ex: Execution<int>| false), p, q);\n}",
+    "reason": "an unsatisfiable spec vacuously satisfies all entailment premises \u2014 pack_conditions_to_spec propagates vacuous truth producing arbitrary leads_to conclusions",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

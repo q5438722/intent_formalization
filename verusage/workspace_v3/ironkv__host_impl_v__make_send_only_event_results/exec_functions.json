@@ -1,0 +1,6 @@
+[
+  {
+    "name": "make_send_only_event_results",
+    "code": "pub fn make_send_only_event_results(net_events: Ghost<Seq<NetEvent>>) -> (res: Ghost<EventResults>)\n    requires\n        forall |i: int| 0 <= i && i < net_events@.len() ==> net_events@[i] is Send\n    ensures\n        res@.recvs == Seq::<NetEvent>::empty(),\n        res@.clocks == Seq::<NetEvent>::empty(),\n        res@.sends == net_events@,\n        res@.ios == net_events@,\n        res@.event_seq() == net_events@,\n        res@.well_typed_events(),\n{\n    let ghost res = EventResults {\n        recvs: Seq::<NetEvent>::empty(),\n        clocks: Seq::<NetEvent>::empty(),\n        sends: net_events@,\n        ios: net_events@,\n    };\n    assert (forall |i| 0 <= i < res.recvs.len() ==> res.recvs[i] is Receive);\n    assert (forall |i| 0 <= i < res.clocks.len() ==> res.clocks[i] is ReadClock || res.clocks[i] is TimeoutReceive);\n    assert (forall |i| 0 <= i < res.sends.len() ==> res.sends[i] is Send);\n    assert (res.clocks.len() <= 1);\n    assert (res.well_typed_events());\n    proof { assert_seqs_equal!(res.event_seq(), net_events@); };\n    Ghost(res)\n}"
+  }
+]

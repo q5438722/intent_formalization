@@ -1,0 +1,37 @@
+[
+  {
+    "name": "always_valid",
+    "target_fn": "valid_physical_address",
+    "type": "behavioral",
+    "code": "proof fn phi_1_always_valid(ep: AbstractEndPoint)\n    ensures\n        ep.valid_physical_address(),\n{\n}",
+    "reason": "Would mean every endpoint is considered valid, making the check vacuous"
+  },
+  {
+    "name": "never_valid",
+    "target_fn": "valid_physical_address",
+    "type": "behavioral",
+    "code": "proof fn phi_2_never_valid(ep: AbstractEndPoint)\n    ensures\n        !ep.valid_physical_address(),\n{\n}",
+    "reason": "Would mean no endpoint is ever valid, making the system completely unusable"
+  },
+  {
+    "name": "boundary_inclusive_at_limit",
+    "target_fn": "valid_physical_address",
+    "type": "boundary",
+    "code": "proof fn phi_3_boundary_inclusive_at_limit(ep: AbstractEndPoint)\n    requires\n        ep.id.len() == 0x100000,\n    ensures\n        ep.valid_physical_address(),\n{\n}",
+    "reason": "Off-by-one error \u2014 an id of exactly 0x100000 bytes should be rejected by the strict < bound"
+  },
+  {
+    "name": "empty_id_invalid",
+    "target_fn": "valid_physical_address",
+    "type": "boundary",
+    "code": "proof fn phi_4_empty_id_invalid(ep: AbstractEndPoint)\n    requires\n        ep.id.len() == 0,\n    ensures\n        !ep.valid_physical_address(),\n{\n}",
+    "reason": "Would mean a zero-length endpoint id is not a valid address, contradicting 0 < 0x100000"
+  },
+  {
+    "name": "valid_implies_very_short",
+    "target_fn": "valid_physical_address",
+    "type": "logical",
+    "code": "proof fn phi_5_valid_implies_very_short(ep: AbstractEndPoint)\n    requires\n        ep.valid_physical_address(),\n    ensures\n        ep.id.len() < 256,\n{\n}",
+    "reason": "Would mean the spec is far more restrictive than intended, capping ids at 256 bytes instead of ~1MB"
+  }
+]

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "max_phyaddr_width_not_52",
+    "type": "boundary",
+    "code": "proof fn phi_1_max_phyaddr_width_not_52()\n    ensures\n        MAX_PHYADDR_WIDTH != 52,\n{\n    axiom_max_phyaddr_width_facts();\n}",
+    "reason": "`MAX_PHYADDR_WIDTH` is `external_body` constant set to 52 but the axiom only constrains it to `[32, 52]` \u2014 the SMT solver could assume it's not 52",
+    "entailed": false,
+    "verus_output": "ults:: 3 verified, 1 errors\nerror: postcondition not satisfied\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__defs__MAX_PHYADDR/phi_1_max_phyaddr_width_not_52.rs:39:9\n   |\n37 | proof fn phi_1_max_phyaddr_width_not_52()\n   |       ----------------------------------- at the end of the function body\n38 |     ensures\n39 |         MAX_PHYADDR_WIDTH != 52,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "max_phyaddr_width_equals_32",
+    "type": "boundary",
+    "code": "proof fn phi_2_max_phyaddr_width_equals_32()\n    ensures\n        MAX_PHYADDR_WIDTH == 32,\n{\n    axiom_max_phyaddr_width_facts();\n}",
+    "reason": "The axiom allows `MAX_PHYADDR_WIDTH == 32`, which would make `MAX_PHYADDR` only 4GB \u2014 dramatically smaller than the intended 52-bit physical address space",
+    "entailed": false,
+    "verus_output": "verified, 1 errors\nerror: postcondition not satisfied\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__defs__MAX_PHYADDR/phi_2_max_phyaddr_width_equals_32.rs:39:9\n   |\n37 | proof fn phi_2_max_phyaddr_width_equals_32()\n   |       -------------------------------------- at the end of the function body\n38 |     ensures\n39 |         MAX_PHYADDR_WIDTH == 32,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "max_phyaddr_spec_smaller_than_expected",
+    "type": "boundary",
+    "code": "proof fn phi_3_max_phyaddr_spec_smaller_than_expected()\n    ensures\n        MAX_PHYADDR_SPEC < 0xFFFF_FFFF_FFFFusize,\n{\n    axiom_max_phyaddr_width_facts();\n}",
+    "reason": "If `MAX_PHYADDR_WIDTH < 48`, `MAX_PHYADDR_SPEC` would be smaller than the typical 48-bit virtual address space limit \u2014 the weak axiom allows this",
+    "entailed": false,
+    "verus_output": "hentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__defs__MAX_PHYADDR/phi_3_max_phyaddr_spec_smaller_than_expected.rs:39:9\n   |\n37 | proof fn phi_3_max_phyaddr_spec_smaller_than_expected()\n   |       ------------------------------------------------- at the end of the function body\n38 |     ensures\n39 |         MAX_PHYADDR_SPEC < 0xFFFF_FFFF_FFFFusize,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "axiom_max_phyaddr_width_external_body",
+    "type": "logical",
+    "code": "proof fn phi_4_axiom_max_phyaddr_width_external_body()\n    ensures\n        32 <= MAX_PHYADDR_WIDTH <= 52,\n{\n    axiom_max_phyaddr_width_facts();\n}",
+    "reason": "`axiom_max_phyaddr_width_facts` is `external_body` \u2014 trusted without proof, the axiom could be unsound if `MAX_PHYADDR_WIDTH` is not actually constrained to `[32, 52]` at runtime",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "max_phyaddr_width_odd_value",
+    "type": "boundary",
+    "code": "proof fn phi_5_max_phyaddr_width_odd_value(w: usize)\n    requires\n        32 <= w <= 52,\n        w != 36 && w != 39 && w != 46 && w != 48 && w != 52,\n    ensures\n        w == w,\n{\n}",
+    "reason": "The axiom allows non-standard physical address widths (e.g., 33, 37, 41) that no real x86 CPU supports \u2014 only 36, 39, 46, 48, and 52 are used in practice",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

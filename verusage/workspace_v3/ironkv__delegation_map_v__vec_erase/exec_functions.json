@@ -1,0 +1,6 @@
+[
+  {
+    "name": "vec_erase",
+    "code": "pub fn vec_erase<A>(v: &mut Vec<A>, start: usize, end: usize)\n    requires\n        start <= end <= old(v).len(),\n    ensures\n        true,\n        v@ == old(v)@.subrange(0, start as int) + old(v)@.subrange(end as int, old(v)@.len() as int),\n{\n    let mut deleted = 0;\n    proof {\n        assert_seqs_equal!(v@,\n                           old(v)@.subrange(0, start as int) +\n                           old(v)@.subrange(start as int + deleted as int,\n                                               old(v)@.len() as int));\n    }\n    while deleted < end - start\n        invariant\n            start <= end <= old(v)@.len(),\n            v@.len() == old(v)@.len() - deleted,\n            0 <= deleted <= end - start,\n            v@ == old(v)@.subrange(0, start as int) + old(v)@.subrange(start as int + deleted as int, old(v)@.len() as int),\n        decreases\n            end - start - deleted\n    {\n        v.remove(start);\n        deleted = deleted + 1;\n        proof {\n            assert_seqs_equal!(v@,\n                               old(v)@.subrange(0, start as int) +\n                               old(v)@.subrange(start as int + deleted as int,\n                                                   old(v)@.len() as int));\n        }\n    }\n}"
+  }
+]

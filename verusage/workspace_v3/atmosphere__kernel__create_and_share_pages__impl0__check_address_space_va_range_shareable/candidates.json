@@ -1,0 +1,37 @@
+[
+  {
+    "name": "always_shareable",
+    "target_fn": "check_address_space_va_range_shareable",
+    "type": "behavioral",
+    "code": "proof fn phi_1_always_shareable(os: &OS, proc_ptr: ProcPtr, va_range: &VaRange4K)\n    requires\n        os.wf(),\n        os.proc_dom().contains(proc_ptr),\n        va_range.wf(),\n    ensures\n        os.address_space_range_shareable(proc_ptr, va_range) == true,\n{\n}",
+    "reason": "If every valid range is always shareable, the shareability check is vacuous and provides no protection against unsafe sharing."
+  },
+  {
+    "name": "never_shareable",
+    "target_fn": "check_address_space_va_range_shareable",
+    "type": "behavioral",
+    "code": "proof fn phi_2_never_shareable(os: &OS, proc_ptr: ProcPtr, va_range: &VaRange4K)\n    requires\n        os.wf(),\n        os.proc_dom().contains(proc_ptr),\n        va_range.wf(),\n    ensures\n        os.address_space_range_shareable(proc_ptr, va_range) == false,\n{\n}",
+    "reason": "If no range is ever shareable, the sharing mechanism is completely broken and the feature is dead code."
+  },
+  {
+    "name": "proc_independent_shareable",
+    "target_fn": "check_address_space_va_range_shareable",
+    "type": "logical",
+    "code": "proof fn phi_3_proc_independent_shareable(os: &OS, proc1: ProcPtr, proc2: ProcPtr, va_range: &VaRange4K)\n    requires\n        os.wf(),\n        os.proc_dom().contains(proc1),\n        os.proc_dom().contains(proc2),\n        va_range.wf(),\n    ensures\n        os.address_space_range_shareable(proc1, va_range) == os.address_space_range_shareable(proc2, va_range),\n{\n}",
+    "reason": "If shareability is independent of which process is targeted, the spec ignores per-process address spaces and reference counts, violating process isolation."
+  },
+  {
+    "name": "shareable_implies_empty_range",
+    "target_fn": "check_address_space_va_range_shareable",
+    "type": "boundary",
+    "code": "proof fn phi_4_shareable_implies_empty_range(os: &OS, proc_ptr: ProcPtr, va_range: &VaRange4K)\n    requires\n        os.wf(),\n        os.proc_dom().contains(proc_ptr),\n        va_range.wf(),\n        os.address_space_range_shareable(proc_ptr, va_range),\n    ensures\n        va_range.len == 0usize,\n{\n}",
+    "reason": "If only zero-length ranges can be shareable, the sharing feature is useless since no actual pages can ever be shared."
+  },
+  {
+    "name": "range_independent_shareable",
+    "target_fn": "check_address_space_va_range_shareable",
+    "type": "logical",
+    "code": "proof fn phi_5_range_independent_shareable(os: &OS, proc_ptr: ProcPtr, va_range1: &VaRange4K, va_range2: &VaRange4K)\n    requires\n        os.wf(),\n        os.proc_dom().contains(proc_ptr),\n        va_range1.wf(),\n        va_range2.wf(),\n    ensures\n        os.address_space_range_shareable(proc_ptr, va_range1) == os.address_space_range_shareable(proc_ptr, va_range2),\n{\n}",
+    "reason": "If shareability is independent of the specific VA range, the per-page mapping and reference-count checks are meaningless and any range behaves identically."
+  }
+]

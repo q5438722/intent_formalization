@@ -1,0 +1,81 @@
+===PHI_START===
+NAME: ptmem_view_external_body_unconstrained
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_ptmem_view_external_body_unconstrained(pt1: PTMem, pt2: PTMem)
+    requires
+        pt1.mem !== pt2.mem,
+    ensures
+        pt1@ === pt2@,
+{
+}
+```
+REASON: `PTMem::view` is `external_body` with no postconditions — completely unspecified, so distinct page table memories could have identical PTE interpretations
+===PHI_END===
+
+===PHI_START===
+NAME: rl3_interp_external_body_unconstrained
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_rl3_interp_external_body_unconstrained(s1: crate::rl3::State, s2: crate::rl3::State)
+    requires
+        true,
+    ensures
+        s1.interp() === s2.interp(),
+{
+}
+```
+REASON: `rl3::State::interp` is `external_body` closed spec — any two rl3 states could map to the same rl2 state since the function is completely opaque
+===PHI_END===
+
+===PHI_START===
+NAME: overlap_reflexive
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_overlap_reflexive(r: MemRegion)
+    requires
+        r.size > 0,
+    ensures
+        overlap(r, r),
+{
+}
+```
+REASON: A non-empty region overlaps itself — tests that `overlap` correctly handles the reflexive case via the `region1.base == region2.base` branch
+===PHI_END===
+
+===PHI_START===
+NAME: candidate_mapping_overlaps_self
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_candidate_mapping_overlaps_self(mappings: Map<nat, PTE>, base: nat, pte: PTE)
+    requires
+        mappings.contains_key(base),
+        mappings[base].frame.size > 0,
+        pte.frame.size > 0,
+    ensures
+        candidate_mapping_overlaps_existing_vmem(mappings, base, pte),
+{
+}
+```
+REASON: A mapping at an existing base always overlaps — `candidate_mapping_overlaps_existing_vmem` triggers with witness `b == base` since `overlap` is reflexive at equal bases regardless of sizes
+===PHI_END===
+
+===PHI_START===
+NAME: write_does_not_change_view
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_write_does_not_change_view(pt: PTMem, addr: usize, value: usize)
+    requires
+        true,
+    ensures
+        pt.write(addr, value)@ === pt@,
+{
+}
+```
+REASON: Since `PTMem::view` is `external_body` with no connection to `mem`, writes to page table memory may have no observable effect on the PTE interpretation
+===PHI_END===

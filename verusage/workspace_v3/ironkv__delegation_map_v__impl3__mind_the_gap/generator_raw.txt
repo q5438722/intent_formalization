@@ -1,0 +1,77 @@
+===PHI_START===
+NAME: end_allows_get
+TARGET_FN: end
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_end_allows_get<K: KeyTrait + VerusClone>()
+    ensures
+        !KeyIterator::<K>::end_spec().is_end_spec(),
+{
+}
+```
+REASON: If provable, end() produces an iterator that is NOT considered "end", contradicting its purpose as a sentinel
+===PHI_END===
+
+===PHI_START===
+NAME: is_end_always_true
+TARGET_FN: is_end
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_is_end_always_true<K: KeyTrait + VerusClone>(ki: KeyIterator<K>)
+    ensures
+        ki.is_end_spec(),
+{
+}
+```
+REASON: If provable, is_end returns true for every iterator, making it impossible to distinguish live iterators from the end sentinel
+===PHI_END===
+
+===PHI_START===
+NAME: get_collapses_keys
+TARGET_FN: get
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_get_collapses_keys<K: KeyTrait + VerusClone>(a: KeyIterator<K>, b: KeyIterator<K>)
+    requires
+        !a.is_end_spec(),
+        !b.is_end_spec(),
+    ensures
+        a.get_spec() == b.get_spec(),
+{
+}
+```
+REASON: If provable, get returns the same key for all non-end iterators, meaning the spec fails to distinguish different iterator positions
+===PHI_END===
+
+===PHI_START===
+NAME: end_has_some_key
+TARGET_FN: end
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_end_has_some_key<K: KeyTrait + VerusClone>()
+    ensures
+        KeyIterator::<K>::end_spec().k.is_Some(),
+{
+}
+```
+REASON: If provable, end() yields an iterator carrying a key despite its spec promising k.is_None(), indicating an inconsistent postcondition
+===PHI_END===
+
+===PHI_START===
+NAME: no_non_end_exists
+TARGET_FN: get
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_no_non_end_exists<K: KeyTrait + VerusClone>(ki: KeyIterator<K>)
+    ensures
+        ki.is_end_spec(),
+{
+}
+```
+REASON: If provable, every iterator is end so get's precondition is unsatisfiable, making get vacuously correct but useless
+===PHI_END===

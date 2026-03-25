@@ -1,0 +1,47 @@
+[
+  {
+    "name": "nonzero_has_set_bit",
+    "type": "behavioral",
+    "code": "proof fn phi_1_nonzero_has_set_bit(a: u64) -> (i: u64)\n    requires\n        a != 0,\n    ensures\n        i < 64,\n        is_bit_set!(a, i),\n{\n    assert(a >> 64 == 0) by (bit_vector);\n    lemma_obtain_bit_index_1_aux(a, 64)\n}",
+    "reason": "Any nonzero u64 has a set bit below 64 \u2014 this is mathematically correct and expected, serving as a sanity check that the lemma is usable at the top level",
+    "entailed": true,
+    "verus_output": "verification results:: 7 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "hi_1_forces_bit_0",
+    "type": "boundary",
+    "code": "proof fn phi_2_hi_1_forces_bit_0(a: u64) -> (i: u64)\n    requires\n        a != 0,\n        a >> 1 == 0,\n    ensures\n        i == 0,\n        a == 1,\n{\n    let i = lemma_obtain_bit_index_1_aux(a, 1);\n    assert(a == 1) by (bit_vector) requires a != 0, a >> 1 == 0;\n    i\n}",
+    "reason": "With hi=1 the only possible index is 0 and a must be 1 \u2014 tests that the recursion base case is tight",
+    "entailed": true,
+    "verus_output": "verification results:: 7 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "result_always_less_than_64",
+    "type": "logical",
+    "code": "proof fn phi_3_result_always_less_than_64(a: u64, hi: u64) -> (i: u64)\n    requires\n        a != 0,\n        hi <= 64,\n        a >> hi == 0,\n    ensures\n        i < 64,\n{\n    lemma_obtain_bit_index_1_aux(a, hi)\n}",
+    "reason": "Since `i < hi` and `hi <= 64`, the result is always below 64 \u2014 tests that the bound propagates correctly through the ensures",
+    "entailed": true,
+    "verus_output": "verification results:: 6 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "bit_set_implies_nonzero_mask",
+    "type": "logical",
+    "code": "proof fn phi_4_bit_set_implies_nonzero_mask(a: u64, hi: u64)\n    requires\n        a != 0,\n        hi <= 64,\n        a >> hi == 0,\n    ensures\n        ({\n            let i = lemma_obtain_bit_index_1_aux(a, hi);\n            a & (1u64 << i) != 0\n        }),\n{\n    let i = lemma_obtain_bit_index_1_aux(a, hi);\n    assert(a & (1u64 << i) != 0) by (bit_vector)\n        requires is_bit_set!(a, i), i < 64;\n}",
+    "reason": "`is_bit_set(a, i)` should imply `a & (1 << i) != 0` \u2014 tests that the ensures is strong enough to derive nonzero mask",
+    "entailed": false,
+    "verus_output": "error: cannot call function `phi_4_bit_set_implies_nonzero_mask::lemma_obtain_bit_index_1_aux` with mode proof\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__commit_mask__lemma_obtain_bit_index_1_aux/phi_4_bit_set_implies_nonzero_mask.rs:49:21\n   |\n49 |             let i = lemma_obtain_bit_index_1_aux(a, hi);\n   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "power_of_two_returns_exact_bit",
+    "type": "boundary",
+    "code": "proof fn phi_5_power_of_two_returns_exact_bit()\n    ensures\n        ({\n            let i = lemma_obtain_bit_index_1_aux(8, 64);\n            i == 3\n        }),\n{\n    assert(8u64 >> 64 == 0) by (bit_vector);\n    let i = lemma_obtain_bit_index_1_aux(8, 64);\n    assert(is_bit_set!(8u64, i)) by { }\n    assert(i == 3) by (bit_vector)\n        requires is_bit_set!(8u64, i), i < 64;\n}",
+    "reason": "For a=8 (2^3) the only set bit is bit 3 \u2014 if the lemma returns a different index, the is_bit_set ensures would be violated; tests uniqueness for power-of-two inputs",
+    "entailed": false,
+    "verus_output": "error: cannot call function `phi_5_power_of_two_returns_exact_bit::lemma_obtain_bit_index_1_aux` with mode proof\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__commit_mask__lemma_obtain_bit_index_1_aux/phi_5_power_of_two_returns_exact_bit.rs:45:21\n   |\n45 |             let i = lemma_obtain_bit_index_1_aux(8, 64);\n   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

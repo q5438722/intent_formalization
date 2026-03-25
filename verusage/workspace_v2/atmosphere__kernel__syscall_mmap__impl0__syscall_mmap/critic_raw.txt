@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: container_map_2m_subset_allocated_4k
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `container_wf` explicitly asserts `self.container_map_2m@.dom().subset_of(self.allocated_pages_4k@)` — the domain of the 2m container map is checked against 4k allocated pages rather than 2m allocated pages. The comment `@Xiangdong Come back for this` confirms this is known incomplete. This is a copy-paste bug from the `container_map_4k` line.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: container_map_1g_subset_allocated_4k
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: Same copy-paste pattern: `container_wf` asserts `self.container_map_1g@.dom().subset_of(self.allocated_pages_4k@)` — 1g container mappings are checked against 4k allocated pages instead of 1g allocated pages. The developer comment and identical pattern confirm this is a bug.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: pagetable_wf_closed_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `PageTable::wf` is `closed spec fn` with `#[verifier::external_body]` — its body is opaque and unverified. All properties linking structural page table fields to ghost mappings are trusted axioms, creating a soundness gap where incorrect implementations could satisfy the spec vacuously.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: thread_inv_external_body_unsound
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `thread_inv` is an `#[verifier::external_body]` proof fn — its ensures clause (threads have valid owning_container and owning_proc) is assumed without verification. This cross-component invariant is a critical soundness dependency that Verus never checks.
+===VERDICT_END===
+
+===SUMMARY===
+All 4 candidates are true positives. Two (`container_map_2m_subset_allocated_4k` and `container_map_1g_subset_allocated_4k`) are copy-paste bugs where 2m/1g container map domains are checked against 4k allocated pages instead of their respective size classes — confirmed by the developer's own TODO comment. The other two (`pagetable_wf_closed_external_body` and `thread_inv_external_body_unsound`) highlight `external_body` soundness gaps: `PageTable::wf`'s invariant linking structural fields to ghost mappings is entirely unverified, and `thread_inv`'s cross-component ownership invariant is assumed without proof.
+===END_SUMMARY===

@@ -1,0 +1,52 @@
+[
+  {
+    "name": "result_equals_base",
+    "target_fn": "ArchExec::next_entry_base",
+    "type": "behavioral",
+    "reason": "If next_entry_base with idx=0 equals base, entries would start at the same address as the base, meaning no address space is actually mapped by the first entry.",
+    "entailed": false,
+    "verified": 7,
+    "errors": 1,
+    "output_tail": "-------------------------- at the end of the function body\n...\n175 |         arch@.next_entry_base(layer as nat, base as nat, 0nat) == base as nat,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "result_less_than_base",
+    "target_fn": "ArchExec::next_entry_base",
+    "type": "boundary",
+    "reason": "If next_entry_base returned a value less than base, page table entries would map backwards into already-mapped address space, corrupting translations.",
+    "entailed": false,
+    "verified": 7,
+    "errors": 1,
+    "output_tail": "---------------- at the end of the function body\n...\n175 |         arch@.next_entry_base(layer as nat, base as nat, idx as nat) < base as nat,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "entry_size_zero",
+    "target_fn": "inv",
+    "type": "logical",
+    "reason": "If inv permitted zero-sized entries, page table walks would never make progress and every entry would degenerate to a zero-length region.",
+    "entailed": false,
+    "verified": 7,
+    "errors": 1,
+    "output_tail": "i_3_entry_size_zero(arch: Arch, layer: nat)\n    |       ------------------------------------------------ at the end of the function body\n...\n173 |         arch.entry_size(layer) == 0nat,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "layer_sizes_inverted",
+    "target_fn": "entry_size_is_next_layer_size",
+    "type": "logical",
+    "reason": "If coarser layers had entry sizes no larger than finer layers, the hierarchical decomposition would be flat or inverted, breaking multi-level address translation.",
+    "entailed": false,
+    "verified": 7,
+    "errors": 1,
+    "output_tail": "yer_sizes_inverted(arch: Arch)\n    |       ----------------------------------------- at the end of the function body\n...\n173 |         arch.entry_size(0) <= arch.entry_size(1),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "num_entries_always_one",
+    "target_fn": "num_entries",
+    "type": "boundary",
+    "reason": "If every layer were limited to a single entry, the page table could only map one contiguous region per level, making the entire translation structure useless.",
+    "entailed": false,
+    "verified": 7,
+    "errors": 1,
+    "output_tail": "always_one(arch: Arch, layer: nat)\n    |       ------------------------------------------------------- at the end of the function body\n...\n173 |         arch.num_entries(layer) <= 1nat,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

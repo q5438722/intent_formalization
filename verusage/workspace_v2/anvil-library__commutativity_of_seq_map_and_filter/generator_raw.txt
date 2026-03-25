@@ -1,0 +1,85 @@
+===PHI_START===
+NAME: empty_seq_commutativity
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_empty_seq_commutativity()
+    ensures
+        Seq::<int>::empty().map_values(|x: int| x + 1).filter(|x: int| x > 0) == Seq::<int>::empty().filter(|x: int| x > -1).map_values(|x: int| x + 1),
+{
+    commutativity_of_seq_map_and_filter(Seq::<int>::empty(), |x: int| x > -1, |x: int| x > 0, |x: int| x + 1);
+}
+```
+REASON: tests the empty sequence base case — if the base case is mishandled, empty sequences could produce unequal results
+===PHI_END===
+
+===PHI_START===
+NAME: map_filter_len_leq_original
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_map_filter_len_leq_original(s: Seq<int>, pred: spec_fn(int) -> bool, map: spec_fn(int) -> int)
+    requires
+        forall |i: int| 0 <= i < s.len() ==> #[trigger] pred(s[i]) == #[trigger] pred(map(s[i])),
+    ensures
+        s.map_values(map).filter(pred).len() <= s.len(),
+{
+    commutativity_of_seq_map_and_filter(s, pred, pred, map);
+}
+```
+REASON: filtered-then-mapped result should never exceed original length — if filter/map interaction is broken, length could exceed the original
+===PHI_END===
+
+===PHI_START===
+NAME: filter_all_true_preserves_map
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_filter_all_true_preserves_map(s: Seq<int>)
+    ensures
+        s.map_values(|x: int| x + 1).filter(|x: int| true) == s.filter(|x: int| true).map_values(|x: int| x + 1),
+{
+    commutativity_of_seq_map_and_filter(s, |x: int| true, |x: int| true, |x: int| x + 1);
+}
+```
+REASON: always-true filter should be identity on both sides — tests that trivial predicates don't break the commutativity
+===PHI_END===
+
+===PHI_START===
+NAME: filter_all_false_both_empty
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_filter_all_false_both_empty(s: Seq<int>)
+    ensures
+        s.map_values(|x: int| x * 2).filter(|x: int| false).len() == 0,
+{
+    commutativity_of_seq_map_and_filter(s, |x: int| false, |x: int| false, |x: int| x * 2);
+}
+```
+REASON: always-false filter should produce empty on both sides — tests that the commutativity result is vacuously correct for trivially empty filters
+===PHI_END===
+
+===PHI_START===
+NAME: singleton_filter_map_commute
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_singleton_filter_map_commute(v: int)
+    ensures
+        ({
+            let s = seq![v];
+            let pred = |x: int| x > 0;
+            let map_fn = |x: int| x * 2;
+            s.map_values(map_fn).filter(|x: int| x > 0) == s.filter(|x: int| x > 0).map_values(map_fn)
+        }),
+{
+    let s = seq![v];
+    let pred = |x: int| x > 0;
+    let pred_mapped = |x: int| x > 0;
+    let map_fn = |x: int| x * 2;
+    commutativity_of_seq_map_and_filter(s, pred, pred_mapped, map_fn);
+}
+```
+REASON: singleton sequence is the minimal nontrivial case — if the recursive step mishandles length-1 sequences, commutativity could silently break
+===PHI_END===

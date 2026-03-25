@@ -1,0 +1,37 @@
+[
+  {
+    "name": "inv_allows_empty_arch",
+    "target_fn": "inv",
+    "type": "behavioral",
+    "code": "proof fn phi_1_inv_allows_empty_arch()\n    ensures\n        exists|a: Arch| a.inv() && a.layers.len() == 0,\n{\n    let a = Arch { layers: Seq::empty() };\n    assert(a.inv());\n}",
+    "reason": "An empty architecture with zero layers should not satisfy the invariant, as a valid MMU arch needs at least one layer"
+  },
+  {
+    "name": "inv_allows_unit_num_entries",
+    "target_fn": "num_entries",
+    "type": "logical",
+    "code": "proof fn phi_2_inv_allows_unit_num_entries()\n    ensures\n        exists|a: Arch| a.inv() && a.layers.len() >= 2 &&\n            (forall|i: nat| i < a.layers.len() ==> a.num_entries(i) == 1),\n{\n    let l = ArchLayer { entry_size: 1, num_entries: 1 };\n    let a = Arch { layers: seq![l, l] };\n    assert(a.entry_size(0) == 1);\n    assert(a.num_entries(1) == 1);\n    assert(a.entry_size_is_next_layer_size(0));\n    assert(a.entry_size_is_next_layer_size(1));\n    assert(a.inv());\n}",
+    "reason": "A multi-layer arch where every layer has num_entries==1 is degenerate \u2014 page tables provide no fan-out and the hierarchy is pointless"
+  },
+  {
+    "name": "inv_allows_equal_consecutive_entry_sizes",
+    "target_fn": "entry_size",
+    "type": "logical",
+    "code": "proof fn phi_3_inv_allows_equal_consecutive_entry_sizes()\n    ensures\n        exists|a: Arch| a.inv() && a.layers.len() >= 2 &&\n            a.entry_size(0) == a.entry_size(1),\n{\n    let l = ArchLayer { entry_size: 1, num_entries: 1 };\n    let a = Arch { layers: seq![l, l] };\n    assert(a.entry_size_is_next_layer_size(0));\n    assert(a.entry_size_is_next_layer_size(1));\n    assert(a.inv());\n}",
+    "reason": "Consecutive layers with identical entry_size means the higher layer doesn't actually subdivide address space, violating the purpose of hierarchical paging"
+  },
+  {
+    "name": "entry_size_is_next_layer_size_vacuous_beyond_bounds",
+    "target_fn": "entry_size_is_next_layer_size",
+    "type": "boundary",
+    "code": "proof fn phi_4_entry_size_is_next_layer_size_vacuous_beyond_bounds(a: Arch, i: nat)\n    requires\n        a.inv(),\n        a.layers.len() > 0,\n        i >= a.layers.len(),\n    ensures\n        a.entry_size_is_next_layer_size(i),\n{\n}",
+    "reason": "entry_size_is_next_layer_size is vacuously true for out-of-range indices, which could mask specification errors if callers forget bounds checks"
+  },
+  {
+    "name": "inv_allows_top_entry_size_one",
+    "target_fn": "inv",
+    "type": "boundary",
+    "code": "proof fn phi_5_inv_allows_top_entry_size_one()\n    ensures\n        exists|a: Arch| a.inv() && a.layers.len() == X86_NUM_LAYERS &&\n            a.entry_size(0) == 1,\n{\n    let l = ArchLayer { entry_size: 1, num_entries: 1 };\n    let a = Arch { layers: seq![l, l, l, l] };\n    assert(a.entry_size_is_next_layer_size(0));\n    assert(a.entry_size_is_next_layer_size(1));\n    assert(a.entry_size_is_next_layer_size(2));\n    assert(a.entry_size_is_next_layer_size(3));\n    assert(a.inv());\n}",
+    "reason": "A full 4-layer arch whose top-level entry_size is 1 byte maps only 1 byte total \u2014 far too small for any real x86 page table hierarchy"
+  }
+]

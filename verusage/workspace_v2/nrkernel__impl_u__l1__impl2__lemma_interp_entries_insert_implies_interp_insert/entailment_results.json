@@ -1,0 +1,47 @@
+[
+  {
+    "name": "external_body_insert_no_key_guard",
+    "type": "logical",
+    "code": "proof fn phi_1_external_body_insert_no_key_guard(d: Directory, j: nat, base: nat, n: NodeEntry, pte: PTE)\n    requires\n        d.inv(),\n        j < d.num_entries(),\n        d.update(j, n).inv(),\n        d.interp_of_entry(j).insert(base, pte) == d.update(j, n).interp_of_entry(j),\n        d.interp_aux(0).contains_key(base),\n    ensures\n        d.interp_aux(0).insert(base, pte) == d.update(j, n).interp_aux(0),\n{\n    d.lemma_interp_of_entry_insert_implies_interp_aux_insert(0, j, base, n, pte);\n}",
+    "reason": "The commented-out `!self.interp_aux(i).contains_key(base)` precondition means the `external_body` lemma claims insert works even when the key already exists elsewhere in the map \u2014 `Map::insert` overwrites, but `union_prefer_right` in `interp_aux` may re-shadow the inserted value from a lower-indexed entry",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "inv_allows_unaligned_base_vaddr",
+    "type": "logical",
+    "code": "proof fn phi_2_inv_allows_unaligned_base_vaddr(arch: Arch, entries: Seq<NodeEntry>)\n    requires\n        arch.inv(),\n        arch.layers.len() > 0,\n        entries.len() == arch.num_entries(0),\n        forall|i: nat| i < entries.len() ==> entries[i as int] is Invalid,\n    ensures\n        ({\n            let d = Directory { entries: entries, layer: 0, base_vaddr: 1, arch: arch };\n            d.inv()\n        }),\n{\n}",
+    "reason": "`well_formed` has the alignment check on `base_vaddr` commented out, so directories with misaligned base addresses satisfy `inv()`",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_frame_base_unconstrained",
+    "type": "logical",
+    "code": "proof fn phi_3_page_frame_base_unconstrained(arch: Arch)\n    requires\n        arch.inv(),\n        arch.layers.len() > 0,\n    ensures\n        ({\n            let es = arch.entry_size(0);\n            let pte = PTE { frame: MemRegion { base: 7, size: es }, flags: Flags { is_writable: true, is_supervisor: false, disable_execute: false } };\n            let entries = Seq::new(arch.num_entries(0) as int, |i: int| if i == 0 { NodeEntry::Page(pte) } else { NodeEntry::Invalid });\n            let d = Directory { entries: entries, layer: 0, base_vaddr: 0, arch: arch };\n            d.inv()\n        }),\n{\n}",
+    "reason": "`pages_match_entry_size` checks `frame.size` but never constrains `frame.base` \u2014 a PTE can map to unaligned physical address 7, since `frames_aligned` is commented out in `inv()`",
+    "entailed": false,
+    "verus_output": ".num_entries(0) as int, |i: int| if i == 0 { NodeEntry::Page(pte) } else { NodeEntry::Invalid });\n    |                     -------- ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `nat`, found `int`\n    |                     |\n    |                     arguments to this function are incorrect\n    |\nnote: associated function defined here\n   --> /home/runner/work/verus/verus/source/vstd/seq.rs:42:25\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0308`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "update_interp_insert_overwrites_existing",
+    "type": "behavioral",
+    "code": "proof fn phi_4_update_interp_insert_overwrites_existing(d: Directory, j: nat, base: nat, n: NodeEntry, pte1: PTE, pte2: PTE)\n    requires\n        d.inv(),\n        j < d.num_entries(),\n        d.update(j, n).inv(),\n        d.entries[j as int].interp(d.entry_base(j)).insert(base, pte2) == n.interp(d.entry_base(j)),\n        d.interp().contains_pair(base, pte1),\n        pte1 != pte2,\n    ensures\n        d.update(j, n).interp()[base] == pte2,\n{\n    d.lemma_interp_entries_insert_implies_interp_insert(j, base, n, pte2);\n}",
+    "reason": "The external_body lemma allows insert to silently overwrite an existing mapping at `base` from any entry \u2014 without the `!contains_key` guard, a mapping from entry 0 can be overwritten by modifying entry j>0, violating the `union_prefer_right` priority where lower indices should take precedence",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "interp_aux_shadows_later_entries",
+    "type": "behavioral",
+    "code": "proof fn phi_5_interp_aux_shadows_later_entries(d: Directory)\n    requires\n        d.inv(),\n        d.entries.len() >= 2,\n        d.entries[0] is Page,\n        d.entries[1] is Page,\n        d.entry_base(0) == d.entry_base(1),\n    ensures\n        d.interp_aux(0)[d.entry_base(0)] == d.entries[0]->Page_0,\n{\n}",
+    "reason": "`interp_aux` uses `union_prefer_right` giving lower-index entries priority \u2014 when two page entries compute the same base address, entry 0 silently shadows entry 1 with no disjointness check in the invariant",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

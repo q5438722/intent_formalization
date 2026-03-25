@@ -1,0 +1,47 @@
+[
+  {
+    "name": "sll_len_without_wf_returns_value_list_len",
+    "type": "logical",
+    "code": "proof fn phi_1_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    ensures\n        sll.len() == sll.value_list_len,\n{\n}",
+    "reason": "StaticLinkedList::len's external_body ensures `l == self.value_list_len` unconditionally without requiring wf() \u2014 the raw field value is trusted even if the linked list is corrupted",
+    "entailed": false,
+    "verus_output": "_returns_value_list_len.rs:1668:9\n     |\n1666 | proof fn phi_1_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n     |       -------------------------------------------------------------------------------------------------- at the end of the function body\n1667 |     ensures\n1668 |         sll.len() == sll.value_list_len,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 20 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "get_proc_ensures_owned_threads_wf_without_full_wf",
+    "type": "logical",
+    "code": "proof fn phi_2_get_proc_ensures_owned_threads_wf_without_full_wf(\n    pm: ProcessManager,\n    p_ptr: ProcPtr,\n)\n    requires\n        pm.proc_perms_wf(),\n        pm.process_fields_wf(),\n        pm.proc_dom().contains(p_ptr),\n    ensures\n        pm.get_proc(p_ptr).owned_threads.wf(),\n{\n}",
+    "reason": "get_proc's external_body unconditionally ensures ret.owned_threads.wf() with only proc_perms_wf + process_fields_wf \u2014 this leaks a structural invariant that should require the full wf() chain",
+    "entailed": true,
+    "verus_output": "itionalFns::is_None`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__impl_base__impl0__schedule_blocked_thread/phi_2_get_proc_ensures_owned_threads_wf_without_full_wf.rs:1603:42\n     |\n1603 |         thread_perm@.value().running_cpu.is_None(),\n     |                                          ^^^^^^^\n\nwarning: 20 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "get_thread_leaks_container_fields_wf",
+    "type": "logical",
+    "code": "proof fn phi_3_get_thread_leaks_container_fields_wf(\n    pm: ProcessManager,\n    t_ptr: ThreadPtr,\n)\n    requires\n        pm.wf(),\n        pm.thread_dom().contains(t_ptr),\n    ensures\n        pm.get_container(pm.get_thread(t_ptr).owning_container).scheduler.wf(),\n        pm.get_container(pm.get_thread(t_ptr).owning_container).owned_procs.wf(),\n        pm.get_container(pm.get_thread(t_ptr).owning_container).children.wf(),\n{\n}",
+    "reason": "get_thread's external_body ensures wf() of the owning container's scheduler, owned_procs, and children \u2014 exposing container internals through thread access without requiring container_fields_wf explicitly",
+    "entailed": false,
+    "verus_output": "_fields_wf.rs:1675:9\n     |\n1666 |   proof fn phi_3_get_thread_leaks_container_fields_wf(\n     |  _______-\n1667 | |     pm: ProcessManager,\n1668 | |     t_ptr: ThreadPtr,\n1669 | | )\n     | |_- at the end of the function body\n...\n1675 |           pm.get_container(pm.get_thread(t_ptr).owning_container).owned_procs.wf(),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 2 previous errors; 20 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "unique_implies_no_duplicates_external_body",
+    "type": "logical",
+    "code": "proof fn phi_4_unique_implies_no_duplicates_external_body<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    requires\n        sll.unique(),\n        sll.wf(),\n    ensures\n        sll@.no_duplicates(),\n{\n    sll.unique_implys_no_duplicates();\n}",
+    "reason": "unique_implys_no_duplicates is external_body \u2014 the bridge from the custom unique() predicate (over spec_seq indices) to vstd's no_duplicates() is unverified, potentially unsound if unique() and Seq::no_duplicates have subtle semantic differences",
+    "entailed": true,
+    "verus_output": "tionAdditionalFns::is_None`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__impl_base__impl0__schedule_blocked_thread/phi_4_unique_implies_no_duplicates_external_body.rs:1603:42\n     |\n1603 |         thread_perm@.value().running_cpu.is_None(),\n     |                                          ^^^^^^^\n\nwarning: 20 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "get_proc_container_dom_only_under_full_wf",
+    "type": "boundary",
+    "code": "proof fn phi_5_get_proc_container_dom_only_under_full_wf(\n    pm: ProcessManager,\n    p_ptr: ProcPtr,\n)\n    requires\n        pm.proc_perms_wf(),\n        pm.process_fields_wf(),\n        pm.proc_dom().contains(p_ptr),\n        !pm.wf(),\n    ensures\n        true,\n{\n    // Under these weaker preconditions, get_proc does NOT ensure\n    // container_dom().contains(ret.owning_container) \u2014 the implication\n    // is guarded by self.wf(). This means callers using get_proc\n    // without full wf() can obtain a process whose owning_container\n    // is not in the container domain.\n}",
+    "reason": "get_proc's ensures includes `self.wf() ==> container_dom.contains(ret.owning_container)` \u2014 without full wf(), the owning_container may point outside the container domain, enabling dangling references in partial-wf contexts",
+    "entailed": true,
+    "verus_output": "ptionAdditionalFns::is_None`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__impl_base__impl0__schedule_blocked_thread/phi_5_get_proc_container_dom_only_under_full_wf.rs:1603:42\n     |\n1603 |         thread_perm@.value().running_cpu.is_None(),\n     |                                          ^^^^^^^\n\nwarning: 20 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

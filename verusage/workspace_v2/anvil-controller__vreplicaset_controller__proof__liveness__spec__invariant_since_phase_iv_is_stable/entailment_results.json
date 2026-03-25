@@ -1,0 +1,47 @@
+[
+  {
+    "name": "gc_invariant_allows_non_delete_mutations",
+    "type": "behavioral",
+    "code": "proof fn phi_1_gc_invariant_allows_non_delete_mutations(vrs: VReplicaSetView, s: ClusterState, msg: Message)\n    requires\n        garbage_collector_does_not_delete_vrs_pods(vrs)(s),\n        s.in_flight().contains(msg),\n        msg.src.is_BuiltinController(),\n        msg.dst.is_APIServer(),\n        msg.content.is_update_request(),\n    ensures\n        true,\n{\n}",
+    "reason": "the garbage collector invariant only constrains delete requests \u2014 the builtin controller can freely send update requests that modify or remove owner references on VRS-owned pods, bypassing the protection entirely",
+    "entailed": true,
+    "verus_output": "verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__spec__invariant_since_phase_iv_is_stable/phi_1_gc_invariant_allows_non_delete_mutations.rs:142:1\n    |\n142 | / #[is_variant]\n143 | | pub enum APIRequest {\n144 | |     GetRequest(GetRequest),\n145 | |     ListRequest(ListRequest),\n...   |\n151 | |     GetThenUpdateRequest(GetThenUpdateRequest),\n152 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "gc_invariant_vacuous_for_non_builtin",
+    "type": "behavioral",
+    "code": "proof fn phi_2_gc_invariant_vacuous_for_non_builtin(vrs: VReplicaSetView, s: ClusterState, msg: Message)\n    requires\n        garbage_collector_does_not_delete_vrs_pods(vrs)(s),\n        s.in_flight().contains(msg),\n        msg.src.is_PodMonkey(),\n        msg.dst.is_APIServer(),\n        msg.content.is_delete_request(),\n        msg.content.get_delete_request().key.kind == PodView::kind(),\n    ensures\n        true,\n{\n}",
+    "reason": "the invariant only restricts messages from BuiltinController \u2014 PodMonkey or other sources can freely delete VRS-owned pods without any constraint",
+    "entailed": false,
+    "verus_output": "formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__spec__invariant_since_phase_iv_is_stable/phi_2_gc_invariant_vacuous_for_non_builtin.rs:840:54\n    |\n840 |         msg.content.get_delete_request().key.kind == PodView::kind(),\n    |                                                      ^^^^^^^ use of undeclared type `PodView`\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\nFor more information about this error, try `rustc --explain E0433`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "controller_owner_ref_ignores_namespace",
+    "type": "logical",
+    "code": "proof fn phi_3_controller_owner_ref_ignores_namespace(v1: VReplicaSetView, v2: VReplicaSetView)\n    requires\n        v1.metadata.name is Some,\n        v2.metadata.name is Some,\n        v1.metadata.uid is Some,\n        v2.metadata.uid is Some,\n        v1.metadata.name->0 == v2.metadata.name->0,\n        v1.metadata.uid->0 == v2.metadata.uid->0,\n        v1.metadata.namespace != v2.metadata.namespace,\n    ensures\n        v1.controller_owner_ref() == v2.controller_owner_ref(),\n{\n}",
+    "reason": "controller_owner_ref uses only name and uid but not namespace \u2014 two VReplicaSets in different namespaces with the same name and uid produce identical owner references, conflating cross-namespace ownership",
+    "entailed": true,
+    "verus_output": "o/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__spec__invariant_since_phase_iv_is_stable/phi_3_controller_owner_ref_ignores_namespace.rs:142:1\n    |\n142 | / #[is_variant]\n143 | | pub enum APIRequest {\n144 | |     GetRequest(GetRequest),\n145 | |     ListRequest(ListRequest),\n...   |\n151 | |     GetThenUpdateRequest(GetThenUpdateRequest),\n152 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "owner_references_contains_ignores_none",
+    "type": "boundary",
+    "code": "proof fn phi_4_owner_references_contains_ignores_none(owner_ref: OwnerReferenceView)\n    requires\n        true,\n    ensures\n        !(ObjectMetaView {\n            name: None,\n            generate_name: None,\n            namespace: None,\n            resource_version: None,\n            uid: None,\n            labels: None,\n            annotations: None,\n            owner_references: None,\n            finalizers: None,\n            deletion_timestamp: None,\n        }).owner_references_contains(owner_ref),\n{\n}",
+    "reason": "owner_references_contains returns false for None owner_references rather than failing \u2014 an object with missing owner_references silently appears unowned, which could cause the GC invariant to not protect pods whose metadata is incomplete",
+    "entailed": true,
+    "verus_output": "o/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__spec__invariant_since_phase_iv_is_stable/phi_4_owner_references_contains_ignores_none.rs:142:1\n    |\n142 | / #[is_variant]\n143 | | pub enum APIRequest {\n144 | |     GetRequest(GetRequest),\n145 | |     ListRequest(ListRequest),\n...   |\n151 | |     GetThenUpdateRequest(GetThenUpdateRequest),\n152 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "always_p_is_stable_external_body_unsound",
+    "type": "logical",
+    "code": "proof fn phi_5_always_p_is_stable_external_body_unsound()\n    requires\n        true,\n    ensures\n        valid(stable(always(lift_state(|s: ClusterState| false)))),\n{\n    always_p_is_stable(lift_state(|s: ClusterState| false));\n}",
+    "reason": "always_p_is_stable has #[verifier::external_body] so its postcondition is assumed without proof \u2014 it can be instantiated with any predicate including falsehood, declaring that \"always false\" is stable",
+    "entailed": true,
+    "verus_output": "verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__spec__invariant_since_phase_iv_is_stable/phi_5_always_p_is_stable_external_body_unsound.rs:142:1\n    |\n142 | / #[is_variant]\n143 | | pub enum APIRequest {\n144 | |     GetRequest(GetRequest),\n145 | |     ListRequest(ListRequest),\n...   |\n151 | |     GetThenUpdateRequest(GetThenUpdateRequest),\n152 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: leads_to_unfold_intensional_bridge
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `leads_to_unfold` is external_body bridging the forall embedded inside `always`'s `TempPred::new` closure (via `leads_to` = `always(p.implies(eventually(q)))`) to a bare forall in the ensures. This is an unverified trust assumption resolving the intensional closure gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: implies_apply_closure_bridge
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `implies_apply` is external_body bridging `p.implies(q).satisfied_by(ex)` — which evaluates a fresh closure from `TempPred::new` — to the direct modus ponens conclusion. This is a separate unverified trust assumption resolving the intensional closure gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: execution_equality_forces_fn_equality
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `execution_equality` forces intensional `spec_fn` equality from pointwise extensional equivalence. This is the root unverified trust assumption — structurally distinct closures are collapsed to equal without proof.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: suffix_zero_equals_self
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `ex.suffix(0) == ex` is semantically correct since `f(i+0) == f(i)` for all `i`. This is a desirable property and the intended use case of `execution_equality`.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: leads_to_apply_any_spec
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is a direct restatement of the verified lemma `leads_to_apply` — if spec entails both p and p~>q, then spec entails eventually(q). This is a standard and expected temporal logic property.
+===VERDICT_END===
+
+===SUMMARY===
+Three true positives: `leads_to_unfold`, `implies_apply`, and `execution_equality` are independent external_body axioms each bridging distinct intensional closure gaps — always-forall extraction, TempPred modus ponens, and spec_fn extensional-to-intensional equality, respectively. The remaining two are false positives: suffix(0) identity is a correct semantic property, and leads_to_apply is a standard temporal logic rule.
+===END_SUMMARY===

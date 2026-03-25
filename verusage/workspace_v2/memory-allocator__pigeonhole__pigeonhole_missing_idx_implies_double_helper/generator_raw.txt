@@ -1,0 +1,108 @@
+===PHI_START===
+NAME: set_mismatch_external_body_false
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_set_mismatch_external_body_false(s1: Set<nat>, s2: Set<nat>, missing: nat)
+    requires
+        s1.finite(),
+        s2.finite(),
+        s1.len() == s2.len(),
+        forall |elt| s2.contains(elt) ==> s1.contains(elt),
+        s1.contains(missing),
+        !s2.contains(missing),
+    ensures
+        false,
+{
+    set_mismatch(s1, s2, missing);
+}
+```
+REASON: `set_mismatch` is `external_body` deriving `false` — a contradiction lemma trusted without proof; any error in its preconditions would make the entire system unsound
+===PHI_END===
+
+===PHI_START===
+NAME: nat_set_size_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_nat_set_size_external_body(s: Set<nat>, bound: nat)
+    requires
+        forall |i: nat| (0 <= i < bound <==> s.contains(i)),
+    ensures
+        s.finite(),
+        s.len() == bound,
+{
+    nat_set_size(s, bound);
+}
+```
+REASON: `nat_set_size` is `external_body` trusting finiteness and cardinality without proof — this is the foundation for the pigeonhole proof's termination argument
+===PHI_END===
+
+===PHI_START===
+NAME: helper_dup1_in_range
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_helper_dup1_in_range(m: Map<nat, nat>, missing: nat, len: nat)
+    requires
+        len >= 2,
+        forall |i: nat| (0 <= i < len <==> m.dom().contains(i)),
+        forall |i: nat| (#[trigger] m.dom().contains(i) ==> (
+            0 <= m[i] < len && m[i] != missing
+        )),
+        0 <= missing < len,
+    ensures ({
+        let dup2 = pigeonhole_missing_idx_implies_double_helper(m, missing, len, Set::empty(), 0);
+        let dup1 = choose |dup1: nat| #![auto] dup1 != dup2 && m.dom().contains(dup1) && 0 <= dup1 < len && m[dup1] == m[dup2];
+        dup1 < len
+    }),
+{
+    let dup2 = pigeonhole_missing_idx_implies_double_helper(m, missing, len, Set::empty(), 0);
+}
+```
+REASON: The duplicate witness `dup1` is guaranteed to be `< len` by the ensures — but this relies on the `choose` selecting from the existential guaranteed by the external_body-backed proof chain
+===PHI_END===
+
+===PHI_START===
+NAME: set_mismatch_singleton
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_set_mismatch_singleton()
+    ensures
+        false,
+{
+    let s1 = Set::<nat>::empty().insert(0).insert(1);
+    let s2 = Set::<nat>::empty().insert(0);
+    // s2 ⊆ s1, s1 has missing=1, !s2.contains(1)
+    // but s1.len() == 2 != 1 == s2.len(), so preconditions not met
+    // This should NOT verify
+}
+```
+REASON: Testing whether `set_mismatch` can be invoked with mismatched sizes to derive `false` — the `s1.len() == s2.len()` guard should prevent this
+===PHI_END===
+
+===PHI_START===
+NAME: helper_duplicate_value_not_missing
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_helper_duplicate_value_not_missing(m: Map<nat, nat>, missing: nat, len: nat)
+    requires
+        len >= 2,
+        forall |i: nat| (0 <= i < len <==> m.dom().contains(i)),
+        forall |i: nat| (#[trigger] m.dom().contains(i) ==> (
+            0 <= m[i] < len && m[i] != missing
+        )),
+        0 <= missing < len,
+    ensures ({
+        let dup2 = pigeonhole_missing_idx_implies_double_helper(m, missing, len, Set::empty(), 0);
+        m[dup2] != missing
+    }),
+{
+    let dup2 = pigeonhole_missing_idx_implies_double_helper(m, missing, len, Set::empty(), 0);
+    assert(m.dom().contains(dup2));
+}
+```
+REASON: The duplicated value avoids the missing index — follows from the precondition but confirms the pigeonhole maps `len` keys into `len - 1` non-missing values
+===PHI_END===

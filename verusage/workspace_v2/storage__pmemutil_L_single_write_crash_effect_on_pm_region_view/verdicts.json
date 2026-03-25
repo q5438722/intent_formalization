@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "single_write_crash_depends_on_external_body",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "This property relies on `lemma_wherever_no_outstanding_writes_persistent_memory_view_can_only_crash_as_committed`, which is `external_body` with `unimplemented!()`. The claim that unwritten bytes in a crash state must equal committed values requires proving that both chunk-level branches yield `state_at_last_flush` when `outstanding_write` is `None` \u2014 this reasoning is trusted, not verified."
+  },
+  {
+    "phi": "write_then_flush_committed_equals_bytes",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "For `k` in the write range, `write` sets `outstanding_write: Some(bytes_to_write[k - write_addr])`. Then `flush` sets `state_at_last_flush` to `flush_byte()` = that value, and `committed()` maps to `state_at_last_flush`. Correct by chaining the definitions."
+  },
+  {
+    "phi": "write_outside_range_unchanged",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The `write` map closure returns `pre_byte` unchanged when `!(addr <= pos < addr + bytes.len())`. For `k` outside the range, the byte is preserved. Correct by definition."
+  },
+  {
+    "phi": "aligned_write_single_chunk",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "With `write_addr` aligned to 8 and `k` in `[write_addr, write_addr + 8)`, integer division by 8 yields the same chunk. Standard arithmetic property of aligned ranges."
+  },
+  {
+    "phi": "crash_exactly_two_outcomes",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "For committed: unwritten chunks satisfy both predicates (no outstanding writes), and the written chunk satisfies `chunk_corresponds_ignoring_outstanding_writes` since `state_at_last_flush` is preserved by write. For flushed: the written chunk satisfies `chunk_corresponds_after_flush`, and unwritten chunks satisfy both (flush_byte = state_at_last_flush when no outstanding write). Both are valid crash states by construction."
+  }
+]

@@ -1,0 +1,20 @@
+[
+  {
+    "phi": "overlap_zero_size_reflexive",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "The `overlap` function returns true for two zero-size regions at the same base via `region1.base == region2.base`. Mathematically, empty intervals do not overlap. This is a minor spec defect in the degenerate case."
+  },
+  {
+    "phi": "inflight_pmem_overlap_idle_ignored",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Idle threads have no associated mapping operation, so they correctly contribute no physical memory overlap. The match arm returning false for `Idle` is the intended and correct behavior."
+  },
+  {
+    "phi": "uniqueness_not_frame_overlap_based",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The `inflight_maps_unique` check is complemented by `candidate_mapping_overlaps_inflight_pmem` which separately checks physical frame overlap. The `insert_map_preserves_unique` lemma requires `!candidate_mapping_overlaps_inflight_pmem(thread_state.values(), pte)` as a precondition, so double-mapping the same physical frame is prevented by the pmem overlap check, not the uniqueness invariant. These are two separate concerns working together."
+  }
+]

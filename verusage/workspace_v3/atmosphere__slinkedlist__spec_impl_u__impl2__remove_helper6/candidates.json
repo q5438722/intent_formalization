@@ -1,0 +1,37 @@
+[
+  {
+    "name": "length_drops_to_zero",
+    "target_fn": "remove_helper6",
+    "type": "behavioral",
+    "code": "proof fn phi_1_length_drops_to_zero<T: Copy, const N: usize>(\n    old_self: StaticLinkedList<T, N>,\n    new_self: StaticLinkedList<T, N>,\n    remove_index: SLLIndex,\n    v: T,\n    ret: T,\n)\n    requires\n        old_self.wf(),\n        old_self@.contains(v),\n        old_self.get_node_ref(v) == remove_index,\n        old_self.value_list_len != 1,\n        old_self.free_list_len != 0,\n        old_self.value_list_tail == remove_index,\n        new_self.wf(),\n        new_self@ =~= old_self@.remove_value(ret),\n        ret == v,\n        new_self.spec_len() == old_self.spec_len() - 1,\n    ensures\n        new_self@.len() == 0,\n{\n}",
+    "reason": "Undesirable if removing one element from a list with \u22652 elements could empty it entirely"
+  },
+  {
+    "name": "old_list_allows_singleton",
+    "target_fn": "remove_helper6",
+    "type": "boundary",
+    "code": "proof fn phi_2_old_list_allows_singleton<T: Copy, const N: usize>(\n    old_self: StaticLinkedList<T, N>,\n    remove_index: SLLIndex,\n    v: T,\n)\n    requires\n        old_self.wf(),\n        old_self@.contains(v),\n        old_self.get_node_ref(v) == remove_index,\n        old_self.value_list_len != 1,\n        old_self.free_list_len != 0,\n        old_self.value_list_tail == remove_index,\n    ensures\n        old_self@.len() <= 1,\n{\n}",
+    "reason": "Undesirable if the preconditions fail to guarantee the list has at least 2 elements"
+  },
+  {
+    "name": "removed_value_still_present",
+    "target_fn": "remove_helper6",
+    "type": "logical",
+    "code": "proof fn phi_3_removed_value_still_present<T: Copy, const N: usize>(\n    old_self: StaticLinkedList<T, N>,\n    new_self: StaticLinkedList<T, N>,\n    remove_index: SLLIndex,\n    v: T,\n    ret: T,\n)\n    requires\n        old_self.wf(),\n        old_self@.contains(v),\n        old_self.get_node_ref(v) == remove_index,\n        old_self.value_list_len != 1,\n        old_self.free_list_len != 0,\n        old_self.value_list_tail == remove_index,\n        new_self.wf(),\n        new_self.unique(),\n        new_self@ =~= old_self@.remove_value(ret),\n        ret == v,\n        new_self.spec_len() == old_self.spec_len() - 1,\n    ensures\n        new_self@.contains(ret),\n{\n}",
+    "reason": "Undesirable if the removed value persists in the post-state sequence despite unique removal"
+  },
+  {
+    "name": "sequence_unchanged_after_remove",
+    "target_fn": "remove_helper6",
+    "type": "behavioral",
+    "code": "proof fn phi_4_sequence_unchanged_after_remove<T: Copy, const N: usize>(\n    old_self: StaticLinkedList<T, N>,\n    new_self: StaticLinkedList<T, N>,\n    remove_index: SLLIndex,\n    v: T,\n    ret: T,\n)\n    requires\n        old_self.wf(),\n        old_self@.contains(v),\n        old_self.get_node_ref(v) == remove_index,\n        old_self.value_list_len != 1,\n        old_self.free_list_len != 0,\n        old_self.value_list_tail == remove_index,\n        new_self.wf(),\n        new_self@ =~= old_self@.remove_value(ret),\n        ret == v,\n        new_self.spec_len() == old_self.spec_len() - 1,\n    ensures\n        new_self@ =~= old_self@,\n{\n}",
+    "reason": "Undesirable if the abstract sequence is identical before and after removal, meaning nothing was actually removed"
+  },
+  {
+    "name": "free_list_size_unchanged",
+    "target_fn": "remove_helper6",
+    "type": "logical",
+    "code": "proof fn phi_5_free_list_size_unchanged<T: Copy, const N: usize>(\n    old_self: StaticLinkedList<T, N>,\n    new_self: StaticLinkedList<T, N>,\n    remove_index: SLLIndex,\n    v: T,\n    ret: T,\n)\n    requires\n        old_self.wf(),\n        old_self@.contains(v),\n        old_self.get_node_ref(v) == remove_index,\n        old_self.value_list_len != 1,\n        old_self.free_list_len != 0,\n        old_self.value_list_tail == remove_index,\n        new_self.wf(),\n        new_self@ =~= old_self@.remove_value(ret),\n        ret == v,\n        new_self.spec_len() == old_self.spec_len() - 1,\n    ensures\n        new_self.free_list_len == old_self.free_list_len,\n{\n}",
+    "reason": "Undesirable if the free list doesn't grow by 1 when a node is removed from the value list, violating the N = free + value invariant"
+  }
+]

@@ -1,0 +1,90 @@
+===PHI_START===
+NAME: empty_vec_empty_serialization
+TARGET_FN: serialize (Vec<u8>)
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_empty_vec_empty_serialization(v: Vec<u8>)
+    requires
+        v@.len() == 0,
+        v.is_marshalable(),
+    ensures
+        v.ghost_serialize().len() == 0,
+{
+}
+```
+REASON: Empty vec should still produce a length-prefix in its serialization, so zero-length output would mean the prefix is missing
+===PHI_END===
+
+===PHI_START===
+NAME: serialize_len_equals_raw_len
+TARGET_FN: serialize (Vec<u8>)
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_serialize_len_equals_raw_len(v: Vec<u8>)
+    requires
+        v.is_marshalable(),
+        v@.len() > 0,
+    ensures
+        v.ghost_serialize().len() == v@.len(),
+{
+}
+```
+REASON: Serialized form must be strictly longer than raw data due to the usize length prefix; equality would indicate a missing prefix
+===PHI_END===
+
+===PHI_START===
+NAME: different_len_vecs_same_serialization
+TARGET_FN: serialize (Vec<u8>)
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_different_len_vecs_same_serialization(v1: Vec<u8>, v2: Vec<u8>)
+    requires
+        v1.is_marshalable(),
+        v2.is_marshalable(),
+        v1@.len() != v2@.len(),
+    ensures
+        v1.ghost_serialize() =~= v2.ghost_serialize(),
+{
+}
+```
+REASON: Serialization should be injective on length; two vecs of different lengths mapping to the same bytes would break deserialization
+===PHI_END===
+
+===PHI_START===
+NAME: prefix_is_raw_bytes_not_length
+TARGET_FN: serialize (Vec<u8>)
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_prefix_is_raw_bytes_not_length(v: Vec<u8>)
+    requires
+        v.is_marshalable(),
+        v@.len() > 0,
+    ensures
+        v.ghost_serialize().subrange(0, v@.len() as int) =~= v@,
+{
+}
+```
+REASON: The serialization format is length-prefix then raw bytes; if the first v@.len() bytes were the raw data, the length prefix would be misplaced or absent
+===PHI_END===
+
+===PHI_START===
+NAME: single_byte_vec_serializes_to_one_byte
+TARGET_FN: serialize (Vec<u8>)
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_single_byte_vec_serializes_to_one_byte(v: Vec<u8>)
+    requires
+        v.is_marshalable(),
+        v@.len() == 1,
+    ensures
+        v.ghost_serialize().len() == 1,
+{
+}
+```
+REASON: A 1-element vec should serialize to 8 bytes (u64 LE length prefix) + 1 byte = 9 bytes; length 1 would mean the prefix is entirely absent
+===PHI_END===

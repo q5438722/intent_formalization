@@ -1,0 +1,17 @@
+===VERDICT_START===
+PHI: disjoint_l4_no_cross_level_check
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures clause `a == p || a != p` is a tautology that holds for any values. While the observation about missing cross-level disjointness is interesting, this PHI proves nothing about the spec.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: l4_dom_singleton_cr3
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This follows directly from `wf_l4` which explicitly constrains `self.l4_table@.dom() =~= Set::<PageMapPtr>::empty().insert(self.cr3)`. A single L4 table per PageTable struct is intentional — each process/address space has its own PageTable instance with its own cr3. Multiple address spaces are modeled as multiple PageTable instances, not multiple L4 entries within one.
+===VERDICT_END===
+
+===SUMMARY===
+Both candidates are false positives. `disjoint_l4_no_cross_level_check` has a tautological ensures clause (P ∨ ¬P) that proves nothing. `l4_dom_singleton_cr3` is a correct and intentional consequence of the spec design — each PageTable struct models one address space with one L4 table rooted at cr3; multi-address-space support comes from having multiple PageTable instances rather than multiple L4 tables within one.
+===END_SUMMARY===

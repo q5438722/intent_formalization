@@ -1,0 +1,91 @@
+===PHI_START===
+NAME: lemma_is_bit_set_not0_no_bound
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_lemma_is_bit_set_not0_no_bound(j: usize)
+    requires
+        j >= 64,
+    ensures
+        is_bit_set(!0usize, j),
+{
+    lemma_is_bit_set();
+}
+```
+REASON: `is_bit_set(!0usize, j)` is asserted for ALL `j: usize` with no `j < 64` guard — for `j >= 64`, `1usize << j` is undefined/zero, so the external_body axiom claims a property about out-of-range bit positions that shouldn't hold
+===PHI_END===
+
+===PHI_START===
+NAME: or_bit_set_no_bound
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_or_bit_set_no_bound(a: usize, b: usize, j: usize)
+    requires
+        j >= 64,
+    ensures
+        is_bit_set(a | b, j) <==> is_bit_set(a, j) || is_bit_set(b, j),
+{
+    lemma_is_bit_set();
+}
+```
+REASON: The OR biconditional has no `j < 64` guard — for out-of-range bit positions where `1usize << j` wraps, this axiom could produce inconsistent conclusions about bit operations
+===PHI_END===
+
+===PHI_START===
+NAME: and_bit_set_no_bound
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_and_bit_set_no_bound(a: usize, b: usize, j: usize)
+    requires
+        j >= 64,
+    ensures
+        is_bit_set(a & b, j) <==> is_bit_set(a, j) && is_bit_set(b, j),
+{
+    lemma_is_bit_set();
+}
+```
+REASON: The AND biconditional has no `j < 64` guard — for `j >= 64`, `1usize << j` wraps around, and asserting biconditional equivalence at these positions could enable unsound reasoning
+===PHI_END===
+
+===PHI_START===
+NAME: lemma_view_external_body_decomposition
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_lemma_view_external_body_decomposition(cm: &CommitMask, i: int)
+    requires
+        cm@.contains(i),
+    ensures
+        ({
+            let a = i / usize::BITS as int;
+            let b = (i % usize::BITS as int) as usize;
+            &&& a * 64 + b == i
+            &&& is_bit_set(cm.mask[a], b)
+        }),
+{
+    cm.lemma_view();
+}
+```
+REASON: `lemma_view` is `external_body` and its first ensures has no bound on `a` — for `i >= 512` or `i < 0`, `a` could be out of `[0,8)` range, making `self.mask[a]` an out-of-bounds access in the spec that the trusted axiom doesn't guard against
+===PHI_END===
+
+===PHI_START===
+NAME: disjoint_axiom_redundant_unsound
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_disjoint_axiom_redundant_unsound(a: usize, b: usize, j: usize)
+    requires
+        j < 64,
+        a & b == 0,
+        is_bit_set(a, j),
+    ensures
+        !is_bit_set(b, j),
+{
+    lemma_is_bit_set();
+}
+```
+REASON: The sixth axiom clause (`a & b == 0 ==> !(is_bit_set(a,j) && is_bit_set(b,j))`) is claimed to be "implied by previous properties" but being external_body means the implication is never checked — if the AND biconditional axiom is wrong for any edge case, this redundant axiom adds an independent unsound assumption
+===PHI_END===

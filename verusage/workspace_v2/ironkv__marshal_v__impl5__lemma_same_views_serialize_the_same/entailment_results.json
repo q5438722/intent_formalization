@@ -1,0 +1,47 @@
+[
+  {
+    "name": "view_equal_no_marshalable_serialize_equal",
+    "type": "logical",
+    "code": "proof fn phi_1_view_equal_no_marshalable_serialize_equal(a: usize, b: usize)\n    requires\n        a.view_equal(&b),\n        !a.is_marshalable(),\n        !b.is_marshalable(),\n    ensures\n        a.ghost_serialize() == b.ghost_serialize(),\n{\n    a.lemma_same_views_serialize_the_same(&b);\n}",
+    "reason": "`lemma_same_views_serialize_the_same` only requires `view_equal` \u2014 it claims serialize equality even for non-marshalable values where `ghost_serialize` at the trait level is under-specified (only `recommends`)",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "view_equal_implies_marshalable_equivalence",
+    "type": "logical",
+    "code": "proof fn phi_2_view_equal_implies_marshalable_equivalence(a: usize, b: usize)\n    requires\n        a.view_equal(&b),\n        a.is_marshalable(),\n    ensures\n        b.is_marshalable(),\n{\n    a.lemma_same_views_serialize_the_same(&b);\n}",
+    "reason": "The external_body lemma ensures `self.is_marshalable() == other.is_marshalable()` from only `view_equal` \u2014 for usize this is correct since `view_equal` is `self@ === other@` and `is_marshalable` is `*self <= u64::MAX`, but the trust is unverified",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "tuple_serialize_len_sum",
+    "type": "behavioral",
+    "code": "proof fn phi_3_tuple_serialize_len_sum(a: u64, b: u64)\n    requires\n        a.is_marshalable(),\n        b.is_marshalable(),\n    ensures\n        (a, b).ghost_serialize().len() == a.ghost_serialize().len() + b.ghost_serialize().len(),\n{\n}",
+    "reason": "Tuple serialization is concatenation, so length is additive \u2014 but if `spec_u64_to_le_bytes` doesn't guarantee fixed-length output (8 bytes), the tuple's `is_marshalable` overflow check against `usize::MAX` could be vacuously satisfied or unsatisfied depending on unconstrained serialize lengths",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "usize_over_u64max_serialize_unconstrained",
+    "type": "boundary",
+    "code": "proof fn phi_4_usize_over_u64max_serialize_unconstrained(a: usize, b: usize)\n    requires\n        *a as int > u64::MAX,\n        *b as int > u64::MAX,\n        a@ == b@,\n    ensures\n        a.ghost_serialize() == b.ghost_serialize(),\n{\n    a.lemma_same_views_serialize_the_same(&b);\n}",
+    "reason": "For usize values above u64::MAX, `is_marshalable` is false and `ghost_serialize` delegates to `(*self as u64).ghost_serialize()` \u2014 the cast `*self as u64` is well-defined in spec mode but the external_body lemma claims serialize equality without the marshalability guard",
+    "entailed": false,
+    "verus_output": "|         *a as int > u64::MAX,\n    |         ^^ can't be dereferenced\n\nerror[E0614]: type `usize` cannot be dereferenced\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__marshal_v__impl5__lemma_same_views_serialize_the_same/phi_4_usize_over_u64max_serialize_unconstrained.rs:112:9\n    |\n112 |         *b as int > u64::MAX,\n    |         ^^ can't be dereferenced\n\nerror: aborting due to 2 previous errors\n\nFor more information about this error, try `rustc --explain E0614`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "view_equal_reflexive_tuple",
+    "type": "logical",
+    "code": "proof fn phi_5_view_equal_reflexive_tuple(t: (u64, u64))\n    requires\n        t.is_marshalable(),\n    ensures\n        t.view_equal(&t),\n{\n}",
+    "reason": "Reflexivity of `view_equal` for tuples depends on reflexivity of component `view_equal` \u2014 for u64 this is `self@ === other@` which is trivially reflexive, but at the trait level there is no axiom requiring view_equal to be reflexive, so it's only guaranteed by the specific impl definitions",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

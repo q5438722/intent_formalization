@@ -1,0 +1,94 @@
+Looking at the spec, I need to find properties that would be undesirable if the spec entailed them. Let me focus on the interference predicates and the key/object_ref definitions.
+
+===PHI_START===
+NAME: create_key_namespace_diverges
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_create_key_namespace_diverges(req: CreateRequest)
+    requires
+        req.obj.metadata.namespace is Some,
+        req.namespace != req.obj.metadata.namespace->0,
+    ensures
+        req.key().namespace != req.obj.metadata.namespace->0,
+{
+}
+```
+REASON: CreateRequest::key uses self.namespace not self.obj.metadata.namespace, so the key can silently disagree with the object's own namespace metadata
+===PHI_END===
+
+===PHI_START===
+NAME: update_key_ignores_obj_name
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_update_key_ignores_obj_name(req: UpdateRequest)
+    requires
+        req.obj.metadata.name is Some,
+        req.name != req.obj.metadata.name->0,
+    ensures
+        req.key().name != req.obj.metadata.name->0,
+{
+}
+```
+REASON: UpdateRequest::key uses self.name rather than self.obj.metadata.name, allowing the key to target a different resource than what the object payload describes
+===PHI_END===
+
+===PHI_START===
+NAME: create_interference_vacuous_non_pod
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_create_interference_vacuous_non_pod(req: CreateRequest, vrs: VReplicaSetView, s: ClusterState)
+    requires
+        req.obj.kind != Kind::PodKind,
+        req.obj.metadata.owner_references is Some,
+        req.obj.metadata.owner_references->0.contains(vrs.controller_owner_ref()),
+    ensures
+        no_other_pending_create_request_interferes_with_vrs_reconcile(req, vrs)(s),
+{
+}
+```
+REASON: the create interference check is vacuously satisfied for non-Pod kinds — another controller could create a non-Pod resource with VRS owner references and the invariant would not flag it
+===PHI_END===
+
+===PHI_START===
+NAME: controller_owner_ref_ignores_namespace
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_controller_owner_ref_ignores_namespace(v1: VReplicaSetView, v2: VReplicaSetView)
+    requires
+        v1.metadata.name is Some,
+        v2.metadata.name is Some,
+        v1.metadata.uid is Some,
+        v2.metadata.uid is Some,
+        v1.metadata.name->0 == v2.metadata.name->0,
+        v1.metadata.uid->0 == v2.metadata.uid->0,
+        v1.metadata.namespace != v2.metadata.namespace,
+    ensures
+        v1.controller_owner_ref() == v2.controller_owner_ref(),
+{
+}
+```
+REASON: controller_owner_ref does not include namespace — two VReplicaSets in different namespaces with same name and uid produce identical owner references, so the interference predicates cannot distinguish cross-namespace ownership
+===PHI_END===
+
+===PHI_START===
+NAME: update_status_interference_missing_key_check
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_update_status_interference_missing_key_check(req: UpdateStatusRequest, vrs: VReplicaSetView, s: ClusterState)
+    requires
+        req.obj.kind == Kind::PodKind,
+        req.key().namespace == vrs.metadata.namespace.unwrap(),
+        req.obj.metadata.resource_version is Some,
+        !s.resources().contains_key(req.key()),
+    ensures
+        no_other_pending_update_status_request_interferes_with_vrs_reconcile(req, vrs)(s),
+{
+}
+```
+REASON: the update-status interference predicate accesses s.resources()[req.key()] without guarding on contains_key — when the key is absent, the negation of the inner block is trivially satisfiable, so updates to nonexistent pods pass the interference check
+===PHI_END===

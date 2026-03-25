@@ -1,0 +1,47 @@
+[
+  {
+    "name": "lemma_map_insert_value_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_lemma_map_insert_value_external_body(map: Map<int, int>, key: int, value: int)\n    ensures\n        map.insert(key, value).values().contains(value),\n{\n    lemma_map_insert_value(map, key, value);\n}",
+    "reason": "`lemma_map_insert_value` is `external_body` with `unimplemented!()` \u2014 its ensures is a standard Map property but is trusted without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "values_equality_swaps_old_new",
+    "type": "logical",
+    "code": "proof fn phi_2_values_equality_swaps_old_new(map: Map<int, int>, key: int, value: int)\n    requires\n        map.dom().contains(key),\n    ensures\n        map.insert(key, value).values() =~= map.values().remove(map[key]).insert(value),\n{\n    lemma_map_insert_values_equality(map, key, value);\n}",
+    "reason": "The lemma establishes a set equality involving `.insert(map[key])` on both sides \u2014 if this stronger form (removing old, adding new) also holds, the values set correctly tracks replacements; if it doesn't, the lemma may be weaker than expected",
+    "entailed": false,
+    "verus_output": "aps_old_new.rs:51:9\n   |\n47 | proof fn phi_2_values_equality_swaps_old_new(map: Map<int, int>, key: int, value: int)\n   |       -------------------------------------------------------------------------------- at the end of the function body\n...\n51 |         map.insert(key, value).values() =~= map.values().remove(map[key]).insert(value),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "insert_existing_key_same_value_noop",
+    "type": "behavioral",
+    "code": "proof fn phi_3_insert_existing_key_same_value_noop(map: Map<int, int>, key: int)\n    requires\n        map.dom().contains(key),\n    ensures\n        map.insert(key, map[key]).values() =~= map.values(),\n{\n    lemma_map_insert_values_equality(map, key, map[key]);\n}",
+    "reason": "Re-inserting the same key-value pair should leave values unchanged \u2014 tests that the lemma's set equality degenerates correctly when `value == map[key]`",
+    "entailed": false,
+    "verus_output": "ant__lemma_map_insert_values_equality/phi_3_insert_existing_key_same_value_noop.rs:51:9\n   |\n47 | proof fn phi_3_insert_existing_key_same_value_noop(map: Map<int, int>, key: int)\n   |       -------------------------------------------------------------------------- at the end of the function body\n...\n51 |         map.insert(key, map[key]).values() =~= map.values(),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "values_equality_key_not_in_dom",
+    "type": "boundary",
+    "code": "proof fn phi_4_values_equality_key_not_in_dom(map: Map<int, int>, key: int, value: int)\n    requires\n        !map.dom().contains(key),\n    ensures\n        map.insert(key, value).values() =~= map.values().insert(value),\n{\n    lemma_map_insert_value(map, key, value);\n}",
+    "reason": "When the key is fresh (not in domain), insert should simply add the value to values \u2014 the verified lemma only handles existing keys; if this also verifies via `lemma_map_insert_value`, the external_body is doing more work than expected",
+    "entailed": false,
+    "verus_output": "uality/phi_4_values_equality_key_not_in_dom.rs:51:9\n   |\n47 | proof fn phi_4_values_equality_key_not_in_dom(map: Map<int, int>, key: int, value: int)\n   |       --------------------------------------------------------------------------------- at the end of the function body\n...\n51 |         map.insert(key, value).values() =~= map.values().insert(value),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "values_equality_singleton_map",
+    "type": "boundary",
+    "code": "proof fn phi_5_values_equality_singleton_map(key: int, old_val: int, new_val: int)\n    requires\n        old_val != new_val,\n    ensures\n        Map::empty().insert(key, old_val).insert(key, new_val).values() =~= set![new_val],\n{\n    lemma_map_insert_values_equality(Map::empty().insert(key, old_val), key, new_val);\n}",
+    "reason": "Overwriting the only entry in a singleton map should produce values = {new_val} \u2014 tests that the equality lemma correctly accounts for singleton maps where the old value is fully replaced",
+    "entailed": false,
+    "verus_output": "y_singleton_map.rs:51:9\n   |\n47 | proof fn phi_5_values_equality_singleton_map(key: int, old_val: int, new_val: int)\n   |       ---------------------------------------------------------------------------- at the end of the function body\n...\n51 |         Map::empty().insert(key, old_val).insert(key, new_val).values() =~= set![new_val],\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

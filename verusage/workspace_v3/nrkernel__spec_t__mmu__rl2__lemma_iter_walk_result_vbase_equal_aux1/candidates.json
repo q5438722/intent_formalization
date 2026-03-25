@@ -1,0 +1,37 @@
+[
+  {
+    "name": "align_is_noop_for_unaligned",
+    "target_fn": "align_to_usize",
+    "type": "behavioral",
+    "code": "proof fn phi_1_align_is_noop_for_unaligned(a: usize, b: usize)\n    requires\n        b > 0,\n        a % b != 0,\n    ensures\n        align_to_usize(a, b) == a,\n{\n}",
+    "reason": "If alignment returns the original value even when the input is not aligned, the function fails its purpose."
+  },
+  {
+    "name": "align_changes_already_aligned",
+    "target_fn": "align_to_usize",
+    "type": "boundary",
+    "code": "proof fn phi_2_align_changes_already_aligned(a: usize, b: usize)\n    requires\n        b > 0,\n        a % b == 0,\n    ensures\n        align_to_usize(a, b) != a,\n{\n}",
+    "reason": "If aligning an already-aligned value changes it, the function incorrectly modifies valid inputs."
+  },
+  {
+    "name": "align_exceeds_input",
+    "target_fn": "align_to_usize",
+    "type": "logical",
+    "code": "proof fn phi_3_align_exceeds_input(a: usize, b: usize)\n    requires\n        b > 0,\n    ensures\n        align_to_usize(a, b) > a,\n{\n}",
+    "reason": "Downward alignment must never produce a value larger than the original input."
+  },
+  {
+    "name": "align_result_not_multiple",
+    "target_fn": "align_to_usize",
+    "type": "logical",
+    "code": "proof fn phi_4_align_result_not_multiple(a: usize, b: usize)\n    requires\n        b > 0,\n    ensures\n        align_to_usize(a, b) % b != 0,\n{\n}",
+    "reason": "The result of alignment to b should always be a multiple of b; violating this breaks all page-table address invariants."
+  },
+  {
+    "name": "align_not_idempotent",
+    "target_fn": "align_to_usize",
+    "type": "boundary",
+    "code": "proof fn phi_5_align_not_idempotent(a: usize, b: usize)\n    requires\n        b > 0,\n    ensures\n        align_to_usize(align_to_usize(a, b), b) != align_to_usize(a, b),\n{\n}",
+    "reason": "Alignment should be idempotent; applying it twice must yield the same result as once, otherwise downstream walk computations diverge."
+  }
+]

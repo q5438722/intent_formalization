@@ -1,0 +1,47 @@
+[
+  {
+    "name": "va_range_lemma_typo_j_unconstrained",
+    "type": "logical",
+    "code": "proof fn phi_1_va_range_lemma_typo_j_unconstrained(va: VAddr, len: usize, i: usize, j: usize)\n    requires\n        spec_va_4k_valid(va),\n        spec_va_4k_range_valid(va, len),\n        0 <= i < len,\n        j >= len,\n    ensures\n        (i == j) == (spec_va_add_range(va, i) == spec_va_add_range(va, j)),\n{\n    proof {\n        va_range_lemma();\n    }\n}",
+    "reason": "va_range_lemma has a copy-paste bug \u2014 the ensures says `0 <= i < len && 0 <= i < len` (duplicated `i`) instead of `0 <= j < len`, so j is completely unconstrained, making the injectivity claim hold for arbitrary out-of-range j values",
+    "entailed": false,
+    "verus_output": "error: proof blocks inside spec code is currently supported only for spec functions with decreases\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__va_range__impl2_new/phi_1_va_range_lemma_typo_j_unconstrained.rs:150:11\n    |\n150 |       proof {\n    |  ___________^\n151 | |         va_range_lemma();\n152 | |     }\n    | |_____^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "va_add_range_nonzero_distinct",
+    "type": "behavioral",
+    "code": "proof fn phi_2_va_add_range_nonzero_distinct(va: usize, i: usize)\n    requires\n        i != 0,\n    ensures\n        spec_va_add_range(va, i) != va,\n{\n    let ret = va_add_range(va, i);\n}",
+    "reason": "va_add_range's external_body ensures `i != 0 ==> ret != va` without overflow checks \u2014 but spec_va_add_range computes `(va + i*4096) as usize` which can wrap to equal va, so the trusted ensures is unsound for large inputs",
+    "entailed": false,
+    "verus_output": "error: cannot call function `phi_2_va_add_range_nonzero_distinct::va_add_range` with mode exec\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__va_range__impl2_new/phi_2_va_add_range_nonzero_distinct.rs:147:15\n    |\n147 |     let ret = va_add_range(va, i);\n    |               ^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "va_range_lemma_out_of_bounds_injectivity",
+    "type": "boundary",
+    "code": "proof fn phi_3_va_range_lemma_out_of_bounds_injectivity(va: VAddr, len: usize, i: usize)\n    requires\n        spec_va_4k_valid(va),\n        spec_va_4k_range_valid(va, len),\n        len > 0,\n        0 <= i < len,\n    ensures\n        spec_va_add_range(va, i) != spec_va_add_range(va, len),\n{\n    proof {\n        va_range_lemma();\n    }\n}",
+    "reason": "Due to the `0 <= i < len` typo (j not bounded), the lemma claims injectivity between in-range index i and out-of-range index len \u2014 this could be false if spec_va_add_range wraps around",
+    "entailed": false,
+    "verus_output": "error: proof blocks inside spec code is currently supported only for spec functions with decreases\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__va_range__impl2_new/phi_3_va_range_lemma_out_of_bounds_injectivity.rs:150:11\n    |\n150 |       proof {\n    |  ___________^\n151 | |         va_range_lemma();\n152 | |     }\n    | |_____^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "va_4k_range_valid_vacuous_zero_len",
+    "type": "boundary",
+    "code": "proof fn phi_4_va_4k_range_valid_vacuous_zero_len(va: usize)\n    ensures\n        spec_va_4k_range_valid(va, 0),\n{\n}",
+    "reason": "spec_va_4k_range_valid with len==0 is vacuously true for ANY va including invalid addresses \u2014 no va_4k_valid precondition needed",
+    "entailed": true,
+    "verus_output": "verification results:: 8 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "va_range_lemma_derives_false_for_overflow",
+    "type": "logical",
+    "code": "proof fn phi_5_va_range_lemma_derives_false_for_overflow(va: VAddr, len: usize)\n    requires\n        spec_va_4k_valid(va),\n        spec_va_4k_range_valid(va, len),\n        len >= 2,\n    ensures\n        spec_va_add_range(va, 0) != spec_va_add_range(va, usize::MAX),\n{\n    proof {\n        va_range_lemma();\n    }\n}",
+    "reason": "The j-unconstrained typo lets va_range_lemma assert injectivity for j=usize::MAX \u2014 this is trusted external_body claiming a property about arithmetic overflow that may not hold, potentially introducing unsoundness",
+    "entailed": false,
+    "verus_output": "error: proof blocks inside spec code is currently supported only for spec functions with decreases\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__va_range__impl2_new/phi_5_va_range_lemma_derives_false_for_overflow.rs:149:11\n    |\n149 |       proof {\n    |  ___________^\n150 | |         va_range_lemma();\n151 | |     }\n    | |_____^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,37 @@
+[
+  {
+    "name": "retransmit_always_empty",
+    "target_fn": "retransmit_un_acked_packets",
+    "type": "behavioral",
+    "code": "proof fn phi_1_retransmit_always_empty(sd: CSingleDelivery, src: EndPoint, packets: Seq<CPacket>)\n    requires\n        sd.valid(),\n        src.abstractable(),\n        abstractify_seq_of_cpackets_to_set_of_sht_packets(packets) == sd@.un_acked_messages(src@),\n        outbound_packet_seq_is_valid(packets),\n        outbound_packet_seq_has_correct_srcs(packets, src@),\n        sd@.un_acked_messages(src@) == packets.map_values(|p: CPacket| p@).to_set(),\n        CSingleDelivery::packets_are_valid_messages(packets),\n    ensures\n        packets.len() == 0,\n{\n}",
+    "reason": "Would mean retransmit never produces any packets, making retransmission a no-op regardless of un-acked state"
+  },
+  {
+    "name": "count_zero_nonempty",
+    "target_fn": "un_acked_messages_for_dest_up_to",
+    "type": "boundary",
+    "code": "proof fn phi_2_count_zero_nonempty(sd: SingleDelivery<Message>, src: AbstractEndPoint, dst: AbstractEndPoint)\n    requires\n        sd.send_state.contains_key(dst),\n        sd.send_state[dst].un_acked.len() > 0,\n    ensures\n        sd.un_acked_messages_for_dest_up_to(src, dst, 0) != Set::<Packet>::empty(),\n{\n}",
+    "reason": "With count=0 the index range is empty so the result set must be empty; non-empty would mean phantom packets appear from nowhere"
+  },
+  {
+    "name": "wrong_src_in_unacked_dest",
+    "target_fn": "un_acked_messages_for_dest",
+    "type": "logical",
+    "code": "proof fn phi_3_wrong_src_in_unacked_dest(sd: SingleDelivery<Message>, src: AbstractEndPoint, dst: AbstractEndPoint)\n    requires\n        sd.send_state.contains_key(dst),\n        sd.send_state[dst].un_acked.len() > 0,\n    ensures\n        exists |p: Packet| sd.un_acked_messages_for_dest(src, dst).contains(p) && p.src != src,\n{\n}",
+    "reason": "All packets in un_acked_messages_for_dest are constrained to have p.src == src; a packet with wrong src would be a spoofed origin"
+  },
+  {
+    "name": "monotonicity_violated",
+    "target_fn": "un_acked_messages_for_dest_up_to",
+    "type": "logical",
+    "code": "proof fn phi_4_monotonicity_violated(sd: SingleDelivery<Message>, src: AbstractEndPoint, dst: AbstractEndPoint, c1: nat, c2: nat)\n    requires\n        sd.send_state.contains_key(dst),\n        c1 <= c2,\n        c2 <= sd.send_state[dst].un_acked.len(),\n    ensures\n        !sd.un_acked_messages_for_dest_up_to(src, dst, c1).subset_of(\n            sd.un_acked_messages_for_dest_up_to(src, dst, c2)),\n{\n}",
+    "reason": "Increasing the count should only add packets; losing packets when scanning further would silently drop retransmissions"
+  },
+  {
+    "name": "retransmit_preconditions_unsatisfiable",
+    "target_fn": "retransmit_un_acked_packets",
+    "type": "boundary",
+    "code": "proof fn phi_5_retransmit_preconditions_unsatisfiable(sd: CSingleDelivery, src: EndPoint)\n    requires\n        sd.valid(),\n        src.abstractable(),\n    ensures\n        false,\n{\n}",
+    "reason": "If the preconditions are contradictory the function can never be called, making the entire retransmission mechanism dead code"
+  }
+]

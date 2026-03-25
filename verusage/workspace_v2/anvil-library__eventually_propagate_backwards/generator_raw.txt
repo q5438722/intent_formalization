@@ -1,0 +1,93 @@
+===PHI_START===
+NAME: execution_equality_forces_fn_equality
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_execution_equality_forces_fn_equality(f: spec_fn(nat) -> int, g: spec_fn(nat) -> int)
+    requires
+        forall |i: nat| #[trigger] f(i) == g(i),
+    ensures
+        f == g,
+{
+    let ex1 = Execution { nat_to_state: f };
+    let ex2 = Execution { nat_to_state: g };
+    execution_equality::<int>(ex1, ex2);
+}
+```
+REASON: execution_equality forces intensional equality of spec_fn from pointwise extensional equivalence — two structurally distinct closures are collapsed to equal without proof
+===PHI_END===
+
+===PHI_START===
+NAME: suffix_zero_equals_self
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_suffix_zero_equals_self(ex: Execution<int>)
+    ensures
+        ex.suffix(0) == ex,
+{
+    assert forall |i: nat| #[trigger] (ex.suffix(0).nat_to_state)(i) == (ex.nat_to_state)(i) by {
+        assert((ex.suffix(0).nat_to_state)(i) == (ex.nat_to_state)(i + 0));
+    };
+    execution_equality::<int>(ex.suffix(0), ex);
+}
+```
+REASON: suffix(0) creates a fresh closure |i| f(i+0) which is intensionally distinct from f — execution_equality silently bridges this without the SMT solver proving closure identity
+===PHI_END===
+
+===PHI_START===
+NAME: suffix_composition_equals_addition
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_suffix_composition_equals_addition(ex: Execution<int>, a: nat, b: nat)
+    ensures
+        ex.suffix(a).suffix(b) == ex.suffix(a + b),
+{
+    assert forall |i: nat| #[trigger] (ex.suffix(a).suffix(b).nat_to_state)(i) == (ex.suffix(a + b).nat_to_state)(i) by {
+        assert((ex.suffix(a).suffix(b).nat_to_state)(i) == (ex.nat_to_state)(i + b + a));
+        assert((ex.suffix(a + b).nat_to_state)(i) == (ex.nat_to_state)(i + (a + b)));
+    };
+    execution_equality::<int>(ex.suffix(a).suffix(b), ex.suffix(a + b));
+}
+```
+REASON: suffix(a).suffix(b) nests two closure wrappers while suffix(a+b) has one — execution_equality collapses the intensionally distinct nested closures to equal
+===PHI_END===
+
+===PHI_START===
+NAME: eventually_unfold_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_eventually_unfold_intensional_bridge(ex: Execution<int>, p: TempPred<int>, i: nat)
+    requires
+        p.satisfied_by(ex.suffix(i)),
+    ensures
+        eventually(p).satisfied_by(ex),
+{
+    eventually_unfold::<int>(ex, p);
+}
+```
+REASON: eventually_unfold is external_body extracting the existential from eventually's TempPred::new closure — this bridges the intensional gap, and the proof should fail since the requires don't establish eventually(p).satisfied_by(ex)
+===PHI_END===
+
+===PHI_START===
+NAME: eventually_propagate_to_zero
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_eventually_propagate_to_zero(ex: Execution<int>, p: TempPred<int>, i: nat)
+    requires
+        p.satisfied_by(ex.suffix(i)),
+    ensures
+        eventually(p).satisfied_by(ex),
+{
+    assert(eventually(p).satisfied_by(ex.suffix(0))) by {
+        assert(p.satisfied_by(ex.suffix(0).suffix(i)));
+        execution_equality::<int>(ex.suffix(0).suffix(i), ex.suffix(i));
+    };
+    execution_equality::<int>(ex.suffix(0), ex);
+}
+```
+REASON: combining execution_equality to equate suffix(0) with self and suffix(0).suffix(i) with suffix(i) lets us inject witness i into eventually's closure for any execution — the external_body axiom does all the real work
+===PHI_END===

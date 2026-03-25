@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: always_valid_address
+TARGET_FN: valid_physical_address
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_always_valid_address(ep: EndPoint)
+    ensures
+        ep@.valid_physical_address() == true,
+{
+    // proof body (can be empty)
+}
+```
+REASON: If provable, the spec is vacuously true and valid_physical_address never rejects any input.
+===PHI_END===
+
+===PHI_START===
+NAME: boundary_len_exact_valid
+TARGET_FN: valid_physical_address
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_boundary_len_exact_valid(ep: EndPoint)
+    requires
+        ep.id@.len() == 0x100000,
+    ensures
+        ep@.valid_physical_address() == true,
+{
+    // proof body (can be empty)
+}
+```
+REASON: If provable, the boundary is off-by-one and addresses of length exactly 0x100000 are accepted.
+===PHI_END===
+
+===PHI_START===
+NAME: empty_id_invalid
+TARGET_FN: valid_physical_address
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_empty_id_invalid(ep: EndPoint)
+    requires
+        ep.id@.len() == 0,
+    ensures
+        ep@.valid_physical_address() == false,
+{
+    // proof body (can be empty)
+}
+```
+REASON: If provable, zero-length addresses are rejected, which would be undesirable since empty IDs should be valid physical addresses.
+===PHI_END===
+
+===PHI_START===
+NAME: new_hashmap_nonempty
+TARGET_FN: new
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_new_hashmap_nonempty(ep: AbstractEndPoint)
+    ensures
+        !Map::<AbstractEndPoint, CAckState>::empty().dom().is_empty(),
+{
+    // proof body (can be empty)
+}
+```
+REASON: If provable, the empty map postcondition of HashMap::new is inconsistent and the map already contains keys.
+===PHI_END===
+
+===PHI_START===
+NAME: zero_count_nonempty_set
+TARGET_FN: un_acked_messages_for_dest_up_to
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_zero_count_nonempty_set(sd: SingleDelivery<Message>, src: AbstractEndPoint, dst: AbstractEndPoint, p: Packet)
+    requires
+        sd.send_state.contains_key(dst),
+        0 <= sd.send_state[dst].un_acked.len(),
+    ensures
+        sd.un_acked_messages_for_dest_up_to(src, dst, 0).contains(p),
+{
+    // proof body (can be empty)
+}
+```
+REASON: If provable, requesting zero un-acked messages still yields packets, meaning the count parameter has no filtering effect.
+===PHI_END===

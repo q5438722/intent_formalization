@@ -1,0 +1,80 @@
+===PHI_START===
+NAME: map_finite_external_body_trusted
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_map_finite_external_body_trusted(s: Set<int>, f: spec_fn(int) -> int)
+    requires
+        s.finite(),
+    ensures
+        s.map(f).finite(),
+{
+    map_finite(s, f);
+}
+```
+REASON: `map_finite` is `external_body` with `unimplemented!()` — the finiteness preservation of `Set::map` is trusted without proof, creating an unnecessary soundness dependency
+===PHI_END===
+
+===PHI_START===
+NAME: map_empty_is_empty
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_map_empty_is_empty(f: spec_fn(int) -> int)
+    ensures
+        Set::<int>::empty().map(f) =~= Set::<int>::empty(),
+{
+}
+```
+REASON: Mapping an empty set should produce an empty set — if it didn't, the map operation would fabricate elements from nothing
+===PHI_END===
+
+===PHI_START===
+NAME: map_finite_auto_instantiation
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_map_finite_auto_instantiation(s: Set<int>, f: spec_fn(int) -> int, g: spec_fn(int) -> int)
+    requires
+        s.finite(),
+    ensures
+        s.map(f).finite(),
+        s.map(g).finite(),
+        s.map(f).map(g).finite(),
+{
+    map_set_finite_auto::<int, int>();
+}
+```
+REASON: The auto lemma should allow chaining map operations while preserving finiteness — if it fails for composed maps, the auto quantifier doesn't propagate correctly
+===PHI_END===
+
+===PHI_START===
+NAME: map_singleton_is_singleton
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_map_singleton_is_singleton(x: int, f: spec_fn(int) -> int)
+    ensures
+        set![x].map(f) =~= set![f(x)],
+{
+}
+```
+REASON: Mapping a singleton set should produce a singleton with the mapped element — any other result means Set::map mishandles the simplest non-empty case
+===PHI_END===
+
+===PHI_START===
+NAME: map_constant_fn_produces_singleton
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_map_constant_fn_produces_singleton(s: Set<int>)
+    requires
+        s.finite(),
+        s.len() > 0,
+    ensures
+        s.map(|_x: int| 42int) =~= set![42int],
+{
+}
+```
+REASON: Mapping with a constant function should collapse all elements to a single value — if the result contained more than one element, Set::map would be duplicating rather than deduplicating
+===PHI_END===

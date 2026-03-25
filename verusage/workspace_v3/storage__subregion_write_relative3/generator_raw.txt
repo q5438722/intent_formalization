@@ -1,0 +1,147 @@
+===PHI_START===
+NAME: write_is_noop
+TARGET_FN: write_relative
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_write_is_noop<PMRegion: PersistentMemoryRegion>(
+    sub: WritablePersistentMemorySubregion,
+    pm_old: PMRegion,
+    pm_new: PMRegion,
+    relative_addr: u64,
+    bytes: Seq<u8>,
+)
+    requires
+        sub.inv(&pm_old),
+        relative_addr + bytes.len() <= sub.view(&pm_old).len(),
+        sub.view(&pm_old).no_outstanding_writes_in_range(relative_addr as int, relative_addr + bytes.len()),
+        forall|i: int| relative_addr <= i < relative_addr + bytes.len() ==> sub.is_writable_relative_addr(i),
+        sub.inv(&pm_new),
+        sub.view(&pm_new) == sub.view(&pm_old).write(relative_addr as int, bytes),
+        bytes.len() > 0,
+    ensures
+        sub.view(&pm_new) == sub.view(&pm_old),
+{
+}
+```
+REASON: If provable, writes of non-empty bytes silently have no effect, meaning the spec is vacuous or the write operation is a no-op.
+===PHI_END===
+
+===PHI_START===
+NAME: view_length_changes
+TARGET_FN: write_relative
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_view_length_changes<PMRegion: PersistentMemoryRegion>(
+    sub: WritablePersistentMemorySubregion,
+    pm_old: PMRegion,
+    pm_new: PMRegion,
+    relative_addr: u64,
+    bytes: Seq<u8>,
+)
+    requires
+        sub.inv(&pm_old),
+        relative_addr + bytes.len() <= sub.view(&pm_old).len(),
+        sub.view(&pm_old).no_outstanding_writes_in_range(relative_addr as int, relative_addr + bytes.len()),
+        forall|i: int| relative_addr <= i < relative_addr + bytes.len() ==> sub.is_writable_relative_addr(i),
+        sub.inv(&pm_new),
+        sub.view(&pm_new) == sub.view(&pm_old).write(relative_addr as int, bytes),
+    ensures
+        sub.view(&pm_new).len() != sub.view(&pm_old).len(),
+{
+}
+```
+REASON: If provable, a write changes the subregion length, violating the expectation that writes preserve the memory region's size.
+===PHI_END===
+
+===PHI_START===
+NAME: outside_range_modified
+TARGET_FN: write_relative
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_outside_range_modified<PMRegion: PersistentMemoryRegion>(
+    sub: WritablePersistentMemorySubregion,
+    pm_old: PMRegion,
+    pm_new: PMRegion,
+    relative_addr: u64,
+    bytes: Seq<u8>,
+    k: int,
+)
+    requires
+        sub.inv(&pm_old),
+        relative_addr + bytes.len() <= sub.view(&pm_old).len(),
+        sub.view(&pm_old).no_outstanding_writes_in_range(relative_addr as int, relative_addr + bytes.len()),
+        forall|i: int| relative_addr <= i < relative_addr + bytes.len() ==> sub.is_writable_relative_addr(i),
+        sub.inv(&pm_new),
+        sub.view(&pm_new) == sub.view(&pm_old).write(relative_addr as int, bytes),
+        0 <= k < sub.view(&pm_old).len(),
+        !(relative_addr <= k < relative_addr + bytes.len()),
+    ensures
+        sub.view(&pm_new).state[k] != sub.view(&pm_old).state[k],
+{
+}
+```
+REASON: If provable, a write corrupts bytes outside the target range, violating spatial isolation of the write operation.
+===PHI_END===
+
+===PHI_START===
+NAME: write_not_recorded_as_outstanding
+TARGET_FN: write_relative
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_write_not_recorded_as_outstanding<PMRegion: PersistentMemoryRegion>(
+    sub: WritablePersistentMemorySubregion,
+    pm_old: PMRegion,
+    pm_new: PMRegion,
+    relative_addr: u64,
+    bytes: Seq<u8>,
+    k: int,
+)
+    requires
+        sub.inv(&pm_old),
+        relative_addr + bytes.len() <= sub.view(&pm_old).len(),
+        sub.view(&pm_old).no_outstanding_writes_in_range(relative_addr as int, relative_addr + bytes.len()),
+        forall|i: int| relative_addr <= i < relative_addr + bytes.len() ==> sub.is_writable_relative_addr(i),
+        sub.inv(&pm_new),
+        sub.view(&pm_new) == sub.view(&pm_old).write(relative_addr as int, bytes),
+        relative_addr <= k < relative_addr + bytes.len(),
+    ensures
+        sub.view(&pm_new).state[k].outstanding_write != Some(bytes[k - relative_addr]),
+{
+}
+```
+REASON: If provable, written data is not recorded as an outstanding write, meaning the persistent memory model loses written data before flush.
+===PHI_END===
+
+===PHI_START===
+NAME: flush_state_corrupted
+TARGET_FN: write_relative
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_flush_state_corrupted<PMRegion: PersistentMemoryRegion>(
+    sub: WritablePersistentMemorySubregion,
+    pm_old: PMRegion,
+    pm_new: PMRegion,
+    relative_addr: u64,
+    bytes: Seq<u8>,
+    k: int,
+)
+    requires
+        sub.inv(&pm_old),
+        relative_addr + bytes.len() <= sub.view(&pm_old).len(),
+        sub.view(&pm_old).no_outstanding_writes_in_range(relative_addr as int, relative_addr + bytes.len()),
+        forall|i: int| relative_addr <= i < relative_addr + bytes.len() ==> sub.is_writable_relative_addr(i),
+        sub.inv(&pm_new),
+        sub.view(&pm_new) == sub.view(&pm_old).write(relative_addr as int, bytes),
+        relative_addr <= k < relative_addr + bytes.len(),
+    ensures
+        sub.view(&pm_new).state[k].state_at_last_flush != sub.view(&pm_old).state[k].state_at_last_flush,
+{
+}
+```
+REASON: If provable, a write mutates the last-flushed state of bytes in-range, violating the crash-consistency model where only flush updates persistent state.
+===PHI_END===

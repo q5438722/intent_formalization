@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: unequal_seqs_different_concat
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_unequal_seqs_different_concat(s1: Seq<int>, s2: Seq<int>, suffix: Seq<int>)
+    requires
+        s1 != s2,
+    ensures
+        s1 + suffix != s2 + suffix,
+{
+    seq_unequal_preserved_by_add(s1, s2, suffix);
+}
+```
+REASON: direct restatement of the lemma — tests the core claim that suffix append preserves inequality
+===PHI_END===
+
+===PHI_START===
+NAME: empty_suffix_preserves_inequality
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_empty_suffix_preserves_inequality(s1: Seq<int>, s2: Seq<int>)
+    requires
+        s1 != s2,
+    ensures
+        s1 + Seq::<int>::empty() != s2 + Seq::<int>::empty(),
+{
+    seq_unequal_preserved_by_add(s1, s2, Seq::<int>::empty());
+}
+```
+REASON: empty suffix case — tests that the lemma doesn't vacuously hold only for nonempty suffixes
+===PHI_END===
+
+===PHI_START===
+NAME: different_len_seqs_different_concat
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_different_len_seqs_different_concat(s1: Seq<int>, s2: Seq<int>, suffix: Seq<int>)
+    requires
+        s1.len() != s2.len(),
+    ensures
+        s1 + suffix != s2 + suffix,
+{
+    seq_unequal_preserved_by_add(s1, s2, suffix);
+}
+```
+REASON: different-length sequences are unequal — tests that the length branch of the proof is sound
+===PHI_END===
+
+===PHI_START===
+NAME: concat_equal_implies_prefix_equal
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_concat_equal_implies_prefix_equal(s1: Seq<int>, s2: Seq<int>, suffix: Seq<int>)
+    requires
+        s1 + suffix == s2 + suffix,
+    ensures
+        s1 == s2,
+{
+    if s1 != s2 {
+        seq_unequal_preserved_by_add(s1, s2, suffix);
+    }
+}
+```
+REASON: contrapositive of the lemma — right cancellation law; if the lemma is wrong this would derive false equalities
+===PHI_END===
+
+===PHI_START===
+NAME: singleton_diff_preserved
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_singleton_diff_preserved(a: int, b: int, suffix: Seq<int>)
+    requires
+        a != b,
+    ensures
+        seq![a] + suffix != seq![b] + suffix,
+{
+    seq_unequal_preserved_by_add(seq![a], seq![b], suffix);
+}
+```
+REASON: minimal same-length case with singletons differing at index 0 — tests the witness branch of the proof
+===PHI_END===

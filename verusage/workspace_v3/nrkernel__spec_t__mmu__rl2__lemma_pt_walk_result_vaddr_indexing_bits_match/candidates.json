@@ -1,0 +1,37 @@
+[
+  {
+    "name": "result_exceeds_input",
+    "target_fn": "align_to_usize",
+    "type": "behavioral",
+    "code": "proof fn phi_1_result_exceeds_input(a: usize, b: usize)\n    requires\n        b > 0,\n    ensures\n        align_to_usize(a, b) > a,\n{\n}",
+    "reason": "Alignment-down should never produce a value larger than the original input"
+  },
+  {
+    "name": "unaligned_input_unchanged",
+    "target_fn": "align_to_usize",
+    "type": "boundary",
+    "code": "proof fn phi_2_unaligned_input_unchanged(a: usize, b: usize)\n    requires\n        b > 1,\n        a % b != 0,\n    ensures\n        align_to_usize(a, b) == a,\n{\n}",
+    "reason": "If an unaligned value is returned unchanged, the function fails its core purpose of aligning down"
+  },
+  {
+    "name": "result_not_aligned",
+    "target_fn": "align_to_usize",
+    "type": "logical",
+    "code": "proof fn phi_3_result_not_aligned(a: usize, b: usize)\n    requires\n        b > 0,\n    ensures\n        align_to_usize(a, b) % b != 0,\n{\n}",
+    "reason": "The result of align_to_usize must always be a multiple of b; if not, the alignment is broken"
+  },
+  {
+    "name": "different_granularity_equal",
+    "target_fn": "align_to_usize",
+    "type": "behavioral",
+    "code": "proof fn phi_4_different_granularity_equal(a: usize)\n    requires\n        a < 0x1_0000_0000usize,\n    ensures\n        align_to_usize(a, L1_ENTRY_SIZE) == align_to_usize(a, L2_ENTRY_SIZE),\n{\n}",
+    "reason": "Coarser and finer alignment granularities collapsing to the same value would indicate the spec conflates page sizes"
+  },
+  {
+    "name": "gap_exceeds_alignment",
+    "target_fn": "align_to_usize",
+    "type": "boundary",
+    "code": "proof fn phi_5_gap_exceeds_alignment(a: usize, b: usize)\n    requires\n        b > 0,\n    ensures\n        sub(a, align_to_usize(a, b)) >= b,\n{\n}",
+    "reason": "The rounding-down gap must always be strictly less than b; a gap >= b means the result skipped past a valid aligned address"
+  }
+]

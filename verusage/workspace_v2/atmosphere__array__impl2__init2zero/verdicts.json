@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "set_no_length_preservation_check",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Length preservation after `Seq::update` is a fundamental axiom of vstd's sequence library \u2014 `update` is defined to return a sequence of the same length. This is expected behavior, not a spec gap."
+  },
+  {
+    "phi": "set_frame_only_from_extensional_eq",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The frame condition follows directly from vstd's `Seq::update` axioms: updating index `i` preserves all other indices. The ensures clause `self.seq@ =~= old(self).seq@.update(i as int, out)` is the strongest possible specification \u2014 extensional equality IS the frame guarantee."
+  },
+  {
+    "phi": "set_external_body_ar_ghost_desync",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "The `set` external_body ensures only constrain `self.seq@` (the Ghost field) and `self.wf()` (which only checks `seq@.len() == N`). The concrete runtime field `ar: [A;N]` is never mentioned in any ensures clause, so the spec provides no guarantee that `ar[i]` actually changes. This is a real ghost-runtime desync gap \u2014 all verified properties hold over the ghost state only."
+  },
+  {
+    "phi": "init2zero_accepts_empty_array",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "An empty array trivially satisfies \"all elements are zero\" via vacuous truth. The `N <= usize::MAX` precondition is redundant but harmless. This is standard behavior for empty collections, not a spec issue."
+  },
+  {
+    "phi": "set_arbitrary_value_no_bounds_on_A",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Rust arrays can store any value of type `A` \u2014 there is no domain restriction needed. For `u8`, all 256 values (0\u2013255) are valid. The spec correctly reflects that any value of the element type can be written."
+  }
+]

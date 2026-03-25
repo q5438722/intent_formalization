@@ -1,0 +1,17 @@
+===VERDICT_START===
+PHI: new_entry_dirty_access_clear
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is a correct and desirable property — newly constructed page table entries should have dirty (bit 6) and access (bit 5) cleared since these are hardware-managed bits set by the CPU on access/write. The proof is fully verified via `by (bit_vector)` assertions.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: max_phyaddr_width_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `MAX_PHYADDR_WIDTH` is declared `external_body` with implementation value 52, but the axiom only guarantees `32 <= MAX_PHYADDR_WIDTH <= 52`. The verifier treats it as opaque, so proofs cannot rely on the concrete value — this is an intentional design choice to support variable physical address widths, but it creates a gap where the spec is weaker than the implementation.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: `MAX_PHYADDR_WIDTH` as `external_body` with a weaker axiom than its concrete value creates a specification gap between the implementation (52) and verification assumptions (32..=52). One false positive: dirty/access bits being clear in new entries is correct and desirable behavior verified by bitvector reasoning.
+===END_SUMMARY===

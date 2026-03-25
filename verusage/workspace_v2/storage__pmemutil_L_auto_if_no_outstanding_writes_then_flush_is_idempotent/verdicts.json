@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "flush_idempotent_external_body",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`lemma_if_no_outstanding_writes_then_flush_is_idempotent` is `external_body` with `unimplemented!()`. While the property is correct (flush with no outstanding writes produces identical bytes and `None` outstanding writes), it requires reasoning about `ext_equal` on sequences after `map` \u2014 this structural equality is trusted rather than verified."
+  },
+  {
+    "phi": "flush_byte_no_outstanding_is_state",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`flush_byte` matches on `outstanding_write`: `None => self.state_at_last_flush`. With `outstanding_write.is_none()`, it directly returns `state_at_last_flush`. Correct by definition."
+  },
+  {
+    "phi": "flush_double_is_flush_single",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`b.flush()` produces `{ state_at_last_flush: b.flush_byte(), outstanding_write: None }`. Flushing again: `flush_byte` on `None` returns `state_at_last_flush` (= `b.flush_byte()`), and `outstanding_write` stays `None`. Identical result. Correct by definition."
+  },
+  {
+    "phi": "flush_clears_outstanding_write",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`flush` is defined to set `outstanding_write: None`. Trivially correct by construction."
+  },
+  {
+    "phi": "no_outstanding_writes_empty_regions",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`no_outstanding_writes` quantifies over `0 <= i < self.len()`. With `regions: seq![]`, `self.len() == 0`, so the quantifier is vacuously true."
+  }
+]

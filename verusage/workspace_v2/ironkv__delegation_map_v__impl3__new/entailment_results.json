@@ -1,0 +1,47 @@
+[
+  {
+    "name": "sorted_empty_is_valid",
+    "type": "boundary",
+    "code": "proof fn phi_1_sorted_empty_is_valid<K: KeyTrait>()\n    ensures\n        sorted(Seq::<K>::empty()),\n{\n}",
+    "reason": "Empty sequence vacuously satisfies `sorted` \u2014 any predicate over pairs of indices holds trivially, which is correct but could mask issues if callers assume sorted implies non-empty",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "cmp_spec_no_irreflexivity",
+    "type": "logical",
+    "code": "proof fn phi_2_cmp_spec_no_irreflexivity<K: KeyTrait>(a: K)\n    ensures\n        a.cmp_spec(a).lt() || !a.cmp_spec(a).lt(),\n{\n}",
+    "reason": "`cmp_spec` is uninterpreted with no axiom preventing `a.cmp_spec(a).lt()` from being true \u2014 if `cmp_spec` is reflexively less-than, `sorted` allows duplicate-valued elements while `no_duplicates` operates on structural equality, creating an inconsistency between the two validity conditions",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "sorted_no_transitivity",
+    "type": "logical",
+    "code": "proof fn phi_3_sorted_no_transitivity<K: KeyTrait>(a: K, b: K, c: K)\n    requires\n        a.cmp_spec(b).lt(),\n        b.cmp_spec(c).lt(),\n    ensures\n        a.cmp_spec(c).lt() || !a.cmp_spec(c).lt(),\n{\n}",
+    "reason": "`cmp_spec` has no transitivity axiom \u2014 `sorted` checks all pairs directly via the quantifier, but downstream code reasoning about `cmp_spec` outside of sequences cannot derive transitivity, potentially making the ordering relation inconsistent",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "map_valid_ghost_unconstrained_outside_keys",
+    "type": "logical",
+    "code": "proof fn phi_4_map_valid_ghost_unconstrained_outside_keys<K: KeyTrait + VerusClone>(som: StrictlyOrderedMap<K>, k: K)\n    requires\n        som.valid(),\n        !som@.contains_key(k),\n    ensures\n        !som.keys@.contains(k),\n{\n}",
+    "reason": "`map_valid` asserts `m@.dom() == keys@.to_set()` \u2014 but both `m` and `keys` are ghost/closed fields, and `map_valid` is closed, so external code cannot verify this link holds after external_body operations that might desync the ghost map from the keys vector",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "new_external_body_sorted_empty_trusted",
+    "type": "logical",
+    "code": "proof fn phi_5_new_external_body_sorted_empty_trusted()\n    ensures\n        sorted(Seq::<SHTKey>::empty()),\n        Seq::<SHTKey>::empty().no_duplicates(),\n{\n}",
+    "reason": "`StrictlyOrderedVec::new` is external_body and asserts `v.valid()` on the empty vec \u2014 the sorted+no_duplicates ensures on empty are trivially true, but the external_body trust means the implementation could return a non-empty vec that violates validity without detection",
+    "entailed": false,
+    "verus_output": "delegation_map_v__impl3__new/phi_5_new_external_body_sorted_empty_trusted.rs:112:15\n    |\n112 |         Seq::<SHTKey>::empty().no_duplicates(),\n    |               ^^^^^^ not found in this scope\n    |\nhelp: you might be missing a type parameter\n    |\n109 | proof fn phi_5_new_external_body_sorted_empty_trusted<SHTKey>()\n    |                                                      ++++++++\n\nerror: aborting due to 2 previous errors\n\nFor more information about this error, try `rustc --explain E0425`.\n",
+    "timed_out": false
+  }
+]

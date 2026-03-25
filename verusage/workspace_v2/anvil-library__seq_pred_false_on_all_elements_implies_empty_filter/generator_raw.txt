@@ -1,0 +1,84 @@
+===PHI_START===
+NAME: filter_empty_seq
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_filter_empty_seq(pred: spec_fn(int) -> bool)
+    ensures
+        Seq::<int>::empty().filter(pred).len() == 0,
+{
+    reveal(Seq::filter);
+}
+```
+REASON: filtering an empty sequence should produce empty — tests base case of filter
+===PHI_END===
+
+===PHI_START===
+NAME: all_false_implies_no_contains
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_all_false_implies_no_contains(s: Seq<int>, pred: spec_fn(int) -> bool, e: int)
+    requires
+        forall |x: int| #![auto] s.contains(x) ==> !pred(x),
+        s.contains(e),
+    ensures
+        !pred(e),
+{
+}
+```
+REASON: direct instantiation of the precondition — tests that the universal quantifier triggers correctly
+===PHI_END===
+
+===PHI_START===
+NAME: singleton_false_filter_empty
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_singleton_false_filter_empty(v: int, pred: spec_fn(int) -> bool)
+    requires
+        !pred(v),
+    ensures
+        seq![v].filter(pred).len() == 0,
+{
+    seq_pred_false_on_all_elements_implies_empty_filter(seq![v], pred);
+}
+```
+REASON: singleton with pred false should filter to empty — minimal nontrivial test
+===PHI_END===
+
+===PHI_START===
+NAME: singleton_true_filter_nonempty
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_singleton_true_filter_nonempty(v: int, pred: spec_fn(int) -> bool)
+    requires
+        pred(v),
+    ensures
+        seq![v].filter(pred).len() > 0,
+{
+    reveal(Seq::filter);
+}
+```
+REASON: singleton with pred true should filter to nonempty — tests contrapositive direction not proven by the lemma
+===PHI_END===
+
+===PHI_START===
+NAME: filter_all_false_pred_empty
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_filter_all_false_pred_empty(s: Seq<int>)
+    ensures
+        s.filter(|x: int| false).len() == 0,
+    decreases s.len(),
+{
+    reveal(Seq::filter);
+    if s.len() != 0 {
+        phi_5_filter_all_false_pred_empty(s.drop_last());
+    }
+}
+```
+REASON: always-false predicate should yield empty filter on any sequence — tests converse with concrete predicate
+===PHI_END===

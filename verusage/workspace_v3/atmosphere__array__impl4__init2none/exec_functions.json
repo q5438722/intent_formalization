@@ -1,0 +1,10 @@
+[
+  {
+    "name": "set",
+    "code": "#[verifier(external_body)]\n    pub fn set(&mut self, i: usize, out: A)\n        requires\n            0 <= i < N,\n            old(self).wf(),\n        ensures\n            self.seq@ =~= old(self).seq@.update(i as int, out),\n            self.wf(),\n\t{\n\t\tunimplemented!()\n\t}"
+  },
+  {
+    "name": "init2none",
+    "code": "pub fn init2none(&mut self)\n        requires\n            old(self).wf(),\n            N <= usize::MAX,\n        ensures\n            forall|index:int| 0<= index < N ==> #[trigger] self@[index].is_None(),\n            self.wf(),\n    {\n        let mut i = 0;\n        for i in 0..N\n            invariant\n                N <= usize::MAX,\n                0<=i<=N,\n                self.wf(),\n                forall|j:int| #![auto] 0<=j<i ==> self@[j].is_None(),\n        {\n            let tmp:Ghost<Seq<Option<T>>> = Ghost(self@);\n            assert(forall|j:int| #![auto] 0<=j<i ==> self@[j].is_None());\n            self.set(i,None);\n            assert(self@ =~= tmp@.update(i as int,None));\n            assert(forall|j:int| #![auto] 0<=j<i ==> self@[j].is_None());\n        }\n    }"
+  }
+]

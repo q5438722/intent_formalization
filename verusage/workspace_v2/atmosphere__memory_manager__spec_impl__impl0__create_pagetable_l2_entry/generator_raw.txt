@@ -1,0 +1,76 @@
+===PHI_START===
+NAME: usize2pa_mem_valid_unconditional
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)
+    ensures
+        MEM_valid(usize2pa(v)),
+{
+}
+```
+REASON: usize2pa's external_body unconditionally ensures MEM_valid(ret) for ANY input — arbitrary usize values produce "valid" physical addresses without proof
+===PHI_END===
+
+===PHI_START===
+NAME: zero_entry_is_empty
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_zero_entry_is_empty()
+    ensures
+        usize2page_entry(0usize).is_empty(),
+{
+}
+```
+REASON: The external_body on usize2page_entry ensures all fields are false/zero when v==0, combined with spec_usize2pa(0)==0, making is_empty() trivially true — but this relies on two independent external_body claims agreeing
+===PHI_END===
+
+===PHI_START===
+NAME: page_closure_includes_l4_table
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_page_closure_includes_l4_table(pt: PageTable, p: PageMapPtr)
+    requires
+        pt.l4_table@.dom().contains(p),
+    ensures
+        pt.page_closure().contains(p),
+{
+}
+```
+REASON: page_closure unconditionally absorbs all l4_table domain pointers — if l4_table domain overlaps with l3/l2/l1 domains, page_closure silently merges them with no disjointness check
+===PHI_END===
+
+===PHI_START===
+NAME: is_empty_allows_nonempty_kernel_entries
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_is_empty_allows_nonempty_kernel_entries(pt: PageTable, i: L4Index)
+    requires
+        pt.is_empty(),
+        0 <= i < pt.kernel_l4_end,
+    ensures
+        pt.l4_table@[pt.cr3].value()[i].perm.present || !pt.l4_table@[pt.cr3].value()[i].perm.present,
+{
+}
+```
+REASON: is_empty only constrains indices >= kernel_l4_end — kernel region L4 entries are completely unconstrained, allowing present entries with arbitrary mappings in a supposedly "empty" page table
+===PHI_END===
+
+===PHI_START===
+NAME: resolve_l4_ignores_kernel_region_present
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_resolve_l4_ignores_kernel_region_present(pt: PageTable, l4i: L4Index)
+    requires
+        0 <= l4i < pt.kernel_l4_end,
+    ensures
+        pt.spec_resolve_mapping_l4(l4i) == Some(pt.l4_table@[pt.cr3].value()[l4i]),
+{
+}
+```
+REASON: spec_resolve_mapping_l4 returns Some for ALL kernel-region indices (l4i < kernel_l4_end) regardless of the present bit — a non-present kernel entry is still treated as a valid mapping, bypassing the present-bit check
+===PHI_END===

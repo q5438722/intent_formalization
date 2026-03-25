@@ -1,0 +1,47 @@
+[
+  {
+    "name": "max_serialized_size_fits_in_u32",
+    "type": "boundary",
+    "code": "proof fn phi_1_max_serialized_size_fits_in_u32()\n    ensures\n        ckeyhashmap_max_serialized_size() <= u32::MAX as usize,\n{\n    reveal(ckeyhashmap_max_serialized_size);\n}",
+    "reason": "The max serialized size (0x100000 = 1 MiB) fits in a u32, meaning the spec silently constrains hash maps to at most 1 MiB serialized \u2014 this may be too small for large hash maps and the limit is buried in an opaque constant with no documentation of why this bound was chosen",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "max_serialized_size_is_power_of_two",
+    "type": "logical",
+    "code": "proof fn phi_2_max_serialized_size_is_power_of_two()\n    ensures\n        ckeyhashmap_max_serialized_size() > 0,\n        ckeyhashmap_max_serialized_size() % 2 == 0,\n        ckeyhashmap_max_serialized_size() == 1048576,\n{\n    reveal(ckeyhashmap_max_serialized_size);\n}",
+    "reason": "The constant is exactly 2^20 \u2014 a suspiciously round number that may be an arbitrary placeholder rather than a carefully derived bound, and downstream code relying on this specific value could break if the real protocol needs a different limit",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "max_size_smaller_than_usize_max",
+    "type": "boundary",
+    "code": "proof fn phi_3_max_size_smaller_than_usize_max()\n    ensures\n        ckeyhashmap_max_serialized_size() < usize::MAX / 2,\n{\n    reveal(ckeyhashmap_max_serialized_size);\n}",
+    "reason": "The max serialized size is far below `usize::MAX / 2` \u2014 any code that adds the max size to another offset will never overflow, but this means the spec artificially limits hash map sizes to a tiny fraction of addressable memory without justification",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "exec_reveals_opaque_constant",
+    "type": "behavioral",
+    "code": "proof fn phi_4_exec_reveals_opaque_constant()\n    ensures\n        ({\n            reveal(ckeyhashmap_max_serialized_size);\n            ckeyhashmap_max_serialized_size() == 0x100000usize\n        }),\n{\n    reveal(ckeyhashmap_max_serialized_size);\n}",
+    "reason": "The opaque spec can be revealed by any caller to learn the exact constant \u2014 the `opaque` annotation provides no real encapsulation since `ckeyhashmap_max_serialized_size_exec` already leaks the value through its ensures clause and any proof can call `reveal`",
+    "entailed": false,
+    "verus_output": "error: expected pure mathematical expression\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__marshal_ironsht_specific_v__ckeyhashmap_max_serialized_size_exec/phi_4_exec_reveals_opaque_constant.rs:33:9\n   |\n33 | /         ({\n34 | |             reveal(ckeyhashmap_max_serialized_size);\n35 | |             ckeyhashmap_max_serialized_size() == 0x100000usize\n36 | |         }),\n   | |__________^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "two_max_sizes_fit_in_usize",
+    "type": "boundary",
+    "code": "proof fn phi_5_two_max_sizes_fit_in_usize()\n    ensures\n        ckeyhashmap_max_serialized_size() + ckeyhashmap_max_serialized_size() < usize::MAX,\n{\n    reveal(ckeyhashmap_max_serialized_size);\n}",
+    "reason": "Two maximally-sized serialized hash maps can be summed without overflow \u2014 this could mask buffer overflow bugs in code that concatenates two serialized hash maps, since the spec allows it but the bound may be too generous or too restrictive depending on the actual protocol requirements",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

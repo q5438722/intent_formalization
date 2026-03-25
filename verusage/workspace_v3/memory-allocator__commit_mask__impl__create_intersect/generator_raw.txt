@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: intersect_always_empty
+TARGET_FN: create_intersect
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_intersect_always_empty(cm1: CommitMask, cm2: CommitMask, res: CommitMask)
+    requires
+        res@ == cm1@.intersect(cm2@),
+    ensures
+        res@ =~= Set::<int>::empty(),
+{
+}
+```
+REASON: Would mean every intersection is vacuously empty regardless of inputs, indicating a trivial spec
+===PHI_END===
+
+===PHI_START===
+NAME: self_intersect_empty
+TARGET_FN: create_intersect
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_self_intersect_empty(cm: CommitMask, res: CommitMask)
+    requires
+        res@ == cm@.intersect(cm@),
+    ensures
+        res@ =~= Set::<int>::empty(),
+{
+}
+```
+REASON: Self-intersection must equal self; if it equals empty the spec loses all set information at boundary
+===PHI_END===
+
+===PHI_START===
+NAME: result_leaks_outside_other
+TARGET_FN: create_intersect
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_result_leaks_outside_other(cm1: CommitMask, cm2: CommitMask, res: CommitMask, i: int)
+    requires
+        res@ == cm1@.intersect(cm2@),
+        res@.contains(i),
+    ensures
+        !cm2@.contains(i),
+{
+}
+```
+REASON: An intersection element not in the second operand violates the fundamental intersection contract
+===PHI_END===
+
+===PHI_START===
+NAME: intersect_equals_union
+TARGET_FN: create_intersect
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_intersect_equals_union(cm1: CommitMask, cm2: CommitMask, res: CommitMask)
+    requires
+        res@ == cm1@.intersect(cm2@),
+    ensures
+        res@ =~= cm1@.union(cm2@),
+{
+}
+```
+REASON: Conflating intersection with union would make the result a superset instead of a subset of operands
+===PHI_END===
+
+===PHI_START===
+NAME: intersect_no_filtering
+TARGET_FN: create_intersect
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_intersect_no_filtering(cm1: CommitMask, cm2: CommitMask, res: CommitMask, i: int)
+    requires
+        res@ == cm1@.intersect(cm2@),
+        cm1@.contains(i),
+    ensures
+        res@.contains(i),
+{
+}
+```
+REASON: Would mean intersection never filters anything from self, making it equivalent to identity on the first operand
+===PHI_END===

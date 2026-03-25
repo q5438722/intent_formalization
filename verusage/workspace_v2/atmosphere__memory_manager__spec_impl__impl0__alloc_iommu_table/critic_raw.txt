@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: free_pcid_pagetable_is_empty
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Free PCIDs having empty mappings is the expected invariant — you don't want freed address spaces retaining stale mappings. The `is_empty` definition additionally clears all mapping ghosts to empty, so this is exactly the desired property.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: iommu_kernel_l4_end_zero
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: IOMMU tables are for device DMA, not CPU processes — they intentionally have no kernel region reservation. `kernel_l4_end == 0` means the full L4 range is available for device mapping, which is correct since devices don't execute kernel code.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: pagetable_hugepages_disabled
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The spec explicitly comments "for now, we disable hugepages" — this is an intentional design decision to simplify the current implementation. The empty 2m/1g mappings are a deliberate invariant, not an accidental over-constraint.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: pagetable_iommu_page_closure_disjoint
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Pairwise disjoint page closures across all PCIDs (including free ones) is a critical memory safety invariant — each page table's backing pages must be unique to prevent one address space from corrupting another's page table structures. This correctly implies unique cr3 allocation.
+===VERDICT_END===
+
+===SUMMARY===
+All four candidates are false positives. `free_pcid_pagetable_is_empty` reflects the correct invariant that freed address spaces have no residual mappings. `iommu_kernel_l4_end_zero` is intentional since IOMMU tables serve devices that don't need kernel address space. `pagetable_hugepages_disabled` is an explicitly documented simplification. `pagetable_iommu_page_closure_disjoint` is a fundamental memory safety property ensuring no two address spaces share backing page table pages. None represent spec gaps.
+===END_SUMMARY===

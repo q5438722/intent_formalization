@@ -1,0 +1,58 @@
+[
+  {
+    "name": "entry_size",
+    "code": "pub open spec(checked) fn entry_size(self, layer: nat) -> nat\n        recommends\n            layer < self.layers.len(),\n    {\n        self.layers[layer as int].entry_size\n    }"
+  },
+  {
+    "name": "num_entries",
+    "code": "pub open spec(checked) fn num_entries(self, layer: nat) -> nat\n        recommends\n            layer < self.layers.len(),\n    {\n        self.layers.index(layer as int).num_entries\n    }"
+  },
+  {
+    "name": "inv",
+    "code": "pub open spec(checked) fn inv(&self) -> bool {\n        &&& self.layers.len() <= X86_NUM_LAYERS\n        &&& forall|i: nat|\n            #![trigger self.entry_size(i)]\n            #![trigger self.num_entries(i)]\n            i < self.layers.len() ==> {\n                &&& 0 < self.entry_size(i) <= X86_MAX_ENTRY_SIZE\n                &&& 0 < self.num_entries(i) <= X86_NUM_ENTRIES\n                &&& self.entry_size_is_next_layer_size(i)\n            }\n    }"
+  },
+  {
+    "name": "entry_size_is_next_layer_size",
+    "code": "pub open spec(checked) fn entry_size_is_next_layer_size(self, i: nat) -> bool\n        recommends\n            i < self.layers.len(),\n    {\n        i + 1 < self.layers.len() ==> self.entry_size(i) == self.entry_size((i + 1) as nat)\n            * self.num_entries((i + 1) as nat)\n    }"
+  },
+  {
+    "name": "entry_base",
+    "code": "#[verifier(inline)]\n    pub open spec(checked) fn entry_base(self, layer: nat, base: nat, idx: nat) -> nat\n        recommends\n            self.inv(),\n            layer < self.layers.len(),\n    {\n        // base + idx * self.entry_size(layer)\n        entry_base_from_index(base, idx, self.entry_size(layer))\n    }"
+  },
+  {
+    "name": "well_formed",
+    "code": "pub open spec(checked) fn well_formed(&self) -> bool {\n        &&& self.arch.inv()\n        &&& self.layer < self.arch.layers.len()\n        //&&& aligned(self.base_vaddr, self.entry_size() * self.num_entries())\n        &&& self.entries.len() == self.num_entries()\n    }"
+  },
+  {
+    "name": "entry_size",
+    "code": "pub open spec(checked) fn entry_size(&self) -> nat\n        recommends self.layer < self.arch.layers.len()\n    {\n        self.arch.entry_size(self.layer)\n    }"
+  },
+  {
+    "name": "num_entries",
+    "code": "pub open spec(checked) fn num_entries(&self) -> nat // number of entries\n        recommends self.layer < self.arch.layers.len()\n    {\n        self.arch.num_entries(self.layer)\n    }"
+  },
+  {
+    "name": "empty",
+    "code": "pub open spec(checked) fn empty(&self) -> bool\n        recommends self.well_formed()\n    {\n        forall|i: nat| i < self.num_entries() ==> self.entries.index(i as int) is Invalid\n    }"
+  },
+  {
+    "name": "pages_match_entry_size",
+    "code": "pub open spec(checked) fn pages_match_entry_size(&self) -> bool\n        recommends self.well_formed()\n    {\n        forall|i: nat| (i < self.entries.len() && self.entries[i as int] is Page)\n            ==> (#[trigger] self.entries[i as int]->Page_0.frame.size) == self.entry_size()\n    }"
+  },
+  {
+    "name": "directories_are_in_next_layer",
+    "code": "pub open spec(checked) fn directories_are_in_next_layer(&self) -> bool\n        recommends self.well_formed()\n    {\n        forall|i: nat| i < self.entries.len() && self.entries.index(i as int) is Directory ==> {\n            let directory = #[trigger] self.entries[i as int]->Directory_0;\n            &&& directory.layer == self.layer + 1\n            &&& directory.base_vaddr == self.base_vaddr + i * self.entry_size()\n        }\n    }"
+  },
+  {
+    "name": "directories_obey_invariant",
+    "code": "pub open spec(checked) fn directories_obey_invariant(&self) -> bool\n        recommends\n            self.well_formed(),\n            self.directories_are_in_next_layer(),\n            self.directories_match_arch(),\n        decreases self.arch.layers.len() - self.layer, 0nat\n    {\n        if self.well_formed() && self.directories_are_in_next_layer() && self.directories_match_arch() {\n            forall|i: nat| (i < self.entries.len() && #[trigger] self.entries[i as int] is Directory)\n                ==> self.entries[i as int]->Directory_0.inv()\n        } else {\n            arbitrary()\n        }\n    }"
+  },
+  {
+    "name": "directories_match_arch",
+    "code": "pub open spec(checked) fn directories_match_arch(&self) -> bool {\n        forall|i: nat| (i < self.entries.len() && self.entries.index(i as int) is Directory)\n            ==> (#[trigger] self.entries.index(i as int)->Directory_0.arch) == self.arch\n    }"
+  },
+  {
+    "name": "inv",
+    "code": "pub open spec(checked) fn inv(&self) -> bool\n        decreases self.arch.layers.len() - self.layer\n    {\n        &&& self.well_formed()\n        &&& self.pages_match_entry_size()\n        &&& self.directories_are_in_next_layer()\n        &&& self.directories_match_arch()\n        &&& self.directories_obey_invariant()\n        //&&& non_empty ==> self.directories_are_nonempty()\n        // &&& self.frames_aligned()\n    }"
+  }
+]

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "unequal_seqs_different_concat",
+    "type": "logical",
+    "code": "proof fn phi_1_unequal_seqs_different_concat(s1: Seq<int>, s2: Seq<int>, suffix: Seq<int>)\n    requires\n        s1 != s2,\n    ensures\n        s1 + suffix != s2 + suffix,\n{\n    seq_unequal_preserved_by_add(s1, s2, suffix);\n}",
+    "reason": "direct restatement of the lemma \u2014 tests the core claim that suffix append preserves inequality",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "empty_suffix_preserves_inequality",
+    "type": "boundary",
+    "code": "proof fn phi_2_empty_suffix_preserves_inequality(s1: Seq<int>, s2: Seq<int>)\n    requires\n        s1 != s2,\n    ensures\n        s1 + Seq::<int>::empty() != s2 + Seq::<int>::empty(),\n{\n    seq_unequal_preserved_by_add(s1, s2, Seq::<int>::empty());\n}",
+    "reason": "empty suffix case \u2014 tests that the lemma doesn't vacuously hold only for nonempty suffixes",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "different_len_seqs_different_concat",
+    "type": "behavioral",
+    "code": "proof fn phi_3_different_len_seqs_different_concat(s1: Seq<int>, s2: Seq<int>, suffix: Seq<int>)\n    requires\n        s1.len() != s2.len(),\n    ensures\n        s1 + suffix != s2 + suffix,\n{\n    seq_unequal_preserved_by_add(s1, s2, suffix);\n}",
+    "reason": "different-length sequences are unequal \u2014 tests that the length branch of the proof is sound",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "concat_equal_implies_prefix_equal",
+    "type": "logical",
+    "code": "proof fn phi_4_concat_equal_implies_prefix_equal(s1: Seq<int>, s2: Seq<int>, suffix: Seq<int>)\n    requires\n        s1 + suffix == s2 + suffix,\n    ensures\n        s1 == s2,\n{\n    if s1 != s2 {\n        seq_unequal_preserved_by_add(s1, s2, suffix);\n    }\n}",
+    "reason": "contrapositive of the lemma \u2014 right cancellation law; if the lemma is wrong this would derive false equalities",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "singleton_diff_preserved",
+    "type": "boundary",
+    "code": "proof fn phi_5_singleton_diff_preserved(a: int, b: int, suffix: Seq<int>)\n    requires\n        a != b,\n    ensures\n        seq![a] + suffix != seq![b] + suffix,\n{\n    seq_unequal_preserved_by_add(seq![a], seq![b], suffix);\n}",
+    "reason": "minimal same-length case with singletons differing at index 0 \u2014 tests the witness branch of the proof",
+    "entailed": false,
+    "verus_output": "verification results:: 1 verified, 1 errors\nerror: precondition not satisfied\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-library__seq_unequal_preserved_by_add/phi_5_singleton_diff_preserved.rs:32:5\n   |\n11 |     requires s1 != s2\n   |              -------- failed precondition\n...\n32 |     seq_unequal_preserved_by_add(seq![a], seq![b], suffix);\n   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

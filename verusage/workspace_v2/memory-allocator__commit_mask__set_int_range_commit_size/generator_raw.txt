@@ -1,0 +1,88 @@
+===PHI_START===
+NAME: bytes_contains_all_below_commit_size
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_bytes_contains_all_below_commit_size(sid: SegmentId, mask: CommitMask, addr: int)
+    requires
+        mask@.contains(0),
+        segment_start(sid) <= addr < segment_start(sid) + COMMIT_SIZE,
+    ensures
+        mask.bytes(sid).contains(addr),
+{
+    reveal(CommitMask::bytes);
+}
+```
+REASON: Any address in the first COMMIT_SIZE range is in `bytes` if bit 0 is set — the `bytes` spec uses integer division which maps the entire range `[segment_start, segment_start + COMMIT_SIZE)` to index 0, but this means a single bit controls a 65536-byte region with no finer granularity
+===PHI_END===
+
+===PHI_START===
+NAME: bytes_unbounded_below
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_bytes_unbounded_below(sid: SegmentId, mask: CommitMask, addr: int)
+    requires
+        mask@.contains(0),
+        addr == segment_start(sid) - 1,
+    ensures
+        mask.bytes(sid).contains(addr),
+{
+    reveal(CommitMask::bytes);
+    assert((-1int) / COMMIT_SIZE as int == -1int) by (nonlinear_arith);
+}
+```
+REASON: `bytes` uses `(addr - segment_start) / COMMIT_SIZE` without lower-bound check — for negative offsets, integer division could map to index 0 or a negative index that wraps, potentially including addresses below the segment
+===PHI_END===
+
+===PHI_START===
+NAME: bytes_infinite_set
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_bytes_infinite_set(sid: SegmentId, mask: CommitMask, k: int)
+    requires
+        mask@.contains(0),
+    ensures
+        mask.bytes(sid).contains(segment_start(sid) + k * COMMIT_SIZE as int),
+{
+    reveal(CommitMask::bytes);
+}
+```
+REASON: For ANY integer `k`, `(segment_start + k*COMMIT_SIZE - segment_start) / COMMIT_SIZE == k` — when k maps to a contained index, `bytes` includes addresses arbitrarily far from the segment, making it an infinite set with no upper bound
+===PHI_END===
+
+===PHI_START===
+NAME: segment_start_external_body_unconstrained
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_segment_start_external_body_unconstrained(s1: SegmentId, s2: SegmentId)
+    requires
+        s1.id != s2.id,
+    ensures
+        true,
+{
+    // segment_start is external_body with no ensures relating id to address
+    // Two different segment IDs could map to the same start address
+}
+```
+REASON: `segment_start` is `external_body` with no postconditions — different segment IDs are not constrained to have different start addresses, and the start address could be any integer
+===PHI_END===
+
+===PHI_START===
+NAME: bytes_negative_offset_in_range
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_bytes_negative_offset_in_range(sid: SegmentId, mask: CommitMask)
+    requires
+        mask@.contains(0),
+    ensures
+        mask.bytes(sid).contains(segment_start(sid) - COMMIT_SIZE as int),
+{
+    reveal(CommitMask::bytes);
+}
+```
+REASON: Address `segment_start - COMMIT_SIZE` has offset `-COMMIT_SIZE`, and `(-COMMIT_SIZE) / COMMIT_SIZE == -1` — if `mask@.contains(-1)` is false this shouldn't be included, but if the view's domain accidentally includes -1 then bytes extends below the segment
+===PHI_END===

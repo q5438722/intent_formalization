@@ -1,0 +1,93 @@
+Here are 5 candidate undesirable properties:
+
+===PHI_START===
+NAME: arch_inv_vacuous_empty
+TARGET_FN: inv (Arch)
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_arch_inv_vacuous_empty(arch: Arch)
+    requires
+        arch.layers.len() == 0,
+    ensures
+        arch.inv(),
+{
+}
+```
+REASON: An arch with zero layers should not satisfy inv, as it represents no meaningful page-table structure
+===PHI_END===
+
+===PHI_START===
+NAME: entry_base_collision
+TARGET_FN: entry_base (Arch)
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_entry_base_collision(arch: Arch, layer: nat, base: nat, i: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+        i < arch.num_entries(layer),
+    ensures
+        arch.entry_base(layer, base, i) == arch.entry_base(layer, base, (i + 1) as nat),
+{
+}
+```
+REASON: Consecutive entry bases being equal would mean distinct indices map overlapping address regions
+===PHI_END===
+
+===PHI_START===
+NAME: dir_inv_wrong_page_size
+TARGET_FN: pages_match_entry_size
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_dir_inv_wrong_page_size(dir: Directory, i: nat)
+    requires
+        dir.inv(),
+        i < dir.entries.len(),
+        dir.entries[i as int] is Page,
+    ensures
+        dir.entries[i as int]->Page_0.frame.size != dir.entry_size(),
+{
+}
+```
+REASON: If a page frame size can differ from the layer's entry size under inv, address translation would be incorrect
+===PHI_END===
+
+===PHI_START===
+NAME: well_formed_allows_empty
+TARGET_FN: well_formed
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_well_formed_allows_empty(dir: Directory)
+    requires
+        dir.well_formed(),
+    ensures
+        dir.entries.len() == 0,
+{
+}
+```
+REASON: A well-formed directory with zero entries would make the page table level degenerate and break address space coverage
+===PHI_END===
+
+===PHI_START===
+NAME: interp_page_mapping_lost
+TARGET_FN: interp
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_interp_page_mapping_lost(dir: Directory, j: nat, va: nat)
+    requires
+        dir.inv(),
+        j < dir.entries.len(),
+        dir.entries[j as int] is Page,
+        dir.interp_of_entry(j).contains_key(va),
+    ensures
+        !dir.interp().contains_key(va),
+{
+}
+```
+REASON: A page mapping present in an entry's interpretation but absent from the directory's full interpretation would silently drop valid mappings
+===PHI_END===

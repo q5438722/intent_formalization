@@ -1,0 +1,46 @@
+[
+  {
+    "name": "receive_impl",
+    "code": "pub fn receive_impl(&mut self, pkt: &CPacket) -> (rr: ReceiveImplResult)\n    requires\n        old(self).valid(),\n        old(self).abstractable(),\n        pkt.abstractable(),\n    ensures\n        self.valid(),\n        rr.valid_ack(*pkt),\n        SingleDelivery::receive(old(self)@, self@, pkt@, rr.get_ack()@, rr.get_abstracted_ack_set()),\n        rr is FreshPacket ==> SingleDelivery::new_single_message(old(self)@, pkt@),\n        rr is DuplicatePacket ==> !SingleDelivery::new_single_message(old(self)@, pkt@),\n    {\n        match pkt.msg {\n            CSingleMessage::Ack{..} => {\n                self.receive_ack_impl(pkt);\n                let rr = ReceiveImplResult::AckOrInvalid{};\n                rr\n            },\n            CSingleMessage::Message{..} => {\n                let packet_is_fresh = self.receive_real_packet_impl(pkt);\n                let opt_ack = self.maybe_ack_packet_impl(pkt);\n\n                match opt_ack {\n                    Some(ack) => {\n                        let rr =\n                            if packet_is_fresh {\n                                ReceiveImplResult::FreshPacket{ack}\n                            } else {\n                                ReceiveImplResult::DuplicatePacket{ack}\n                            };\n                        assert( SingleDelivery::receive(old(self)@, self@, pkt@, rr.get_ack()@, rr.get_abstracted_ack_set()) );\n                        rr\n                    }\n                    None => {\n                        assert( Self::option_cpacket_to_set_packet(opt_ack).is_empty() );   // this is an unfortunate trigger to need\n                        let rr = ReceiveImplResult::AckOrInvalid{};\n                        rr\n                    }\n                }\n            },\n            CSingleMessage::InvalidMessage{..} => {\n                let rr = ReceiveImplResult::AckOrInvalid{};\n//                 assert( SingleDelivery::receive(old(self)@, self@, pkt@, rr.get_ack()@, rr.get_abstracted_ack_set()) );\n//                 assert( self.valid() );\n                rr\n            },\n        }\n    }"
+  },
+  {
+    "name": "to_vec",
+    "code": "#[verifier(external_body)]\n    #[verifier(when_used_as_spec(spec_to_vec))]\n    pub fn to_vec(&self) -> (res: Vec<CKeyKV>)\n    {unimplemented!()}"
+  },
+  {
+    "name": "truncate_un_ack_list",
+    "code": "pub open spec(checked) fn truncate_un_ack_list<MT>(un_acked: AckList<MT>, seqno_acked: nat) -> Seq<SingleMessage<MT>>\ndecreases un_acked.len()\n{\n    if un_acked.len() > 0 && un_acked[0] is Message && un_acked[0].arrow_Message_seqno() <= seqno_acked {\n        truncate_un_ack_list(un_acked.skip(1), seqno_acked)\n    } else {\n        un_acked\n    }\n}"
+  },
+  {
+    "name": "ack_state_lookup",
+    "code": "pub open spec(checked) fn ack_state_lookup<MT>(src: AbstractEndPoint, send_state: SendState<MT>) -> AckState<MT> {\n    if send_state.contains_key(src)\n        { send_state[src] }\n    else\n        { AckState{num_packets_acked: 0, un_acked: Seq::empty()} }\n}"
+  },
+  {
+    "name": "new_single_message",
+    "code": "pub open spec(checked) fn new_single_message(self, pkt: Packet) -> bool {\n        let last_seqno = tombstone_table_lookup(pkt.src, self.receive_state);\n        &&& pkt.msg is Message\n        &&& pkt.msg.arrow_Message_seqno() == last_seqno + 1\n    }"
+  },
+  {
+    "name": "receive_ack",
+    "code": "pub open spec(checked) fn receive_ack(pre: Self, post: Self, pkt: Packet, acks:Set<Packet>) -> bool\n    recommends\n        pkt.msg is Ack,\n    {\n        &&& acks.is_empty()\n        &&& {\n            let old_ack_state = ack_state_lookup(pkt.src, pre.send_state);\n            if pkt.msg.arrow_Ack_ack_seqno() > old_ack_state.num_packets_acked {\n                let new_ack_state = AckState{\n                        num_packets_acked: pkt.msg.arrow_Ack_ack_seqno(),\n                        un_acked: truncate_un_ack_list(old_ack_state.un_acked, pkt.msg.arrow_Ack_ack_seqno()),\n                        .. old_ack_state};\n                post =~= Self{ send_state: pre.send_state.insert(pkt.src, new_ack_state), ..post }\n            } else {\n                post == pre\n            }\n        }\n    }"
+  },
+  {
+    "name": "receive_real_packet",
+    "code": "pub open spec(checked) fn receive_real_packet(self, post: Self, pkt: Packet) -> bool {\n        if self.new_single_message(pkt) {\n            let last_seqno = tombstone_table_lookup(pkt.src, self.receive_state);\n            // Mark it received\n            post == Self{ receive_state: self.receive_state.insert(pkt.src, (last_seqno + 1) as nat), ..self }\n        } else {\n            post == self\n        }\n    }"
+  },
+  {
+    "name": "should_ack_single_message",
+    "code": "pub open spec(checked) fn should_ack_single_message(self, pkt: Packet) -> bool\n    {\n        &&& pkt.msg is Message  // Don't want to ack acks\n        &&& {\n            let last_seqno = tombstone_table_lookup(pkt.src, self.receive_state);\n            pkt.msg.arrow_Message_seqno() <= last_seqno\n            }\n    }"
+  },
+  {
+    "name": "send_ack",
+    "code": "pub open spec(checked) fn send_ack(self, pkt: Packet, ack: Packet, acks:Set<Packet>) -> bool\n    recommends\n        self.should_ack_single_message(pkt),\n    {\n        &&& ack.msg is Ack\n        &&& ack.msg.arrow_Ack_ack_seqno() == pkt.msg.arrow_Message_seqno()\n        &&& ack.src == pkt.dst\n        &&& ack.dst == pkt.src\n        &&& acks == set![ ack ]\n    }"
+  },
+  {
+    "name": "maybe_ack_packet",
+    "code": "pub open spec(checked) fn maybe_ack_packet(pre: Self, pkt: Packet, ack: Packet, acks:Set<Packet>) -> bool {\n        if pre.should_ack_single_message(pkt) {\n            pre.send_ack(pkt, ack, acks)\n        } else {\n            acks.is_empty()\n        }\n    }"
+  },
+  {
+    "name": "receive",
+    "code": "pub open spec(checked) fn receive(pre: Self, post: Self, pkt: Packet, ack: Packet, acks:Set<Packet>) -> bool {\n        match pkt.msg {\n            SingleMessage::Ack{ack_seqno: _} => Self::receive_ack(pre, post, pkt, acks),\n            SingleMessage::Message{seqno, dst: _, m} => {\n                &&& Self::receive_real_packet(pre, post, pkt)\n                &&& Self::maybe_ack_packet(post, pkt, ack, acks)\n            }\n            SingleMessage::InvalidMessage{} => {\n                &&& post === pre\n                &&& acks === Set::empty()\n            }\n        }\n    }"
+  }
+]

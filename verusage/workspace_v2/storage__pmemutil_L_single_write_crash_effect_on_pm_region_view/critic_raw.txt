@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: single_write_crash_depends_on_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: This property relies on `lemma_wherever_no_outstanding_writes_persistent_memory_view_can_only_crash_as_committed`, which is `external_body` with `unimplemented!()`. The claim that unwritten bytes in a crash state must equal committed values requires proving that both chunk-level branches yield `state_at_last_flush` when `outstanding_write` is `None` — this reasoning is trusted, not verified.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: write_then_flush_committed_equals_bytes
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: For `k` in the write range, `write` sets `outstanding_write: Some(bytes_to_write[k - write_addr])`. Then `flush` sets `state_at_last_flush` to `flush_byte()` = that value, and `committed()` maps to `state_at_last_flush`. Correct by chaining the definitions.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: write_outside_range_unchanged
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The `write` map closure returns `pre_byte` unchanged when `!(addr <= pos < addr + bytes.len())`. For `k` outside the range, the byte is preserved. Correct by definition.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: aligned_write_single_chunk
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: With `write_addr` aligned to 8 and `k` in `[write_addr, write_addr + 8)`, integer division by 8 yields the same chunk. Standard arithmetic property of aligned ranges.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: crash_exactly_two_outcomes
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: For committed: unwritten chunks satisfy both predicates (no outstanding writes), and the written chunk satisfies `chunk_corresponds_ignoring_outstanding_writes` since `state_at_last_flush` is preserved by write. For flushed: the written chunk satisfies `chunk_corresponds_after_flush`, and unwritten chunks satisfy both (flush_byte = state_at_last_flush when no outstanding write). Both are valid crash states by construction.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: the per-address crash determinism for unwritten bytes depends on the `external_body` lemma that asserts bytes without outstanding writes must crash as committed — this is trusted without verification. Four false positives confirm correct definitional properties: write-then-flush-then-committed yields the written bytes, write preserves bytes outside the range, aligned writes span a single chunk, and both pre-write committed and post-flush committed are valid crash outcomes.
+===END_SUMMARY===

@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: ordering_lt_only_less
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `Ordering::lt` correctly implements strict less-than by matching only `Ordering::Less`. The absence of `le`/`ge`/`gt` helpers is simply incomplete API surface, not a spec gap — `between` uses `lt_spec` which is the appropriate comparator for half-open interval semantics used throughout the delegation map.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: between_excludes_lower_bound
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `between` implements a standard half-open interval `[lhs, rhs)` — `!ki.lt_spec(lhs)` means `ki >= lhs` and `ki.lt_spec(rhs)` means `ki < rhs`. When all three are equal, the range `[x, x)` is correctly empty. This is the standard convention for range iteration in key-value stores and delegation maps.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: cmessage_delegate_no_abstractability_check_on_h
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `CMessage::abstractable` checks `id@.abstractable()` for `Redirect` and `recipient@.abstractable()` for `Shard`, but the `Delegate` variant falls through to `_ => true` without checking `h` (the CKeyHashMap). This is inconsistent with the pattern of checking abstractability on complex fields, allowing an unchecked hash map into the abstract model.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: tuple_serialize_ambiguous_concatenation
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The PHI merely confirms the definitional equality of tuple serialization. While bare concatenation could theoretically cause ambiguity, `Vec<u8>::ghost_serialize` includes a length prefix, so `(Vec<u8>, Vec<u8>)` tuples are in fact unambiguously parseable. The serialization format's injectivity depends on the inner types being self-delimiting, which length-prefixed types satisfy.
+===VERDICT_END===
+
+===SUMMARY===
+Three of four candidates are false positives reflecting correct design choices: `Ordering::lt` correctly implements strict less-than, `between` uses standard half-open interval semantics, and tuple serialization works because inner types like `Vec<u8>` are self-delimiting via length prefixes. The one true positive is `cmessage_delegate_no_abstractability_check_on_h` — the `Delegate` variant's `CKeyHashMap` field bypasses the abstractability check that other complex fields (endpoints in `Redirect` and `Shard`) undergo, creating an inconsistency in the abstraction barrier.
+===END_SUMMARY===

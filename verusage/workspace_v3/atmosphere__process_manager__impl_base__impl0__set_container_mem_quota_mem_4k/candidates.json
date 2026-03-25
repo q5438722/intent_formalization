@@ -1,0 +1,37 @@
+[
+  {
+    "name": "quota_noop",
+    "target_fn": "set_container_mem_quota_mem_4k",
+    "type": "behavioral",
+    "code": "proof fn phi_1_quota_noop(old_pm: &ProcessManager, new_pm: &ProcessManager, container_ptr: ContainerPtr, new_quota: usize)\n    requires\n        old_pm.wf(),\n        old_pm.container_dom().contains(container_ptr),\n        new_pm.wf(),\n        new_pm.container_dom() =~= old_pm.container_dom(),\n        new_pm.get_container(container_ptr).quota =~= old_pm.get_container(container_ptr).quota.spec_set_mem_4k(new_quota),\n    ensures\n        new_pm.get_container(container_ptr).quota =~= old_pm.get_container(container_ptr).quota,\n{\n}",
+    "reason": "If verified, spec_set_mem_4k is an identity function and the quota is never actually modified by the call."
+  },
+  {
+    "name": "quota_ignores_input",
+    "target_fn": "set_container_mem_quota_mem_4k",
+    "type": "boundary",
+    "code": "proof fn phi_2_quota_ignores_input(pm: &ProcessManager, container_ptr: ContainerPtr, q1: usize, q2: usize)\n    requires\n        pm.wf(),\n        pm.container_dom().contains(container_ptr),\n        q1 != q2,\n    ensures\n        pm.get_container(container_ptr).quota.spec_set_mem_4k(q1) =~= pm.get_container(container_ptr).quota.spec_set_mem_4k(q2),\n{\n}",
+    "reason": "If verified, spec_set_mem_4k is a constant function and the new_quota parameter is completely ignored."
+  },
+  {
+    "name": "domain_inconsistency",
+    "target_fn": "set_container_mem_quota_mem_4k",
+    "type": "logical",
+    "code": "proof fn phi_3_domain_inconsistency(old_pm: &ProcessManager, new_pm: &ProcessManager, container_ptr: ContainerPtr, new_quota: usize)\n    requires\n        old_pm.wf(),\n        old_pm.container_dom().contains(container_ptr),\n        new_pm.wf(),\n        new_pm.container_dom() =~= old_pm.container_dom(),\n        new_pm.proc_dom() =~= old_pm.proc_dom(),\n        new_pm.thread_dom() =~= old_pm.thread_dom(),\n        new_pm.endpoint_dom() =~= old_pm.endpoint_dom(),\n    ensures\n        !new_pm.container_dom().contains(container_ptr),\n{\n}",
+    "reason": "If verified, the spec is internally inconsistent since container_ptr should remain in an extensionally-equal domain."
+  },
+  {
+    "name": "owned_procs_cleared",
+    "target_fn": "set_container_mem_quota_mem_4k",
+    "type": "behavioral",
+    "code": "proof fn phi_4_owned_procs_cleared(old_pm: &ProcessManager, new_pm: &ProcessManager, container_ptr: ContainerPtr, new_quota: usize)\n    requires\n        old_pm.wf(),\n        old_pm.container_dom().contains(container_ptr),\n        new_pm.wf(),\n        new_pm.container_dom() =~= old_pm.container_dom(),\n        new_pm.get_container(container_ptr).owned_procs =~= old_pm.get_container(container_ptr).owned_procs,\n        old_pm.get_container(container_ptr).owned_procs.spec_len() > 0,\n    ensures\n        new_pm.get_container(container_ptr).owned_procs.spec_len() == 0,\n{\n}",
+    "reason": "If verified, extensional equality on StaticLinkedList does not preserve length, breaking the frame condition on owned_procs."
+  },
+  {
+    "name": "depth_changes",
+    "target_fn": "set_container_mem_quota_mem_4k",
+    "type": "logical",
+    "code": "proof fn phi_5_depth_changes(old_pm: &ProcessManager, new_pm: &ProcessManager, container_ptr: ContainerPtr, new_quota: usize)\n    requires\n        old_pm.wf(),\n        old_pm.container_dom().contains(container_ptr),\n        new_pm.wf(),\n        new_pm.container_dom() =~= old_pm.container_dom(),\n        new_pm.get_container(container_ptr).depth =~= old_pm.get_container(container_ptr).depth,\n        old_pm.get_container(container_ptr).depth > 0usize,\n    ensures\n        new_pm.get_container(container_ptr).depth == 0usize,\n{\n}",
+    "reason": "If verified, extensional equality on usize does not imply value equality, exposing an inconsistency in the depth preservation postcondition."
+  }
+]

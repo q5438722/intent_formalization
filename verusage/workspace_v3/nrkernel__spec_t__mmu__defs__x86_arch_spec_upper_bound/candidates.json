@@ -1,0 +1,37 @@
+[
+  {
+    "name": "inv_allows_empty_arch",
+    "target_fn": "inv",
+    "type": "boundary",
+    "code": "proof fn phi_1_inv_allows_empty_arch()\n    ensures\n        (Arch { layers: seq![] }).inv(),\n{\n}",
+    "reason": "An architecture with zero layers should not satisfy the invariant, as it represents no address translation at all"
+  },
+  {
+    "name": "inv_allows_non_page_aligned_entry_size",
+    "target_fn": "entry_size",
+    "type": "behavioral",
+    "code": "proof fn phi_2_inv_allows_non_page_aligned_entry_size()\n    ensures\n        (Arch { layers: seq![ArchLayer { entry_size: 3 as nat, num_entries: 512 }] }).inv(),\n{\n}",
+    "reason": "An entry_size of 3 bytes is nonsensical for page tables; inv should enforce entry sizes are multiples of PAGE_SIZE"
+  },
+  {
+    "name": "upper_vaddr_exceeds_max_base",
+    "target_fn": "upper_vaddr",
+    "type": "logical",
+    "code": "proof fn phi_3_upper_vaddr_exceeds_max_base()\n    ensures\n        x86_arch_spec.upper_vaddr(0, 1) > MAX_BASE,\n{\n    assert(x86_arch_spec.upper_vaddr(0, 1) > MAX_BASE) by (compute_only);\n}",
+    "reason": "upper_vaddr with any nonzero base at layer 0 exceeds MAX_BASE, suggesting the spec lacks a base-range guard"
+  },
+  {
+    "name": "inv_allows_single_entry_layer",
+    "target_fn": "num_entries",
+    "type": "boundary",
+    "code": "proof fn phi_4_inv_allows_single_entry_layer()\n    ensures\n        (Arch { layers: seq![ArchLayer { entry_size: 4096 as nat, num_entries: 1 }] }).inv(),\n{\n}",
+    "reason": "A layer with num_entries=1 is degenerate and provides no fan-out; inv should enforce num_entries > 1"
+  },
+  {
+    "name": "entry_size_is_next_layer_vacuously_true",
+    "target_fn": "entry_size_is_next_layer_size",
+    "type": "logical",
+    "code": "proof fn phi_5_entry_size_is_next_layer_vacuously_true()\n    ensures\n        (Arch { layers: seq![ArchLayer { entry_size: 7 as nat, num_entries: 3 }] })\n            .entry_size_is_next_layer_size(0),\n{\n}",
+    "reason": "For a single-layer arch the implication is vacuously true, allowing arbitrary entry_size values that bypass the hierarchical size constraint"
+  }
+]

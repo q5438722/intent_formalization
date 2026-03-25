@@ -1,0 +1,52 @@
+[
+  {
+    "name": "new_pcid_2m_mapping_nonempty",
+    "target_fn": "alloc_page_table",
+    "type": "behavioral",
+    "reason": "Spec only constrains 4k mapping domain to be empty; a non-empty 2m mapping on a fresh page table would violate isolation",
+    "entailed": false,
+    "verified": 16,
+    "errors": 1,
+    "output_tail": "881 |         new_mm.get_pagetable_by_pcid(ret).unwrap().mapping_2m() != Map::<VAddr, MapEntry>::empty(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 12 warnings emitted\n\n"
+  },
+  {
+    "name": "ret_exceeds_pcid_max",
+    "target_fn": "alloc_page_table",
+    "type": "boundary",
+    "reason": "If the returned pcid is out of bounds, all subsequent array accesses indexed by it would be unsound",
+    "entailed": false,
+    "verified": 16,
+    "errors": 1,
+    "output_tail": "    ------------------------------------------------------------------------------------------------------------- at the end of the function body\n...\n879 |         ret >= PCID_MAX,\n    |         ^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 11 warnings emitted\n\n"
+  },
+  {
+    "name": "spec_postconditions_inconsistent",
+    "target_fn": "alloc_page_table",
+    "type": "logical",
+    "reason": "If provable, the combined pre/postconditions are unsatisfiable, meaning the function can never be correctly called",
+    "entailed": false,
+    "verified": 16,
+    "errors": 1,
+    "output_tail": "    |       ------------------------------------------------------------------------------------------------------------------------- at the end of the function body\n...\n884 |         false,\n    |         ^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 11 warnings emitted\n\n"
+  },
+  {
+    "name": "ioid_mapping_changes",
+    "target_fn": "alloc_page_table",
+    "type": "behavioral",
+    "reason": "A page table allocation should never modify IOMMU mappings; if provable the frame condition or iommu invariant is broken",
+    "entailed": false,
+    "verified": 16,
+    "errors": 1,
+    "output_tail": "|         old_mm.get_iommu_table_mapping_by_ioid(ioid) != new_mm.get_iommu_table_mapping_by_ioid(ioid),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 11 warnings emitted\n\n"
+  },
+  {
+    "name": "new_pcid_page_closure_nonempty",
+    "target_fn": "alloc_page_table",
+    "type": "logical",
+    "reason": "If the page_closure is non-empty yet page_table_pages is unchanged from when pcid was inactive, page tracking is inconsistent with no_memory_leak",
+    "entailed": false,
+    "verified": 16,
+    "errors": 1,
+    "output_tail": " the end of the function body\n...\n883 |         new_mm.get_pagetable_page_closure_by_pcid(ret) != Set::<PagePtr>::empty(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 12 warnings emitted\n\n"
+  }
+]

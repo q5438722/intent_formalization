@@ -1,0 +1,94 @@
+===PHI_START===
+NAME: tla_forall_always_implies_intensional_equality
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_tla_forall_always_implies_intensional_equality()
+    ensures
+        tla_forall(|a: int| always(TempPred::<int>::new(|ex: Execution<int>| true).implies(TempPred::<int>::new(|ex: Execution<int>| true)))).pred
+        == always(TempPred::<int>::new(|ex: Execution<int>| true).implies(tla_forall(|a: int| TempPred::<int>::new(|ex: Execution<int>| true)))).pred,
+{
+    tla_forall_always_implies_equality2::<int, int>(
+        TempPred::<int>::new(|ex: Execution<int>| true),
+        |a: int| TempPred::<int>::new(|ex: Execution<int>| true),
+    );
+}
+```
+REASON: tla_forall_always_implies_equality2 is external_body forcing intensional equality of structurally distinct TempPred closures — the LHS nests forall inside always inside forall while the RHS nests forall inside implies inside always, and equating their pred fields conflates extensional with intensional identity
+===PHI_END===
+
+===PHI_START===
+NAME: implies_apply_closure_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_implies_apply_closure_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>)
+    requires
+        p.satisfied_by(ex),
+        (p.pred)(ex) ==> (q.pred)(ex),
+    ensures
+        q.satisfied_by(ex),
+{
+    implies_apply::<int>(ex, p, q);
+}
+```
+REASON: implies_apply is external_body bridging the intensional gap between p.implies(q).satisfied_by(ex) (which goes through TempPred::new creating a fresh closure) and the direct implication — it silently resolves the closure-wrapping mismatch without proof
+===PHI_END===
+
+===PHI_START===
+NAME: spec_entails_tla_forall_vacuous
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_spec_entails_tla_forall_vacuous()
+    ensures
+        TempPred::<int>::new(|ex: Execution<int>| false).entails(
+            tla_forall(|a: int| TempPred::<int>::new(|ex: Execution<int>| false))
+        ),
+{
+    assert forall |a: int| TempPred::<int>::new(|ex: Execution<int>| false).entails(
+        #[trigger] (|a: int| TempPred::<int>::new(|ex: Execution<int>| false))(a)
+    ) by {};
+    spec_entails_tla_forall::<int, int>(
+        TempPred::<int>::new(|ex: Execution<int>| false),
+        |a: int| TempPred::<int>::new(|ex: Execution<int>| false),
+    );
+}
+```
+REASON: spec_entails_tla_forall allows an unsatisfiable spec (always false) to entail tla_forall of anything vacuously — while logically valid, this means any property can be "proven" under a contradictory spec without warning
+===PHI_END===
+
+===PHI_START===
+NAME: always_implies_forall_intro_empty_type
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_always_implies_forall_intro_empty_type(spec: TempPred<int>, p: TempPred<int>)
+    ensures
+        valid(tla_forall(|a: int| always(p.implies(TempPred::<int>::new(|ex: Execution<int>| true))))),
+{
+    assert forall |ex: Execution<int>| #[trigger] tla_forall(|a: int| always(p.implies(TempPred::<int>::new(|ex: Execution<int>| true)))).satisfied_by(ex) by {
+        assert forall |a: int| #[trigger] (|a: int| always(p.implies(TempPred::<int>::new(|ex: Execution<int>| true))))(a).satisfied_by(ex) by {
+        }
+    };
+}
+```
+REASON: tla_forall over always(p implies true) is trivially valid for any p — combined with tla_forall_always_implies_equality2, this could equate a trivially-valid predicate with always(p implies tla_forall(const_true)) collapsing meaningful distinctions
+===PHI_END===
+
+===PHI_START===
+NAME: equality_axiom_derives_false_if_distinct
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_equality_axiom_derives_false_if_distinct(p: TempPred<int>, a_to_q: spec_fn(int) -> TempPred<int>)
+    requires
+        tla_forall(|a: int| always(p.implies(a_to_q(a)))) != always(p.implies(tla_forall(a_to_q))),
+    ensures
+        false,
+{
+    tla_forall_always_implies_equality2::<int, int>(p, a_to_q);
+}
+```
+REASON: if any instance exists where the LHS and RHS of tla_forall_always_implies_equality2 are intensionally distinct (which is expected for different closure constructions), the external_body axiom forces equality and derives false — a direct soundness hole
+===PHI_END===

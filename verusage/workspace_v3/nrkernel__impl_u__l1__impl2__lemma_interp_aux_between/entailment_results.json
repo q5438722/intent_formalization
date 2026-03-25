@@ -1,0 +1,52 @@
+[
+  {
+    "name": "aligned_zero_size",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "reason": "If aligned(addr, 0) is provable, the spec is unsound on division-by-zero (nat % 0 is unspecified in SMT)",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": "n/phi_1_aligned_zero_size.rs:337:9\n    |\n335 | proof fn phi_1_aligned_zero_size()\n    |       ---------------------------- at the end of the function body\n336 |     ensures\n337 |         aligned(42, 0),\n    |         ^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "upper_vaddr_equals_base",
+    "target_fn": "upper_vaddr (Arch)",
+    "type": "behavioral",
+    "reason": "upper_vaddr equalling base would mean a layer maps zero address space, contradicting inv's positive entry_size and num_entries",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": "base: nat)\n    |       ------------------------------------------------------------------- at the end of the function body\n...\n340 |         arch.upper_vaddr(layer, base) == base,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "entry_next_entry_equal",
+    "target_fn": "entry_base / next_entry_base (Arch)",
+    "type": "logical",
+    "reason": "entry_base equalling next_entry_base implies zero-sized entries, violating the positive entry_size invariant",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": "-------------- at the end of the function body\n...\n340 |         arch.entry_base(layer, base, idx) == arch.next_entry_base(layer, base, idx),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "well_formed_zero_entries",
+    "target_fn": "well_formed (Directory)",
+    "type": "boundary",
+    "reason": "A well_formed directory with zero entries would be degenerate; arch.inv() requires num_entries > 0 so entries.len() should be > 0",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": "   |\n335 | proof fn phi_4_well_formed_zero_entries(d: Directory)\n    |       ----------------------------------------------- at the end of the function body\n...\n339 |         d.entries.len() == 0,\n    |         ^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "dir_upper_leq_base",
+    "target_fn": "inv / upper_vaddr (Directory)",
+    "type": "logical",
+    "reason": "A valid directory's upper_vaddr must exceed base_vaddr to map a non-empty region; if upper \u2264 base the address range is empty or inverted",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": " proof fn phi_5_dir_upper_leq_base(d: Directory)\n    |       ----------------------------------------- at the end of the function body\n...\n339 |         d.upper_vaddr() <= d.base_vaddr,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

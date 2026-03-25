@@ -1,0 +1,98 @@
+===PHI_START===
+NAME: indexing_bits_match_zero_trivial
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_indexing_bits_match_zero_trivial(va1: usize, va2: usize)
+    ensures
+        indexing_bits_match(va1, va2, 0),
+{
+    reveal(indexing_bits_match);
+}
+```
+REASON: `indexing_bits_match` with len=0 is trivially true for any two addresses — no bits are required to match, yet this passes the predicate
+===PHI_END===
+
+===PHI_START===
+NAME: indexing_bits_match_reflexive
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_indexing_bits_match_reflexive(va: usize, len: nat)
+    ensures
+        indexing_bits_match(va, va, len),
+{
+    reveal(indexing_bits_match);
+}
+```
+REASON: Any address matches itself at all lengths — tests basic reflexivity of the predicate
+===PHI_END===
+
+===PHI_START===
+NAME: indexing_bits_match_ignores_low_12
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_indexing_bits_match_ignores_low_12(va: usize, offset1: usize, offset2: usize)
+    requires
+        offset1 < 4096,
+        offset2 < 4096,
+        va & bitmask_inc!(0usize, 11usize) == 0,
+    ensures
+        indexing_bits_match(add(va, offset1), add(va, offset2), 4),
+{
+    reveal(indexing_bits_match);
+    assert(l0_bits!(add(va, offset1)) == l0_bits!(add(va, offset2))) by (bit_vector)
+        requires offset1 < 4096, offset2 < 4096, va & bitmask_inc!(0usize, 11usize) == 0;
+    assert(l1_bits!(add(va, offset1)) == l1_bits!(add(va, offset2))) by (bit_vector)
+        requires offset1 < 4096, offset2 < 4096, va & bitmask_inc!(0usize, 11usize) == 0;
+    assert(l2_bits!(add(va, offset1)) == l2_bits!(add(va, offset2))) by (bit_vector)
+        requires offset1 < 4096, offset2 < 4096, va & bitmask_inc!(0usize, 11usize) == 0;
+    assert(l3_bits!(add(va, offset1)) == l3_bits!(add(va, offset2))) by (bit_vector)
+        requires offset1 < 4096, offset2 < 4096, va & bitmask_inc!(0usize, 11usize) == 0;
+}
+```
+REASON: Two addresses within the same 4KB page match all 4 indexing levels — page table walks for same-page addresses follow identical paths, which is correct but means the predicate can't distinguish intra-page offsets
+===PHI_END===
+
+===PHI_START===
+NAME: indexing_bits_match_len5_constrains_nothing_extra
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_indexing_bits_match_len5_constrains_nothing_extra(va1: usize, va2: usize)
+    requires
+        indexing_bits_match(va1, va2, 4),
+    ensures
+        indexing_bits_match(va1, va2, 5),
+{
+    reveal(indexing_bits_match);
+}
+```
+REASON: `indexing_bits_match` only has 4 levels of constraints — len > 4 adds no additional bit-matching requirements, so len=5 is equivalent to len=4
+===PHI_END===
+
+===PHI_START===
+NAME: indexing_bits_match_ignores_high_bits
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_indexing_bits_match_ignores_high_bits(va1: usize, va2: usize)
+    requires
+        va1 & bitmask_inc!(0usize, 47usize) == va2 & bitmask_inc!(0usize, 47usize),
+    ensures
+        indexing_bits_match(va1, va2, 4),
+{
+    reveal(indexing_bits_match);
+    assert(l0_bits!(va1) == l0_bits!(va2)) by (bit_vector)
+        requires va1 & bitmask_inc!(0usize, 47usize) == va2 & bitmask_inc!(0usize, 47usize);
+    assert(l1_bits!(va1) == l1_bits!(va2)) by (bit_vector)
+        requires va1 & bitmask_inc!(0usize, 47usize) == va2 & bitmask_inc!(0usize, 47usize);
+    assert(l2_bits!(va1) == l2_bits!(va2)) by (bit_vector)
+        requires va1 & bitmask_inc!(0usize, 47usize) == va2 & bitmask_inc!(0usize, 47usize);
+    assert(l3_bits!(va1) == l3_bits!(va2)) by (bit_vector)
+        requires va1 & bitmask_inc!(0usize, 47usize) == va2 & bitmask_inc!(0usize, 47usize);
+}
+```
+REASON: `indexing_bits_match` only checks bits 12-47 — addresses differing only in bits 48-63 (non-canonical bits) are considered matching at all levels
+===PHI_END===

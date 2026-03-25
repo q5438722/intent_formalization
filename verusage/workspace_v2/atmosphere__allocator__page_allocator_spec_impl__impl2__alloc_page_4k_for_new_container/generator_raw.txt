@@ -1,0 +1,81 @@
+===PHI_START===
+NAME: container_map_2m_subset_allocated_4k
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_container_map_2m_subset_allocated_4k(alloc: PageAllocator)
+    requires
+        alloc.wf(),
+    ensures
+        alloc.container_map_2m@.dom().subset_of(alloc.allocated_pages_4k@),
+{
+}
+```
+REASON: container_wf checks container_map_2m domain against allocated_pages_4k instead of allocated_pages_2m — likely copy-paste bug
+===PHI_END===
+
+===PHI_START===
+NAME: container_map_1g_subset_allocated_4k
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_container_map_1g_subset_allocated_4k(alloc: PageAllocator)
+    requires
+        alloc.wf(),
+    ensures
+        alloc.container_map_1g@.dom().subset_of(alloc.allocated_pages_4k@),
+{
+}
+```
+REASON: container_wf checks container_map_1g domain against allocated_pages_4k instead of allocated_pages_1g — likely copy-paste bug
+===PHI_END===
+
+===PHI_START===
+NAME: wf_to_no_duplicates_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_wf_to_no_duplicates_external_body(sll: StaticLinkedList<usize, 10>)
+    requires
+        sll.wf(),
+    ensures
+        sll.spec_seq@.no_duplicates(),
+{
+    sll.wf_to_no_duplicates();
+}
+```
+REASON: wf_to_no_duplicates is external_body — unverified claim that wf() implies no_duplicates
+===PHI_END===
+
+===PHI_START===
+NAME: seq_skip_lemma_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_seq_skip_lemma_external_body()
+    ensures
+        forall|s: Seq<usize>, v: usize|
+            s.len() > 0 && s[0] != v && s.no_duplicates() ==> (s.skip(1).contains(v) == s.contains(v)),
+{
+    seq_skip_lemma::<usize>();
+}
+```
+REASON: seq_skip_lemma is external_body — unverified axiom about Seq::skip used throughout allocator proofs
+===PHI_END===
+
+===PHI_START===
+NAME: alloc_4k_returns_free_page
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_alloc_4k_returns_free_page(alloc: PageAllocator)
+    requires
+        alloc.wf(),
+        alloc.free_pages_4k.len() > 0,
+    ensures
+        alloc.free_pages_4k@[0] != 0usize,
+{
+}
+```
+REASON: spec does not exclude page pointer 0 from free lists — alloc could return null pointer as valid page
+===PHI_END===

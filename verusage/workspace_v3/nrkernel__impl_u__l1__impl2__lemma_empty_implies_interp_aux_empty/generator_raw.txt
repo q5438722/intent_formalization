@@ -1,0 +1,98 @@
+===PHI_START===
+NAME: inv_allows_zero_layers
+TARGET_FN: Arch::inv
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_inv_allows_zero_layers(arch: Arch)
+    requires
+        arch.layers.len() == 0,
+    ensures
+        arch.inv(),
+{
+}
+```
+REASON: A zero-layer architecture satisfying inv() would allow degenerate page table structures that map no addresses
+===PHI_END===
+
+===PHI_START===
+NAME: entry_base_non_injective
+TARGET_FN: Arch::entry_base
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_entry_base_non_injective(arch: Arch, layer: nat, base: nat, i: nat, j: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+        i < arch.num_entries(layer),
+        j < arch.num_entries(layer),
+        i != j,
+    ensures
+        arch.entry_base(layer, base, i) == arch.entry_base(layer, base, j),
+{
+}
+```
+REASON: Non-injective entry bases would allow distinct page table entries to map overlapping virtual address regions
+===PHI_END===
+
+===PHI_START===
+NAME: consecutive_entries_not_contiguous
+TARGET_FN: Arch::entry_base
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_consecutive_entries_not_contiguous(arch: Arch, layer: nat, base: nat, i: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+        i < arch.num_entries(layer),
+        (i + 1) < arch.num_entries(layer),
+    ensures
+        arch.entry_base(layer, base, (i + 1) as nat) != arch.entry_base(layer, base, i) + arch.entry_size(layer),
+{
+}
+```
+REASON: Non-contiguous entry bases would leave unmapped gaps in the virtual address space between consecutive entries
+===PHI_END===
+
+===PHI_START===
+NAME: page_frame_size_mismatch
+TARGET_FN: Directory::pages_match_entry_size
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_page_frame_size_mismatch(d: Directory, i: nat)
+    requires
+        d.inv(),
+        i < d.entries.len(),
+        d.entries[i as int] is Page,
+    ensures
+        d.entries[i as int]->Page_0.frame.size != d.entry_size(),
+{
+}
+```
+REASON: Page frames with sizes mismatching the layer entry size would cause incorrect address translation boundaries
+===PHI_END===
+
+===PHI_START===
+NAME: subdir_bases_overlap
+TARGET_FN: Directory::directories_are_in_next_layer
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_subdir_bases_overlap(d: Directory, i: nat, j: nat)
+    requires
+        d.inv(),
+        i < d.entries.len(),
+        j < d.entries.len(),
+        i != j,
+        d.entries[i as int] is Directory,
+        d.entries[j as int] is Directory,
+    ensures
+        d.entries[i as int]->Directory_0.base_vaddr == d.entries[j as int]->Directory_0.base_vaddr,
+{
+}
+```
+REASON: Subdirectories sharing the same base virtual address would cause ambiguous overlapping translations in the page table walk
+===PHI_END===

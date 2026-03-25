@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: singleton_set_unique_elt_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `singleton_set_unique_elt` is `external_body` trusting that a set of length 1 containing both `a` and `b` implies `a == b`. While mathematically correct, this is unverified and serves as the base case for `set_mismatch`'s inductive proof — any error would propagate unsoundness.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: set_mismatch_derives_false
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `set_mismatch` is fully verified (not external_body) — its proof is a correct induction on set size using `remove` and `choose`. The only trust gap is the base case's reliance on `singleton_set_unique_elt`, which is already flagged separately. The contradiction itself is a correct mathematical fact.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: singleton_any_two_elements_equal
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: A concrete singleton set `{5}` having exactly one element is a trivially correct set-theoretic property. The φ merely instantiates the external_body axiom on a concrete case where the result is obviously true.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: set_mismatch_len_zero
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: A finite set with `len() == 0` containing an element is contradictory by vstd's own set axioms — this derives `false` without any external_body involvement. The precondition is simply unsatisfiable.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: `singleton_set_unique_elt` is `external_body` trusting the uniqueness property of singleton sets without proof, forming the unverified base case of the `set_mismatch` induction. Three false positives: `set_mismatch` itself is fully verified (just depends on the flagged axiom), the concrete singleton test is trivially correct, and the zero-length boundary is contradictory by vstd's own axioms.
+===END_SUMMARY===

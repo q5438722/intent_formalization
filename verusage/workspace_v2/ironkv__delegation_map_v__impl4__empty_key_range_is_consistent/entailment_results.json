@@ -1,0 +1,47 @@
+[
+  {
+    "name": "range_consistent_vacuous_equal_iterators",
+    "type": "boundary",
+    "code": "proof fn phi_1_range_consistent_vacuous_equal_iterators<K: KeyTrait + VerusClone>(dm: DelegationMap<K>, k: K, id: ID)\n    ensures\n        dm.range_consistent(&KeyIterator::new_spec(k), &KeyIterator::new_spec(k), &id),\n{\n    K::cmp_properties();\n    dm.empty_key_range_is_consistent(&KeyIterator::new_spec(k), &KeyIterator::new_spec(k), &id);\n}",
+    "reason": "When lo == hi as `new_spec(k)`, `between` requires `ki.lt_spec(new_spec(k))` and `!ki.lt_spec(new_spec(k))` simultaneously for ki=new_spec(k), making range_consistent vacuously true for any `id` regardless of what `dm@[k]` actually maps to",
+    "entailed": true,
+    "verus_output": "/verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__delegation_map_v__impl4__empty_key_range_is_consistent/phi_1_range_consistent_vacuous_equal_iterators.rs:142:91\n    |\n142 |       || (!self.k.is_None() && !other.k.is_None() && self.k.get_Some_0().cmp_spec(other.k.get_Some_0()).lt())\n    |                                                                                           ^^^^^^^^^^\n\nwarning: 6 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "empty_range_any_endpoint",
+    "type": "logical",
+    "code": "proof fn phi_2_empty_range_any_endpoint<K: KeyTrait + VerusClone>(dm: DelegationMap<K>, id1: ID, id2: ID, k: K)\n    ensures\n        dm.range_consistent(&KeyIterator::new_spec(k), &KeyIterator::new_spec(k), &id1),\n        dm.range_consistent(&KeyIterator::new_spec(k), &KeyIterator::new_spec(k), &id2),\n{\n    K::cmp_properties();\n    dm.empty_key_range_is_consistent(&KeyIterator::new_spec(k), &KeyIterator::new_spec(k), &id1);\n    dm.empty_key_range_is_consistent(&KeyIterator::new_spec(k), &KeyIterator::new_spec(k), &id2);\n}",
+    "reason": "The same empty range is simultaneously consistent with two different endpoints \u2014 `range_consistent` provides no discrimination for degenerate intervals, so callers cannot deduce endpoint uniqueness from consistency claims",
+    "entailed": true,
+    "verus_output": "instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__delegation_map_v__impl4__empty_key_range_is_consistent/phi_2_empty_range_any_endpoint.rs:142:91\n    |\n142 |       || (!self.k.is_None() && !other.k.is_None() && self.k.get_Some_0().cmp_spec(other.k.get_Some_0()).lt())\n    |                                                                                           ^^^^^^^^^^\n\nwarning: 6 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "end_iterator_geq_everything",
+    "type": "boundary",
+    "code": "proof fn phi_3_end_iterator_geq_everything<K: KeyTrait + VerusClone>(dm: DelegationMap<K>, ki: KeyIterator<K>, id: ID)\n    requires\n        ki.k.is_None(),\n    ensures\n        dm.range_consistent(&ki, &KeyIterator::new_spec(K::zero_spec()), &id),\n{\n    K::cmp_properties();\n    dm.empty_key_range_is_consistent(&ki, &KeyIterator::new_spec(K::zero_spec()), &id);\n}",
+    "reason": "End iterator (None) is `geq` everything because `lt_spec` requires `!self.k.is_None()`, so `geq_spec` is trivially true \u2014 making any range from end to anywhere vacuously consistent regardless of actual delegation",
+    "entailed": false,
+    "verus_output": "     dm.empty_key_range_is_consistent(&ki, &KeyIterator::new_spec(K::zero_spec()), &id);\n    |                                                                     ^^^^^^^^^ function or associated item not found in `K`\n    |\nhelp: there is an associated function `from_spec` with a similar name\n   --> /home/runner/work/verus/verus/source/vstd/std_specs/convert.rs:15:9\n\nerror: aborting due to 2 previous errors; 7 warnings emitted\n\nFor more information about this error, try `rustc --explain E0599`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "between_excludes_lo_key",
+    "type": "behavioral",
+    "code": "proof fn phi_4_between_excludes_lo_key<K: KeyTrait + VerusClone>(dm: DelegationMap<K>, k: K, hi: KeyIterator<K>, id: ID)\n    requires\n        KeyIterator::new_spec(k).lt_spec(hi),\n        dm@[k] != id@,\n    ensures\n        dm.range_consistent(&KeyIterator::new_spec(k), &hi, &id),\n{\n}",
+    "reason": "`between(lo, ki, hi)` includes `!ki.lt_spec(lo)` which for `ki = new_spec(k)` and `lo = new_spec(k)` means `!k.cmp_spec(k).lt()` which is true (reflexivity) \u2014 so `k` IS in the between range and this should NOT verify; if it does, `range_consistent` fails to enforce the lower bound inclusively",
+    "entailed": false,
+    "verus_output": "between_excludes_lo_key<K: KeyTrait + VerusClone>(dm: DelegationMap<K>, k: K, hi: KeyIterator<K>, id: ID)\n    |       ------------------------------------------------------------------------------------------------------------------ at the end of the function body\n...\n158 |         dm.range_consistent(&KeyIterator::new_spec(k), &hi, &id),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 6 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "range_consistent_contradicts_map_value",
+    "type": "logical",
+    "code": "proof fn phi_5_range_consistent_contradicts_map_value<K: KeyTrait + VerusClone>(dm: DelegationMap<K>, lo: K, hi: K, k: K, id: ID)\n    requires\n        lo.cmp_spec(k).lt(),\n        k.cmp_spec(hi).lt(),\n        dm@[k] != id@,\n        lo.cmp_spec(hi).lt(),\n    ensures\n        !dm.range_consistent(&KeyIterator::new_spec(lo), &KeyIterator::new_spec(hi), &id),\n{\n    K::cmp_properties();\n    assert(KeyIterator::between(KeyIterator::new_spec(lo), KeyIterator::new_spec(k), KeyIterator::new_spec(hi)));\n}",
+    "reason": "If a key strictly between lo and hi maps to a different endpoint, range_consistent must be false \u2014 verifying this confirms that range_consistent is not vacuously true for proper intervals (a sanity check that the spec is not trivially weak)",
+    "entailed": true,
+    "verus_output": "://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__delegation_map_v__impl4__empty_key_range_is_consistent/phi_5_range_consistent_contradicts_map_value.rs:142:91\n    |\n142 |       || (!self.k.is_None() && !other.k.is_None() && self.k.get_Some_0().cmp_spec(other.k.get_Some_0()).lt())\n    |                                                                                           ^^^^^^^^^^\n\nwarning: 6 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

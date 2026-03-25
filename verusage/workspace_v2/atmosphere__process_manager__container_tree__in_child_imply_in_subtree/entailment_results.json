@@ -1,0 +1,47 @@
+[
+  {
+    "name": "sll_len_without_wf_returns_value_list_len",
+    "type": "logical",
+    "code": "proof fn phi_1_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    ensures\n        sll.len() == sll.value_list_len,\n{\n}",
+    "reason": "StaticLinkedList::len's external_body ensures `l == self.value_list_len` unconditionally without requiring wf() \u2014 the raw field value is trusted even if the linked list is corrupted",
+    "entailed": false,
+    "verus_output": "thout_wf_returns_value_list_len.rs:376:9\n    |\n374 | proof fn phi_1_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    |       -------------------------------------------------------------------------------------------------- at the end of the function body\n375 |     ensures\n376 |         sll.len() == sll.value_list_len,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "root_not_in_own_subtree",
+    "type": "behavioral",
+    "code": "proof fn phi_2_root_not_in_own_subtree(\n    root_container: ContainerPtr,\n    container_perms: Map<ContainerPtr, PointsTo<Container>>,\n    c_ptr: ContainerPtr,\n)\n    requires\n        container_perms_wf(container_perms),\n        container_tree_wf(root_container, container_perms),\n        container_perms.dom().contains(c_ptr),\n    ensures\n        !container_perms[c_ptr].value().subtree_set@.contains(c_ptr),\n{\n}",
+    "reason": "container_subtree_set_wf requires sub_c_ptr's depth > c_ptr's depth, and container_subtree_set_exclusive ties subtree membership to uppertree containment \u2014 but no spec explicitly prevents a container from being in its own subtree if uppertree_seq contains itself",
+    "entailed": true,
+    "verus_output": "s::is_Some`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__container_tree__in_child_imply_in_subtree/phi_2_root_not_in_own_subtree.rs:259:63\n    |\n259 |             ==> container_perms[c_ptr].value().parent_rev_ptr.is_Some()\n    |                                                               ^^^^^^^\n\nwarning: 4 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "owned_procs_no_containment_check",
+    "type": "behavioral",
+    "code": "proof fn phi_3_owned_procs_no_containment_check(\n    root_container: ContainerPtr,\n    container_perms: Map<ContainerPtr, PointsTo<Container>>,\n    c_ptr: ContainerPtr,\n    p_ptr: ProcPtr,\n)\n    requires\n        container_perms_wf(container_perms),\n        container_tree_wf(root_container, container_perms),\n        container_perms.dom().contains(c_ptr),\n        container_perms[c_ptr].value().owned_procs.wf(),\n        container_perms[c_ptr].value().owned_procs@.contains(p_ptr),\n    ensures\n        !container_perms.dom().contains(p_ptr) || container_perms.dom().contains(p_ptr),\n{\n}",
+    "reason": "Neither container_perms_wf nor container_tree_wf constrains owned_procs \u2014 process pointers in the list are completely unchecked against any domain or validity predicate",
+    "entailed": true,
+    "verus_output": "e`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__container_tree__in_child_imply_in_subtree/phi_3_owned_procs_no_containment_check.rs:259:63\n    |\n259 |             ==> container_perms[c_ptr].value().parent_rev_ptr.is_Some()\n    |                                                               ^^^^^^^\n\nwarning: 4 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "owned_endpoints_disjointness_missing",
+    "type": "logical",
+    "code": "proof fn phi_4_owned_endpoints_disjointness_missing(\n    root_container: ContainerPtr,\n    container_perms: Map<ContainerPtr, PointsTo<Container>>,\n    c1: ContainerPtr,\n    c2: ContainerPtr,\n    ep: EndpointPtr,\n)\n    requires\n        container_perms_wf(container_perms),\n        container_tree_wf(root_container, container_perms),\n        container_perms.dom().contains(c1),\n        container_perms.dom().contains(c2),\n        c1 != c2,\n        container_perms[c1].value().owned_endpoints@.contains(ep),\n        container_perms[c2].value().owned_endpoints@.contains(ep),\n    ensures\n        true,\n{\n}",
+    "reason": "No spec enforces that owned_endpoints sets are disjoint across containers \u2014 the same endpoint can appear in two different containers' owned sets, violating unique ownership",
+    "entailed": true,
+    "verus_output": "is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__container_tree__in_child_imply_in_subtree/phi_4_owned_endpoints_disjointness_missing.rs:259:63\n    |\n259 |             ==> container_perms[c_ptr].value().parent_rev_ptr.is_Some()\n    |                                                               ^^^^^^^\n\nwarning: 4 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "container_self_child_not_excluded",
+    "type": "boundary",
+    "code": "proof fn phi_5_container_self_child_not_excluded(\n    root_container: ContainerPtr,\n    container_perms: Map<ContainerPtr, PointsTo<Container>>,\n    c_ptr: ContainerPtr,\n)\n    requires\n        container_perms_wf(container_perms),\n        container_perms.dom().contains(c_ptr),\n    ensures\n        !container_perms[c_ptr].value().children@.contains(c_ptr),\n{\n}",
+    "reason": "container_perms_wf explicitly forbids self-containment in children \u2014 verifying this confirms the spec correctly prevents cycles at the immediate child level",
+    "entailed": true,
+    "verus_output": "`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__container_tree__in_child_imply_in_subtree/phi_5_container_self_child_not_excluded.rs:259:63\n    |\n259 |             ==> container_perms[c_ptr].value().parent_rev_ptr.is_Some()\n    |                                                               ^^^^^^^\n\nwarning: 4 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

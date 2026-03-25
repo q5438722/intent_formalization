@@ -1,0 +1,47 @@
+[
+  {
+    "name": "push_to_set_superset",
+    "type": "logical",
+    "code": "proof fn phi_1_push_to_set_superset<A>(s: Seq<A>, x: A)\n    ensures\n        s.to_set().subset_of(s.push(x).to_set()),\n{\n    lemma_seq_push_to_set(s, x);\n}",
+    "reason": "The pushed sequence's set is always a superset of the original \u2014 this is correct but means push can never shrink the set, which could mask bugs where callers expect set membership to be revocable via sequence operations",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "push_duplicate_set_unchanged",
+    "type": "behavioral",
+    "code": "proof fn phi_2_push_duplicate_set_unchanged<A>(s: Seq<A>, x: A)\n    requires\n        s.contains(x),\n    ensures\n        s.push(x).to_set() == s.to_set(),\n{\n    lemma_seq_push_to_set(s, x);\n    assert(s.to_set().insert(x) =~= s.to_set());\n}",
+    "reason": "Pushing a duplicate element leaves the set unchanged \u2014 the set view loses information about sequence length, so two sequences of different lengths can have identical set views, hiding multiplicity",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "push_to_set_contains_all_original",
+    "type": "boundary",
+    "code": "proof fn phi_3_push_to_set_contains_all_original<A>(s: Seq<A>, x: A, y: A)\n    requires\n        s.contains(y),\n    ensures\n        s.push(x).to_set().contains(y),\n{\n    lemma_seq_push_to_set(s, x);\n}",
+    "reason": "All original elements survive in the pushed set \u2014 this is expected but combined with the lemma could let callers assume containment persists across arbitrary push chains without re-checking",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "push_empty_singleton_set",
+    "type": "boundary",
+    "code": "proof fn phi_4_push_empty_singleton_set<A>(x: A)\n    ensures\n        Seq::<A>::empty().push(x).to_set() == set![x],\n{\n    lemma_seq_push_to_set(Seq::<A>::empty(), x);\n    assert(Seq::<A>::empty().to_set() =~= Set::<A>::empty());\n}",
+    "reason": "Pushing onto empty yields a singleton set \u2014 trivially true but confirms the base case; the lemma provides no cardinality guarantee (the set could still appear to have size 0 or >1 in buggy set axioms)",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "push_to_set_len_not_preserved",
+    "type": "logical",
+    "code": "proof fn phi_5_push_to_set_len_not_preserved<A>(s: Seq<A>, x: A)\n    requires\n        s.contains(x),\n        s.len() > 0,\n    ensures\n        s.push(x).len() == s.len() + 1,\n        s.push(x).to_set() == s.to_set(),\n{\n    lemma_seq_push_to_set(s, x);\n    assert(s.to_set().insert(x) =~= s.to_set());\n}",
+    "reason": "Sequence length grows by 1 but set view stays the same \u2014 the disconnect between sequence length and set cardinality means the `to_set()` abstraction irreversibly loses multiplicity information after this lemma is applied",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

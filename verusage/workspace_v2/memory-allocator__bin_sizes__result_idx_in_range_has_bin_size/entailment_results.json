@@ -1,0 +1,47 @@
+[
+  {
+    "name": "smallest_bin_wsize_1_is_bin_1",
+    "type": "boundary",
+    "code": "proof fn phi_1_smallest_bin_wsize_1_is_bin_1()\n    ensures\n        smallest_bin_fitting_size(8) == 1,\n{\n}",
+    "reason": "A 1-word (8-byte) allocation maps to bin 1 \u2014 but bin 1's `size_of_bin(1)` equals `BITS/8 * 1 = 8` bytes, so wsize=1 hits the `wsize <= 1` branch returning bin 1; if the branch used `<` instead of `<=`, single-word allocations would go to bin 2 and waste half the slot",
+    "entailed": false,
+    "verus_output": "  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__bin_sizes__result_idx_in_range_has_bin_size/phi_1_smallest_bin_wsize_1_is_bin_1.rs:268:9\n    |\n266 | proof fn phi_1_smallest_bin_wsize_1_is_bin_1()\n    |       ---------------------------------------- at the end of the function body\n267 |     ensures\n268 |         smallest_bin_fitting_size(8) == 1,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "smallest_bin_zero_size_is_bin_1",
+    "type": "boundary",
+    "code": "proof fn phi_2_smallest_bin_zero_size_is_bin_1()\n    ensures\n        smallest_bin_fitting_size(0) == 1,\n{\n}",
+    "reason": "A zero-size allocation request rounds up to wsize=0 which satisfies `wsize <= 1`, returning bin 1 \u2014 zero-size allocations silently succeed and consume a full 8-byte slot instead of being rejected",
+    "entailed": false,
+    "verus_output": "/home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__bin_sizes__result_idx_in_range_has_bin_size/phi_2_smallest_bin_zero_size_is_bin_1.rs:268:9\n    |\n266 | proof fn phi_2_smallest_bin_zero_size_is_bin_1()\n    |       ------------------------------------------ at the end of the function body\n267 |     ensures\n268 |         smallest_bin_fitting_size(0) == 1,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "smallest_bin_negative_size_is_bin_1",
+    "type": "boundary",
+    "code": "proof fn phi_3_smallest_bin_negative_size_is_bin_1()\n    ensures\n        smallest_bin_fitting_size(-100) == 1,\n{\n}",
+    "reason": "Negative sizes compute `wsize = (-100 + 7) / 8` which is negative (Verus int division rounds toward negative infinity), satisfying `wsize <= 1` and returning bin 1 \u2014 negative allocation sizes are silently accepted rather than flagged as errors",
+    "entailed": false,
+    "verus_output": "ntent_formalization/verusage/workspace_v2/memory-allocator__bin_sizes__result_idx_in_range_has_bin_size/phi_3_smallest_bin_negative_size_is_bin_1.rs:268:9\n    |\n266 | proof fn phi_3_smallest_bin_negative_size_is_bin_1()\n    |       ---------------------------------------------- at the end of the function body\n267 |     ensures\n268 |         smallest_bin_fitting_size(-100) == 1,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "size_of_bin_huge_not_max",
+    "type": "logical",
+    "code": "proof fn phi_4_size_of_bin_huge_not_max()\n    ensures\n        ({\n            reveal(size_of_bin);\n            size_of_bin(BIN_HUGE as int) == 8 * (524288 + 1)\n        }),\n{\n    reveal(size_of_bin);\n}",
+    "reason": "BIN_HUGE's size is hardcoded to `8 * 524289 = 4194312` rather than being truly unbounded \u2014 any allocation above this artificial cap would compute `smallest_bin_fitting_size` returning BIN_HUGE, but the `pfd_upper(BIN_HUGE)` would be 524289, so allocations larger than 4194312 bytes would violate `wsize <= pfd_upper` even though they belong in BIN_HUGE",
+    "entailed": false,
+    "verus_output": "error: expected pure mathematical expression\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__bin_sizes__result_idx_in_range_has_bin_size/phi_4_size_of_bin_huge_not_max.rs:268:9\n    |\n268 | /         ({\n269 | |             reveal(size_of_bin);\n270 | |             size_of_bin(BIN_HUGE as int) == 8 * (524288 + 1)\n271 | |         }),\n    | |__________^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pfd_lower_upper_gap_at_boundary",
+    "type": "behavioral",
+    "code": "proof fn phi_5_pfd_lower_upper_gap_at_boundary()\n    ensures\n        ({\n            reveal(size_of_bin);\n            pfd_upper(8) + 1 == pfd_lower(9)\n        }),\n{\n    reveal(size_of_bin);\n}",
+    "reason": "The transition from small bins (linear: `BITS/8 * idx`) to large bins (exponential: `BITS/8 * (inner+5) * pow2(group+1)`) at bin 8\u21929 must have no gap \u2014 if `pfd_upper(8) + 1 != pfd_lower(9)`, word-sizes falling in the gap would have no valid bin, silently misrouting allocations",
+    "entailed": false,
+    "verus_output": "error: expected pure mathematical expression\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__bin_sizes__result_idx_in_range_has_bin_size/phi_5_pfd_lower_upper_gap_at_boundary.rs:268:9\n    |\n268 | /         ({\n269 | |             reveal(size_of_bin);\n270 | |             pfd_upper(8) + 1 == pfd_lower(9)\n271 | |         }),\n    | |__________^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "write_preserves_pml4",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is correct by design. `PTMem` is a spec-level abstraction where `pml4` is a fixed base address field, not a memory location. Writes modify the page table memory contents (`mem`), not the root pointer. The PML4 base address is set at initialization and should not change."
+  },
+  {
+    "phi": "write_overwrites_silently",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is standard map semantics \u2014 `Map::insert` overwrites existing keys. Concurrency concerns are handled at higher abstraction layers (rl1/rl2/rl3 with store buffers and TLBs), not at the PTMem level which models a single logical memory state."
+  },
+  {
+    "phi": "write_seq_empty_identity",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is the correct base case for `fold_left` over an empty sequence. An empty write sequence should produce no changes \u2014 this is expected and desirable behavior."
+  },
+  {
+    "phi": "write_expands_domain",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`PTMem.mem` is a `Map<usize, usize>` \u2014 writing to a new key naturally adds it to the domain. Bounds checking on which addresses are valid page table locations is enforced at higher layers (directory invariants, allocated regions), not at this low-level memory abstraction."
+  },
+  {
+    "phi": "write_seq_order_matters",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Order-dependent writes are correct and expected \u2014 `write_seq` models sequential application of writes via `fold_left`. In page table operations, write order matters (e.g., directory entries must be written before leaf entries). This is the intended semantics."
+  }
+]

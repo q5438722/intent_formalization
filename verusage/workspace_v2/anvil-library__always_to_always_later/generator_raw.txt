@@ -1,0 +1,89 @@
+===PHI_START===
+NAME: execution_equality_forces_fn_equality
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_execution_equality_forces_fn_equality(f: spec_fn(nat) -> int, g: spec_fn(nat) -> int)
+    requires
+        forall |i: nat| #[trigger] f(i) == g(i),
+    ensures
+        f == g,
+{
+    let ex1 = Execution { nat_to_state: f };
+    let ex2 = Execution { nat_to_state: g };
+    execution_equality::<int>(ex1, ex2);
+}
+```
+REASON: execution_equality is external_body forcing intensional equality of spec_fn from pointwise extensional equivalence — two structurally distinct closures are collapsed to equal
+===PHI_END===
+
+===PHI_START===
+NAME: suffix_composition_equals_addition
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_suffix_composition_equals_addition(ex: Execution<int>, i: nat, j: nat)
+    ensures
+        ex.suffix(i).suffix(j) == ex.suffix(i + j),
+{
+    execution_equality::<int>(ex.suffix(i).suffix(j), ex.suffix(i + j));
+}
+```
+REASON: doubly-nested suffix creates a closure intensionally distinct from single-offset suffix — execution_equality collapses them without proof, and always_to_always_later depends on this
+===PHI_END===
+
+===PHI_START===
+NAME: entails_trans_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_entails_trans_intensional_bridge(p: TempPred<int>, q: TempPred<int>, r: TempPred<int>)
+    requires
+        p.entails(q),
+        q.entails(r),
+    ensures
+        p.entails(r),
+{
+    entails_trans::<int>(p, q, r);
+}
+```
+REASON: entails_trans is external_body bridging transitivity across chained implies/TempPred::new closures — resolves intensional closure identity without proof
+===PHI_END===
+
+===PHI_START===
+NAME: always_later_commutativity
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_always_later_commutativity(ex: Execution<int>, p: TempPred<int>)
+    requires
+        always(p).satisfied_by(ex),
+    ensures
+        always(later(p)).satisfied_by(ex),
+        later(always(p)).satisfied_by(ex),
+{
+    always_propagate_forwards::<int>(ex, p, 1);
+    assert forall |i| #[trigger] later(p).satisfied_by(ex.suffix(i)) by {
+        execution_equality::<int>(ex.suffix(i).suffix(1), ex.suffix(1).suffix(i));
+    };
+}
+```
+REASON: always and later commute freely through the external_body axioms — if always(later(p)) and later(always(p)) are both derivable from always(p), the temporal operators lose independent semantic content
+===PHI_END===
+
+===PHI_START===
+NAME: always_propagate_forwards_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_always_propagate_forwards_intensional_bridge(ex: Execution<int>, p: TempPred<int>, i: nat)
+    requires
+        always(p).satisfied_by(ex),
+    ensures
+        always(p).satisfied_by(ex.suffix(i)),
+{
+    always_propagate_forwards::<int>(ex, p, i);
+}
+```
+REASON: always_propagate_forwards is external_body transferring always(p) to ex.suffix(i) which has an intensionally distinct closure — the axiom silently equates these without proof
+===PHI_END===

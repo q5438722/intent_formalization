@@ -1,0 +1,47 @@
+[
+  {
+    "name": "serialize_nonempty",
+    "type": "boundary",
+    "code": "proof fn phi_1_serialize_nonempty(v: UInt)\n    ensures\n        UnsignedLEB128.spec_serialize(v).len() >= 1,\n{\n}",
+    "reason": "Serialization should always produce at least one byte \u2014 if empty output were possible, there would be no bytes for a parser to consume",
+    "entailed": true,
+    "verus_output": "verification results:: 5 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "serialize_zero_is_single_zero",
+    "type": "behavioral",
+    "code": "proof fn phi_2_serialize_zero_is_single_zero()\n    ensures\n        UnsignedLEB128.spec_serialize(0u64) == seq![0u8],\n{\n    assert(take_low_7_bits!(0u64) == 0u8) by (bit_vector);\n    assert(0u64 >> 7u64 == 0u64) by (bit_vector);\n}",
+    "reason": "Zero should serialize to a single 0x00 byte \u2014 if it produced multiple bytes or a different value, the canonical encoding of zero would be wrong",
+    "entailed": true,
+    "verus_output": "verification results:: 7 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "serialize_128_is_two_bytes",
+    "type": "behavioral",
+    "code": "proof fn phi_3_serialize_128_is_two_bytes()\n    ensures\n        UnsignedLEB128.spec_serialize(128u64) == seq![0x80u8, 0x01u8],\n{\n    assert(take_low_7_bits!(128u64) == 0u8) by (bit_vector);\n    assert((0u8 | 0x80) as u8 == 0x80u8) by (bit_vector);\n    assert(128u64 >> 7u64 == 1u64) by (bit_vector);\n    assert(take_low_7_bits!(1u64) == 1u8) by (bit_vector);\n    assert(1u64 >> 7u64 == 0u64) by (bit_vector);\n}",
+    "reason": "128 is the smallest two-byte LEB128 value (0x80, 0x01) \u2014 if the encoding boundary between one and two bytes were wrong, all multi-byte values would be misencoded",
+    "entailed": false,
+    "verus_output": "ization/verusage/workspace_v2/vest__regular__leb128__impl2__lemma_spec_serialize_length/phi_3_serialize_128_is_two_bytes.rs:91:9\n   |\n89 | proof fn phi_3_serialize_128_is_two_bytes()\n   |       ------------------------------------- at the end of the function body\n90 |     ensures\n91 |         UnsignedLEB128.spec_serialize(128u64) == seq![0x80u8, 0x01u8],\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "serialize_length_max_10",
+    "type": "boundary",
+    "code": "proof fn phi_4_serialize_length_max_10(v: UInt)\n    ensures\n        UnsignedLEB128.spec_serialize(v).len() <= 10,\n{\n    UnsignedLEB128.lemma_spec_serialize_length(v);\n}",
+    "reason": "A u64 should serialize to at most 10 bytes (ceil(64/7)) \u2014 the proof relies on `reveal_with_fuel` and bitvector reasoning; if the fuel or shift chain were wrong, the bound would be unsound",
+    "entailed": true,
+    "verus_output": "verification results:: 5 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "serialize_last_byte_below_0x80",
+    "type": "behavioral",
+    "code": "proof fn phi_5_serialize_last_byte_below_0x80(v: UInt)\n    ensures\n        UnsignedLEB128.spec_serialize(v).last() < 0x80u8,\n    decreases v,\n{\n    let lo = take_low_7_bits!(v);\n    let hi = v >> 7u64;\n    if hi == 0 {\n        assert(take_low_7_bits!(v) < 0x80u8) by (bit_vector);\n    } else {\n        assert(v >> 7 != 0 ==> v >> 7 < v) by (bit_vector);\n        phi_5_serialize_last_byte_below_0x80(hi);\n    }\n}",
+    "reason": "The last byte of a LEB128 encoding must have the high bit unset (terminator) \u2014 if the last byte had high bit set, a parser would expect more continuation bytes",
+    "entailed": true,
+    "verus_output": "verification results:: 7 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

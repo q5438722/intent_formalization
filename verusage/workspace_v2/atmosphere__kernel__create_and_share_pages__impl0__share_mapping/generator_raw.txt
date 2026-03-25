@@ -1,0 +1,88 @@
+Looking at the file, I need to identify the key spec patterns and potential gaps. The file covers page tables, process management, and linked lists with many `external_body` functions.
+
+===PHI_START===
+NAME: usize2pa_mem_valid_unconditional
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)
+    ensures
+        MEM_valid(usize2pa(v)),
+{
+}
+```
+REASON: usize2pa's external_body unconditionally ensures MEM_valid(ret) for ANY input — this is trusted without proof, meaning any arbitrary usize is treated as having a valid physical address after masking
+===PHI_END===
+
+===PHI_START===
+NAME: sll_len_without_wf_returns_value_list_len
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)
+    ensures
+        sll.len() == sll.value_list_len,
+{
+}
+```
+REASON: StaticLinkedList::len's external_body ensures l == self.value_list_len unconditionally without requiring wf() — a corrupted linked list returns its raw field as trusted length
+===PHI_END===
+
+===PHI_START===
+NAME: pagetable_is_empty_ignores_kernel_l4_entries
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_pagetable_is_empty_ignores_kernel_l4_entries(pt: PageTable)
+    requires
+        pt.is_empty(),
+        pt.kernel_l4_end > 0,
+    ensures
+        pt.l4_table@.dom().contains(pt.cr3),
+        pt.page_closure().contains(pt.cr3),
+{
+}
+```
+REASON: is_empty only checks L4 entries from kernel_l4_end..512 — kernel-range L4 entries (0..kernel_l4_end) can have arbitrary present entries while the page table is considered "empty", and page_closure always includes l4_table dom
+===PHI_END===
+
+===PHI_START===
+NAME: resolve_l4_returns_non_present_for_kernel_range
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_resolve_l4_returns_non_present_for_kernel_range(pt: PageTable, l4i: L4Index)
+    requires
+        pt.kernel_l4_end > 0,
+        0 <= l4i < pt.kernel_l4_end,
+        pt.l4_table@.dom().contains(pt.cr3),
+        pt.l4_table@[pt.cr3].is_init(),
+    ensures
+        pt.spec_resolve_mapping_l4(l4i).is_Some(),
+{
+}
+```
+REASON: spec_resolve_mapping_l4 returns Some for ANY l4i < kernel_l4_end regardless of whether the entry is present — kernel-range entries are always "resolved" even if they contain garbage data
+===PHI_END===
+
+===PHI_START===
+NAME: resolve_l3_skips_ps_check
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_resolve_l3_skips_ps_check(pt: PageTable, l4i: L4Index, l3i: L3Index)
+    requires
+        pt.kernel_l4_end <= l4i < 512,
+        0 <= l3i < 512,
+        pt.spec_resolve_mapping_l4(l4i).is_Some(),
+        pt.l3_tables@.dom().contains(pt.spec_resolve_mapping_l4(l4i).unwrap().addr),
+        pt.l3_tables@[pt.spec_resolve_mapping_l4(l4i).unwrap().addr].is_init(),
+        pt.l3_tables@[pt.spec_resolve_mapping_l4(l4i).unwrap().addr].value()[l3i].perm.present,
+        pt.l3_tables@[pt.spec_resolve_mapping_l4(l4i).unwrap().addr].value()[l3i].perm.ps,
+    ensures
+        pt.spec_resolve_mapping_l3(l4i, l3i).is_Some(),
+{
+}
+```
+REASON: spec_resolve_mapping_l3 returns Some even when the L3 entry has ps=true (indicating a 1G huge page) — the resolution continues to L3 level without checking whether the entry is a leaf, allowing the same entry to be interpreted as both a 1G mapping and a pointer to an L2 table
+===PHI_END===

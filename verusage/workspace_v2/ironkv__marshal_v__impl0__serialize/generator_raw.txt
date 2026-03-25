@@ -1,0 +1,88 @@
+===PHI_START===
+NAME: serialize_preserves_prefix
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_serialize_preserves_prefix(x: u64, data: Vec<u8>)
+    requires
+        x.is_marshalable(),
+    ensures
+        ({
+            let old_len = data@.len();
+            let new_len = old_len + x.ghost_serialize().len();
+            new_len >= old_len
+        }),
+{
+    lemma_auto_spec_u64_to_from_le_bytes();
+}
+```
+REASON: The serialize ensures that the output grows by exactly the serialization length — but this is trivially true for u64 (always 8 bytes) and the trait-level ensures is `external_body` for all other types, so the append-only guarantee is unverified for usize, Vec<u8>, and Vec<T>
+===PHI_END===
+
+===PHI_START===
+NAME: usize_serialize_external_body_unchecked
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_usize_serialize_external_body_unchecked(x: usize)
+    requires
+        x.is_marshalable(),
+    ensures
+        x.ghost_serialize().len() == 8,
+{
+    lemma_auto_spec_u64_to_from_le_bytes();
+}
+```
+REASON: `usize::serialize` is `external_body` with `unimplemented!()` — the exec implementation is completely missing, yet the spec ensures (prefix preservation + appended serialization) are trusted without any verification
+===PHI_END===
+
+===PHI_START===
+NAME: vec_u8_serialize_length_prefix_then_data
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_vec_u8_serialize_length_prefix_then_data(v: Vec<u8>)
+    requires
+        v.is_marshalable(),
+    ensures
+        v.ghost_serialize().len() == (v@.len() as usize).ghost_serialize().len() + v@.len(),
+{
+}
+```
+REASON: `Vec<u8>` serialization is length-prefixed then raw bytes — but the `serialize` exec fn is `external_body` with `unimplemented!()`, so there's no guarantee the runtime behavior matches this spec
+===PHI_END===
+
+===PHI_START===
+NAME: trait_serialize_external_body_default
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_trait_serialize_external_body_default(x: u64, y: u64)
+    requires
+        x.is_marshalable(),
+        y.is_marshalable(),
+        x != y,
+    ensures
+        x.ghost_serialize() != y.ghost_serialize(),
+{
+    lemma_auto_spec_u64_to_from_le_bytes();
+}
+```
+REASON: u64 serialization is injective (distinct values produce distinct byte sequences) — but this injectivity is only derivable from `lemma_auto_spec_u64_to_from_le_bytes` and is never stated as a trait-level guarantee, so other Marshalable impls have no obligation to be injective
+===PHI_END===
+
+===PHI_START===
+NAME: vec_t_serialize_external_body_no_verification
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_vec_t_serialize_external_body_no_verification(v: Vec<u64>)
+    requires
+        v.is_marshalable(),
+    ensures
+        v.ghost_serialize().len() >= (v@.len() as usize).ghost_serialize().len(),
+{
+}
+```
+REASON: `Vec<T>::serialize` is `external_body` — the spec says serialization is length-prefix + fold of element serializations, but the exec implementation is `unimplemented!()`, so the ensures clauses (prefix preservation, correct appended bytes) are entirely unverified at runtime
+===PHI_END===

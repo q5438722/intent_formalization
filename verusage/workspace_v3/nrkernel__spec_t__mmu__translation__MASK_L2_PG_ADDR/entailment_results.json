@@ -1,0 +1,52 @@
+[
+  {
+    "name": "mask_is_zero",
+    "target_fn": "MASK_L2_PG_ADDR",
+    "type": "behavioral",
+    "reason": "A zero mask would fail to extract any L2 page address bits, making all L2 translations collapse to address zero",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "sk_is_zero.rs:41:9\n   |\n39 | proof fn phi_1_mask_is_zero()\n   |       ----------------------- at the end of the function body\n40 |     ensures\n41 |         MASK_L2_PG_ADDR_SPEC == 0usize,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "low_bits_set",
+    "target_fn": "MASK_L2_PG_ADDR",
+    "type": "boundary",
+    "reason": "Bits 0-20 must be clear in an L2 (2MiB) page address mask; setting them would include page-offset bits in the physical address extraction",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "of fn phi_2_low_bits_set()\n   |       ----------------------- at the end of the function body\n40 |     ensures\n41 |         MASK_L2_PG_ADDR_SPEC & 0x1FFFFFusize != 0usize,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "mask_all_ones",
+    "target_fn": "MASK_L2_PG_ADDR",
+    "type": "behavioral",
+    "reason": "An all-ones mask would pass through all 64 bits, defeating the purpose of masking the L2 page-table entry to its physical address field",
+    "entailed": false,
+    "verified": 0,
+    "errors": 0,
+    "output_tail": "intent_formalization/verusage/workspace_v3/nrkernel__spec_t__mmu__translation__MASK_L2_PG_ADDR/phi_3_mask_all_ones.rs:41:33\n   |\n41 |         MASK_L2_PG_ADDR_SPEC == 0xFFFF_FFFF_FFFF_FFFFusize,\n   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "bit20_set",
+    "target_fn": "MASK_L2_PG_ADDR",
+    "type": "boundary",
+    "reason": "Bit 20 is the topmost offset bit for a 2MiB page; including it in the address mask would corrupt extracted physical addresses by one bit position",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "phi_4_bit20_set()\n   |       -------------------- at the end of the function body\n40 |     ensures\n41 |         MASK_L2_PG_ADDR_SPEC & (1usize << 20usize) != 0usize,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "bit21_clear",
+    "target_fn": "MASK_L2_PG_ADDR",
+    "type": "logical",
+    "reason": "Bit 21 is the lowest address bit for an L2 page; if clear, the mask would fail to capture the least-significant physical address bit for 2MiB pages",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "5_bit21_clear()\n   |       ---------------------- at the end of the function body\n40 |     ensures\n41 |         MASK_L2_PG_ADDR_SPEC & (1usize << 21usize) == 0usize,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

@@ -1,0 +1,91 @@
+===PHI_START===
+NAME: empty_vec_zero_size
+TARGET_FN: serialized_size
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_empty_vec_zero_size(v: Vec<u64>)
+    requires
+        v.is_marshalable(),
+        v@.len() == 0,
+    ensures
+        v.ghost_serialize().len() == 0,
+{
+}
+```
+REASON: Empty vec should still have a nonzero length-prefix; zero size would mean the length header is absent from serialization.
+===PHI_END===
+
+===PHI_START===
+NAME: size_bounded_by_header_only
+TARGET_FN: serialized_size
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_size_bounded_by_header_only(v: Vec<u64>)
+    requires
+        v.is_marshalable(),
+        v@.len() > 0,
+    ensures
+        v.ghost_serialize().len() <= (v@.len() as usize).ghost_serialize().len(),
+{
+}
+```
+REASON: A non-empty vec's serialized size must exceed just the length prefix; this would mean element payloads contribute zero bytes.
+===PHI_END===
+
+===PHI_START===
+NAME: no_length_prefix_in_size
+TARGET_FN: serialized_size
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_no_length_prefix_in_size(v: Vec<u64>)
+    requires
+        v.is_marshalable(),
+    ensures
+        v.ghost_serialize().len() ==
+            v@.fold_left(0int, |acc: int, x: u64| acc + x.ghost_serialize().len()),
+{
+}
+```
+REASON: Serialized size should include the length-prefix header; omitting it would produce an incorrect, shorter encoding.
+===PHI_END===
+
+===PHI_START===
+NAME: longer_vec_no_larger
+TARGET_FN: serialized_size
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_longer_vec_no_larger(v1: Vec<u64>, v2: Vec<u64>)
+    requires
+        v1.is_marshalable(),
+        v2.is_marshalable(),
+        v1@.len() == 1,
+        v2@.len() == 2,
+    ensures
+        v2.ghost_serialize().len() <= v1.ghost_serialize().len(),
+{
+}
+```
+REASON: A vec with strictly more elements of the same fixed-size type must serialize to a strictly larger blob; equal-or-smaller would be wrong.
+===PHI_END===
+
+===PHI_START===
+NAME: single_elem_equals_elem_size
+TARGET_FN: serialized_size
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_single_elem_equals_elem_size(v: Vec<u64>)
+    requires
+        v.is_marshalable(),
+        v@.len() == 1,
+    ensures
+        v.ghost_serialize().len() == v@[0].ghost_serialize().len(),
+{
+}
+```
+REASON: A single-element vec's serialization must be larger than just the element itself because the length prefix is missing from this accounting.
+===PHI_END===

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "va_add_range_zero_is_identity",
+    "type": "behavioral",
+    "code": "proof fn phi_1_va_add_range_zero_is_identity(va: usize)\n    requires\n        spec_va_4k_valid(va),\n    ensures\n        spec_va_add_range(va, 0) == va,\n{\n}",
+    "reason": "spec_va_add_range(va, 0) = (va + 0*4096) = va by definition \u2014 but va_add_range's ensures only guarantees `ret != va` when `i != 0`, leaving the i==0 case consistent; this tests whether the spec correctly handles the identity case",
+    "entailed": true,
+    "verus_output": "verification results:: 5 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "va_4k_range_valid_vacuous_for_zero_len",
+    "type": "boundary",
+    "code": "proof fn phi_2_va_4k_range_valid_vacuous_for_zero_len(va: usize)\n    ensures\n        spec_va_4k_range_valid(va, 0),\n{\n}",
+    "reason": "spec_va_4k_range_valid with len==0 is vacuously true for ANY va (even invalid ones) since the forall quantifier has an empty range \u2014 no va_4k_valid precondition is needed",
+    "entailed": true,
+    "verus_output": "verification results:: 5 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "va_add_range_no_overflow_check",
+    "type": "boundary",
+    "code": "proof fn phi_3_va_add_range_no_overflow_check(va: usize, i: usize)\n    requires\n        spec_va_4k_valid(va),\n        i > 0,\n    ensures\n        spec_va_add_range(va, i) != va,\n{\n}",
+    "reason": "va_add_range's external_body ensures `i != 0 ==> ret != va` without overflow checks \u2014 but spec_va_add_range computes `(va + i*4096) as usize` which can wrap around to equal va on overflow, creating a mismatch between spec and trusted ensures",
+    "entailed": false,
+    "verus_output": "/home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__util__page_ptr_util_u__va_4k_range_valid/phi_3_va_add_range_no_overflow_check.rs:78:9\n   |\n73 | proof fn phi_3_va_add_range_no_overflow_check(va: usize, i: usize)\n   |       ------------------------------------------------------------ at the end of the function body\n...\n78 |         spec_va_add_range(va, i) != va,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "va_4k_range_valid_does_not_imply_contiguous",
+    "type": "logical",
+    "code": "proof fn phi_4_va_4k_range_valid_does_not_imply_contiguous(va: usize, i: usize, j: usize)\n    requires\n        spec_va_4k_valid(va),\n        spec_va_4k_range_valid(va, 10),\n        0 <= i < 10,\n        0 <= j < 10,\n        i != j,\n    ensures\n        spec_va_add_range(va, i) != spec_va_add_range(va, j),\n{\n}",
+    "reason": "spec_va_add_range could wrap around modulo usize::MAX+1, making two distinct indices map to the same virtual address \u2014 the range validity check doesn't prevent collisions from arithmetic overflow",
+    "entailed": false,
+    "verus_output": "nge_valid/phi_4_va_4k_range_valid_does_not_imply_contiguous.rs:81:9\n   |\n73 | proof fn phi_4_va_4k_range_valid_does_not_imply_contiguous(va: usize, i: usize, j: usize)\n   |       ----------------------------------------------------------------------------------- at the end of the function body\n...\n81 |         spec_va_add_range(va, i) != spec_va_add_range(va, j),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "va_add_range_nonzero_ensures_without_bounds",
+    "type": "logical",
+    "code": "proof fn phi_5_va_add_range_nonzero_ensures_without_bounds(va: usize)\n    requires\n        spec_va_4k_valid(va),\n    ensures\n        spec_va_add_range(va, 1) != 0,\n{\n}",
+    "reason": "va_add_range guarantees ret != va when i != 0, but nothing prevents the result from being 0 (null address) \u2014 adding 4096 to a valid VA could overflow to 0, yet the external_body ensures would still claim the result is non-equal to va",
+    "entailed": false,
+    "verus_output": "intent_formalization/verusage/workspace_v2/atmosphere__util__page_ptr_util_u__va_4k_range_valid/phi_5_va_add_range_nonzero_ensures_without_bounds.rs:77:9\n   |\n73 | proof fn phi_5_va_add_range_nonzero_ensures_without_bounds(va: usize)\n   |       --------------------------------------------------------------- at the end of the function body\n...\n77 |         spec_va_add_range(va, 1) != 0,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

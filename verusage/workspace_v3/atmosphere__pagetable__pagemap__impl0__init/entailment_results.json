@@ -1,0 +1,52 @@
+[
+  {
+    "name": "init_has_present_entry",
+    "target_fn": "init",
+    "type": "behavioral",
+    "reason": "After init all entries must be empty (present==false); if a present entry exists, init failed to clear the page map",
+    "entailed": false,
+    "verified": 14,
+    "errors": 1,
+    "output_tail": "usage/workspace_v3/atmosphere__pagetable__pagemap__impl0__init/phi_1_init_has_present_entry.rs:262:9\n    |\n262 |         exists|i: int| 0 <= i < 512 && pm@[i].perm.present,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n"
+  },
+  {
+    "name": "init_nonzero_addr",
+    "target_fn": "init",
+    "type": "boundary",
+    "reason": "Entry 0 should have addr==0 after init since is_empty requires addr==0; a non-zero addr would mean init left stale physical addresses",
+    "entailed": false,
+    "verified": 14,
+    "errors": 1,
+    "output_tail": ":9\n    |\n257 | proof fn phi_2_init_nonzero_addr(pm: PageMap)\n    |       --------------------------------------- at the end of the function body\n...\n262 |         pm@[0].addr != 0,\n    |         ^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n"
+  },
+  {
+    "name": "init_vacuous_precondition",
+    "target_fn": "init",
+    "type": "logical",
+    "reason": "If init's preconditions are unsatisfiable, every postcondition holds vacuously and init can never be safely called",
+    "entailed": false,
+    "verified": 14,
+    "errors": 1,
+    "output_tail": "rs:262:9\n    |\n257 | proof fn phi_3_init_vacuous_precondition(pm: PageMap)\n    |       ----------------------------------------------- at the end of the function body\n...\n262 |         false,\n    |         ^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n"
+  },
+  {
+    "name": "set_modifies_other_index",
+    "target_fn": "set",
+    "type": "behavioral",
+    "reason": "set should only modify index i; if another index j changes, set has unintended side-effects corrupting unrelated page entries",
+    "entailed": false,
+    "verified": 14,
+    "errors": 1,
+    "output_tail": "     --------------------------------------------------------------------------------------------------- at the end of the function body\n...\n265 |         new_s[j] != old_s[j],\n    |         ^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n"
+  },
+  {
+    "name": "set_changes_length",
+    "target_fn": "set",
+    "type": "boundary",
+    "reason": "set's wf() postcondition guarantees preserved length; if length changes, the array invariant is broken and indexing becomes unsafe",
+    "entailed": false,
+    "verified": 14,
+    "errors": 1,
+    "output_tail": "       ------------------------------------------------------------------------------------- at the end of the function body\n...\n264 |         new_s.len() != old_s.len(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n"
+  }
+]

@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: execution_equality_forces_fn_equality
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The external_body `execution_equality` forces intensional `spec_fn` equality from pointwise extensional equivalence. This is the foundational unverified trust assumption — structurally distinct closures are collapsed to equal without proof.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: not_eventually_implies_always_not
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `not_eventually_unfold` extracts a bare `forall |i| !p.satisfied_by(ex.suffix(i))`, and the SMT solver repacks this into `always(not(p))` by closing the intensional gap between the `always` closure and the bare quantifier. This is a separate unverified bridge from `always_unfold` — it works in the reverse direction (packing rather than unpacking).
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: always_p_or_eventually_q_rec_no_bound
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `always_p_or_eventually_q_rec` is external_body with a `decreases i` clause but the induction (base case and step) is entirely unverified. The axiom trusts that the preconditions suffice for induction without any checked proof, making it a separate trust assumption beyond the intensional bridge axioms.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: suffix_composition_via_execution_equality
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Suffix composition `ex.suffix(i).suffix(j) == ex.suffix(i + j)` is a semantically correct and desirable property. The intensional concern is entirely subsumed by φ1's identification of `execution_equality` as the root unverified axiom — this is just a concrete instantiation.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: always_propagate_then_unfold_double_suffix
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This composes two already-identified axioms (`always_propagate_forwards` and `always_unfold`) on a double suffix. The result is semantically correct — `always(p)` should indeed yield `p` at any reachable suffix. No new trust surface is exposed beyond the individual axioms.
+===VERDICT_END===
+
+===SUMMARY===
+Three true positives identified. φ1 is the most fundamental: `execution_equality` forces intensional spec_fn equality from extensional equivalence. φ2 reveals that `not_eventually_unfold` enables reverse packing into `always(not(p))`, a separate intensional bridge. φ3 flags `always_p_or_eventually_q_rec` as a trusted induction axiom with no verified base case or step. φ4 and φ5 are false positives — suffix composition is a correct property subsumed by φ1, and double-suffix access is a straightforward composition of known axioms with no new trust surface.
+===END_SUMMARY===

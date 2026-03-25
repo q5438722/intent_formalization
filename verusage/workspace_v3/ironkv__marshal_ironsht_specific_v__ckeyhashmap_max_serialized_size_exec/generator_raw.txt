@@ -1,0 +1,84 @@
+===PHI_START===
+NAME: result_is_zero
+TARGET_FN: ckeyhashmap_max_serialized_size_exec
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_result_is_zero(r: usize)
+    requires
+        r == ckeyhashmap_max_serialized_size(),
+    ensures
+        r == 0,
+{
+}
+```
+REASON: A max serialized size of zero would make serialization impossible, indicating a broken constant
+===PHI_END===
+
+===PHI_START===
+NAME: result_not_expected_constant
+TARGET_FN: ckeyhashmap_max_serialized_size_exec
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_result_not_expected_constant(r: usize)
+    requires
+        r == ckeyhashmap_max_serialized_size(),
+    ensures
+        r != 0x100000usize,
+{
+}
+```
+REASON: If the spec entails the value differs from the intended 0x100000, the opaque definition and exec function disagree
+===PHI_END===
+
+===PHI_START===
+NAME: result_exceeds_i32_max
+TARGET_FN: ckeyhashmap_max_serialized_size_exec
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_result_exceeds_i32_max(r: usize)
+    requires
+        r == ckeyhashmap_max_serialized_size(),
+    ensures
+        r > 0x7FFFFFFFusize,
+{
+}
+```
+REASON: A max size exceeding i32::MAX risks overflow when cast to signed types in downstream serialization code
+===PHI_END===
+
+===PHI_START===
+NAME: result_too_small_for_any_entry
+TARGET_FN: ckeyhashmap_max_serialized_size_exec
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_result_too_small_for_any_entry(r: usize)
+    requires
+        r == ckeyhashmap_max_serialized_size(),
+    ensures
+        r < 256usize,
+{
+}
+```
+REASON: A max serialized size under 256 bytes is implausibly small for a hashmap, suggesting a misconfigured constant
+===PHI_END===
+
+===PHI_START===
+NAME: result_equals_usize_max
+TARGET_FN: ckeyhashmap_max_serialized_size_exec
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_result_equals_usize_max(r: usize)
+    requires
+        r == ckeyhashmap_max_serialized_size(),
+    ensures
+        r == usize::MAX,
+{
+}
+```
+REASON: If the max size equals usize::MAX, any addition to it overflows, making all size-bound checks vacuously true
+===PHI_END===

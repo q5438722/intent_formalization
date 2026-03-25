@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: l0_entry_size_overflow_check
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is a correct and desirable property. `L0_ENTRY_SIZE` equals `512^3 * 4096 = 549755813888` which fits in 64-bit usize. The `global size_of usize == 8` declaration ensures 64-bit, so no overflow occurs. This is the intended value.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: arch_layers_all_same_num_entries
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: All x86-64 page table layers indeed have 512 entries each (9 bits per level). This is the correct hardware specification — each level of the 4-level page table has exactly 512 entries because each page table page is 4KB and each entry is 8 bytes.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: entry_sizes_strictly_decreasing
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is correct and desirable. The x86-64 page table hierarchy has strictly decreasing entry sizes: L0=512G, L1=1G, L2=2M, L3=4K. Each layer maps a smaller region, which is the fundamental property of hierarchical page tables.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: arch_exec_fixed_size_array
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The `[ArchLayerExec; 4]` fixed-size array is an intentional design choice matching the x86-64 4-level page table architecture. LA57 (5-level paging) support would require a separate architectural definition. This is correct scoping, not a spec gap.
+===VERDICT_END===
+
+===SUMMARY===
+All four candidates are false positives. The x86-64 architecture constants are correctly specified: `L0_ENTRY_SIZE` fits in 64-bit usize, all layers have 512 entries matching hardware, entry sizes are correctly ordered top-down, and the fixed 4-layer structure matches standard x86-64 paging.
+===END_SUMMARY===

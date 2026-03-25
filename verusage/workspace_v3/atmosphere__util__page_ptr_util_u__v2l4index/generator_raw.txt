@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: always_minimum_index
+TARGET_FN: v2l4index
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_always_minimum_index(va: usize)
+    requires
+        va_4k_valid(va) || va_2m_valid(va) || va_1g_valid(va),
+    ensures
+        spec_v2l4index(va) == KERNEL_MEM_END_L4INDEX,
+{
+}
+```
+REASON: If provable, the L4 index is always 1 and the function is degenerate, unable to address multiple L4 page-table entries.
+===PHI_END===
+
+===PHI_START===
+NAME: upper_bound_unreachable
+TARGET_FN: v2l4index
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_upper_bound_unreachable(va: usize)
+    requires
+        va_4k_valid(va) || va_2m_valid(va) || va_1g_valid(va),
+    ensures
+        spec_v2l4index(va) < 0x1ff,
+{
+}
+```
+REASON: If provable, the maximum L4 index 0x1ff is unreachable, meaning the ensures upper bound is vacuously loose and the top page-table slot is inaccessible.
+===PHI_END===
+
+===PHI_START===
+NAME: lower_bound_unreachable
+TARGET_FN: v2l4index
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_lower_bound_unreachable(va: usize)
+    requires
+        va_4k_valid(va) || va_2m_valid(va) || va_1g_valid(va),
+    ensures
+        spec_v2l4index(va) > KERNEL_MEM_END_L4INDEX,
+{
+}
+```
+REASON: If provable, the lower bound KERNEL_MEM_END_L4INDEX is never actually achieved, making the ensures lower bound vacuously loose.
+===PHI_END===
+
+===PHI_START===
+NAME: result_always_even
+TARGET_FN: v2l4index
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_result_always_even(va: usize)
+    requires
+        va_4k_valid(va) || va_2m_valid(va) || va_1g_valid(va),
+    ensures
+        spec_v2l4index(va) % 2 == 0,
+{
+}
+```
+REASON: If provable, odd L4 indices are unreachable, halving the effective address space coverage of the page table.
+===PHI_END===
+
+===PHI_START===
+NAME: injective_on_valid_addresses
+TARGET_FN: v2l4index
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_injective_on_valid_addresses(va1: usize, va2: usize)
+    requires
+        va_4k_valid(va1) || va_2m_valid(va1) || va_1g_valid(va1),
+        va_4k_valid(va2) || va_2m_valid(va2) || va_1g_valid(va2),
+        va1 != va2,
+    ensures
+        spec_v2l4index(va1) != spec_v2l4index(va2),
+{
+}
+```
+REASON: If provable, every distinct valid VA maps to a distinct L4 index, meaning each index covers at most one address — contradicting the purpose of page-table indexing which groups many addresses under one entry.
+===PHI_END===

@@ -1,0 +1,78 @@
+===PHI_START===
+NAME: candidate_overlaps_inflight_vmem_idle_thread
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_candidate_overlaps_inflight_vmem_idle_thread(base: nat, size: nat)
+    ensures
+        !crate::hlspec::candidate_mapping_overlaps_inflight_vmem(
+            set![crate::hlspec::ThreadState::Idle],
+            base,
+            size,
+        ),
+{
+}
+```
+REASON: An Idle thread should never cause inflight vmem overlap — tests that the Idle match arm in the existential correctly returns false; if Idle threads trigger overlap, no new mappings could ever be created
+===PHI_END===
+
+===PHI_START===
+NAME: entry_size_layer_product_chain
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_entry_size_layer_product_chain()
+    ensures
+        x86_arch_spec.entry_size(0) == 512 * 512 * 512 * L3_ENTRY_SIZE as nat,
+        x86_arch_spec.entry_size(1) == 512 * 512 * L3_ENTRY_SIZE as nat,
+        x86_arch_spec.entry_size(2) == 512 * L3_ENTRY_SIZE as nat,
+        x86_arch_spec.entry_size(3) == L3_ENTRY_SIZE as nat,
+{
+}
+```
+REASON: The entry_size_is_next_layer_size invariant chains L0 = 512*L1 = 512^2*L2 = 512^3*L3 — tests that the x86_arch_spec layers are correctly constructed; wrong sizes would break virtual address space partitioning
+===PHI_END===
+
+===PHI_START===
+NAME: upper_vaddr_equals_2_pow_48
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_upper_vaddr_equals_2_pow_48()
+    ensures
+        x86_arch_spec.upper_vaddr(0, 0) == 512 * 512 * 512 * 512 * 4096,
+{
+}
+```
+REASON: `upper_vaddr(0, 0)` should equal 2^48 = 256TB — the canonical x86-64 virtual address space; if wrong, `candidate_mapping_in_bounds` would accept or reject mappings at incorrect boundaries
+===PHI_END===
+
+===PHI_START===
+NAME: rl2_interp_preserves_writes_field
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_rl2_interp_preserves_writes_field(s: crate::rl2::State)
+    ensures
+        s.interp().writes === s.writes,
+{
+}
+```
+REASON: The rl2→rl1 refinement should faithfully pass through the `writes` field — if the interp function altered writes, the writer core identity or TSO/nonpos tracking would diverge between abstraction levels
+===PHI_END===
+
+===PHI_START===
+NAME: nat_keys_preserves_membership
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_nat_keys_preserves_membership(m: Map<usize, PTE>, k: usize)
+    requires
+        m.contains_key(k),
+    ensures
+        nat_keys(m).contains_key(k as nat),
+{
+}
+```
+REASON: `nat_keys` converts usize keys to nat — an existing usize key should always appear in the nat-keyed map; if the `k <= usize::MAX` guard in `Map::new` is wrong, valid keys could be dropped
+===PHI_END===

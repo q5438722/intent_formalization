@@ -1,0 +1,52 @@
+[
+  {
+    "name": "aligned_zero_size",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "reason": "If alignment with size 0 is satisfiable, it masks division-by-zero in any spec that relies on aligned without guarding size > 0",
+    "entailed": false,
+    "verified": 13,
+    "errors": 1,
+    "output_tail": "e.rs:1032:9\n     |\n1030 | proof fn phi_1_aligned_zero_size()\n     |       ---------------------------- at the end of the function body\n1031 |     ensures\n1032 |         aligned(5, 0),\n     |         ^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n"
+  },
+  {
+    "name": "inv_empty_arch",
+    "target_fn": "inv",
+    "type": "behavioral",
+    "reason": "An architecture with zero layers is vacuously valid under inv, which would allow meaningless architectures to satisfy all downstream specs",
+    "entailed": true,
+    "verified": 14,
+    "errors": 0,
+    "output_tail": "a_unmap_soundness_equality/phi_2_inv_empty_arch.rs:587:49\n    |\n587 |             let size = if result is Ok { result.get_Ok_0().frame.size } else { 0 };\n    |                                                 ^^^^^^^^\n    |\n    = note: `#[warn(deprecated)]` on by default\n\nwarning: 1 warning emitted\n\n"
+  },
+  {
+    "name": "upper_vaddr_no_progress",
+    "target_fn": "upper_vaddr",
+    "type": "logical",
+    "reason": "If upper_vaddr never exceeds base, the layer covers zero address space, making all entry-size and mapping reasoning unsound",
+    "entailed": false,
+    "verified": 13,
+    "errors": 1,
+    "output_tail": "  ------------------------------------------------------------------- at the end of the function body\n...\n1035 |         arch.upper_vaddr(layer, base) <= base,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n"
+  },
+  {
+    "name": "entry_base_collision",
+    "target_fn": "entry_base",
+    "type": "logical",
+    "reason": "Distinct entry indices mapping to the same base address would collapse the entire page table structure, making separate pages indistinguishable",
+    "entailed": false,
+    "verified": 13,
+    "errors": 1,
+    "output_tail": "----------- at the end of the function body\n...\n1038 |         arch.entry_base(layer, base, i) == arch.entry_base(layer, base, j),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n"
+  },
+  {
+    "name": "aligned_implies_double_aligned",
+    "target_fn": "aligned",
+    "type": "behavioral",
+    "reason": "Alignment to size does not imply alignment to 2*size; if provable it would mean every 4K-aligned address is also 8K-aligned, breaking page-size distinctions",
+    "entailed": false,
+    "verified": 13,
+    "errors": 1,
+    "output_tail": "(addr: nat, size: nat)\n     |       ------------------------------------------------------------- at the end of the function body\n...\n1035 |         aligned(addr, 2 * size),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n"
+  }
+]

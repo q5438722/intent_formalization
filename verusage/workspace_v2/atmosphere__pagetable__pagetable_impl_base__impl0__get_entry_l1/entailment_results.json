@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize2pa_mem_valid_unconditional",
+    "type": "logical",
+    "code": "proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body unconditionally ensures MEM_valid(ret) for ANY input \u2014 arbitrary usize values produce \"valid\" physical addresses without proof",
+    "entailed": false,
+    "verus_output": "malization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__get_entry_l1/phi_1_usize2pa_mem_valid_unconditional.rs:1208:9\n     |\n1206 | proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n     |       --------------------------------------------------- at the end of the function body\n1207 |     ensures\n1208 |         MEM_valid(usize2pa(v)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 46 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "zero_entry_is_empty",
+    "type": "behavioral",
+    "code": "proof fn phi_2_zero_entry_is_empty()\n    ensures\n        usize2page_entry(0usize).is_empty(),\n{\n}",
+    "reason": "Relies on two independent external_body claims (usize2page_entry and usize2pa) both correctly handling zero \u2014 if either is wrong the combined property is unsound",
+    "entailed": false,
+    "verus_output": "> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__get_entry_l1/phi_2_zero_entry_is_empty.rs:1208:9\n     |\n1206 | proof fn phi_2_zero_entry_is_empty()\n     |       ------------------------------ at the end of the function body\n1207 |     ensures\n1208 |         usize2page_entry(0usize).is_empty(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 46 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_entry_to_map_entry_drops_user_bit",
+    "type": "behavioral",
+    "code": "proof fn phi_3_page_entry_to_map_entry_drops_user_bit(pe: PageEntry)\n    requires\n        pe.perm.user == true,\n        pe.perm.present == true,\n    ensures\n        spec_page_entry_to_map_entry(&pe) == spec_page_entry_to_map_entry(\n            &PageEntry { perm: PageEntryPerm { user: false, ..pe.perm }, ..pe }\n        ),\n{\n}",
+    "reason": "page_entry_to_map_entry produces identical MapEntry regardless of the user bit \u2014 the user/supervisor permission is silently dropped during translation, meaning kernel-only and user-accessible pages become indistinguishable in mappings",
+    "entailed": true,
+    "verus_output": "_bit.rs:83:10\n   |\n83 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__get_entry_l1/phi_3_page_entry_to_map_entry_drops_user_bit.rs:92:10\n   |\n92 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 46 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_entry_to_map_entry_drops_present_bit",
+    "type": "behavioral",
+    "code": "proof fn phi_4_page_entry_to_map_entry_drops_present_bit(pe: PageEntry)\n    requires\n        pe.perm.present == false,\n    ensures\n        spec_page_entry_to_map_entry(&pe) == MapEntry { addr: pe.addr, write: pe.perm.write, execute_disable: pe.perm.execute_disable },\n{\n}",
+    "reason": "page_entry_to_map_entry converts non-present entries into MapEntry without checking present bit \u2014 a non-present page table entry produces a valid-looking MapEntry that could be used in mappings",
+    "entailed": false,
+    "verus_output": "ral with parentheses\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__get_entry_l1/phi_4_page_entry_to_map_entry_drops_present_bit.rs:1210:46\n     |\n1210 | ...map_entry(&pe) == MapEntry { addr: pe.addr, write: pe.perm.write, execute_disable: pe.perm.execute_disable },\n     |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "l4_dom_singleton_cr3",
+    "type": "behavioral",
+    "code": "proof fn phi_5_l4_dom_singleton_cr3(pt: PageTable, p: PageMapPtr)\n    requires\n        pt.wf_l4(),\n        pt.l4_table@.dom().contains(p),\n    ensures\n        p == pt.cr3,\n{\n}",
+    "reason": "wf_l4 constrains l4_table domain to exactly {cr3} \u2014 only one L4 table exists per PageTable, making PCID-based multi-address-space sharing at L4 level impossible",
+    "entailed": true,
+    "verus_output": "5_l4_dom_singleton_cr3.rs:83:10\n   |\n83 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__get_entry_l1/phi_5_l4_dom_singleton_cr3.rs:92:10\n   |\n92 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 46 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: leads_to_self_temp_intensional_bridge
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `leads_to_self_temp` is external_body deriving `valid(p.leads_to(p))` which requires resolving nested `always(p.implies(eventually(p)))` closure gaps. This is an unverified trust assumption.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: leads_to_trans_intensional_bridge
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `leads_to_trans` is external_body composing two leads_to properties into a transitive chain through nested always/implies/eventually closures. This is a separate unverified trust assumption.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: usize_rank_overflow_at_zero
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: At n=0 the else branch fires and calls `leads_to_self_temp(p(0))` directly. There is no overflow — `n > 0` is false so `(n-1) as usize` is never evaluated. This is correct base case behavior.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: usize_max_rank_step
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Chaining usize::MAX steps is a correct instantiation of the verified inductive lemma. The decreases clause on usize is well-founded, and each step correctly applies. No new trust surface beyond φ1 and φ2.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: usize_rank_limited_vs_nat
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: Using `usize` instead of `nat` as the rank index silently bounds the ranking argument to `usize::MAX`. If a system requires a rank function exceeding platform word size, this lemma cannot express it — a subtle limitation compared to the nat-indexed variant that could mask liveness proof incompleteness.
+===VERDICT_END===
+
+===SUMMARY===
+Two definite true positives: `leads_to_self_temp` and `leads_to_trans` are independent external_body axioms bridging intensional closure gaps in reflexive and transitive leads_to reasoning. One medium-confidence true positive: the usize-indexed rank function silently bounds the ranking argument to platform word size, unlike a nat-indexed variant. The remaining two are false positives: the n=0 base case and usize::MAX chain are correct instantiations of the verified inductive lemma.
+===END_SUMMARY===

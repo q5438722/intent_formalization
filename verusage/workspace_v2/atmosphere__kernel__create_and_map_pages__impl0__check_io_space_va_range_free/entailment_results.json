@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize2pa_mem_valid_all_inputs",
+    "type": "logical",
+    "code": "proof fn phi_1_usize2pa_mem_valid_all_inputs(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body unconditionally ensures MEM_valid for all inputs \u2014 the spec definition (v & MEM_MASK) should guarantee this, but the external_body is unverified",
+    "entailed": false,
+    "verus_output": "ation/verusage/workspace_v2/atmosphere__kernel__create_and_map_pages__impl0__check_io_space_va_range_free/phi_1_usize2pa_mem_valid_all_inputs.rs:2185:9\n     |\n2183 | proof fn phi_1_usize2pa_mem_valid_all_inputs(v: usize)\n     |       ------------------------------------------------ at the end of the function body\n2184 |     ensures\n2185 |         MEM_valid(usize2pa(v)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 23 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "sll_wf_external_body_opaque",
+    "type": "logical",
+    "code": "proof fn phi_2_sll_wf_external_body_opaque(sll: StaticLinkedList<usize, 10>)\n    requires\n        sll.wf(),\n    ensures\n        sll.len() == sll@.len(),\n{\n}",
+    "reason": "wf is closed external_body spec \u2014 the bridge between runtime value_list_len and ghost spec_seq length is entirely unverified",
+    "entailed": false,
+    "verus_output": "tmosphere__kernel__create_and_map_pages__impl0__check_io_space_va_range_free/phi_2_sll_wf_external_body_opaque.rs:2187:9\n     |\n2183 | proof fn phi_2_sll_wf_external_body_opaque(sll: StaticLinkedList<usize, 10>)\n     |       ---------------------------------------------------------------------- at the end of the function body\n...\n2187 |         sll.len() == sll@.len(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 23 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pagetable_wf_external_body_opaque",
+    "type": "logical",
+    "code": "proof fn phi_3_pagetable_wf_external_body_opaque(pt1: PageTable, pt2: PageTable)\n    requires\n        pt1.wf(),\n        pt2.wf(),\n        pt1.cr3 == pt2.cr3,\n        pt1.l4_table == pt2.l4_table,\n        pt1.l3_tables == pt2.l3_tables,\n        pt1.l2_tables == pt2.l2_tables,\n        pt1.l1_tables == pt2.l1_tables,\n    ensures\n        pt1.mapping_4k() == pt2.mapping_4k(),\n{\n}",
+    "reason": "PageTable::wf is closed external_body \u2014 no verified connection between structural fields and ghost mapping fields; two structurally identical page tables could have different ghost mappings",
+    "entailed": false,
+    "verus_output": "_impl0__check_io_space_va_range_free/phi_3_pagetable_wf_external_body_opaque.rs:2193:9\n     |\n2183 | proof fn phi_3_pagetable_wf_external_body_opaque(pt1: PageTable, pt2: PageTable)\n     |       -------------------------------------------------------------------------- at the end of the function body\n...\n2193 |         pt1.mapping_4k() == pt2.mapping_4k(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 23 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_entry_to_map_entry_loses_present",
+    "type": "behavioral",
+    "code": "proof fn phi_4_page_entry_to_map_entry_loses_present(p: PageEntry)\n    requires\n        p.perm.present == false,\n        p.addr != 0,\n    ensures\n        spec_page_entry_to_map_entry(&p).addr == p.addr,\n{\n}",
+    "reason": "page_entry_to_map_entry converts non-present entries to MapEntry without checking present bit \u2014 stale addresses from non-present entries leak into MapEntry",
+    "entailed": true,
+    "verus_output": "49 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__kernel__create_and_map_pages__impl0__check_io_space_va_range_free/phi_4_page_entry_to_map_entry_loses_present.rs:158:10\n    |\n158 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: 23 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "empty_pagetable_l4_kernel_unconstrained",
+    "type": "boundary",
+    "code": "proof fn phi_5_empty_pagetable_l4_kernel_unconstrained(pt: PageTable)\n    requires\n        pt.is_empty(),\n        pt.kernel_l4_end > 0,\n    ensures\n        pt.l4_table@[pt.cr3].value()[0].perm.present || !pt.l4_table@[pt.cr3].value()[0].perm.present,\n{\n}",
+    "reason": "is_empty only constrains L4 entries at indices >= kernel_l4_end \u2014 kernel region entries (0..kernel_l4_end) are unconstrained and could hold arbitrary mappings in an \"empty\" page table",
+    "entailed": true,
+    "verus_output": " | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__kernel__create_and_map_pages__impl0__check_io_space_va_range_free/phi_5_empty_pagetable_l4_kernel_unconstrained.rs:158:10\n    |\n158 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: 23 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

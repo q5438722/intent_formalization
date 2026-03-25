@@ -1,0 +1,10 @@
+===VERDICT_START===
+PHI: inv_allows_empty_arch
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `Arch::inv()` is vacuously true for an empty layers sequence because both the length bound (`0 <= 4`) and the universal quantifier over layers are trivially satisfied. Any proof or function that assumes `arch.inv()` implies at least one layer exists (e.g., that `upper_vaddr` produces a meaningful bound, or that valid page sizes exist) could be unsound for the degenerate case. While the concrete `x86_arch_spec` has 4 layers, the invariant is used generically and should rule out the empty architecture.
+===VERDICT_END===
+
+===SUMMARY===
+The single candidate property identifies a genuine spec weakness: `Arch::inv()` admits a zero-layer architecture, which is a degenerate/meaningless configuration for a page table. The invariant's universal quantifier over layers is vacuously true when `layers` is empty, so any downstream reasoning that assumes `inv()` guarantees at least one usable layer (and thus a nonzero address space) is potentially unsound. The fix would be to add `self.layers.len() > 0` (or `self.layers.len() >= 1`) to `inv()`. The practical impact is limited since the system uses the concrete `x86_arch_spec` with 4 layers, but for the general `Arch` abstraction this is a missing precondition.
+===END_SUMMARY===

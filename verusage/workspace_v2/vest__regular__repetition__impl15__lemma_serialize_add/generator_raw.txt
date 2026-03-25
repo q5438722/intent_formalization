@@ -1,0 +1,71 @@
+===PHI_START===
+NAME: serialize_empty_is_empty
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_serialize_empty_is_empty<C: SecureSpecCombinator>(c: &Repeat<C>)
+    ensures
+        c.spec_serialize(Seq::<C::Type>::empty()) == Seq::<u8>::empty(),
+{
+}
+```
+REASON: Serializing an empty sequence should produce empty bytes — if it produced non-empty output, the serializer would inject phantom data for zero elements
+===PHI_END===
+
+===PHI_START===
+NAME: serialize_singleton_equals_inner
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_serialize_singleton_equals_inner<C: SecureSpecCombinator>(c: &Repeat<C>, v: C::Type)
+    ensures
+        c.spec_serialize(seq![v]) == c.0.spec_serialize(v),
+{
+}
+```
+REASON: Serializing a single-element sequence should equal the inner combinator's serialization — if it differed, the repetition combinator would add or lose bytes for single elements
+===PHI_END===
+
+===PHI_START===
+NAME: serialize_length_additive
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_serialize_length_additive<C: SecureSpecCombinator>(c: &Repeat<C>, v: C::Type, vs: Seq<C::Type>)
+    ensures
+        c.spec_serialize(seq![v] + vs).len() == c.0.spec_serialize(v).len() + c.spec_serialize(vs).len(),
+{
+    c.lemma_serialize_add(v, vs);
+}
+```
+REASON: Serialized length should be additive when prepending an element — if lengths didn't add up, the fold_left accumulation would be losing or duplicating bytes
+===PHI_END===
+
+===PHI_START===
+NAME: repeatn_ignores_count_field
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_repeatn_ignores_count_field<C: SecureSpecCombinator>(c: &C, vs: Seq<C::Type>, n1: usize, n2: usize)
+    ensures
+        RepeatN(*c, n1).spec_serialize(vs) == RepeatN(*c, n2).spec_serialize(vs),
+{
+}
+```
+REASON: `RepeatN`'s `spec_serialize` uses `fold_left` over `vs` without referencing the `usize` field — the count parameter is completely ignored during serialization, meaning `RepeatN(c, 0).spec_serialize(vs)` serializes all elements regardless of count
+===PHI_END===
+
+===PHI_START===
+NAME: serialize_two_elements_concat
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_serialize_two_elements_concat<C: SecureSpecCombinator>(c: &Repeat<C>, v1: C::Type, v2: C::Type)
+    ensures
+        c.spec_serialize(seq![v1, v2]) == c.0.spec_serialize(v1) + c.0.spec_serialize(v2),
+{
+    c.lemma_serialize_add(v1, seq![v2]);
+}
+```
+REASON: Serializing two elements should concatenate their individual serializations — if the fold accumulated incorrectly, pair serialization would produce garbled output
+===PHI_END===

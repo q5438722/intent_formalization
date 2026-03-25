@@ -1,0 +1,47 @@
+[
+  {
+    "name": "fold_left_sum_len_geq_low",
+    "type": "logical",
+    "code": "proof fn phi_1_fold_left_sum_len_geq_low<A, B>(s: Seq<A>, low: nat, f: spec_fn(A) -> Seq<B>)\n    ensures\n        s.fold_left(low as int, |acc: int, x: A| acc + f(x).len()) >= low as int,\n{\n    lemma_seq_fold_left_sum_len_int_positive::<A, B>(s, low, f);\n}",
+    "reason": "The lemma only ensures `>= 0` but the actual invariant should be `>= low` since we start at `low` and only add non-negative lengths \u2014 the `>= 0` bound is weaker than the true lower bound, potentially hiding that the accumulator never drops below the initial value",
+    "entailed": false,
+    "verus_output": ".rs:28:9\n   |\n26 | proof fn phi_1_fold_left_sum_len_geq_low<A, B>(s: Seq<A>, low: nat, f: spec_fn(A) -> Seq<B>)\n   |       -------------------------------------------------------------------------------------- at the end of the function body\n27 |     ensures\n28 |         s.fold_left(low as int, |acc: int, x: A| acc + f(x).len()) >= low as int,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "fold_left_empty_equals_low",
+    "type": "boundary",
+    "code": "proof fn phi_2_fold_left_empty_equals_low<A, B>(low: nat, f: spec_fn(A) -> Seq<B>)\n    ensures\n        Seq::<A>::empty().fold_left(low as int, |acc: int, x: A| acc + f(x).len()) == low as int,\n{\n    lemma_seq_fold_left_sum_len_int_positive::<A, B>(Seq::<A>::empty(), low, f);\n}",
+    "reason": "Empty sequence fold should return exactly `low`, not just something `>= 0` \u2014 the lemma's bound is too weak to distinguish \"no work done\" from \"some work done\"",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "fold_left_sum_len_monotone",
+    "type": "behavioral",
+    "code": "proof fn phi_3_fold_left_sum_len_monotone<A, B>(s: Seq<A>, low1: nat, low2: nat, f: spec_fn(A) -> Seq<B>)\n    requires\n        low1 <= low2,\n    ensures\n        s.fold_left(low1 as int, |acc: int, x: A| acc + f(x).len()) <= s.fold_left(low2 as int, |acc: int, x: A| acc + f(x).len()),\n{\n}",
+    "reason": "Monotonicity in the initial accumulator should hold since the same non-negative values are added \u2014 but the lemma never establishes this, leaving callers unable to reason about relative bounds when starting values differ",
+    "entailed": false,
+    "verus_output": " -> Seq<B>)\n   |       --------------------------------------------------------------------------------------------------- at the end of the function body\n...\n30 |         s.fold_left(low1 as int, |acc: int, x: A| acc + f(x).len()) <= s.fold_left(low2 as int, |acc: int, x: A| acc + f(x).len()),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "fold_left_zero_low_still_positive",
+    "type": "boundary",
+    "code": "proof fn phi_4_fold_left_zero_low_still_positive<A, B>(s: Seq<A>, f: spec_fn(A) -> Seq<B>)\n    ensures\n        s.fold_left(0int, |acc: int, x: A| acc + f(x).len()) >= 0,\n{\n    lemma_seq_fold_left_sum_len_int_positive::<A, B>(s, 0, f);\n}",
+    "reason": "Starting at 0 and adding lengths must be non-negative \u2014 trivially true, but the lemma requires `low: nat` unnecessarily; the result `>= 0` holds for any non-negative start, and the nat restriction on `low` hides that the lemma would also hold for `low = 0` passed as int",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "fold_left_singleton_equals_low_plus_len",
+    "type": "behavioral",
+    "code": "proof fn phi_5_fold_left_singleton_equals_low_plus_len<A, B>(a: A, low: nat, f: spec_fn(A) -> Seq<B>)\n    ensures\n        seq![a].fold_left(low as int, |acc: int, x: A| acc + f(x).len()) == low + f(a).len(),\n{\n    lemma_seq_fold_left_sum_len_int_positive::<A, B>(seq![a], low, f);\n}",
+    "reason": "A singleton fold should equal exactly `low + f(a).len()` \u2014 the lemma's `>= 0` ensures is far too weak to establish this precise equality, showing the bound loses all information about the actual accumulated value",
+    "entailed": false,
+    "verus_output": "t_singleton_equals_low_plus_len<A, B>(a: A, low: nat, f: spec_fn(A) -> Seq<B>)\n   |       ----------------------------------------------------------------------------------------------- at the end of the function body\n27 |     ensures\n28 |         seq![a].fold_left(low as int, |acc: int, x: A| acc + f(x).len()) == low + f(a).len(),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "wherever_no_writes_external_body",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`lemma_wherever_no_outstanding_writes_persistent_memory_view_can_only_crash_as_committed` is `external_body` with `unimplemented!()`. It asserts that for any address without an outstanding write, any crash state must match `committed()` at that address. This requires reasoning that both chunk-level crash branches (ignoring writes vs after flush) produce `state_at_last_flush` when `outstanding_write` is `None` \u2014 trusted without verification."
+  },
+  {
+    "phi": "crash_as_preserves_length",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`can_crash_as` directly requires `bytes.len() == self.len()` as its first conjunct. Trivially correct by definition."
+  },
+  {
+    "phi": "chunk_vacuous_for_out_of_bounds",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "For chunk = -1, no address `addr` with `0 <= addr < self.len()` satisfies `addr / 8 == -1` (since non-negative integers divided by positive give non-negative results). The quantifier antecedent is always false, making both predicates vacuously true."
+  },
+  {
+    "phi": "committed_at_addr_equals_state_at_last_flush",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`committed()` is `self.state.map(|_, b| b.state_at_last_flush)`. By the vstd map indexing axiom, `committed()[addr] == state[addr].state_at_last_flush`. Correct by definition."
+  },
+  {
+    "phi": "outstanding_write_in_chunk_allows_flushed_crash",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "All 8 bytes have `outstanding_write == Some(val)`, so `flush_byte() == val` for each. `chunk_corresponds_after_flush(0, flushed)` holds since `flushed[addr] == val == flush_byte()`. For any other chunk, the predicate is vacuously true. Correct by the crash model definition."
+  }
+]

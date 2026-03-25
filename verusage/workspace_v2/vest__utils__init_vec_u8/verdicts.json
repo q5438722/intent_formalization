@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "init_vec_all_zeros",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This proof adds `forall|i| res[i] == 0` as a *requires*, not deriving it from the ensures. It doesn't demonstrate a spec gap \u2014 it just proves a tautology from its own precondition. The candidate doesn't actually test whether the ensures is too weak."
+  },
+  {
+    "phi": "init_vec_missing_zero_guarantee",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The ensures clause only guarantees `res@.len() == n`, not that elements are zero. The implementation pushes 0 every iteration and even asserts it, but this information is lost at the function boundary. Callers cannot prove `v@[0] == 0`. This is a real spec weakness \u2014 the postcondition is strictly weaker than the implementation behavior."
+  },
+  {
+    "phi": "init_vec_length_zero",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The ensures is `true` \u2014 this proves nothing. It's a vacuous proof that doesn't test any property of the spec."
+  },
+  {
+    "phi": "init_vec_length_exact",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The ensures is `true` \u2014 another vacuous proof. It doesn't actually test whether the length is exact or anything else about the spec."
+  },
+  {
+    "phi": "init_vec_weak_ensures",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "This correctly identifies that the ensures clause is too weak. The commented-out `assert(v@[0] == 0)` cannot be proven from the spec alone. However, the candidate as written only asserts `v@.len() == 5` (which succeeds), with the actual gap described only in comments. The spec weakness is real but the candidate doesn't mechanically demonstrate it."
+  }
+]

@@ -1,0 +1,89 @@
+===PHI_START===
+NAME: bitand_rounding_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_bitand_rounding_external_body(x: usize, y: usize)
+    requires
+        y != 0,
+        y & sub(y, 1) == 0,
+    ensures
+        x & !sub(y, 1) == (x / y) * y,
+{
+    bitand_with_mask_gives_rounding(x, y);
+}
+```
+REASON: `bitand_with_mask_gives_rounding` is `external_body` — the bitwise-arithmetic equivalence for power-of-two rounding is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: mul_mod_right_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_mul_mod_right_external_body(a: int, b: int)
+    requires
+        b != 0,
+    ensures
+        (a * b) % b == 0,
+{
+    mul_mod_right(a, b);
+}
+```
+REASON: `mul_mod_right` is `external_body` — the property `(a * b) % b == 0` is trusted without proof; for negative `b`, Verus Euclidean division semantics must be considered
+===PHI_END===
+
+===PHI_START===
+NAME: align_down_non_power_of_two
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_align_down_non_power_of_two()
+    ensures
+        ({
+            let x: usize = 10;
+            let y: usize = 3;
+            let res = (x as int / y as int) * y;
+            res == 9 && res <= x && res % y == 0
+        }),
+{
+}
+```
+REASON: `align_down` works for non-power-of-two `y` via the division path — despite the function name suggesting alignment, it's really just floor-rounding to any multiple, which may be surprising to callers expecting power-of-two alignment only
+===PHI_END===
+
+===PHI_START===
+NAME: align_down_y_equals_1
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_align_down_y_equals_1()
+    ensures
+        ({
+            let x: usize = 42;
+            let y: usize = 1;
+            let res = (x as int / y as int) * y;
+            res == x
+        }),
+{
+}
+```
+REASON: With `y == 1`, `align_down` always returns `x` unchanged — alignment to 1 is a no-op, and the power-of-two branch (`1 & 0 == 0`) uses `x & !0 == x`, which is correct but degenerate
+===PHI_END===
+
+===PHI_START===
+NAME: mul_mod_right_negative_divisor
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_mul_mod_right_negative_divisor(a: int)
+    requires
+        true,
+    ensures
+        (a * (-3)) % (-3) == 0,
+{
+    mul_mod_right(a, -3);
+}
+```
+REASON: `mul_mod_right` accepts negative `b` — the axiom is trusted for all non-zero divisors including negatives, where Euclidean vs truncation division semantics could differ; over-broad trust assumption
+===PHI_END===

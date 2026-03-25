@@ -1,0 +1,92 @@
+===PHI_START===
+NAME: u64_serialized_size_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_u64_serialized_size_external_body(a: u64)
+    requires
+        a.is_marshalable(),
+    ensures
+        a.ghost_serialize().len() == 8,
+{
+    lemma_auto_spec_u64_to_from_le_bytes();
+}
+```
+REASON: `u64::serialized_size` is `external_body` with `unimplemented!()` — the exec function never runs correctly at runtime despite the spec ensuring it returns `ghost_serialize().len()`
+===PHI_END===
+
+===PHI_START===
+NAME: usize_serialized_size_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_usize_serialized_size_external_body(a: usize)
+    requires
+        a.is_marshalable(),
+    ensures
+        a.ghost_serialize().len() == 8,
+{
+    lemma_auto_spec_u64_to_from_le_bytes();
+}
+```
+REASON: `usize::serialized_size` is `external_body` with `unimplemented!()` — the ensures `res as int == self.ghost_serialize().len()` is trusted without verification, and the exec body will panic at runtime
+===PHI_END===
+
+===PHI_START===
+NAME: vec_u8_serialized_size_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_vec_u8_serialized_size_external_body(v: Vec<u8>)
+    requires
+        v.is_marshalable(),
+    ensures
+        v.ghost_serialize().len() == (v@.len() as usize).ghost_serialize().len() + v@.len(),
+{
+}
+```
+REASON: `Vec<u8>::serialized_size` is `external_body` with `unimplemented!()` — the spec-exec correspondence is entirely trusted, and the exec body panics at runtime
+===PHI_END===
+
+===PHI_START===
+NAME: fold_left_sum_right_external_body_unsound
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_fold_left_sum_right_external_body_unsound(s: Seq<u64>, low: int)
+    requires
+        s.len() > 0,
+    ensures
+        s.subrange(0, s.len() - 1).fold_left(low, |b: int, a: u64| b + a.ghost_serialize().len())
+            + s[s.len() - 1].ghost_serialize().len()
+        ==
+        s.fold_left(low, |b: int, a: u64| b + a.ghost_serialize().len()),
+{
+    let f = |a: u64| a.ghost_serialize();
+    let fl = |a: u64| a.ghost_serialize().len() as int;
+    assert((|b: int, a: u64| b + fl(a)) =~= (|b: int, a: u64| b + a.ghost_serialize().len()));
+    lemma_seq_fold_left_sum_right::<u64>(s, low, fl);
+}
+```
+REASON: `lemma_seq_fold_left_sum_right` is `external_body` — the decomposition of fold_left into prefix + last element is entirely trusted, and if incorrect would silently corrupt all Vec<T> serialized_size calculations
+===PHI_END===
+
+===PHI_START===
+NAME: fold_left_append_len_monotone_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_fold_left_append_len_monotone_external_body(s: Seq<u64>, i: int)
+    requires
+        0 <= i <= s.len(),
+    ensures
+        s.subrange(0, i).fold_left(0int, |acc: int, x: u64| acc + x.ghost_serialize().len())
+            <= s.fold_left(0int, |acc: int, x: u64| acc + x.ghost_serialize().len()),
+{
+    let f = |x: u64| x.ghost_serialize();
+    assert((|acc: int, x: u64| acc + f(x).len()) =~= (|acc: int, x: u64| acc + x.ghost_serialize().len()));
+    lemma_seq_fold_left_append_len_int_le::<u64, u8>(s, i, 0, f);
+}
+```
+REASON: `lemma_seq_fold_left_append_len_int_le` is `external_body` — the monotonicity of prefix fold sums is trusted without proof, and if wrong would allow the Vec<T>::serialized_size loop invariant to accept values exceeding usize::MAX
+===PHI_END===

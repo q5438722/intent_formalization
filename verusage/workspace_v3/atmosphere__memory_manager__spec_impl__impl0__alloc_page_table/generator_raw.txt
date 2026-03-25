@@ -1,0 +1,124 @@
+===PHI_START===
+NAME: new_pcid_2m_mapping_nonempty
+TARGET_FN: alloc_page_table
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_new_pcid_2m_mapping_nonempty(old_mm: MemoryManager, new_mm: MemoryManager, new_proc_ptr: ProcPtr, ret: Pcid)
+    requires
+        old_mm.wf(),
+        old_mm.free_pcids.len() > 0,
+        new_mm.wf(),
+        new_mm.page_tables =~= old_mm.page_tables,
+        new_mm.pcid_active(ret),
+        !old_mm.pcid_active(ret),
+        new_mm.get_pagetable_by_pcid(ret).is_Some(),
+        new_mm.get_pagetable_mapping_by_pcid(ret).dom() == Set::<PagePtr>::empty(),
+    ensures
+        new_mm.get_pagetable_by_pcid(ret).unwrap().mapping_2m() != Map::<VAddr, MapEntry>::empty(),
+{
+}
+```
+REASON: Spec only constrains 4k mapping domain to be empty; a non-empty 2m mapping on a fresh page table would violate isolation
+===PHI_END===
+
+===PHI_START===
+NAME: ret_exceeds_pcid_max
+TARGET_FN: alloc_page_table
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_ret_exceeds_pcid_max(old_mm: MemoryManager, new_mm: MemoryManager, new_proc_ptr: ProcPtr, ret: Pcid)
+    requires
+        old_mm.wf(),
+        old_mm.free_pcids.len() > 0,
+        new_mm.wf(),
+        new_mm.pcid_active(ret),
+        !old_mm.pcid_active(ret),
+        new_mm.pcid_to_proc_ptr(ret) == new_proc_ptr,
+    ensures
+        ret >= PCID_MAX,
+{
+}
+```
+REASON: If the returned pcid is out of bounds, all subsequent array accesses indexed by it would be unsound
+===PHI_END===
+
+===PHI_START===
+NAME: spec_postconditions_inconsistent
+TARGET_FN: alloc_page_table
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_spec_postconditions_inconsistent(old_mm: MemoryManager, new_mm: MemoryManager, new_proc_ptr: ProcPtr, ret: Pcid)
+    requires
+        old_mm.wf(),
+        old_mm.free_pcids.len() > 0,
+        new_mm.wf(),
+        new_mm.page_tables =~= old_mm.page_tables,
+        new_mm.page_table_pages =~= old_mm.page_table_pages,
+        new_mm.pcid_active(ret),
+        !old_mm.pcid_active(ret),
+        new_mm.pcid_to_proc_ptr(ret) == new_proc_ptr,
+        new_mm.get_pagetable_mapping_by_pcid(ret).dom() == Set::<PagePtr>::empty(),
+        forall|p: Pcid| #![trigger new_mm.pcid_active(p)] p != ret ==> new_mm.pcid_active(p) == old_mm.pcid_active(p),
+        forall|i: IOid| #![trigger new_mm.ioid_active(i)] new_mm.ioid_active(i) == old_mm.ioid_active(i),
+    ensures
+        false,
+{
+}
+```
+REASON: If provable, the combined pre/postconditions are unsatisfiable, meaning the function can never be correctly called
+===PHI_END===
+
+===PHI_START===
+NAME: ioid_mapping_changes
+TARGET_FN: alloc_page_table
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_ioid_mapping_changes(old_mm: MemoryManager, new_mm: MemoryManager, new_proc_ptr: ProcPtr, ret: Pcid, ioid: IOid)
+    requires
+        old_mm.wf(),
+        old_mm.free_pcids.len() > 0,
+        new_mm.wf(),
+        new_mm.iommu_tables =~= old_mm.iommu_tables,
+        new_mm.pcid_active(ret),
+        !old_mm.pcid_active(ret),
+        forall|i: IOid| #![trigger new_mm.ioid_active(i)] new_mm.ioid_active(i) == old_mm.ioid_active(i),
+        forall|i: IOid| #![trigger new_mm.ioid_active(i)] #![trigger new_mm.get_iommu_table_mapping_by_ioid(i)]
+            new_mm.ioid_active(i) ==> old_mm.get_iommu_table_mapping_by_ioid(i) == new_mm.get_iommu_table_mapping_by_ioid(i),
+        new_mm.ioid_active(ioid),
+    ensures
+        old_mm.get_iommu_table_mapping_by_ioid(ioid) != new_mm.get_iommu_table_mapping_by_ioid(ioid),
+{
+}
+```
+REASON: A page table allocation should never modify IOMMU mappings; if provable the frame condition or iommu invariant is broken
+===PHI_END===
+
+===PHI_START===
+NAME: new_pcid_page_closure_nonempty
+TARGET_FN: alloc_page_table
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_new_pcid_page_closure_nonempty(old_mm: MemoryManager, new_mm: MemoryManager, new_proc_ptr: ProcPtr, ret: Pcid)
+    requires
+        old_mm.wf(),
+        old_mm.free_pcids.len() > 0,
+        new_mm.wf(),
+        new_mm.page_tables =~= old_mm.page_tables,
+        new_mm.page_table_pages =~= old_mm.page_table_pages,
+        new_mm.page_table_pages@.dom() =~= old_mm.page_table_pages@.dom(),
+        new_mm.pcid_active(ret),
+        !old_mm.pcid_active(ret),
+        new_mm.get_pagetable_by_pcid(ret).is_Some(),
+        new_mm.get_pagetable_mapping_by_pcid(ret).dom() == Set::<PagePtr>::empty(),
+    ensures
+        new_mm.get_pagetable_page_closure_by_pcid(ret) != Set::<PagePtr>::empty(),
+{
+}
+```
+REASON: If the page_closure is non-empty yet page_table_pages is unchanged from when pcid was inactive, page tracking is inconsistent with no_memory_leak
+===PHI_END===

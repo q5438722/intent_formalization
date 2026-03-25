@@ -1,0 +1,37 @@
+[
+  {
+    "name": "ret_already_mapped_2m",
+    "target_fn": "alloc_and_map_2m",
+    "type": "behavioral",
+    "code": "proof fn phi_1_ret_already_mapped_2m(old_self: PageAllocator, new_self: PageAllocator, ret: PagePtr, pcid: Pcid, va: VAddr, c_ptr: ContainerPtr)\n    requires\n        old_self.wf(),\n        old_self.free_pages_2m.len() > 0,\n        old_self.container_map_2m@.dom().contains(c_ptr),\n        new_self.wf(),\n        new_self.free_pages_2m() =~= old_self.free_pages_2m().remove(ret),\n        new_self.free_pages_4k() =~= old_self.free_pages_4k(),\n        new_self.free_pages_1g() =~= old_self.free_pages_1g(),\n        new_self.allocated_pages_4k() =~= old_self.allocated_pages_4k(),\n        new_self.allocated_pages_2m() =~= old_self.allocated_pages_2m(),\n        new_self.allocated_pages_1g() =~= old_self.allocated_pages_1g(),\n        new_self.mapped_pages_4k() =~= old_self.mapped_pages_4k(),\n        new_self.mapped_pages_2m() =~= old_self.mapped_pages_2m().insert(ret),\n        new_self.mapped_pages_1g() =~= old_self.mapped_pages_1g(),\n        new_self.page_mappings(ret) =~= Set::<(Pcid, VAddr)>::empty().insert((pcid, va)),\n        new_self.page_io_mappings(ret) =~= Set::<(IOid, VAddr)>::empty(),\n    ensures\n        old_self.mapped_pages_2m().contains(ret),\n{\n}",
+    "reason": "If ret was already mapped before allocation, the allocator hands out an in-use page, causing memory corruption"
+  },
+  {
+    "name": "ret_crosses_into_free_4k",
+    "target_fn": "alloc_and_map_2m",
+    "type": "logical",
+    "code": "proof fn phi_2_ret_crosses_into_free_4k(old_self: PageAllocator, new_self: PageAllocator, ret: PagePtr, pcid: Pcid, va: VAddr, c_ptr: ContainerPtr)\n    requires\n        old_self.wf(),\n        old_self.free_pages_2m.len() > 0,\n        old_self.container_map_2m@.dom().contains(c_ptr),\n        new_self.wf(),\n        new_self.free_pages_2m() =~= old_self.free_pages_2m().remove(ret),\n        new_self.free_pages_4k() =~= old_self.free_pages_4k(),\n        new_self.free_pages_1g() =~= old_self.free_pages_1g(),\n        new_self.allocated_pages_4k() =~= old_self.allocated_pages_4k(),\n        new_self.allocated_pages_2m() =~= old_self.allocated_pages_2m(),\n        new_self.allocated_pages_1g() =~= old_self.allocated_pages_1g(),\n        new_self.mapped_pages_4k() =~= old_self.mapped_pages_4k(),\n        new_self.mapped_pages_2m() =~= old_self.mapped_pages_2m().insert(ret),\n        new_self.mapped_pages_1g() =~= old_self.mapped_pages_1g(),\n    ensures\n        old_self.free_pages_4k().contains(ret),\n{\n}",
+    "reason": "If ret is simultaneously in the 4k free list and the 2m free list, size-class isolation is broken and a single physical page could be double-allocated"
+  },
+  {
+    "name": "ret_also_in_allocated_2m_after",
+    "target_fn": "alloc_and_map_2m",
+    "type": "boundary",
+    "code": "proof fn phi_3_ret_also_in_allocated_2m_after(old_self: PageAllocator, new_self: PageAllocator, ret: PagePtr, pcid: Pcid, va: VAddr, c_ptr: ContainerPtr)\n    requires\n        old_self.wf(),\n        old_self.free_pages_2m.len() > 0,\n        old_self.container_map_2m@.dom().contains(c_ptr),\n        new_self.wf(),\n        new_self.free_pages_2m() =~= old_self.free_pages_2m().remove(ret),\n        new_self.allocated_pages_2m() =~= old_self.allocated_pages_2m(),\n        new_self.mapped_pages_2m() =~= old_self.mapped_pages_2m().insert(ret),\n        new_self.page_mappings(ret) =~= Set::<(Pcid, VAddr)>::empty().insert((pcid, va)),\n        new_self.page_io_mappings(ret) =~= Set::<(IOid, VAddr)>::empty(),\n    ensures\n        new_self.allocated_pages_2m().contains(ret),\n{\n}",
+    "reason": "If ret is in both allocated_pages_2m and mapped_pages_2m simultaneously, the page state machine invariant is violated and the page could be freed while still mapped"
+  },
+  {
+    "name": "free_2m_set_unchanged",
+    "target_fn": "alloc_and_map_2m",
+    "type": "boundary",
+    "code": "proof fn phi_4_free_2m_set_unchanged(old_self: PageAllocator, new_self: PageAllocator, ret: PagePtr, pcid: Pcid, va: VAddr, c_ptr: ContainerPtr)\n    requires\n        old_self.wf(),\n        old_self.free_pages_2m.len() > 0,\n        old_self.container_map_2m@.dom().contains(c_ptr),\n        new_self.wf(),\n        new_self.free_pages_2m() =~= old_self.free_pages_2m().remove(ret),\n        new_self.free_pages_4k() =~= old_self.free_pages_4k(),\n        new_self.free_pages_1g() =~= old_self.free_pages_1g(),\n        new_self.mapped_pages_2m() =~= old_self.mapped_pages_2m().insert(ret),\n    ensures\n        new_self.free_pages_2m() =~= old_self.free_pages_2m(),\n{\n}",
+    "reason": "If the free set is unchanged after allocation, ret was never actually removed from the free pool, meaning the page is simultaneously free and mapped"
+  },
+  {
+    "name": "ret_also_in_mapped_4k",
+    "target_fn": "alloc_and_map_2m",
+    "type": "logical",
+    "code": "proof fn phi_5_ret_also_in_mapped_4k(old_self: PageAllocator, new_self: PageAllocator, ret: PagePtr, pcid: Pcid, va: VAddr, c_ptr: ContainerPtr)\n    requires\n        old_self.wf(),\n        old_self.free_pages_2m.len() > 0,\n        old_self.container_map_2m@.dom().contains(c_ptr),\n        new_self.wf(),\n        new_self.free_pages_2m() =~= old_self.free_pages_2m().remove(ret),\n        new_self.mapped_pages_4k() =~= old_self.mapped_pages_4k(),\n        new_self.mapped_pages_2m() =~= old_self.mapped_pages_2m().insert(ret),\n        new_self.mapped_pages_1g() =~= old_self.mapped_pages_1g(),\n        new_self.page_mappings(ret) =~= Set::<(Pcid, VAddr)>::empty().insert((pcid, va)),\n    ensures\n        new_self.mapped_pages_4k().contains(ret),\n{\n}",
+    "reason": "If ret appears in both mapped_pages_4k and mapped_pages_2m, a single physical page has conflicting size-class mappings, leading to overlapping virtual memory translations"
+  }
+]

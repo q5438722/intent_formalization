@@ -1,0 +1,83 @@
+===PHI_START===
+NAME: unmarshal_roundtrip_no_axiom
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_unmarshal_roundtrip_no_axiom(p: PodView)
+    requires
+        true,
+    ensures
+        PodView::unmarshal(p.marshal()) is Ok,
+{
+}
+```
+REASON: marshal_spec/unmarshal_spec are uninterpreted with no roundtrip axiom — if the solver proves this it reveals an accidental entailment that unmarshal always succeeds on marshalled objects without justification
+===PHI_END===
+
+===PHI_START===
+NAME: marshal_spec_injective
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_marshal_spec_injective(s1: Option<PodSpecView>, s2: Option<PodSpecView>)
+    requires
+        PodView::marshal_spec(s1) == PodView::marshal_spec(s2),
+    ensures
+        s1 == s2,
+{
+}
+```
+REASON: marshal_spec is uninterpreted with no injectivity axiom — if provable the solver implicitly assumes injectivity which is a stronger property than declared
+===PHI_END===
+
+===PHI_START===
+NAME: create_key_namespace_diverges_from_obj
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_create_key_namespace_diverges_from_obj(req: CreateRequest)
+    requires
+        req.obj.metadata.namespace is Some,
+        req.namespace != req.obj.metadata.namespace->0,
+    ensures
+        req.key().namespace != req.obj.metadata.namespace->0,
+{
+}
+```
+REASON: CreateRequest::key uses self.namespace not self.obj.metadata.namespace — these can diverge so the key does not faithfully represent the object's namespace
+===PHI_END===
+
+===PHI_START===
+NAME: unmarshal_skips_state_validation
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_unmarshal_skips_state_validation(obj: DynamicObjectView)
+    requires
+        obj.kind == PodView::kind(),
+        PodView::unmarshal_spec(obj.spec) is Ok,
+        PodView::unmarshal_status(obj.status) is Ok,
+    ensures
+        PodView::unmarshal(obj) is Ok,
+{
+}
+```
+REASON: unmarshal succeeds whenever kind/spec/status parse but never checks state_validation — invalid objects (e.g. pods with spec == None) are successfully unmarshalled
+===PHI_END===
+
+===PHI_START===
+NAME: update_key_kind_from_obj_body
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_update_key_kind_from_obj_body(req: UpdateRequest, kind: Kind)
+    requires
+        req.obj.kind != kind,
+    ensures
+        req.key().kind != kind,
+        req.key().kind == req.obj.kind,
+{
+}
+```
+REASON: UpdateRequest::key takes kind from self.obj.kind rather than having an independent kind field — a request with mismatched obj.kind could target a different resource type than the caller intended
+===PHI_END===

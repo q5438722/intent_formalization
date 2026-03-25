@@ -1,0 +1,105 @@
+===PHI_START===
+NAME: head_mod_zero_when_aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_head_mod_zero_when_aligned(info: LogInfo, state: AbstractLogState)
+    requires
+        info.log_area_len >= MIN_LOG_AREA_SIZE,
+        info.head_log_area_offset == info.head as int % info.log_area_len as int,
+        info.head as int % info.log_area_len as int == 0,
+    ensures
+        info.head_log_area_offset == 0,
+{
+}
+```
+REASON: When head is perfectly aligned to log_area_len, head_log_area_offset should be 0 — tests that the modular arithmetic base case is consistent
+===PHI_END===
+
+===PHI_START===
+NAME: no_advancement_preserves_offset
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_no_advancement_preserves_offset(info: LogInfo, state: AbstractLogState)
+    requires
+        info.log_area_len >= MIN_LOG_AREA_SIZE,
+        info.log_length <= info.log_plus_pending_length <= info.log_area_len,
+        info.head_log_area_offset == info.head as int % info.log_area_len as int,
+    ensures
+        info.head as int % info.log_area_len as int == info.head_log_area_offset,
+{
+}
+```
+REASON: Zero advancement (new_head == head) should yield the same offset — tests the trivial identity case of the modular arithmetic
+===PHI_END===
+
+===PHI_START===
+NAME: advancement_equals_log_area_len_wraps_to_same
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_advancement_equals_log_area_len_wraps_to_same(info: LogInfo, state: AbstractLogState)
+    requires
+        info.log_area_len >= MIN_LOG_AREA_SIZE,
+        info.log_length <= info.log_plus_pending_length <= info.log_area_len,
+        info.head_log_area_offset == info.head as int % info.log_area_len as int,
+        info.log_length as u128 == info.log_area_len as u128,
+        info.head <= info.head + info.log_area_len as u128,
+    ensures
+        (info.head + info.log_area_len as u128) as int % info.log_area_len as int == info.head_log_area_offset as int,
+{
+    lemma_mod_multiples_vanish(1, info.head as int % info.log_area_len as int, info.log_area_len as int);
+    lemma_fundamental_div_mod(info.head as int, info.log_area_len as int);
+    lemma_mod_multiples_vanish(info.head as int / info.log_area_len as int + 1, 0, info.log_area_len as int);
+}
+```
+REASON: Advancing by exactly log_area_len should wrap back to the same offset — if the modular arithmetic doesn't handle full-cycle wrapping, the fast computation would diverge from the true modulus
+===PHI_END===
+
+===PHI_START===
+NAME: fast_path_matches_slow_path_at_boundary
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_fast_path_matches_slow_path_at_boundary(info: LogInfo, state: AbstractLogState)
+    requires
+        info.log_area_len >= MIN_LOG_AREA_SIZE,
+        info.log_length <= info.log_plus_pending_length <= info.log_area_len,
+        info.head_log_area_offset == info.head as int % info.log_area_len as int,
+        info.log_length > 0,
+        info.head_log_area_offset as u64 + info.log_length as u64 == info.log_area_len,
+    ensures
+        ({
+            let new_head = (info.head + info.log_length as u128) as u128;
+            let amount = info.log_length as u64;
+            // The fast path takes the else branch exactly at the boundary
+            amount >= info.log_area_len - info.head_log_area_offset
+        }),
+{
+}
+```
+REASON: When advancement exactly reaches the end of the log area, the fast path must take the wrapping branch — if the branch condition is off-by-one, the boundary case would compute an out-of-range offset
+===PHI_END===
+
+===PHI_START===
+NAME: lemma_small_advancement_no_wrap
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_lemma_small_advancement_no_wrap(info: LogInfo, state: AbstractLogState, advance: u64)
+    requires
+        info.log_area_len >= MIN_LOG_AREA_SIZE,
+        info.log_length <= info.log_plus_pending_length <= info.log_area_len,
+        info.head_log_area_offset == info.head as int % info.log_area_len as int,
+        0 < advance <= info.log_length,
+        advance < info.log_area_len - info.head_log_area_offset,
+        info.head + advance as u128 <= u128::MAX,
+    ensures
+        (info.head + advance as u128) as int % info.log_area_len as int == (info.head_log_area_offset + advance) as int,
+{
+    UntrustedLogImpl::lemma_check_fast_way_to_compute_head_mod_log_area_len(info, state, (info.head + advance as u128) as u128);
+}
+```
+REASON: For small advancements (no wrapping), the new offset should simply be the old offset plus the advancement — tests that the non-wrapping branch of the fast computation is a simple addition
+===PHI_END===

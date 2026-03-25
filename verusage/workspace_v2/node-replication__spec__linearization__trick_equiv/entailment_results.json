@@ -1,0 +1,47 @@
+[
+  {
+    "name": "behavior_equiv_both_inited",
+    "type": "boundary",
+    "code": "proof fn phi_1_behavior_equiv_both_inited<DT: Dispatch>(\n    a: SimpleLog::State<DT>,\n    b: AsynchronousSingleton::State<DT>,\n)\n    ensures\n        behavior_equiv::<DT>(\n            SimpleLogBehavior::Inited(a),\n            AsynchronousSingletonBehavior::Inited(b),\n        ),\n{\n}",
+    "reason": "Any two Inited behaviors are equivalent regardless of their states \u2014 `behavior_equiv` only checks structural variant, not state content, so unrelated initial states are considered equivalent",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "internal_steps_freely_added",
+    "type": "behavioral",
+    "code": "proof fn phi_2_internal_steps_freely_added<DT: Dispatch>(\n    s1: SimpleLog::State<DT>,\n    s2: SimpleLog::State<DT>,\n    b: AsynchronousSingletonBehavior<DT>,\n)\n    requires\n        behavior_equiv(SimpleLogBehavior::Inited(s1), b),\n    ensures\n        behavior_equiv(\n            SimpleLogBehavior::Stepped(s2, AsyncLabel::Internal, Box::new(SimpleLogBehavior::Inited(s1))),\n            b,\n        ),\n{\n}",
+    "reason": "An arbitrary internal step with any state can be prepended to an equivalent behavior \u2014 `behavior_equiv` skips internal steps without checking state validity",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "trick_equiv_swaps_states",
+    "type": "logical",
+    "code": "proof fn phi_3_trick_equiv_swaps_states<DT: Dispatch>(\n    s1: SimpleLog::State<DT>,\n    s2: SimpleLog::State<DT>,\n    tail: SimpleLogBehavior<DT>,\n    b: AsynchronousSingletonBehavior<DT>,\n)\n    requires\n        behavior_equiv(\n            SimpleLogBehavior::Stepped(s1, AsyncLabel::Internal, Box::new(tail)),\n            b,\n        ),\n    ensures\n        behavior_equiv(\n            SimpleLogBehavior::Stepped(s2, AsyncLabel::Internal, Box::new(tail)),\n            b,\n        ),\n{\n    trick_equiv(\n        SimpleLogBehavior::Stepped(s1, AsyncLabel::Internal, Box::new(tail)),\n        SimpleLogBehavior::Stepped(s2, AsyncLabel::Internal, Box::new(tail)),\n        b,\n    );\n}",
+    "reason": "The state in an internal step can be replaced with any other state without breaking equivalence \u2014 `trick_equiv` proves internal step states are completely irrelevant",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "infinite_internal_steps_equiv",
+    "type": "logical",
+    "code": "proof fn phi_4_infinite_internal_steps_equiv<DT: Dispatch>(\n    s1: SimpleLog::State<DT>,\n    s2: SimpleLog::State<DT>,\n    b: AsynchronousSingletonBehavior<DT>,\n)\n    requires\n        behavior_equiv(SimpleLogBehavior::Inited(s1), b),\n    ensures\n        behavior_equiv(\n            SimpleLogBehavior::Stepped(\n                s2,\n                AsyncLabel::Internal,\n                Box::new(SimpleLogBehavior::Stepped(\n                    s2,\n                    AsyncLabel::Internal,\n                    Box::new(SimpleLogBehavior::Inited(s1)),\n                )),\n            ),\n            b,\n        ),\n{\n}",
+    "reason": "Arbitrarily many internal steps can be stacked on the `a` side \u2014 `behavior_equiv` peels them off recursively, so any number of unvalidated internal transitions are invisible",
+    "entailed": false,
+    "verus_output": " Dispatch>(\n    |  _______-\n164 | |     s1: SimpleLog::State<DT>,\n165 | |     s2: SimpleLog::State<DT>,\n166 | |     b: AsynchronousSingletonBehavior<DT>,\n167 | | )\n    | |_- at the end of the function body\n...\n171 | /         behavior_equiv(\n172 | |             SimpleLogBehavior::Stepped(\n173 | |                 s2,\n174 | |                 AsyncLabel::Internal,\n...   |\n181 | |             b,\n182 | |         ),\n    | |_________^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "async_singleton_internal_skip",
+    "type": "behavioral",
+    "code": "proof fn phi_5_async_singleton_internal_skip<DT: Dispatch>(\n    a: SimpleLogBehavior<DT>,\n    s1: AsynchronousSingleton::State<DT>,\n    s2: AsynchronousSingleton::State<DT>,\n    b_tail: AsynchronousSingletonBehavior<DT>,\n)\n    requires\n        behavior_equiv(a, AsynchronousSingletonBehavior::Stepped(s1, AsyncLabel::Internal, Box::new(b_tail))),\n    ensures\n        behavior_equiv(a, AsynchronousSingletonBehavior::Stepped(s2, AsyncLabel::Internal, Box::new(b_tail))),\n{\n}",
+    "reason": "The state in an internal step on the `b` side can also be freely swapped \u2014 `behavior_equiv` ignores the state of internal transitions on both sides",
+    "entailed": false,
+    "verus_output": "AsynchronousSingleton::State<DT>,\n166 | |     s2: AsynchronousSingleton::State<DT>,\n167 | |     b_tail: AsynchronousSingletonBehavior<DT>,\n168 | | )\n    | |_- at the end of the function body\n...\n172 |           behavior_equiv(a, AsynchronousSingletonBehavior::Stepped(s2, AsyncLabel::Internal, Box::new(b_tail))),\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

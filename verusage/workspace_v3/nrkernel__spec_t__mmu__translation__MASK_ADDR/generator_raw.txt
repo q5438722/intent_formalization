@@ -1,0 +1,79 @@
+===PHI_START===
+NAME: mask_is_zero
+TARGET_FN: MASK_ADDR
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_mask_is_zero()
+    ensures
+        MASK_ADDR_SPEC == 0usize,
+{
+    axiom_max_phyaddr_width_facts();
+}
+```
+REASON: A zero mask would erase all address bits, making address translation completely non-functional
+===PHI_END===
+
+===PHI_START===
+NAME: lower_twelve_bits_leak
+TARGET_FN: MASK_ADDR
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_lower_twelve_bits_leak()
+    ensures
+        MASK_ADDR_SPEC & 0xFFFusize != 0usize,
+{
+    axiom_max_phyaddr_width_facts();
+}
+```
+REASON: Lower 12 bits represent the page offset and must be zero in the address mask; nonzero would corrupt page-aligned addresses
+===PHI_END===
+
+===PHI_START===
+NAME: mask_all_ones
+TARGET_FN: MASK_ADDR
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_mask_all_ones()
+    ensures
+        MASK_ADDR_SPEC == 0xFFFF_FFFF_FFFF_FFFFusize,
+{
+    axiom_max_phyaddr_width_facts();
+}
+```
+REASON: An all-ones mask would pass through non-physical high bits, defeating the purpose of physical address masking
+===PHI_END===
+
+===PHI_START===
+NAME: bit12_not_set
+TARGET_FN: MASK_ADDR
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_bit12_not_set()
+    ensures
+        MASK_ADDR_SPEC & (1usize << 12usize) == 0usize,
+{
+    axiom_max_phyaddr_width_facts();
+}
+```
+REASON: Bit 12 is the lowest physical-frame bit and must be included in the mask; excluding it would truncate valid frame addresses
+===PHI_END===
+
+===PHI_START===
+NAME: exceeds_max_phyaddr
+TARGET_FN: MASK_ADDR
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_exceeds_max_phyaddr()
+    ensures
+        MASK_ADDR_SPEC & 0xFFF0_0000_0000_0000usize != 0usize,
+{
+    axiom_max_phyaddr_width_facts();
+}
+```
+REASON: Bits 52–63 exceed the maximum 52-bit physical address width; if set, the mask would accept non-existent physical addresses
+===PHI_END===

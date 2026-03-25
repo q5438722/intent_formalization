@@ -1,0 +1,47 @@
+[
+  {
+    "name": "slice_idx_below_page_idx",
+    "type": "logical",
+    "code": "proof fn phi_1_slice_idx_below_page_idx(ptr: *mut u8, block_id: BlockId)\n    requires\n        is_block_ptr(ptr, block_id),\n        block_id.page_id.idx == 10,\n        block_id.slice_idx == 2,\n    ensures\n        block_id.slice_idx < block_id.page_id.idx,\n{\n    reveal(is_block_ptr1);\n}",
+    "reason": "`is_block_ptr1` allows `slice_idx < page_id.idx` \u2014 a block on page 10 claiming to be in slice 2 is physically impossible since a page's slices start at the page index",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "block_end_past_slice",
+    "type": "behavioral",
+    "code": "proof fn phi_2_block_end_past_slice(ptr: *mut u8, block_id: BlockId)\n    requires\n        is_block_ptr(ptr, block_id),\n    ensures\n        // Only start address is within the slice \u2014 no guarantee block fits\n        ptr as int < segment_start(block_id.page_id.segment_id) + (block_id.slice_idx * SLICE_SIZE) + SLICE_SIZE,\n{\n    reveal(is_block_ptr1);\n}",
+    "reason": "The spec checks that the block start is within a slice but never checks `ptr + block_size` fits \u2014 large blocks can extend past the slice boundary",
+    "entailed": false,
+    "verus_output": "error: expected `,`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__layout__get_block_start_from_is_block_ptr/phi_2_block_end_past_slice.rs:133:35\n    |\n133 |         ptr as int < segment_start(block_id.page_id.segment_id) + (block_id.slice_idx * SLICE_SIZE) + SLICE_SIZE,\n    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "two_block_ids_same_ptr",
+    "type": "logical",
+    "code": "proof fn phi_3_two_block_ids_same_ptr(ptr: *mut u8, b1: BlockId, b2: BlockId)\n    requires\n        is_block_ptr(ptr, b1),\n        is_block_ptr(ptr, b2),\n    ensures\n        ptr as int == block_start(b1),\n        ptr as int == block_start(b2),\n        block_start(b1) == block_start(b2),\n{\n    get_block_start_from_is_block_ptr(ptr, b1);\n    get_block_start_from_is_block_ptr(ptr, b2);\n}",
+    "reason": "Two distinct `BlockId`s with different `block_size`/`idx` can yield the same `block_start` address \u2014 the spec doesn't ensure `is_block_ptr` uniquely determines the `BlockId` from a pointer",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_idx_exceeds_slices_per_segment",
+    "type": "boundary",
+    "code": "proof fn phi_4_page_idx_exceeds_slices_per_segment(ptr: *mut u8, block_id: BlockId)\n    requires\n        is_block_ptr(ptr, block_id),\n    ensures\n        // page_id.idx is NOT bounded by SLICES_PER_SEGMENT\n        // Only slice_idx is bounded\n        block_id.slice_idx <= SLICES_PER_SEGMENT,\n{\n    reveal(is_block_ptr1);\n}",
+    "reason": "`is_block_ptr1` bounds `slice_idx <= SLICES_PER_SEGMENT` but places no upper bound on `page_id.idx` \u2014 a page with `idx > 512` would compute `page_start` beyond the segment",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "block_size_no_upper_bound",
+    "type": "boundary",
+    "code": "proof fn phi_5_block_size_no_upper_bound(ptr: *mut u8, block_id: BlockId)\n    requires\n        is_block_ptr(ptr, block_id),\n    ensures\n        block_id.block_size >= 8,\n        // No upper bound on block_size \u2014 could exceed SEGMENT_SIZE\n{\n    reveal(is_block_ptr1);\n}",
+    "reason": "`is_block_ptr1` requires `block_size >= size_of::<Node>()` (lower bound) but has no upper bound \u2014 a block_size exceeding SEGMENT_SIZE is allowed, which combined with the slice containment check means block_idx must be 0 but the block extends far past the segment",
+    "entailed": false,
+    "verus_output": "tianyu/intent_formalization/verusage/workspace_v2/memory-allocator__layout__get_block_start_from_is_block_ptr/phi_5_block_size_no_upper_bound.rs:132:9\n    |\n128 | proof fn phi_5_block_size_no_upper_bound(ptr: *mut u8, block_id: BlockId)\n    |       ------------------------------------------------------------------- at the end of the function body\n...\n132 |         block_id.block_size >= 8,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

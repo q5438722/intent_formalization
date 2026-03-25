@@ -1,0 +1,52 @@
+[
+  {
+    "name": "null_addr_valid",
+    "target_fn": "va_4k_valid",
+    "type": "behavioral",
+    "reason": "Address zero (null pointer) should never be a valid 4K virtual address",
+    "entailed": false,
+    "verified": 7,
+    "errors": 1,
+    "output_tail": "ddr_valid.rs:143:9\n    |\n141 | proof fn phi_1_null_addr_valid()\n    |       -------------------------- at the end of the function body\n142 |     ensures\n143 |         spec_va_4k_valid(0usize),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "empty_range_trivially_valid",
+    "target_fn": "va_4k_range_valid",
+    "type": "boundary",
+    "reason": "A zero-length range being unconditionally valid could mask bugs where callers assume non-empty ranges",
+    "entailed": true,
+    "verified": 8,
+    "errors": 0,
+    "output_tail": "verification results:: 8 verified, 0 errors\n\n"
+  },
+  {
+    "name": "add_range_not_injective",
+    "target_fn": "va_add_range",
+    "type": "logical",
+    "reason": "Distinct offsets mapping to the same address would break no_duplicates invariant of VaRange4K",
+    "entailed": false,
+    "verified": 7,
+    "errors": 1,
+    "output_tail": "------------------------------------------------------------ at the end of the function body\n...\n149 |         spec_va_add_range(va, i) == spec_va_add_range(va, j),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "userspace_addr_accepted",
+    "target_fn": "va_4k_valid",
+    "type": "behavioral",
+    "reason": "A low user-space address (L4 index 0) passing kernel-space validation would be a security violation",
+    "entailed": false,
+    "verified": 7,
+    "errors": 1,
+    "output_tail": "41 | proof fn phi_4_userspace_addr_accepted()\n    |       ---------------------------------- at the end of the function body\n142 |     ensures\n143 |         spec_va_4k_valid(0x1000usize),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "new_zero_len_wf",
+    "target_fn": "new",
+    "type": "boundary",
+    "reason": "VaRange4K::new accepting len=0 and producing a trivially well-formed empty range could hide logic errors in callers that assume non-empty ranges",
+    "entailed": true,
+    "verified": 8,
+    "errors": 0,
+    "output_tail": "verification results:: 8 verified, 0 errors\n\n"
+  }
+]

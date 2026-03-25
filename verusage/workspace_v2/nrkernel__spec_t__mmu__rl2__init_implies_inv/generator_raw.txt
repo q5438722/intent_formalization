@@ -1,0 +1,90 @@
+===PHI_START===
+NAME: walk_next_external_body_unconstrained
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_walk_next_external_body_unconstrained(mem: PTMem, walk1: Walk, walk2: Walk)
+    requires
+        walk1.vaddr == walk2.vaddr,
+        walk1.path.len() == 0,
+        walk2.path.len() == 0,
+        !walk1.complete,
+        !walk2.complete,
+    ensures
+        walk_next(mem, walk1) === walk_next(mem, walk2),
+{
+}
+```
+REASON: `walk_next` is `external_body` with no spec — completely opaque, meaning Verus treats identical inputs as producing identical outputs only by coincidence
+===PHI_END===
+
+===PHI_START===
+NAME: inv_unmapping_core_vs_writer_reads_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_inv_unmapping_core_vs_writer_reads_external_body(s: State, c: Constants)
+    requires
+        s.happy,
+        s.polarity is Unmapping,
+        s.inv(c),
+    ensures
+        s.inv_unmapping__core_vs_writer_reads(c),
+{
+}
+```
+REASON: `inv_unmapping__core_vs_writer_reads` is `external_body` with no spec — the unmapping invariant includes a completely opaque predicate that could be anything
+===PHI_END===
+
+===PHI_START===
+NAME: inv_unmapping_notin_nonpos_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_inv_unmapping_notin_nonpos_external_body(s: State, c: Constants)
+    requires
+        s.happy,
+        s.polarity is Unmapping,
+        s.inv(c),
+    ensures
+        s.inv_unmapping__notin_nonpos(c),
+{
+}
+```
+REASON: `inv_unmapping__notin_nonpos` is `external_body` with no spec — another completely opaque unmapping invariant component trusted without any specification
+===PHI_END===
+
+===PHI_START===
+NAME: inv_vacuous_when_unhappy
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_inv_vacuous_when_unhappy(s: State, c: Constants)
+    requires
+        !s.happy,
+    ensures
+        s.inv(c),
+{
+}
+```
+REASON: `inv` is guarded by `self.happy` — once `happy` becomes false, all invariants are vacuously satisfied, allowing any state to be considered valid
+===PHI_END===
+
+===PHI_START===
+NAME: mapping_empty_tso_implies_no_pending_maps
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_mapping_empty_tso_implies_no_pending_maps(s: State, c: Constants)
+    requires
+        s.happy,
+        s.inv(c),
+        s.polarity is Mapping,
+        s.writes.tso === Set::empty(),
+    ensures
+        s.hist.pending_maps === Map::empty(),
+{
+}
+```
+REASON: When in Mapping polarity with empty TSO set, all pending maps must be empty — this means if the store buffer is drained before completing a map, the pending map history is lost
+===PHI_END===

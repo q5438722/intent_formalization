@@ -1,0 +1,79 @@
+===PHI_START===
+NAME: empty_range_when_equal
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_empty_range_when_equal(n: nat)
+    ensures
+        set_nat_range(n, n) =~= Set::<nat>::empty(),
+{
+}
+```
+REASON: When `lo == hi`, the range is empty — correct behavior but verifies the boundary case where the set contains no elements
+===PHI_END===
+
+===PHI_START===
+NAME: range_contains_lo
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_range_contains_lo(lo: nat, hi: nat)
+    requires
+        lo < hi,
+    ensures
+        set_nat_range(lo, hi).contains(lo),
+{
+}
+```
+REASON: The range always contains its lower bound when non-empty — a correct property verifying set membership at the boundary
+===PHI_END===
+
+===PHI_START===
+NAME: range_excludes_hi
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_range_excludes_hi(lo: nat, hi: nat)
+    requires
+        lo < hi,
+    ensures
+        !set_nat_range(lo, hi).contains(hi),
+{
+}
+```
+REASON: The range is half-open `[lo, hi)` and excludes `hi` — verifies the upper bound exclusion
+===PHI_END===
+
+===PHI_START===
+NAME: singleton_range_len_1
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_singleton_range_len_1(n: nat)
+    ensures
+        set_nat_range(n, (n + 1) as nat).finite(),
+        set_nat_range(n, (n + 1) as nat).len() == 1,
+{
+    lemma_nat_range(n, (n + 1) as nat);
+}
+```
+REASON: A range of width 1 has exactly one element — tests the minimal non-empty case
+===PHI_END===
+
+===PHI_START===
+NAME: range_subset_monotone
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_range_subset_monotone(a: nat, b: nat, c: nat)
+    requires
+        a <= b,
+        b <= c,
+    ensures
+        set_nat_range(b, c) <= set_nat_range(a, c),
+{
+    assert forall |i: nat| set_nat_range(b, c).contains(i) implies set_nat_range(a, c).contains(i) by {};
+}
+```
+REASON: Narrowing the lower bound produces a subset — correct monotonicity property, but shows the spec allows arbitrary range nesting without additional constraints
+===PHI_END===

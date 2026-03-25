@@ -1,0 +1,47 @@
+[
+  {
+    "name": "step_map_sound_no_existing_vmem_check",
+    "type": "behavioral",
+    "code": "proof fn phi_1_step_map_sound_no_existing_vmem_check(mappings: Map<nat, PTE>, inflights: Set<ThreadState>, vaddr: nat, pte: PTE)\n    requires\n        step_Map_sound(mappings, inflights, vaddr, pte),\n        candidate_mapping_overlaps_existing_vmem(mappings, vaddr, pte),\n    ensures\n        true,\n{\n}",
+    "reason": "`step_Map_sound` checks inflight vmem, existing pmem, and inflight pmem overlap \u2014 but does NOT check `candidate_mapping_overlaps_existing_vmem`, allowing a sound map that overlaps existing virtual memory",
+    "entailed": true,
+    "verus_output": "verification results:: 16 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "max_phyaddr_width_weaker_than_constant",
+    "type": "boundary",
+    "code": "proof fn phi_2_max_phyaddr_width_weaker_than_constant()\n    ensures\n        32 <= MAX_PHYADDR_WIDTH,\n        MAX_PHYADDR_WIDTH <= 52,\n        MAX_PHYADDR_WIDTH != 52,\n{\n    axiom_max_phyaddr_width_facts();\n}",
+    "reason": "`MAX_PHYADDR_WIDTH` is `external_body` set to 52 but the axiom only constrains it to `[32, 52]` \u2014 the SMT solver can assume any value in that range",
+    "entailed": false,
+    "verus_output": "on not satisfied\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__hlproof__map_start_preserves_inv/phi_2_max_phyaddr_width_weaker_than_constant.rs:471:9\n    |\n467 | proof fn phi_2_max_phyaddr_width_weaker_than_constant()\n    |       ------------------------------------------------- at the end of the function body\n...\n471 |         MAX_PHYADDR_WIDTH != 52,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "overlap_zero_size_reflexive",
+    "type": "boundary",
+    "code": "proof fn phi_3_overlap_zero_size_reflexive(base: nat)\n    ensures\n        overlap(MemRegion { base: base, size: 0 }, MemRegion { base: base, size: 0 }),\n{\n}",
+    "reason": "Two zero-size regions at the same base are considered overlapping via `region1.base == region2.base` \u2014 empty intervals should not overlap",
+    "entailed": true,
+    "verus_output": "verification results:: 16 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "step_map_enabled_no_size_zero_guard",
+    "type": "boundary",
+    "code": "proof fn phi_4_step_map_enabled_no_size_zero_guard(inflight: Set<ThreadState>, map: Map<nat, PTE>, vaddr: nat, pte: PTE)\n    requires\n        step_Map_enabled(inflight, map, vaddr, pte),\n    ensures\n        pte.frame.size > 0,\n{\n}",
+    "reason": "`step_Map_enabled` constrains `pte.frame.size` to be one of `L3_ENTRY_SIZE`, `L2_ENTRY_SIZE`, or `L1_ENTRY_SIZE` \u2014 tests whether this implicitly prevents zero-size frames",
+    "entailed": true,
+    "verus_output": "verification results:: 16 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "step_mapstart_unsound_allows_arbitrary_state",
+    "type": "behavioral",
+    "code": "proof fn phi_5_step_mapstart_unsound_allows_arbitrary_state(c: Constants, s1: State, s2: State, lbl: RLbl)\n    requires\n        lbl matches RLbl::MapStart { thread_id, vaddr, pte },\n        step_Map_enabled(s1.thread_state.values(), s1.mappings, vaddr, pte),\n        c.valid_thread(thread_id),\n        s1.thread_state[thread_id] === ThreadState::Idle,\n        !step_Map_sound(s1.mappings, s1.thread_state.values(), vaddr, pte),\n        step_MapStart(c, s1, s2, lbl),\n    ensures\n        !s2.sound,\n{\n}",
+    "reason": "When `step_Map_sound` fails, the system transitions to an unsound state \u2014 the entire state becomes untrusted rather than simply rejecting the operation, which is a permissive failure mode",
+    "entailed": false,
+    "verus_output": "te` in this scope\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__hlproof__map_start_preserves_inv/phi_5_step_mapstart_unsound_allows_arbitrary_state.rs:473:71\n    |\n473 |         !step_Map_sound(s1.mappings, s1.thread_state.values(), vaddr, pte),\n    |                                                                       ^^^ not found in this scope\n\nerror: aborting due to 6 previous errors\n\nFor more information about this error, try `rustc --explain E0425`.\n",
+    "timed_out": false
+  }
+]

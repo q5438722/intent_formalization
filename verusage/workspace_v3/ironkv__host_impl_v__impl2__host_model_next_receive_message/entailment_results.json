@@ -1,0 +1,52 @@
+[
+  {
+    "name": "get_request_always_redirects",
+    "target_fn": "next_get_request_reply",
+    "type": "behavioral",
+    "reason": "Would mean the host can never serve a GetRequest locally, always redirecting even for owned keys.",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": ",\n1822 | |     sm: SingleMessage<Message>, m: Message, out: Set<Packet>, should_send: bool\n1823 | | )\n     | |_- at the end of the function body\n...\n1830 |           m is Redirect,\n     |           ^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 6 warnings emitted\n\n"
+  },
+  {
+    "name": "set_request_no_hashtable_mutation",
+    "target_fn": "next_set_request_complete",
+    "type": "behavioral",
+    "reason": "Would mean SetRequests never actually modify the hashtable, rendering writes completely inert.",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "|     sm: SingleMessage<Message>, replym: Message, out: Set<Packet>, should_send: bool\n1823 | | )\n     | |_- at the end of the function body\n...\n1829 |           post.h == pre.h,\n     |           ^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 6 warnings emitted\n\n"
+  },
+  {
+    "name": "process_message_no_requests_logged",
+    "target_fn": "process_message",
+    "type": "logical",
+    "reason": "Would mean the host never appends to received_requests, breaking application-level request tracking.",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "tate, out: Set<Packet>\n1821 | | )\n     | |_- at the end of the function body\n...\n1826 |           post.received_requests == pre.received_requests,\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 6 warnings emitted\n\n"
+  },
+  {
+    "name": "shard_send_produces_empty_output",
+    "target_fn": "next_shard",
+    "type": "boundary",
+    "reason": "Would mean shard operations never transmit Delegate packets to recipients even when should_send is true.",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "1822 | |     sm: SingleMessage<Message>, should_send: bool\n1823 | | )\n     | |_- at the end of the function body\n...\n1829 |           out == Set::<Packet>::empty(),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 6 warnings emitted\n\n"
+  },
+  {
+    "name": "delegate_no_delegation_count_increase",
+    "target_fn": "next_delegate",
+    "type": "logical",
+    "reason": "Would mean accepted Delegate messages never increment the delegation counter, breaking the max-delegations safety bound.",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": " pkt: Packet, out: Set<Packet>\n1821 | | )\n     | |_- at the end of the function body\n...\n1828 |           post.num_delegations == pre.num_delegations,\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 6 warnings emitted\n\n"
+  }
+]

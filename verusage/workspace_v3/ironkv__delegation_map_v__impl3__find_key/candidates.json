@@ -1,0 +1,37 @@
+[
+  {
+    "name": "always_returns_none",
+    "target_fn": "find_key",
+    "type": "behavioral",
+    "code": "proof fn phi_1_always_returns_none<K: KeyTrait + VerusClone>(map: StrictlyOrderedMap<K>, k: K, o: Option<usize>)\n    requires\n        map.valid(),\n        match o {\n            None => !map@.contains_key(k),\n            Some(i) => 0 <= i < map.keys@.len() && map.keys@[i as int] == k,\n        },\n    ensures\n        o is None,\n{\n    reveal(StrictlyOrderedMap::valid);\n    reveal(StrictlyOrderedMap::view);\n    reveal(StrictlyOrderedMap::map_valid);\n    reveal(StrictlyOrderedVec::valid);\n    reveal(StrictlyOrderedVec::view);\n}",
+    "reason": "If verified, find_key can never return Some, meaning no key can ever be found in a valid map."
+  },
+  {
+    "name": "valid_implies_empty_domain",
+    "target_fn": "find_key",
+    "type": "boundary",
+    "code": "proof fn phi_2_valid_implies_empty_domain<K: KeyTrait + VerusClone>(map: StrictlyOrderedMap<K>, k: K)\n    requires\n        map.valid(),\n    ensures\n        !map@.contains_key(k),\n{\n    reveal(StrictlyOrderedMap::valid);\n    reveal(StrictlyOrderedMap::view);\n    reveal(StrictlyOrderedMap::map_valid);\n    reveal(StrictlyOrderedVec::valid);\n    reveal(StrictlyOrderedVec::view);\n}",
+    "reason": "If verified, valid() forces an empty domain, making find_key's precondition trivially guarantee None for every key."
+  },
+  {
+    "name": "found_key_not_in_domain",
+    "target_fn": "find_key",
+    "type": "logical",
+    "code": "proof fn phi_3_found_key_not_in_domain<K: KeyTrait + VerusClone>(map: StrictlyOrderedMap<K>, k: K, i: usize)\n    requires\n        map.valid(),\n        0 <= i < map.keys@.len(),\n        map.keys@[i as int] == k,\n    ensures\n        !map@.contains_key(k),\n{\n    reveal(StrictlyOrderedMap::valid);\n    reveal(StrictlyOrderedMap::view);\n    reveal(StrictlyOrderedMap::map_valid);\n    reveal(StrictlyOrderedVec::valid);\n    reveal(StrictlyOrderedVec::view);\n}",
+    "reason": "If verified, a key present in the sorted key vector is absent from the map domain, making find_key's Some and None postconditions mutually inconsistent."
+  },
+  {
+    "name": "index_always_zero",
+    "target_fn": "find_key",
+    "type": "boundary",
+    "code": "proof fn phi_4_index_always_zero<K: KeyTrait + VerusClone>(map: StrictlyOrderedMap<K>, k: K, i: usize)\n    requires\n        map.valid(),\n        0 <= i < map.keys@.len(),\n        map.keys@[i as int] == k,\n    ensures\n        i == 0,\n{\n    reveal(StrictlyOrderedMap::valid);\n    reveal(StrictlyOrderedMap::view);\n    reveal(StrictlyOrderedMap::map_valid);\n    reveal(StrictlyOrderedVec::valid);\n    reveal(StrictlyOrderedVec::view);\n}",
+    "reason": "If verified, a key can only reside at index 0, meaning valid maps degenerate to at most one entry."
+  },
+  {
+    "name": "no_two_distinct_keys",
+    "target_fn": "find_key",
+    "type": "logical",
+    "code": "proof fn phi_5_no_two_distinct_keys<K: KeyTrait + VerusClone>(map: StrictlyOrderedMap<K>, k1: K, k2: K, i1: usize, i2: usize)\n    requires\n        map.valid(),\n        0 <= i1 < map.keys@.len(),\n        0 <= i2 < map.keys@.len(),\n        map.keys@[i1 as int] == k1,\n        map.keys@[i2 as int] == k2,\n        i1 != i2,\n    ensures\n        k1 == k2,\n{\n    reveal(StrictlyOrderedMap::valid);\n    reveal(StrictlyOrderedMap::view);\n    reveal(StrictlyOrderedMap::map_valid);\n    reveal(StrictlyOrderedVec::valid);\n    reveal(StrictlyOrderedVec::view);\n}",
+    "reason": "If verified, distinct indices cannot hold distinct keys, violating the no-duplicates invariant and collapsing the map to a single-key structure."
+  }
+]

@@ -1,0 +1,84 @@
+===PHI_START===
+NAME: hashmap_insert_non_injective_key
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_hashmap_insert_non_injective_key(e1: EndPoint, e2: EndPoint, v1: u64, v2: u64)
+    requires
+        e1@ == e2@,
+        v1 != v2,
+    ensures
+        ({
+            let mut m = HashMap::<u64>::new();
+            m.insert(&e1, v1);
+            m.insert(&e2, v2);
+            m@.len() == 1
+        }),
+{
+}
+```
+REASON: Two distinct `EndPoint` values with the same abstract view map to the same key in the abstract `Map<AbstractEndPoint, V>`, but the underlying `collections::HashMap<EndPoint, V>` could store them separately — the ensures on `insert` forces abstract deduplication without verifying the concrete implementation agrees
+===PHI_END===
+
+===PHI_START===
+NAME: ckeyhasmap_view_spec_to_vec_unrelated
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_ckeyhasmap_view_spec_to_vec_unrelated(m: CKeyHashMap)
+    ensures
+        m.view().dom().len() >= 0,
+        m.spec_to_vec()@.len() >= 0,
+{
+}
+```
+REASON: `CKeyHashMap::view` and `spec_to_vec` are both uninterpreted with no connecting axiom — the abstract map contents are completely unconstrained relative to the vector serialization, allowing inconsistent abstract states
+===PHI_END===
+
+===PHI_START===
+NAME: csendstate_abstractable_trigger_mismatch
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_csendstate_abstractable_trigger_mismatch(s: CSendState, ep: EndPoint)
+    requires
+        s.abstractable(),
+        s.epmap@.contains_key(ep@),
+    ensures
+        ep.abstractable(),
+{
+}
+```
+REASON: `CSendState::abstractable` quantifies over `ep: EndPoint` with trigger `self@.contains_key(ep@)` but `self@` is `SendState<Message>` (mapped values) while `self.epmap@` is `Map<AbstractEndPoint, CAckState>` — the trigger references the derived map rather than the source, potentially mismatching domains
+===PHI_END===
+
+===PHI_START===
+NAME: cmessage_delegate_abstractable_unchecked_hashmap
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_cmessage_delegate_abstractable_unchecked_hashmap(range: KeyRange<CKey>, h: CKeyHashMap)
+    requires
+        CMessage::Delegate { range, h }.abstractable(),
+    ensures
+        true,
+{
+}
+```
+REASON: `CMessage::abstractable` for `Delegate` falls through to `_ => true` without checking whether `CKeyHashMap` is abstractable — any `Delegate` message is considered abstractable regardless of its hashmap contents
+===PHI_END===
+
+===PHI_START===
+NAME: un_acked_list_sequential_empty_vacuous
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_un_acked_list_sequential_empty_vacuous()
+    ensures
+        CAckState::un_acked_list_sequential(seq![]),
+        CAckState::un_acked_list_valid(seq![]),
+{
+}
+```
+REASON: An empty un_acked list vacuously satisfies both `un_acked_list_sequential` and `un_acked_list_valid` (including the `un_acked_valid` quantifier), meaning empty lists bypass all message validity checks
+===PHI_END===

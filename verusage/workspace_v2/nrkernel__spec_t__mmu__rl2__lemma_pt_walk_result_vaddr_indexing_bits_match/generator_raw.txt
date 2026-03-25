@@ -1,0 +1,85 @@
+===PHI_START===
+NAME: lemma_bits_align_external_body_l3
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_lemma_bits_align_external_body_l3(vaddr: usize)
+    ensures
+        l0_bits!(align_to_usize(vaddr, L3_ENTRY_SIZE)) == l0_bits!(vaddr),
+        l1_bits!(align_to_usize(vaddr, L3_ENTRY_SIZE)) == l1_bits!(vaddr),
+        l2_bits!(align_to_usize(vaddr, L3_ENTRY_SIZE)) == l2_bits!(vaddr),
+        l3_bits!(align_to_usize(vaddr, L3_ENTRY_SIZE)) == l3_bits!(vaddr),
+{
+    lemma_bits_align_to_usize(vaddr);
+}
+```
+REASON: `lemma_bits_align_to_usize` is `external_body` — L3 (4KB page) alignment preserving all 4 indexing bit fields is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: indexing_bits_match_walk_result
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_indexing_bits_match_walk_result(mem: PTMem, va: usize)
+    ensures
+        indexing_bits_match(va, mem.pt_walk(va).result().vaddr(), mem.pt_walk(va).path.len()),
+{
+    lemma_pt_walk_result_vaddr_indexing_bits_match(mem, va);
+}
+```
+REASON: Walk result vaddr preserving indexing bits depends transitively on the unverified `lemma_bits_align_to_usize` — if false, the walk result vaddr would not index to the same page table entries as the original vaddr
+===PHI_END===
+
+===PHI_START===
+NAME: pt_walk_nonpresent_l0_single_entry
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_pt_walk_nonpresent_l0_single_entry(mem: PTMem, vaddr: usize)
+    requires
+        mem.read(add(mem.pml4, mul(l0_bits!(vaddr), WORD_SIZE))) & 1 == 0,
+    ensures
+        mem.pt_walk(vaddr).path.len() == 1,
+        mem.pt_walk(vaddr).complete,
+{
+}
+```
+REASON: When the L0 PDE has P=0, it's Invalid and the walk terminates with 1 entry — tests that non-present root entries produce immediate termination
+===PHI_END===
+
+===PHI_START===
+NAME: all_mb0_bits_are_zero_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_all_mb0_bits_are_zero_external_body(entry: usize, l1: nat, l2: nat)
+    requires
+        l1 != l2,
+    ensures
+        (PDE { entry, layer: Ghost(l1) }).all_mb0_bits_are_zero()
+        || !(PDE { entry, layer: Ghost(l2) }).all_mb0_bits_are_zero()
+        || true,
+{
+}
+```
+REASON: `all_mb0_bits_are_zero` is `external_body` — the predicate that determines PDE validity is opaque; different layers have different must-be-zero bits but the predicate could conflate them
+===PHI_END===
+
+===PHI_START===
+NAME: pt_walk_l3_page_size_equals_page_size
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_pt_walk_l3_page_size_equals_page_size(mem: PTMem, vaddr: usize)
+    requires
+        mem.pt_walk(vaddr).path.len() == 4,
+        mem.pt_walk(vaddr).path.last().1 is Page,
+    ensures
+        mem.pt_walk(vaddr).result() is Valid,
+        mem.pt_walk(vaddr).result()->Valid_pte.frame.size == L3_ENTRY_SIZE as nat,
+{
+}
+```
+REASON: A 4-entry walk ending in Page produces a Valid result with L3_ENTRY_SIZE (4KB) — tests that the deepest walk level correctly maps to 4KB pages
+===PHI_END===

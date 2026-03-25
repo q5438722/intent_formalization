@@ -1,110 +1,77 @@
-# Summary: Verus Spec Testing for `syscall_send_pages`
+# Test Execution Summary: `syscall_send_pages`
 
-## File Under Test
+## Overview
 
-`kernel__syscall_send_pages__impl0__syscall_send_pages.rs` — defines a kernel IPC syscall (`syscall_send_pages`) for sharing memory pages between processes. The spec `syscall_send_pages_spec` is a ~200-line open spec function with ~13 conditional branches covering: endpoint existence, queue states, scheduler capacity, VA range validity, quota checks, and the success case where pages are shared and mappings updated.
+Target: `kernel__syscall_send_pages__impl0__syscall_send_pages.rs`
 
-## Correctness Results (should all PASS)
+Generated **36 adversarial proof tests** across 3 files. All tests are designed to **FAIL verification**, probing the semantic boundary of the `syscall_send_pages` specification.
 
-| # | Test Name | Description | Expected | Actual |
-|---|-----------|-------------|----------|--------|
-| 1 | `test_endpoint_not_exists` | When endpoint doesn't exist, `old =~= new` | PASS | PASS |
-| 2 | `test_sender_queue_full` | When sender queue full, `old =~= new` | PASS | PASS |
-| 3 | `test_no_receiver_domains` | No receiver: thread/proc/container/endpoint domains preserved | PASS | PASS |
-| 4 | `test_receiver_queue_empty_domains` | Receiver queue empty: all domains preserved | PASS | PASS |
-| 5 | `test_success_domains` | Success case: all domains preserved | PASS | PASS |
-| 6 | `test_no_receiver_sender_descriptors` | No receiver: thread_dom preserved | PASS | PASS |
-| 7 | `test_receiver_queue_empty_sender_descriptors` | Receiver queue empty: endpoint_dom preserved | PASS | PASS |
-| 8 | `test_no_switch_struct` | SyscallReturnStruct field consistency | PASS | PASS |
-| 9 | `test_ipc_payload_pages` | IPCPayLoad::Pages returns Some(va_range) | PASS | PASS |
-| 10 | `test_ipc_payload_empty` | IPCPayLoad::Empty returns None | PASS | PASS |
-| 11 | `test_no_receiver_and_full_exclusive` | no_receiver and sender_queue_full are mutually exclusive | PASS | PASS |
-| 12 | `test_receiver_exist_and_empty_exclusive` | receiver_exist and receiver_queue_empty are mutually exclusive | PASS | PASS |
-| 13 | `test_receiver_exist_and_no_receiver_exclusive` | receiver_exist and no_receiver are mutually exclusive | PASS | PASS |
-| 14 | `test_address_space_free_def` | Empty VA range is always free | PASS | PASS |
+## Results
 
-**Result: 58 verified, 0 errors**
+| Test File | Tests | Failed (Expected) | Passed (Unexpected) |
+|-----------|-------|--------------------|---------------------|
+| `boundary_tests.rs` | 12 | 12 ✅ | 0 |
+| `behavioral_mutation_tests.rs` | 12 | 12 ✅ | 0 |
+| `logical_tests.rs` | 12 | 12 ✅ | 0 |
+| **Total** | **36** | **36** | **0** |
 
-## Completeness Results (should all FAIL)
+## Boundary Tests (12/12 failed ✅)
 
-### Round 1: Precondition Violations
+All precondition violations were correctly rejected:
 
-| # | Test Name | What It Tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | `test_no_spec_unchanged` | Claim `old =~= new` without spec assumption | FAIL | FAIL |
-| 2 | `test_no_spec_domains` | Claim domains match without spec | FAIL | FAIL |
-| 3 | `test_wrong_derivation` | Derive no_receiver when endpoint doesn't exist | FAIL | FAIL |
-| 4 | `test_receiver_exist_without_conditions` | Claim receiver_exist without queue info | FAIL | FAIL |
-| 5 | `test_arbitrary_va_range` | Claim `old =~= new` when no_receiver (state changes) | FAIL | FAIL |
+| # | Target | Violation | Result |
+|---|--------|-----------|--------|
+| 1 | `syscall_send_pages` | `endpoint_payload == MAX (128)` | FAIL ✅ |
+| 2 | `syscall_send_pages` | thread not in domain | FAIL ✅ |
+| 3 | `syscall_send_pages` | thread state BLOCKED (not RUNNING) | FAIL ✅ |
+| 4 | `syscall_send_pages` | thread state SCHEDULED (not RUNNING) | FAIL ✅ |
+| 5 | `page_ptr2page_index` | non-aligned ptr (ptr=1) | FAIL ✅ |
+| 6 | `page_index2page_ptr` | index == NUM_PAGES (out of range) | FAIL ✅ |
+| 7 | `syscall_send_pages` | endpoint_payload == usize::MAX | FAIL ✅ |
+| 8 | VA range wf | len causes overflow | FAIL ✅ |
+| 9 | `va_4k_valid` | VA=0 (kernel space) invalid | FAIL ✅ |
+| 10 | `block_running_thread` | queue at max capacity | FAIL ✅ |
+| 11 | `schedule_blocked_thread` | scheduler at max capacity | FAIL ✅ |
+| 12 | `range_create_and_share_mapping` | same src/target proc | FAIL ✅ |
 
-**Result: 43 verified, 5 errors**
+## Behavioral Mutation Tests (12/12 failed ✅)
 
-### Round 2: Overly Strong Postconditions
+All incorrect output assertions were correctly rejected:
 
-| # | Test Name | What It Tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | `test_too_strong_return_code` | Assert specific ret.error_code when spec doesn't constrain it | FAIL | FAIL |
-| 2 | `test_no_receiver_queue_empty` | Assert queue empties (spec says it grows) | FAIL | FAIL |
-| 3 | `test_overly_strong_range_free` | Assert address_space_range_free without checking | FAIL | FAIL |
-| 4 | `test_sender_queue_full_specific_ret` | Assert Else return code in error case | FAIL | FAIL |
-| 5 | `test_no_receiver_unchanged` | Assert `old =~= new` in no_receiver case (wrong) | FAIL | FAIL |
+| # | Spec Path | Mutation | Result |
+|---|-----------|----------|--------|
+| 1 | no_receiver block | queue unchanged (should be pushed) | FAIL ✅ |
+| 2 | success path | endpoint queue unchanged (should skip(1)) | FAIL ✅ |
+| 3 | sender_queue_full | thread domain differs (should be same) | FAIL ✅ |
+| 4 | blocking path | state becomes SCHEDULED (should be BLOCKED) | FAIL ✅ |
+| 5 | blocking path | ipc_payload VA start wrong | FAIL ✅ |
+| 6 | success path | receiver VA not in new space | FAIL ✅ |
+| 7 | receiver_queue_empty | queue_state stays RECEIVE (should be SEND) | FAIL ✅ |
+| 8 | NoSwitchNew | wrong error code (Else vs Error) | FAIL ✅ |
+| 9 | success path | proc domain grows (should be same) | FAIL ✅ |
+| 10 | success path | sender descriptors length changes | FAIL ✅ |
+| 11 | quota subtraction | quota unchanged with ret=3 | FAIL ✅ |
+| 12 | success path | receiver old mapping addr changes | FAIL ✅ |
 
-**Result: 43 verified, 5 errors**
+## Logical Tests (12/12 failed ✅)
 
-### Round 3: Negated/Contradicted Postconditions
+All unintended properties were correctly rejected:
 
-| # | Test Name | What It Tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | `test_negate_thread_dom_preserved` | Negate thread_dom preservation in no_receiver | FAIL | FAIL |
-| 2 | `test_negate_state_unchanged` | Negate `old =~= new` in endpoint-not-exists | FAIL | FAIL |
-| 3 | `test_negate_proc_dom` | Negate proc_dom preservation in no_receiver | FAIL | FAIL |
-| 4 | `test_negate_sender_queue_full_unchanged` | Negate `old =~= new` in sender_queue_full | FAIL | FAIL |
-| 5 | `test_negate_container_dom_success` | Negate container_dom preservation in success | FAIL | FAIL |
+| # | Property Tested | Why Not Entailed | Result |
+|---|----------------|------------------|--------|
+| 1 | return always Error | success path returns Else | FAIL ✅ |
+| 2 | sender always BLOCKED | sender not blocked in success path | FAIL ✅ |
+| 3 | ret always 3×len | spec allows ret ≤ 3×len | FAIL ✅ |
+| 4 | determinism (ret1==ret2) | different rets possible with same bound | FAIL ✅ |
+| 5 | page ptr/index roundtrip for unaligned | only valid for aligned ptrs | FAIL ✅ |
+| 6 | queue_state always RECEIVE | depends on old state | FAIL ✅ |
+| 7 | shared page addr always non-zero | spec doesn't constrain addr values | FAIL ✅ |
+| 8 | va_range.len always > 0 | wf() allows len=0 | FAIL ✅ |
+| 9 | all container quotas preserved | receiver container quota changes | FAIL ✅ |
+| 10 | all page mappings identical | shared pages get new mappings | FAIL ✅ |
+| 11 | receiver becomes RUNNING | spec doesn't guarantee new thread state | FAIL ✅ |
+| 12 | switch decision is Switch | NoSwitchNew forces NoSwitch | FAIL ✅ |
 
-**Result: 43 verified, 5 errors**
+## Conclusion
 
-### Round 4: Wrong Specific Values
-
-| # | Test Name | What It Tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | `test_spec_unsatisfiable` | Assert `false` after assuming spec (spec is satisfiable) | FAIL | FAIL |
-| 2 | `test_empty_payload_is_some` | IPCPayLoad::Empty gives Some (wrong) | FAIL | FAIL |
-| 3 | `test_overly_strong_shareable` | Assert shareable without address space info | FAIL | FAIL |
-| 4 | `test_sender_full_domains_change` | Assert domains change in sender_queue_full (state unchanged) | FAIL | FAIL |
-| 5 | `test_full_implies_no_receiver` | Assert sender_queue_full implies no_receiver (mutually exclusive) | FAIL | FAIL |
-
-**Result: 43 verified, 5 errors**
-
-### Round 5: Cross-function Misuse & Edge Cases
-
-| # | Test Name | What It Tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | `test_endpoint_not_exists_implies_receiver` | Derive endpoint_exists from its negation | FAIL | FAIL |
-| 2 | `test_no_receiver_implies_state_unchanged` | Claim `old =~= new` when no_receiver modifies state | FAIL | FAIL |
-| 3 | `test_sender_queue_full_state_changed` | Claim domains differ when state is unchanged | FAIL | FAIL |
-| 4 | `test_no_receiver_specific_return` | Claim specific switch_decision without guarantee | FAIL | FAIL |
-| 5 | `test_success_state_unchanged` | Claim `old =~= new` in success case (state changes) | FAIL | FAIL |
-
-**Result: 43 verified, 5 errors**
-
-## Overall Assessment
-
-### Correctness
-The specs are **correct**. All 15 correctness tests pass, confirming:
-- Error branches correctly preserve kernel state (`old =~= new`)
-- Blocking branches correctly preserve domain sets
-- Helper spec functions (`no_receiver`, `sender_queue_full`, `receiver_exist`, `receiver_queue_empty`) are mutually exclusive as expected
-- `IPCPayLoad` spec functions correctly discriminate variants
-- `address_space_range_free` is trivially true for empty ranges
-
-### Completeness
-The specs are **reasonably complete**. All 25 completeness tests fail as expected, confirming:
-- The spec cannot be satisfied vacuously (`assert(false)` fails)
-- The spec rejects incorrect postconditions (wrong return codes, wrong queue operations)
-- The spec rejects negated postconditions (contradicting proven properties)
-- Helper predicates reject unsupported derivations (no_receiver != sender_queue_full)
-- Cross-branch confusion is rejected (no_receiver != state-unchanged, success != unchanged)
-
-### Spec Gaps Noted
-- The spec `syscall_send_pages_spec` does not constrain the return value `ret` in most branches (only relates `old` and `new` kernel states). This is by design — the return struct is constrained by the function's ensures clause but the spec function focuses on kernel state transitions.
-- Some properties (e.g., sender's IPC payload being set, queue push/skip) are deeply nested inside forall-implies chains in the spec, making them difficult to extract directly in tests. This is a structural property of the spec, not a correctness issue.
+The specification for `syscall_send_pages` correctly rejects all 36 adversarial queries across boundary, behavioral, and logical dimensions. No specification weakness was detected — the spec appropriately constrains its semantic boundary for the properties tested.

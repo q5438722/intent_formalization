@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: parse_serialize_roundtrip_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `RepeatN::theorem_parse_serialize_roundtrip` is `external_body` with `unimplemented!()`. The trait obligation is fulfilled by an unverified stub despite a verified `theorem_parse_serialize_roundtrip_helper` existing that proves the same property.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: parse_length_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `RepeatN::lemma_parse_length` is `external_body` with `unimplemented!()`. The parse length bound for the composed combinator is entirely trusted without verification.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: parse_length_helper_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `lemma_parse_length_helper` is `external_body` with `unimplemented!()`. This is an independent unverified assumption and a critical dependency used in the verified `theorem_parse_serialize_roundtrip_helper`.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: serialize_ignores_count_field
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `spec_serialize` uses `vs.fold_left(...)` which iterates over the provided sequence regardless of `self.1`. The count field is completely ignored, so `RepeatN(c, 0).spec_serialize(large_vec)` serializes all elements. This is a spec design gap — serialization should be consistent with the count constraint.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: wf_implies_all_inner_wf
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The `wf` definition explicitly includes `forall|i| 0 <= i < vs.len() ==> self.0.wf(vs[i])`. This is a direct consequence of unfolding the open spec. Correct by definition.
+===VERDICT_END===
+
+===SUMMARY===
+Four true positives: three `external_body` functions (`theorem_parse_serialize_roundtrip`, `lemma_parse_length`, `lemma_parse_length_helper`) are unverified trust assumptions despite verified helpers existing for some, and `spec_serialize` ignores the `usize` count field entirely. One false positive: inner well-formedness propagation follows directly from the `wf` definition.
+===END_SUMMARY===

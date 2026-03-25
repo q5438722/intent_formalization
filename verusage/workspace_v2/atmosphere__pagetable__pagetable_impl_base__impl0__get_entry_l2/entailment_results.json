@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize2pa_mem_valid_unconditional",
+    "type": "logical",
+    "code": "proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body unconditionally ensures MEM_valid(ret) for ANY input \u2014 arbitrary usize values produce \"valid\" physical addresses without proof",
+    "entailed": false,
+    "verus_output": "malization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__get_entry_l2/phi_1_usize2pa_mem_valid_unconditional.rs:1197:9\n     |\n1195 | proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n     |       --------------------------------------------------- at the end of the function body\n1196 |     ensures\n1197 |         MEM_valid(usize2pa(v)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 46 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_entry_to_map_entry_drops_user_bit",
+    "type": "behavioral",
+    "code": "proof fn phi_2_page_entry_to_map_entry_drops_user_bit(pe: PageEntry)\n    requires\n        pe.perm.user == true,\n        pe.perm.present == true,\n    ensures\n        spec_page_entry_to_map_entry(&pe) == spec_page_entry_to_map_entry(\n            &PageEntry { perm: PageEntryPerm { user: false, ..pe.perm }, ..pe }\n        ),\n{\n}",
+    "reason": "page_entry_to_map_entry silently drops the user/supervisor bit \u2014 kernel-only and user-accessible pages become indistinguishable in MapEntry",
+    "entailed": false,
+    "verus_output": " scope\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__get_entry_l2/phi_2_page_entry_to_map_entry_drops_user_bit.rs:1200:46\n     |\n1200 |         spec_page_entry_to_map_entry(&pe) == spec_page_entry_to_map_entry(\n     |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope\n\nerror: aborting due to 2 previous errors\n\nFor more information about this error, try `rustc --explain E0425`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_entry_to_map_entry_drops_present_and_ps",
+    "type": "behavioral",
+    "code": "proof fn phi_3_page_entry_to_map_entry_drops_present_and_ps(pe: PageEntry)\n    requires\n        pe.perm.present == false,\n    ensures\n        spec_page_entry_to_map_entry(&pe) == spec_page_entry_to_map_entry(\n            &PageEntry { perm: PageEntryPerm { present: true, ..pe.perm }, ..pe }\n        ),\n{\n}",
+    "reason": "page_entry_to_map_entry produces identical MapEntry regardless of present bit \u2014 non-present entries yield valid-looking MapEntries indistinguishable from present ones",
+    "entailed": false,
+    "verus_output": "\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__get_entry_l2/phi_3_page_entry_to_map_entry_drops_present_and_ps.rs:1199:46\n     |\n1199 |         spec_page_entry_to_map_entry(&pe) == spec_page_entry_to_map_entry(\n     |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope\n\nerror: aborting due to 2 previous errors\n\nFor more information about this error, try `rustc --explain E0425`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "disjoint_l2_commented_out_intra_table",
+    "type": "logical",
+    "code": "proof fn phi_4_disjoint_l2_intra_table_missing(pt: PageTable, p: PageMapPtr, l2i: L2Index, l2j: L2Index)\n    requires\n        pt.wf_l2(),\n        pt.disjoint_l2(),\n        pt.l2_tables@.dom().contains(p),\n        0 <= l2i < 512,\n        0 <= l2j < 512,\n        l2i != l2j,\n        pt.l2_tables@[p].value()[l2i].perm.present,\n        pt.l2_tables@[p].value()[l2j].perm.present,\n        !pt.l2_tables@[p].value()[l2i].perm.ps,\n        !pt.l2_tables@[p].value()[l2j].perm.ps,\n    ensures\n        pt.l2_tables@[p].value()[l2i].addr != pt.l2_tables@[p].value()[l2j].addr,\n{\n}",
+    "reason": "disjoint_l2 covers intra-table uniqueness via the pi==pj && l2i!=l2j case \u2014 verifying this confirms the active (non-commented) spec correctly replaced the commented-out version",
+    "entailed": true,
+    "verus_output": "table.rs:83:10\n   |\n83 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__get_entry_l2/phi_4_disjoint_l2_commented_out_intra_table.rs:92:10\n   |\n92 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 46 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pcid_ioid_exclusive_or",
+    "type": "boundary",
+    "code": "proof fn phi_5_pcid_ioid_exclusive_or(pt: PageTable)\n    requires\n        pt.pcid_ioid_wf(),\n        pt.pcid.is_Some(),\n    ensures\n        pt.ioid.is_None(),\n{\n}",
+    "reason": "pcid_ioid_wf uses `!=` (XOR) meaning exactly one must be Some \u2014 a page table can never have both PCID and IOID simultaneously, but the spec allows neither to be set (both None satisfies != trivially as false != false is false... actually both None gives false != false = false, so this is not satisfied \u2014 the XOR is correct)",
+    "entailed": true,
+    "verus_output": "id_ioid_exclusive_or.rs:83:10\n   |\n83 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__get_entry_l2/phi_5_pcid_ioid_exclusive_or.rs:92:10\n   |\n92 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 48 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

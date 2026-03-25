@@ -1,0 +1,47 @@
+[
+  {
+    "name": "compute_nrstate_version_zero_is_init",
+    "type": "boundary",
+    "code": "proof fn phi_1_compute_nrstate_version_zero_is_init<DT: Dispatch>(\n    log: Map<LogIdx, LogEntry<DT>>,\n)\n    ensures\n        compute_nrstate_at_version::<DT>(log, 0) == DT::init_spec(),\n{\n}",
+    "reason": "Version 0 always returns `init_spec()` regardless of log contents \u2014 tests the base case where the log is completely ignored",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "dispatch_mut_spec_trusted_no_constraints",
+    "type": "logical",
+    "code": "proof fn phi_2_dispatch_mut_spec_trusted_no_constraints<DT: Dispatch>(\n    log: Map<LogIdx, LogEntry<DT>>,\n    entry: LogEntry<DT>,\n)\n    requires\n        log.contains_key(0),\n        log[0] == entry,\n    ensures\n        compute_nrstate_at_version::<DT>(log, 1) == DT::dispatch_mut_spec(DT::init_spec(), entry.op).0,\n{\n}",
+    "reason": "`dispatch_mut_spec` is a trusted trait method with no constraints \u2014 any implementation could define arbitrary state transitions, and the spec blindly trusts it",
+    "entailed": false,
+    "verus_output": "i_2_dispatch_mut_spec_trusted_no_constraints<DT: Dispatch>(\n    |  _______-\n123 | |     log: Map<LogIdx, LogEntry<DT>>,\n124 | |     entry: LogEntry<DT>,\n125 | | )\n    | |_- at the end of the function body\n...\n130 |           compute_nrstate_at_version::<DT>(log, 1) == DT::dispatch_mut_spec(DT::init_spec(), entry.op).0,\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "preserves_allows_extra_keys",
+    "type": "logical",
+    "code": "proof fn phi_3_preserves_allows_extra_keys<DT: Dispatch>(\n    a: Map<LogIdx, LogEntry<DT>>,\n    b: Map<LogIdx, LogEntry<DT>>,\n    extra_entry: LogEntry<DT>,\n    version: LogIdx,\n)\n    requires\n        forall |i| 0 <= i < version ==> a.contains_key(i),\n        forall |i| 0 <= i < version ==> a[i] == b[i],\n        !a.contains_key(version),\n        b == a.insert(version, extra_entry),\n    ensures\n        compute_nrstate_at_version::<DT>(a, version) == compute_nrstate_at_version::<DT>(b, version),\n{\n    compute_nrstate_at_version_preserves(a, b, version);\n}",
+    "reason": "Maps that agree on `[0, version)` produce the same state even if `b` has extra entries beyond `version` \u2014 the preservation lemma ignores entries at or above the version",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "compute_nrstate_deterministic_same_ops",
+    "type": "behavioral",
+    "code": "proof fn phi_4_compute_nrstate_deterministic_same_ops<DT: Dispatch>(\n    log1: Map<LogIdx, LogEntry<DT>>,\n    log2: Map<LogIdx, LogEntry<DT>>,\n    version: LogIdx,\n)\n    requires\n        forall |i| 0 <= i < version ==> log1.contains_key(i),\n        forall |i| 0 <= i < version ==> log2.contains_key(i),\n        forall |i: nat| i < version ==> log1[i].op === log2[i].op && log1[i].node_id == log2[i].node_id,\n    ensures\n        compute_nrstate_at_version::<DT>(log1, version) == compute_nrstate_at_version::<DT>(log2, version),\n{\n    compute_nrstate_at_version_preserves(log1, log2, version);\n}",
+    "reason": "State computation depends only on the op sequence, not the log map identity \u2014 two different maps with identical entries produce the same state, meaning `node_id` is never used in state computation",
+    "entailed": true,
+    "verus_output": " matches the\n      pattern specified by one of the quantifier's triggers.)\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/node-replication__spec__unbounded_log__compute_nrstate_at_version_preserves/phi_4_compute_nrstate_deterministic_same_ops.rs:130:9\n    |\n130 |         forall |i: nat| i < version ==> log1[i].op === log2[i].op && log1[i].node_id == log2[i].node_id,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "node_id_irrelevant_to_state",
+    "type": "behavioral",
+    "code": "proof fn phi_5_node_id_irrelevant_to_state<DT: Dispatch>(\n    log: Map<LogIdx, LogEntry<DT>>,\n    op: DT::WriteOperation,\n    nid1: NodeId,\n    nid2: NodeId,\n)\n    requires\n        nid1 != nid2,\n    ensures ({\n        let log1 = Map::empty().insert(0nat, LogEntry::<DT> { op, node_id: nid1 });\n        let log2 = Map::empty().insert(0nat, LogEntry::<DT> { op, node_id: nid2 });\n        compute_nrstate_at_version::<DT>(log1, 1) == compute_nrstate_at_version::<DT>(log2, 1)\n    }),\n{\n}",
+    "reason": "The `node_id` field of `LogEntry` is completely ignored by `compute_nrstate_at_version` \u2014 different nodes submitting the same op produce identical states, meaning the state computation cannot distinguish which node performed an operation",
+    "entailed": false,
+    "verus_output": "id2: NodeId,\n127 | | )\n    | |_- at the end of the function body\n...\n130 |       ensures ({\n    |  _____________^\n131 | |         let log1 = Map::empty().insert(0nat, LogEntry::<DT> { op, node_id: nid1 });\n132 | |         let log2 = Map::empty().insert(0nat, LogEntry::<DT> { op, node_id: nid2 });\n133 | |         compute_nrstate_at_version::<DT>(log1, 1) == compute_nrstate_at_version::<DT>(log2, 1)\n134 | |     }),\n    | |______^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

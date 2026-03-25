@@ -1,0 +1,103 @@
+===PHI_START===
+NAME: obtain_bit_index_3_aux_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_obtain_bit_index_3_aux_external_body(a: u64, b: u64, hi: u64) -> (i: u64)
+    requires
+        a & b != b,
+        hi <= 64,
+        a >> hi == 0,
+        b >> hi == 0,
+    ensures
+        i < hi,
+        !is_bit_set!(a, i),
+        is_bit_set!(b, i),
+{
+    lemma_obtain_bit_index_3_aux(a, b, hi)
+}
+```
+REASON: `lemma_obtain_bit_index_3_aux` is `external_body` — the existence of a bit set in `b` but not in `a` when `a & b != b` is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: not_subset_has_witness
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_not_subset_has_witness(a: usize, b: usize) -> (i: usize)
+    requires
+        a & b != b,
+    ensures
+        i < 64,
+        !is_bit_set(a, i),
+        is_bit_set(b, i),
+{
+    lemma_obtain_bit_index_3(a, b)
+}
+```
+REASON: Any pair where `a & b != b` has a witness bit set in `b` but clear in `a` — this depends entirely on the unverified external_body axiom
+===PHI_END===
+
+===PHI_START===
+NAME: zero_not_superset_of_nonzero
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_zero_not_superset_of_nonzero(b: usize) -> (i: usize)
+    requires
+        b != 0,
+    ensures
+        i < 64,
+        is_bit_set(b, i),
+{
+    assert(0usize & b != b) by (bit_vector) requires b != 0usize;
+    let i = lemma_obtain_bit_index_3(0, b);
+    i
+}
+```
+REASON: Using `lemma_obtain_bit_index_3` with `a=0` derives that any nonzero usize has a set bit — this piggybacks on the external_body axiom to get `lemma_obtain_bit_index_1`-like functionality
+===PHI_END===
+
+===PHI_START===
+NAME: witness_bit_position_unique_power_of_two
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_witness_bit_position_unique_power_of_two() -> (i: usize)
+    ensures
+        i < 64,
+        !is_bit_set(0usize, i),
+        is_bit_set(1usize, i),
+        i == 0,
+{
+    assert(0u64 & 1u64 != 1u64) by (bit_vector);
+    assert(0u64 >> 64 == 0) by (bit_vector);
+    assert(1u64 >> 64 == 0) by (bit_vector);
+    reveal(is_bit_set);
+    let i = lemma_obtain_bit_index_3_aux(0, 1, 64);
+    assert(i == 0) by (bit_vector)
+        requires !is_bit_set!(0u64, i), is_bit_set!(1u64, i), i < 64;
+    i as usize
+}
+```
+REASON: For a=0, b=1 the only witness is bit 0 — tests that the external_body axiom returns the correct specific index for concrete inputs
+===PHI_END===
+
+===PHI_START===
+NAME: is_bit_set_wrap_at_64
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_is_bit_set_wrap_at_64(a: usize)
+    requires
+        is_bit_set(a, 0),
+    ensures
+        is_bit_set(a, 64),
+{
+    reveal(is_bit_set);
+    assert(1usize << 64 == 1usize << 0) by (bit_vector);
+}
+```
+REASON: `1usize << 64` wraps to `1usize << 0` on 64-bit, so `is_bit_set(a, 64) == is_bit_set(a, 0)` — the spec fn conflates bit 0 and "bit 64" due to missing bounds check in its definition
+===PHI_END===

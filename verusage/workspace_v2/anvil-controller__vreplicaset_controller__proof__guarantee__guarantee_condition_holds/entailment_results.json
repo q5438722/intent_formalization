@@ -1,0 +1,47 @@
+[
+  {
+    "name": "init_invariant_without_next",
+    "type": "logical",
+    "code": "proof fn phi_1_init_invariant_without_next<T>(spec: TempPred<T>, init: StatePred<T>, inv: StatePred<T>)\n    requires\n        forall |s: T| #[trigger] init(s) ==> inv(s),\n        spec.entails(lift_state(init)),\n    ensures\n        spec.entails(always(lift_state(inv))),\n{\n}",
+    "reason": "init_invariant requires both the init condition AND an inductive next-step \u2014 without the next-step obligation, an invariant holding at init should NOT be guaranteed to hold always",
+    "entailed": false,
+    "verus_output": "condition_holds/phi_1_init_invariant_without_next.rs:4449:9\n     |\n4444 | proof fn phi_1_init_invariant_without_next<T>(spec: TempPred<T>, init: StatePred<T>, inv: StatePred<T>)\n     |       ------------------------------------------------------------------------------------------------- at the end of the function body\n...\n4449 |         spec.entails(always(lift_state(inv))),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "configmap_unmarshal_ignores_status",
+    "type": "behavioral",
+    "code": "proof fn phi_2_configmap_unmarshal_ignores_status(obj1: DynamicObjectView, obj2: DynamicObjectView)\n    requires\n        obj1.kind == Kind::ConfigMapKind,\n        obj2.kind == Kind::ConfigMapKind,\n        obj1.metadata == obj2.metadata,\n        obj1.spec == obj2.spec,\n        obj1.status != obj2.status,\n        ConfigMapView::unmarshal_spec(obj1.spec) is Ok,\n        ConfigMapView::unmarshal_status(obj1.status) is Ok,\n        ConfigMapView::unmarshal_status(obj2.status) is Ok,\n    ensures\n        ConfigMapView::unmarshal(obj1)->Ok_0 == ConfigMapView::unmarshal(obj2)->Ok_0,\n{\n}",
+    "reason": "_unmarshal_helper discards status entirely \u2014 but unmarshal_status is uninterpreted so the solver cannot know both calls produce the same Ok_0 value; if it can prove equality despite different status values, the status field is provably irrelevant",
+    "entailed": true,
+    "verus_output": "verification results:: 8 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "daemonset_transition_allows_template_change",
+    "type": "behavioral",
+    "code": "proof fn phi_3_daemonset_transition_allows_template_change(new_ds: DaemonSetView, old_ds: DaemonSetView)\n    requires\n        old_ds.spec is Some,\n        new_ds.spec is Some,\n        old_ds.spec->0.selector == new_ds.spec->0.selector,\n        old_ds.spec->0.template != new_ds.spec->0.template,\n    ensures\n        new_ds._transition_validation(old_ds) == true,\n{\n}",
+    "reason": "transition_validation only checks selector equality \u2014 if template changes are freely allowed by the spec, that may be too permissive (real Kubernetes restricts certain template mutations)",
+    "entailed": true,
+    "verus_output": "verification results:: 8 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "with_namespace_preserves_object_ref_name",
+    "type": "boundary",
+    "code": "proof fn phi_4_with_namespace_preserves_object_ref_name(obj: DynamicObjectView, ns: StringView)\n    requires\n        obj.metadata.name is Some,\n        obj.metadata.namespace is Some,\n    ensures\n        obj.with_namespace(ns).object_ref().name == obj.object_ref().name,\n        obj.with_namespace(ns).object_ref().kind == obj.object_ref().kind,\n        obj.with_namespace(ns).object_ref().namespace == ns,\n        obj.with_namespace(ns).object_ref().namespace != obj.object_ref().namespace,\n{\n}",
+    "reason": "the last ensures claims namespaces always differ \u2014 but if ns happens to equal the original namespace, this is false; the spec should not entail that with_namespace always changes the namespace",
+    "entailed": false,
+    "verus_output": "     |\n4444 | proof fn phi_4_with_namespace_preserves_object_ref_name(obj: DynamicObjectView, ns: StringView)\n     |       ----------------------------------------------------------------------------------------- at the end of the function body\n...\n4452 |         obj.with_namespace(ns).object_ref().namespace != obj.object_ref().namespace,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "entails_trans_collapses_always",
+    "type": "logical",
+    "code": "proof fn phi_5_entails_trans_collapses_always<T>(spec: TempPred<T>, p: TempPred<T>)\n    requires\n        spec.entails(p),\n    ensures\n        spec.entails(always(p)),\n{\n    entails_preserved_by_always(spec, p);\n    // always(spec).entails(always(p))\n    // but we need spec.entails(always(p)) \u2014 this requires spec == always(spec)\n}",
+    "reason": "entails_preserved_by_always lifts p\u21d2q to always(p)\u21d2always(q), but combining with entails_trans should NOT allow promoting a one-shot entailment to an always-entailment without the spec itself being an always-property",
+    "entailed": false,
+    "verus_output": "-controller__vreplicaset_controller__proof__guarantee__guarantee_condition_holds/phi_5_entails_trans_collapses_always.rs:4448:9\n     |\n4444 | proof fn phi_5_entails_trans_collapses_always<T>(spec: TempPred<T>, p: TempPred<T>)\n     |       ----------------------------------------------------------------------------- at the end of the function body\n...\n4448 |         spec.entails(always(p)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

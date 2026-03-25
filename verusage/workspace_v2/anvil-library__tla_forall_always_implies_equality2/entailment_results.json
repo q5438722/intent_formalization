@@ -1,0 +1,47 @@
+[
+  {
+    "name": "tla_forall_always_equality_variant_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_1_tla_forall_always_equality_variant_intensional_bridge(a_to_always: spec_fn(int) -> TempPred<int>, a_to_p: spec_fn(int) -> TempPred<int>)\n    requires\n        forall |a: int| #![trigger a_to_always(a)] a_to_always(a).entails((|a: int| always(a_to_p(a)))(a)) && ((|a: int| always(a_to_p(a)))(a)).entails(a_to_always(a)),\n    ensures\n        tla_forall(a_to_always) == always(tla_forall(a_to_p)),\n{\n    tla_forall_always_equality_variant::<int, int>(a_to_always, a_to_p);\n}",
+    "reason": "tla_forall_always_equality_variant is external_body forcing intensional equality between tla_forall(a_to_always) and always(tla_forall(a_to_p)) from pointwise entailment \u2014 collapses structurally distinct closures without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "tla_forall_implies_equality2_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_2_tla_forall_implies_equality2_intensional_bridge(p: TempPred<int>, a_to_q: spec_fn(int) -> TempPred<int>)\n    ensures\n        tla_forall(|a: int| p.implies(a_to_q(a))) == p.implies(tla_forall(a_to_q)),\n{\n    tla_forall_implies_equality2::<int, int>(p, a_to_q);\n}",
+    "reason": "tla_forall_implies_equality2 is external_body forcing unconditional intensional equality between tla_forall(|a| p=>q(a)) and p=>tla_forall(q) \u2014 structurally distinct nested closures collapsed without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "tla_forall_always_implies_equality2_bridge",
+    "type": "logical",
+    "code": "proof fn phi_3_tla_forall_always_implies_equality2_bridge(p: TempPred<int>, a_to_q: spec_fn(int) -> TempPred<int>)\n    ensures\n        tla_forall(|a: int| always(p.implies(a_to_q(a)))) == always(p.implies(tla_forall(a_to_q))),\n{\n    tla_forall_always_implies_equality2::<int, int>(p, a_to_q);\n}",
+    "reason": "chains both external_body axioms to force intensional equality between \u2200a.\u25a1(p\u21d2q(a)) and \u25a1(p\u21d2\u2200a.q(a)) \u2014 propagates intensional collapse through always/implies/forall nesting",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "always_forall_implies_from_components",
+    "type": "behavioral",
+    "code": "proof fn phi_4_always_forall_implies_from_components(p: TempPred<int>, a_to_q: spec_fn(int) -> TempPred<int>, ex: Execution<int>)\n    requires\n        tla_forall(|a: int| always(p.implies(a_to_q(a)))).satisfied_by(ex),\n    ensures\n        always(p.implies(tla_forall(a_to_q))).satisfied_by(ex),\n{\n    tla_forall_always_implies_equality2::<int, int>(p, a_to_q);\n}",
+    "reason": "uses the chained equality to substitute \u2200a.\u25a1(p\u21d2q(a)) with \u25a1(p\u21d2\u2200a.q(a)) \u2014 if the intensional bridge is unsound, this enables deriving always-forall from componentwise always-implies",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "variant_axiom_arbitrary_alias",
+    "type": "boundary",
+    "code": "proof fn phi_5_variant_axiom_arbitrary_alias(a_to_p: spec_fn(int) -> TempPred<int>)\n    ensures\n        tla_forall(|a: int| always(a_to_p(a))) == always(tla_forall(a_to_p)),\n{\n    tla_forall_always_equality_variant::<int, int>(|a: int| always(a_to_p(a)), a_to_p);\n}",
+    "reason": "tla_forall_always_equality_variant accepts any a_to_always alias \u2014 passing the identity |a| always(p(a)) directly shows the axiom subsumes the standard \u2200a.\u25a1p(a)=\u25a1\u2200a.p(a) equality as a special case, with the full generality of accepting arbitrary aliases being the unverified gap",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

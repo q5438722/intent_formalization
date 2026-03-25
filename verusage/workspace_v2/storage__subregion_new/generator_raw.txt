@@ -1,0 +1,129 @@
+===PHI_START===
+NAME: new_ensures_inv_with_self_referential_perm
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_new_ensures_inv_with_self_referential_perm<Perm: CheckPermission<Seq<u8>>, PMRegion: PersistentMemoryRegion>(
+    wrpm: &WriteRestrictedPersistentMemoryRegion<Perm, PMRegion>,
+    perm: &Perm,
+    start: u64,
+    len: nat,
+    is_writable: spec_fn(int) -> bool,
+)
+    requires
+        wrpm.inv(),
+        start + len <= wrpm@.len() <= u64::MAX,
+        forall|alt_region_view: PersistentMemoryRegionView, alt_crash_state: Seq<u8>|
+            {
+                &&& #[trigger] alt_region_view.can_crash_as(alt_crash_state)
+                &&& wrpm@.len() == alt_region_view.len()
+                &&& views_differ_only_where_subregion_allows(wrpm@, alt_region_view, start as nat, len, is_writable)
+            } ==> perm.check_permission(alt_crash_state),
+    ensures
+        views_differ_only_where_subregion_allows(wrpm@, wrpm@, start as nat, len, is_writable),
+{
+}
+```
+REASON: Any view differs from itself only where allowed (trivially true since no bytes differ) — but if the opaque_inv relied on non-trivial reasoning about the initial view equaling current, a reflexivity bug could propagate
+===PHI_END===
+
+===PHI_START===
+NAME: subregion_view_independent_of_outside_bytes
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_subregion_view_independent_of_outside_bytes(
+    v1: PersistentMemoryRegionView,
+    v2: PersistentMemoryRegionView,
+    start: nat,
+    len: nat,
+)
+    requires
+        v1.len() == v2.len(),
+        start + len <= v1.len(),
+        forall|k: int| start <= k < start + len ==> v1.state[k] == v2.state[k],
+    ensures
+        get_subregion_view(v1, start, len) == get_subregion_view(v2, start, len),
+{
+    assert(v1.state.subrange(start as int, (start + len) as int) =~= v2.state.subrange(start as int, (start + len) as int));
+}
+```
+REASON: The subregion view should depend only on bytes within [start, start+len) — if bytes outside the range leaked into the subregion, the write restriction would not properly isolate the subregion
+===PHI_END===
+
+===PHI_START===
+NAME: perm_check_holds_for_current_crash_states
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_perm_check_holds_for_current_crash_states<Perm: CheckPermission<Seq<u8>>, PMRegion: PersistentMemoryRegion>(
+    wrpm: &WriteRestrictedPersistentMemoryRegion<Perm, PMRegion>,
+    perm: &Perm,
+    start: u64,
+    len: nat,
+    is_writable: spec_fn(int) -> bool,
+    crash_state: Seq<u8>,
+)
+    requires
+        wrpm.inv(),
+        start + len <= wrpm@.len() <= u64::MAX,
+        forall|alt_region_view: PersistentMemoryRegionView, alt_crash_state: Seq<u8>|
+            {
+                &&& #[trigger] alt_region_view.can_crash_as(alt_crash_state)
+                &&& wrpm@.len() == alt_region_view.len()
+                &&& views_differ_only_where_subregion_allows(wrpm@, alt_region_view, start as nat, len, is_writable)
+            } ==> perm.check_permission(alt_crash_state),
+        wrpm@.can_crash_as(crash_state),
+    ensures
+        perm.check_permission(crash_state),
+{
+}
+```
+REASON: The current region's own crash states should satisfy the permission — if the identity view diff didn't trigger the precondition, the invariant would not cover the current state's crash consistency
+===PHI_END===
+
+===PHI_START===
+NAME: get_subregion_view_idempotent
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_get_subregion_view_idempotent(
+    region: PersistentMemoryRegionView,
+    start: nat,
+    len: nat,
+)
+    requires
+        start + len <= region.len(),
+    ensures
+        get_subregion_view(get_subregion_view(region, start, len), 0, len)
+            == get_subregion_view(region, start, len),
+{
+    assert(get_subregion_view(region, start, len).state.subrange(0, len as int)
+        =~= region.state.subrange(start as int, (start + len) as int));
+}
+```
+REASON: Taking a full-range subregion of a subregion should be idempotent — if double subranging changed the result, nested subregion creation would produce inconsistent views
+===PHI_END===
+
+===PHI_START===
+NAME: views_differ_symmetric_when_nothing_writable
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_views_differ_symmetric_when_nothing_writable(
+    v1: PersistentMemoryRegionView,
+    v2: PersistentMemoryRegionView,
+    start: nat,
+    len: nat,
+)
+    requires
+        v1.len() == v2.len(),
+        start + len <= v1.len(),
+        views_differ_only_where_subregion_allows(v1, v2, start, len, |addr: int| false),
+    ensures
+        views_differ_only_where_subregion_allows(v2, v1, start, len, |addr: int| false),
+{
+}
+```
+REASON: When nothing is writable, views_differ should be symmetric — if one direction held but not the other, the subregion invariant would be asymmetrically constraining
+===PHI_END===

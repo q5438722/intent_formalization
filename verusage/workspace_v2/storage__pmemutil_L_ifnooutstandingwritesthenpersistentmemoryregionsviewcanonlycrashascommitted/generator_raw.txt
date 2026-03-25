@@ -1,0 +1,76 @@
+===PHI_START===
+NAME: crash_only_as_committed_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_crash_only_as_committed_external_body(pm_region_view: PersistentMemoryRegionView)
+    requires
+        pm_region_view.no_outstanding_writes(),
+    ensures
+        forall |s| pm_region_view.can_crash_as(s) ==> s == pm_region_view.committed(),
+{
+    lemma_if_no_outstanding_writes_then_persistent_memory_view_can_only_crash_as_committed(pm_region_view);
+}
+```
+REASON: `lemma_if_no_outstanding_writes_then_persistent_memory_view_can_only_crash_as_committed` is `external_body` — the uniqueness of crash states when no writes are outstanding is trusted without proof; if `can_crash_as` admitted extra states, crash recovery could observe non-committed data
+===PHI_END===
+
+===PHI_START===
+NAME: can_crash_as_allows_committed
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_can_crash_as_allows_committed(view: PersistentMemoryRegionView)
+    requires
+        view.no_outstanding_writes(),
+    ensures
+        view.can_crash_as(view.committed()),
+{
+}
+```
+REASON: The committed state should always be a valid crash state when there are no outstanding writes — if `can_crash_as` rejected committed, no valid crash state would exist
+===PHI_END===
+
+===PHI_START===
+NAME: chunk_ignoring_and_after_flush_same_when_no_writes
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_chunk_ignoring_and_after_flush_same_when_no_writes(view: PersistentMemoryRegionView, chunk: int, bytes: Seq<u8>)
+    requires
+        view.no_outstanding_writes(),
+    ensures
+        view.chunk_corresponds_ignoring_outstanding_writes(chunk, bytes) <==> view.chunk_corresponds_after_flush(chunk, bytes),
+{
+}
+```
+REASON: With no outstanding writes, `flush_byte()` equals `state_at_last_flush` for every byte — the two chunk predicates should be equivalent; if they diverged, the crash model would be inconsistent
+===PHI_END===
+
+===PHI_START===
+NAME: regions_committed_length
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_regions_committed_length(views: PersistentMemoryRegionsView)
+    ensures
+        views.committed().len() == views.len(),
+{
+}
+```
+REASON: The committed sequence should have one entry per region — if `Seq::new` produced a different length, indexing into `committed()` would be misaligned with the regions
+===PHI_END===
+
+===PHI_START===
+NAME: can_crash_as_empty_regions
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_can_crash_as_empty_regions()
+    ensures
+        (PersistentMemoryRegionsView { regions: seq![] }).can_crash_as(seq![]),
+{
+}
+```
+REASON: Empty regions should crash as the empty sequence — if the empty case failed, initialization of the persistent memory system couldn't establish crash consistency
+===PHI_END===

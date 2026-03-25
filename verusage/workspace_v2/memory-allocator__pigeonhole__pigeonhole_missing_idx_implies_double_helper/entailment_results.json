@@ -1,0 +1,47 @@
+[
+  {
+    "name": "set_mismatch_external_body_false",
+    "type": "logical",
+    "code": "proof fn phi_1_set_mismatch_external_body_false(s1: Set<nat>, s2: Set<nat>, missing: nat)\n    requires\n        s1.finite(),\n        s2.finite(),\n        s1.len() == s2.len(),\n        forall |elt| s2.contains(elt) ==> s1.contains(elt),\n        s1.contains(missing),\n        !s2.contains(missing),\n    ensures\n        false,\n{\n    set_mismatch(s1, s2, missing);\n}",
+    "reason": "`set_mismatch` is `external_body` deriving `false` \u2014 a contradiction lemma trusted without proof; any error in its preconditions would make the entire system unsound",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "nat_set_size_external_body",
+    "type": "logical",
+    "code": "proof fn phi_2_nat_set_size_external_body(s: Set<nat>, bound: nat)\n    requires\n        forall |i: nat| (0 <= i < bound <==> s.contains(i)),\n    ensures\n        s.finite(),\n        s.len() == bound,\n{\n    nat_set_size(s, bound);\n}",
+    "reason": "`nat_set_size` is `external_body` trusting finiteness and cardinality without proof \u2014 this is the foundation for the pigeonhole proof's termination argument",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "helper_dup1_in_range",
+    "type": "behavioral",
+    "code": "proof fn phi_3_helper_dup1_in_range(m: Map<nat, nat>, missing: nat, len: nat)\n    requires\n        len >= 2,\n        forall |i: nat| (0 <= i < len <==> m.dom().contains(i)),\n        forall |i: nat| (#[trigger] m.dom().contains(i) ==> (\n            0 <= m[i] < len && m[i] != missing\n        )),\n        0 <= missing < len,\n    ensures ({\n        let dup2 = pigeonhole_missing_idx_implies_double_helper(m, missing, len, Set::empty(), 0);\n        let dup1 = choose |dup1: nat| #![auto] dup1 != dup2 && m.dom().contains(dup1) && 0 <= dup1 < len && m[dup1] == m[dup2];\n        dup1 < len\n    }),\n{\n    let dup2 = pigeonhole_missing_idx_implies_double_helper(m, missing, len, Set::empty(), 0);\n}",
+    "reason": "The duplicate witness `dup1` is guaranteed to be `< len` by the ensures \u2014 but this relies on the `choose` selecting from the existential guaranteed by the external_body-backed proof chain",
+    "entailed": false,
+    "verus_output": "range::pigeonhole_missing_idx_implies_double_helper` with mode proof\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__pigeonhole__pigeonhole_missing_idx_implies_double_helper/phi_3_helper_dup1_in_range.rs:96:20\n   |\n96 |         let dup2 = pigeonhole_missing_idx_implies_double_helper(m, missing, len, Set::empty(), 0);\n   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "set_mismatch_singleton",
+    "type": "boundary",
+    "code": "proof fn phi_4_set_mismatch_singleton()\n    ensures\n        false,\n{\n    let s1 = Set::<nat>::empty().insert(0).insert(1);\n    let s2 = Set::<nat>::empty().insert(0);\n    // s2 \u2286 s1, s1 has missing=1, !s2.contains(1)\n    // but s1.len() == 2 != 1 == s2.len(), so preconditions not met\n    // This should NOT verify\n}",
+    "reason": "Testing whether `set_mismatch` can be invoked with mismatched sizes to derive `false` \u2014 the `s1.len() == s2.len()` guard should prevent this",
+    "entailed": false,
+    "verus_output": "tion results:: 1 verified, 1 errors\nerror: postcondition not satisfied\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__pigeonhole__pigeonhole_missing_idx_implies_double_helper/phi_4_set_mismatch_singleton.rs:89:9\n   |\n87 | proof fn phi_4_set_mismatch_singleton()\n   |       --------------------------------- at the end of the function body\n88 |     ensures\n89 |         false,\n   |         ^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "helper_duplicate_value_not_missing",
+    "type": "behavioral",
+    "code": "proof fn phi_5_helper_duplicate_value_not_missing(m: Map<nat, nat>, missing: nat, len: nat)\n    requires\n        len >= 2,\n        forall |i: nat| (0 <= i < len <==> m.dom().contains(i)),\n        forall |i: nat| (#[trigger] m.dom().contains(i) ==> (\n            0 <= m[i] < len && m[i] != missing\n        )),\n        0 <= missing < len,\n    ensures ({\n        let dup2 = pigeonhole_missing_idx_implies_double_helper(m, missing, len, Set::empty(), 0);\n        m[dup2] != missing\n    }),\n{\n    let dup2 = pigeonhole_missing_idx_implies_double_helper(m, missing, len, Set::empty(), 0);\n    assert(m.dom().contains(dup2));\n}",
+    "reason": "The duplicated value avoids the missing index \u2014 follows from the precondition but confirms the pigeonhole maps `len` keys into `len - 1` non-missing values",
+    "entailed": false,
+    "verus_output": "ole_missing_idx_implies_double_helper` with mode proof\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__pigeonhole__pigeonhole_missing_idx_implies_double_helper/phi_5_helper_duplicate_value_not_missing.rs:96:20\n   |\n96 |         let dup2 = pigeonhole_missing_idx_implies_double_helper(m, missing, len, Set::empty(), 0);\n   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

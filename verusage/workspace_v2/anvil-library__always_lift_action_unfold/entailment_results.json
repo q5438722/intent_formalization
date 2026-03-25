@@ -1,0 +1,47 @@
+[
+  {
+    "name": "always_unfold_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_1_always_unfold_intensional_bridge(ex: Execution<int>, p: TempPred<int>, i: nat)\n    requires\n        always(p).satisfied_by(ex),\n    ensures\n        p.satisfied_by(ex.suffix(i)),\n{\n    always_unfold::<int>(ex, p);\n}",
+    "reason": "always_unfold is external_body bridging the forall inside always's TempPred::new closure and a bare forall in the ensures \u2014 intensionally distinct formulations equated without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "lift_action_ignores_future_states",
+    "type": "behavioral",
+    "code": "proof fn phi_2_lift_action_ignores_future_states(ex: Execution<int>, p: ActionPred<int>, i: nat)\n    requires\n        always(lift_action(p)).satisfied_by(ex),\n        i > 0,\n    ensures\n        p(ex.suffix(i).head(), ex.suffix(i).head_next()),\n        !p(ex.suffix(i).head(), ex.suffix(i + 2).head()),\n        true,\n{\n    always_lift_action_unfold::<int>(ex, p);\n}",
+    "reason": "lift_action only relates consecutive states (head, head_next) \u2014 always(lift_action(p)) says nothing about non-consecutive state pairs, so safety properties spanning more than one step could be silently missed",
+    "entailed": false,
+    "verus_output": "action_unfold/phi_2_lift_action_ignores_future_states.rs:88:9\n   |\n82 | proof fn phi_2_lift_action_ignores_future_states(ex: Execution<int>, p: ActionPred<int>, i: nat)\n   |       ------------------------------------------------------------------------------------------ at the end of the function body\n...\n88 |         !p(ex.suffix(i).head(), ex.suffix(i + 2).head()),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "suffix_head_next_vs_suffix_plus_one_head",
+    "type": "logical",
+    "code": "proof fn phi_3_suffix_head_next_vs_suffix_plus_one_head(ex: Execution<int>, i: nat)\n    requires\n        true,\n    ensures\n        ex.suffix(i).head_next() == ex.suffix(i + 1).head(),\n{\n}",
+    "reason": "ex.suffix(i).head_next() evaluates via a nested closure |j| f(j+i) at j=1 while ex.suffix(i+1).head() evaluates via |j| f(j+(i+1)) at j=0 \u2014 if Verus proves these equal it confirms the SMT solver resolves the intensional closure gap, but if it doesn't, always_lift_action_unfold's ensures clause is weaker than expected",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "always_lift_action_consecutive_chain",
+    "type": "boundary",
+    "code": "proof fn phi_4_always_lift_action_consecutive_chain(ex: Execution<int>, p: ActionPred<int>)\n    requires\n        always(lift_action(p)).satisfied_by(ex),\n    ensures\n        p(ex.head(), ex.head_next()),\n        p(ex.head_next(), ex.suffix(2).head()),\n{\n    always_lift_action_unfold::<int>(ex, p);\n}",
+    "reason": "the second conjunct requires ex.suffix(1).head_next() == ex.suffix(2).head() through nested closures \u2014 if this verifies, the external_body axiom is strong enough to resolve multi-level suffix composition without an explicit composition lemma",
+    "entailed": false,
+    "verus_output": "nvil-library__always_lift_action_unfold/phi_4_always_lift_action_consecutive_chain.rs:87:9\n   |\n82 | proof fn phi_4_always_lift_action_consecutive_chain(ex: Execution<int>, p: ActionPred<int>)\n   |       ------------------------------------------------------------------------------------- at the end of the function body\n...\n87 |         p(ex.head_next(), ex.suffix(2).head()),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 2 previous errors\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "always_lift_action_vacuous_on_constant",
+    "type": "boundary",
+    "code": "proof fn phi_5_always_lift_action_vacuous_on_constant(v: int)\n    ensures\n        always(lift_action(|s1: int, s2: int| s1 == v && s2 == v)).satisfied_by(\n            Execution { nat_to_state: |i: nat| v }\n        ),\n{\n}",
+    "reason": "a constant execution trivially satisfies always(lift_action(p)) for any p that holds on (v,v) \u2014 the spec framework cannot distinguish a genuinely invariant system from a degenerate constant trace, potentially masking liveness issues",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

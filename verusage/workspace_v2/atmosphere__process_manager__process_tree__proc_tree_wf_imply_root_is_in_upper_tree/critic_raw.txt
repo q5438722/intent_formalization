@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: proc_tree_wf_root_depth_zero
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is a desirable property: root has depth==0, and `proc_perms_wf` ensures `uppertree_seq@.len() == depth`, so the root's uppertree_seq being empty is correct by design. The observation about root appearing in its own subtree_set is a separate concern not tested by this PHI.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: proc_tree_no_owned_threads_constraint
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures clause `P || !P` is a tautology that holds for any boolean. While the observation that `proc_tree_wf` doesn't constrain `owned_threads` is valid, this PHI proves nothing — thread ownership constraints belong to higher-level invariants (e.g., `threads_process_wf` in ProcessManager).
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: proc_tree_root_parent_unconstrained
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures clause `P || !P` is a tautology. While the underlying observation about root's parent being unconstrained is interesting, this PHI proves nothing about the spec.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: proc_tree_owning_container_unconstrained
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures clause `a == b || a != b` is a tautology. This PHI proves nothing. The observation about `owning_container` being unconstrained by `proc_tree_wf` is valid but container-process relationships are constrained by `processes_container_wf` at the ProcessManager level.
+===VERDICT_END===
+
+===SUMMARY===
+All four candidates are false positives. Three of them (`proc_tree_no_owned_threads_constraint`, `proc_tree_root_parent_unconstrained`, `proc_tree_owning_container_unconstrained`) have tautological ensures clauses (P ∨ ¬P) that are trivially true regardless of spec content. The remaining one (`proc_tree_wf_root_depth_zero`) is a correct and desirable consequence of the tree invariant design. The underlying observations about missing constraints on `owned_threads`, root's parent, and `owning_container` are valid but belong to higher-level invariants in ProcessManager, not `proc_tree_wf`.
+===END_SUMMARY===

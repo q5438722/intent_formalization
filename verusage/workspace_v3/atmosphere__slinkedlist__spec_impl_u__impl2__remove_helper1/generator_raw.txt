@@ -1,0 +1,147 @@
+===PHI_START===
+NAME: removed_value_persists
+TARGET_FN: remove_helper1
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_removed_value_persists<T: Copy, const N: usize>(
+    old_self: StaticLinkedList<T, N>,
+    post_self: StaticLinkedList<T, N>,
+    remove_index: SLLIndex,
+    v: T,
+    ret: T,
+)
+    requires
+        old_self.wf(),
+        old_self@.contains(v),
+        old_self.get_node_ref(v) == remove_index,
+        old_self.value_list_len == 1,
+        post_self.wf(),
+        post_self.spec_len() == old_self.spec_len() - 1,
+        ret == v,
+        post_self.unique(),
+        post_self@ =~= old_self@.remove_value(ret),
+    ensures
+        post_self@.contains(ret),
+{
+}
+```
+REASON: After removing the sole element from a single-element list, the removed value should not still be present in the result
+===PHI_END===
+
+===PHI_START===
+NAME: nonempty_after_sole_remove
+TARGET_FN: remove_helper1
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_nonempty_after_sole_remove<T: Copy, const N: usize>(
+    old_self: StaticLinkedList<T, N>,
+    post_self: StaticLinkedList<T, N>,
+    remove_index: SLLIndex,
+    v: T,
+    ret: T,
+)
+    requires
+        old_self.wf(),
+        old_self@.contains(v),
+        old_self.get_node_ref(v) == remove_index,
+        old_self.value_list_len == 1,
+        post_self.wf(),
+        post_self.spec_len() == old_self.spec_len() - 1,
+        ret == v,
+        post_self.unique(),
+        post_self@ =~= old_self@.remove_value(ret),
+    ensures
+        post_self@.len() > 0,
+{
+}
+```
+REASON: Removing the only element from a length-1 list must yield an empty sequence; a non-empty result indicates a spec inconsistency
+===PHI_END===
+
+===PHI_START===
+NAME: prestate_length_exceeds_one
+TARGET_FN: remove_helper1
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_prestate_length_exceeds_one<T: Copy, const N: usize>(
+    old_self: StaticLinkedList<T, N>,
+    remove_index: SLLIndex,
+    v: T,
+)
+    requires
+        old_self.wf(),
+        old_self@.contains(v),
+        old_self.get_node_ref(v) == remove_index,
+        old_self.value_list_len == 1,
+    ensures
+        old_self@.len() > 1,
+{
+}
+```
+REASON: Under wf(), value_list_len == 1 must imply the abstract view has exactly 1 element; proving len > 1 would expose a wf/spec_seq_wf inconsistency
+===PHI_END===
+
+===PHI_START===
+NAME: ret_differs_from_ghost
+TARGET_FN: remove_helper1
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_ret_differs_from_ghost<T: Copy, const N: usize>(
+    old_self: StaticLinkedList<T, N>,
+    post_self: StaticLinkedList<T, N>,
+    remove_index: SLLIndex,
+    v: T,
+    ret: T,
+)
+    requires
+        old_self.wf(),
+        old_self@.contains(v),
+        old_self.get_node_ref(v) == remove_index,
+        old_self.value_list_len == 1,
+        post_self.wf(),
+        post_self.spec_len() == old_self.spec_len() - 1,
+        ret == v,
+        post_self.unique(),
+        post_self@ =~= old_self@.remove_value(ret),
+    ensures
+        ret != v,
+{
+}
+```
+REASON: The ensures guarantees ret == v; if ret != v is also provable the entire contract is contradictory (unsatisfiable pre+post)
+===PHI_END===
+
+===PHI_START===
+NAME: remove_no_effect
+TARGET_FN: remove_helper1
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_remove_no_effect<T: Copy, const N: usize>(
+    old_self: StaticLinkedList<T, N>,
+    post_self: StaticLinkedList<T, N>,
+    remove_index: SLLIndex,
+    v: T,
+    ret: T,
+)
+    requires
+        old_self.wf(),
+        old_self@.contains(v),
+        old_self.get_node_ref(v) == remove_index,
+        old_self.value_list_len == 1,
+        post_self.wf(),
+        post_self.spec_len() == old_self.spec_len() - 1,
+        ret == v,
+        post_self.unique(),
+        post_self@ =~= old_self@.remove_value(ret),
+    ensures
+        post_self@ =~= old_self@,
+{
+}
+```
+REASON: The removal must change the abstract sequence; if post equals pre the spec allows a no-op remove violating the length decrease guarantee
+===PHI_END===

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "overflow_bounds_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_overflow_bounds_external_body()\n    ensures\n        X86_MAX_ENTRY_SIZE * (X86_NUM_ENTRIES + 1) < 0x10000000000000000,\n        MAX_BASE + X86_MAX_ENTRY_SIZE * (X86_NUM_ENTRIES + 1) < 0x10000000000000000,\n{\n    overflow_bounds();\n}",
+    "reason": "`overflow_bounds` is `external_body` \u2014 the u64 overflow safety of max entry calculations is trusted without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 8 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "entry_size_exec_external_body",
+    "type": "logical",
+    "code": "proof fn phi_2_entry_size_exec_external_body(arch: ArchExec, layer: usize)\n    requires\n        layer < arch@.layers.len(),\n    ensures\n        arch.entry_size(layer) == arch@.entry_size(layer as nat),\n{\n}",
+    "reason": "`ArchExec::entry_size` is `external_body` \u2014 the exec-to-spec correspondence for layer entry size is trusted without implementation",
+    "entailed": false,
+    "verus_output": "error: cannot call function `phi_2_entry_size_exec_external_body::ArchExec::entry_size` with mode exec\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__definitions_u__impl2__next_entry_base/phi_2_entry_size_exec_external_body.rs:172:9\n    |\n172 |         arch.entry_size(layer) == arch@.entry_size(layer as nat),\n    |         ^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "next_entry_base_off_by_one",
+    "type": "behavioral",
+    "code": "proof fn phi_3_next_entry_base_off_by_one(arch: Arch, layer: nat, base: nat, idx: nat)\n    requires\n        arch.inv(),\n        layer < arch.layers.len(),\n    ensures\n        arch.next_entry_base(layer, base, idx) == base + idx * arch.entry_size(layer) + arch.entry_size(layer),\n{\n}",
+    "reason": "`next_entry_base` computes `base + (idx+1)*entry_size` which equals `entry_base(idx) + entry_size` \u2014 it returns the END of the idx-th entry, not the START of the (idx+1)-th, but these are the same value, potentially confusing callers about semantics",
+    "entailed": false,
+    "verus_output": "_entry_base_off_by_one(arch: Arch, layer: nat, base: nat, idx: nat)\n    |       -------------------------------------------------------------------------------- at the end of the function body\n...\n173 |         arch.next_entry_base(layer, base, idx) == base + idx * arch.entry_size(layer) + arch.entry_size(layer),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "next_entry_base_at_max_idx",
+    "type": "boundary",
+    "code": "proof fn phi_4_next_entry_base_at_max_idx(arch: Arch, layer: nat, base: nat)\n    requires\n        arch.inv(),\n        layer < arch.layers.len(),\n    ensures\n        arch.next_entry_base(layer, base, (arch.num_entries(layer) - 1) as nat) == base + arch.num_entries(layer) * arch.entry_size(layer),\n{\n}",
+    "reason": "At the last valid index, `next_entry_base` equals `base + num_entries * entry_size` \u2014 the function can produce addresses at the very end of the layer's address space",
+    "entailed": true,
+    "verus_output": "verification results:: 8 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "next_entry_base_exceeds_parent_entry",
+    "type": "boundary",
+    "code": "proof fn phi_5_next_entry_base_exceeds_parent_entry(arch: Arch, layer: nat, base: nat, idx: nat)\n    requires\n        arch.inv(),\n        layer < arch.layers.len(),\n        layer > 0,\n        idx == arch.num_entries(layer),\n    ensures\n        arch.next_entry_base(layer, base, idx) == base + (arch.num_entries(layer) + 1) * arch.entry_size(layer),\n{\n}",
+    "reason": "When `idx == num_entries` (one past valid range), `next_entry_base` produces an address beyond the parent entry's mapped region \u2014 no runtime guard prevents this since the precondition only bounds `idx <= X86_NUM_ENTRIES`",
+    "entailed": true,
+    "verus_output": "verification results:: 8 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "va_1g_valid_returns_spec_va_2m_valid",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The `va_1g_valid` function has `#[verifier(when_used_as_spec(spec_va_2m_valid))]` \u2014 clearly a copy-paste bug from `va_2m_valid`. This means whenever `va_1g_valid` is used in spec context it resolves to `spec_va_2m_valid` instead of `spec_va_1g_valid`, silently accepting 2MB-aligned addresses as 1GB-valid."
+  },
+  {
+    "phi": "va_1g_valid_not_spec_va_1g_valid",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is a direct consequence of the copy-paste bug: a 2MB-aligned but non-1GB-aligned address passes `va_1g_valid` because the spec resolves to `spec_va_2m_valid`. This would allow misaligned addresses into 1GB page table operations, a real soundness gap."
+  },
+  {
+    "phi": "v2l2index_accepts_non_1g_via_va_1g",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This demonstrates the downstream impact of the copy-paste bug: `v2l2index`'s precondition `va_1g_valid(va)` is weaker than intended, accepting any 2MB-valid address through the 1GB disjunct. While `v2l2index` itself computes correctly for any address, callers relying on the 1GB path to guarantee 1GB alignment would be unsound."
+  },
+  {
+    "phi": "kernel_mem_end_l4index_allows_low_addresses",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`KERNEL_MEM_END_L4INDEX = 1` is an intentional design constant that excludes L4 index 0 (the lowest 512GB) from valid kernel addresses. The property simply restates this design decision. Whether index 1 overlaps with user-space is an OS-level policy choice, not a spec bug."
+  }
+]

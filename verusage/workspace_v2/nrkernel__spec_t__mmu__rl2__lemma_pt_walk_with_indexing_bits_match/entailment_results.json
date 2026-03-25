@@ -1,0 +1,47 @@
+[
+  {
+    "name": "lemma_bits_align_external_body_word_size",
+    "type": "logical",
+    "code": "proof fn phi_1_lemma_bits_align_external_body_word_size(vaddr: usize)\n    ensures\n        l0_bits!(align_to_usize(vaddr, 8)) == l0_bits!(vaddr),\n        l1_bits!(align_to_usize(vaddr, 8)) == l1_bits!(vaddr),\n        l2_bits!(align_to_usize(vaddr, 8)) == l2_bits!(vaddr),\n        l3_bits!(align_to_usize(vaddr, 8)) == l3_bits!(vaddr),\n{\n    lemma_bits_align_to_usize(vaddr);\n}",
+    "reason": "`lemma_bits_align_to_usize` is `external_body` \u2014 8-byte alignment preserving all indexing bits is trusted without proof",
+    "entailed": true,
+    "verus_output": "o `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_pt_walk_with_indexing_bits_match/phi_1_lemma_bits_align_external_body_word_size.rs:217:9\n    |\n217 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "indexing_bits_match_implies_same_path",
+    "type": "logical",
+    "code": "proof fn phi_2_indexing_bits_match_implies_same_path(mem: PTMem, va1: usize, va2: usize)\n    requires\n        indexing_bits_match(va1, va2, mem.pt_walk(va1).path.len()),\n    ensures\n        mem.pt_walk(va1).path == mem.pt_walk(va2).path,\n{\n    lemma_pt_walk_with_indexing_bits_match(mem, va1, va2);\n}",
+    "reason": "Two addresses with matching indexing bits produce the same walk path \u2014 depends on external_body `lemma_bits_align_to_usize`; if bit preservation is wrong, different addresses could share paths incorrectly",
+    "entailed": true,
+    "verus_output": "d to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_pt_walk_with_indexing_bits_match/phi_2_indexing_bits_match_implies_same_path.rs:217:9\n    |\n217 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "indexing_bits_match_implies_same_pte",
+    "type": "behavioral",
+    "code": "proof fn phi_3_indexing_bits_match_implies_same_pte(mem: PTMem, va1: usize, va2: usize)\n    requires\n        indexing_bits_match(va1, va2, mem.pt_walk(va1).path.len()),\n        mem.pt_walk(va1).result() is Valid,\n    ensures\n        mem.pt_walk(va1).result()->Valid_pte == mem.pt_walk(va2).result()->Valid_pte,\n{\n    lemma_pt_walk_with_indexing_bits_match(mem, va1, va2);\n}",
+    "reason": "Addresses with matching indexing bits that produce valid walks share the same PTE \u2014 this means all addresses within a page map to the same physical frame, which depends on the unverified alignment lemma",
+    "entailed": true,
+    "verus_output": "ed to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_pt_walk_with_indexing_bits_match/phi_3_indexing_bits_match_implies_same_pte.rs:217:9\n    |\n217 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "all_mb0_bits_are_zero_external_body",
+    "type": "logical",
+    "code": "proof fn phi_4_all_mb0_bits_are_zero_external_body(entry: usize, layer: nat)\n    ensures\n        (PDE { entry: 0, layer: Ghost(layer) }).all_mb0_bits_are_zero(),\n{\n}",
+    "reason": "`all_mb0_bits_are_zero` is `external_body` \u2014 a zero entry should have all must-be-zero bits clear, but the predicate is opaque so this could be false",
+    "entailed": false,
+    "verus_output": "s_are_zero_external_body.rs:506:9\n    |\n504 | proof fn phi_4_all_mb0_bits_are_zero_external_body(entry: usize, layer: nat)\n    |       ---------------------------------------------------------------------- at the end of the function body\n505 |     ensures\n506 |         (PDE { entry: 0, layer: Ghost(layer) }).all_mb0_bits_are_zero(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "walk_path_determines_validity_symmetry",
+    "type": "behavioral",
+    "code": "proof fn phi_5_walk_path_determines_validity_symmetry(mem: PTMem, va1: usize, va2: usize)\n    requires\n        indexing_bits_match(va1, va2, mem.pt_walk(va1).path.len()),\n    ensures\n        mem.pt_walk(va1).result() is Valid <==> mem.pt_walk(va2).result() is Valid,\n{\n    lemma_pt_walk_with_indexing_bits_match(mem, va1, va2);\n}",
+    "reason": "Validity is symmetric for addresses with matching indexing bits \u2014 depends on external_body lemma chain; if incorrect, one address in a page could be valid while another is invalid",
+    "entailed": true,
+    "verus_output": " to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_pt_walk_with_indexing_bits_match/phi_5_walk_path_determines_validity_symmetry.rs:217:9\n    |\n217 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,52 @@
+[
+  {
+    "name": "zero_size_alignment_trivially_true",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "reason": "aligned(addr, 0) should not hold because alignment to zero is undefined, but nat%0 may be 0 in SMT making it vacuously true",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": " |\n28 | proof fn phi_1_zero_size_alignment_trivially_true(addr: nat)\n   |       ------------------------------------------------------ at the end of the function body\n...\n32 |         aligned(addr, 0),\n   |         ^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "shift_by_one_preserves_alignment",
+    "target_fn": "aligned",
+    "type": "behavioral",
+    "reason": "Adding 1 to an aligned address should break alignment for any size > 1, so this entailment would indicate the spec is vacuous or wrong",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "one_preserves_alignment(addr: nat, size: nat)\n   |       --------------------------------------------------------------- at the end of the function body\n...\n33 |         aligned(addr + 1, size),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "double_size_always_preserves_alignment",
+    "target_fn": "aligned",
+    "type": "logical",
+    "reason": "Alignment to size does not imply alignment to 2*size (e.g. 4 is aligned to 4 but not to 8), so this holding would mean the spec is too weak",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "eserves_alignment(addr: nat, size: nat)\n   |       --------------------------------------------------------------------- at the end of the function body\n...\n33 |         aligned(addr, 2 * size),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "nonmultiple_is_aligned",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "reason": "size+1 is never a multiple of size when size>1, so this being provable would mean aligned accepts non-multiples",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "rs:32:9\n   |\n28 | proof fn phi_4_nonmultiple_is_aligned(size: nat)\n   |       ------------------------------------------ at the end of the function body\n...\n32 |         aligned(size + 1, size),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "offset_by_size_minus_one_still_aligned",
+    "target_fn": "aligned",
+    "type": "behavioral",
+    "reason": "addr+size-1 is one less than the next aligned address, so it should NOT be aligned; provability would indicate the spec conflates adjacent boundaries",
+    "entailed": false,
+    "verified": 0,
+    "errors": 0,
+    "output_tail": "es_mod_zero/phi_5_offset_by_size_minus_one_still_aligned.rs:8:27\n   |\n 8 | pub open spec(checked) fn aligned(addr: nat, size: nat) -> bool {\n   |                           ^^^^^^^ ---------\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0308`.\n"
+  }
+]

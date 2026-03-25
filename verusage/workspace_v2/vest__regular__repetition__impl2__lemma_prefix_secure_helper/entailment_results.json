@@ -1,0 +1,47 @@
+[
+  {
+    "name": "prefix_secure_external_body_trait",
+    "type": "logical",
+    "code": "proof fn phi_1_prefix_secure_external_body_trait<C: SecureSpecCombinator>(c: &C, s1: Seq<u8>, s2: Seq<u8>)\n    requires\n        c.requires(),\n        C::is_prefix_secure(),\n        c.spec_parse(s1).is_some(),\n    ensures\n        c.spec_parse(s1 + s2) == c.spec_parse(s1),\n{\n    c.lemma_prefix_secure(s1, s2);\n}",
+    "reason": "`SecureSpecCombinator::lemma_prefix_secure` is `external_body` with `unimplemented!()` at the trait level \u2014 the foundational prefix security property is an unverified trust assumption",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "repeatn_prefix_secure_external_body",
+    "type": "logical",
+    "code": "proof fn phi_2_repeatn_prefix_secure_external_body<C: SecureSpecCombinator>(c: &RepeatN<C>, s1: Seq<u8>, s2: Seq<u8>)\n    requires\n        c.requires(),\n        RepeatN::<C>::is_prefix_secure(),\n        c.spec_parse(s1).is_some(),\n    ensures\n        c.spec_parse(s1 + s2) == c.spec_parse(s1),\n{\n    c.lemma_prefix_secure(s1, s2);\n}",
+    "reason": "`RepeatN::lemma_prefix_secure` is `external_body` despite a verified `lemma_prefix_secure_helper` existing \u2014 the trait obligation bypasses the actual proof",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "parse_length_helper_external_body",
+    "type": "logical",
+    "code": "proof fn phi_3_parse_length_helper_external_body<C: SecureSpecCombinator>(c: &RepeatN<C>, s: Seq<u8>, n: usize, m: int, vs: Seq<C::Type>)\n    requires\n        c.requires(),\n        c.spec_parse_helper(s, n) == Some((m, vs)),\n    ensures\n        0 <= m <= s.len(),\n{\n    c.lemma_parse_length_helper(s, n);\n}",
+    "reason": "`lemma_parse_length_helper` is `external_body` with `unimplemented!()` \u2014 the parse length bound used as a dependency in `lemma_prefix_secure_helper` is itself unverified",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "parse_zero_always_succeeds",
+    "type": "boundary",
+    "code": "proof fn phi_4_parse_zero_always_succeeds<C: SecureSpecCombinator>(c: &RepeatN<C>, s: Seq<u8>)\n    requires\n        c.1 == 0usize,\n    ensures\n        c.spec_parse(s) == Some((0int, seq![])),\n{\n}",
+    "reason": "Parsing zero repetitions always succeeds on any input \u2014 the combinator produces a result without examining any bytes",
+    "entailed": false,
+    "verus_output": "his point\n    |                            |\n    |                            cannot infer type of the type parameter `T` declared on the enum `Option`\n    |\nhelp: consider specifying the generic argument\n    |\n144 |         c.spec_parse(s) == Some::<(vstd::prelude::int, vstd::seq::Seq<_>)>((0int, seq![])),\n    |                                +++++++++++++++++++++++++++++++++++++++++++\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0282`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "prefix_secure_helper_verified_but_unused",
+    "type": "logical",
+    "code": "proof fn phi_5_prefix_secure_helper_verified_but_unused<C: SecureSpecCombinator>(c: &RepeatN<C>, s1: Seq<u8>, s2: Seq<u8>)\n    requires\n        c.requires(),\n        c.spec_parse_helper(s1, c.1).is_some(),\n    ensures\n        c.spec_parse_helper(s1 + s2, c.1) == c.spec_parse_helper(s1, c.1),\n{\n    c.lemma_prefix_secure_helper(s1, s2, c.1);\n}",
+    "reason": "The verified `lemma_prefix_secure_helper` proves prefix security for `spec_parse_helper` but depends on the `external_body` `lemma_parse_length_helper` \u2014 if the length bound were wrong, this \"verified\" proof would be unsound",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

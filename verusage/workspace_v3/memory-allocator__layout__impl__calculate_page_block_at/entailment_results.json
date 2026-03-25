@@ -1,0 +1,52 @@
+[
+  {
+    "name": "zero_block_size_collision",
+    "target_fn": "calculate_page_block_at",
+    "type": "behavioral",
+    "reason": "block_size=0 is not excluded by the preconditions, so distinct block indices map to the same address, causing block collisions",
+    "entailed": true,
+    "verified": 29,
+    "errors": 0,
+    "output_tail": "verification results:: 29 verified, 0 errors\n\n"
+  },
+  {
+    "name": "result_at_segment_boundary",
+    "target_fn": "calculate_page_block_at",
+    "type": "boundary",
+    "reason": "The <= in the precondition allows the result to land exactly at segment_start + SEGMENT_SIZE, one byte past the segment's valid range",
+    "entailed": true,
+    "verified": 29,
+    "errors": 0,
+    "output_tail": "verification results:: 29 verified, 0 errors\n\n"
+  },
+  {
+    "name": "cross_segment_block_aliasing",
+    "target_fn": "calculate_page_block_at",
+    "type": "logical",
+    "reason": "The spec provides no uniqueness guarantee across segments; blocks from different segments can compute to the same address",
+    "entailed": true,
+    "verified": 29,
+    "errors": 0,
+    "output_tail": "verification results:: 29 verified, 0 errors\n\n"
+  },
+  {
+    "name": "page_idx_beyond_segment",
+    "target_fn": "calculate_page_block_at",
+    "type": "boundary",
+    "reason": "The preconditions do not bound page_id.idx < SLICES_PER_SEGMENT, allowing pages to start at or beyond the segment end",
+    "entailed": false,
+    "verified": 0,
+    "errors": 0,
+    "output_tail": "\n...\n192 |         page_start(page_id) >= segment_start(page_id.segment_id) + SEGMENT_SIZE,\n    |         ^^^^^^^^^^---------\n    |         |\n    |         call expression requires function\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0618`.\n"
+  },
+  {
+    "name": "redundant_postcondition",
+    "target_fn": "calculate_page_block_at",
+    "type": "logical",
+    "reason": "The two ensures clauses are algebraically equivalent given the precondition, so the spec provides only one independent guarantee rather than two",
+    "entailed": true,
+    "verified": 29,
+    "errors": 0,
+    "output_tail": "verification results:: 29 verified, 0 errors\n\n"
+  }
+]

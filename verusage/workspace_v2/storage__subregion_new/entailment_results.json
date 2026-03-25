@@ -1,0 +1,47 @@
+[
+  {
+    "name": "new_ensures_inv_with_self_referential_perm",
+    "type": "logical",
+    "code": "proof fn phi_1_new_ensures_inv_with_self_referential_perm<Perm: CheckPermission<Seq<u8>>, PMRegion: PersistentMemoryRegion>(\n    wrpm: &WriteRestrictedPersistentMemoryRegion<Perm, PMRegion>,\n    perm: &Perm,\n    start: u64,\n    len: nat,\n    is_writable: spec_fn(int) -> bool,\n)\n    requires\n        wrpm.inv(),\n        start + len <= wrpm@.len() <= u64::MAX,\n        forall|alt_region_view: PersistentMemoryRegionView, alt_crash_state: Seq<u8>|\n            {\n                &&& #[trigger] alt_region_view.can_crash_as(alt_crash_state)\n                &&& wrpm@.len() == alt_region_view.len()\n                &&& views_differ_only_where_subregion_allows(wrpm@, alt_region_view, start as nat, len, is_writable)\n            } ==> perm.check_permission(alt_crash_state),\n    ensures\n        views_differ_only_where_subregion_allows(wrpm@, wrpm@, start as nat, len, is_writable),\n{\n}",
+    "reason": "Any view differs from itself only where allowed (trivially true since no bytes differ) \u2014 but if the opaque_inv relied on non-trivial reasoning about the initial view equaling current, a reflexivity bug could propagate",
+    "entailed": true,
+    "verus_output": "^^^^^^^^\n\nwarning: uninterpreted functions (`spec` functions defined without a body) need to be marked as `uninterp`\n         this will become a hard error in the future\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/storage__subregion_new/phi_1_new_ensures_inv_with_self_referential_perm.rs:51:9\n   |\n51 |     pub closed spec fn constants(&self) -> PersistentMemoryConstants;\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nwarning: 3 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "subregion_view_independent_of_outside_bytes",
+    "type": "behavioral",
+    "code": "proof fn phi_2_subregion_view_independent_of_outside_bytes(\n    v1: PersistentMemoryRegionView,\n    v2: PersistentMemoryRegionView,\n    start: nat,\n    len: nat,\n)\n    requires\n        v1.len() == v2.len(),\n        start + len <= v1.len(),\n        forall|k: int| start <= k < start + len ==> v1.state[k] == v2.state[k],\n    ensures\n        get_subregion_view(v1, start, len) == get_subregion_view(v2, start, len),\n{\n    assert(v1.state.subrange(start as int, (start + len) as int) =~= v2.state.subrange(start as int, (start + len) as int));\n}",
+    "reason": "The subregion view should depend only on bytes within [start, start+len) \u2014 if bytes outside the range leaked into the subregion, the write restriction would not properly isolate the subregion",
+    "entailed": true,
+    "verus_output": "^^^^^^^\n\nwarning: uninterpreted functions (`spec` functions defined without a body) need to be marked as `uninterp`\n         this will become a hard error in the future\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/storage__subregion_new/phi_2_subregion_view_independent_of_outside_bytes.rs:51:9\n   |\n51 |     pub closed spec fn constants(&self) -> PersistentMemoryConstants;\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nwarning: 3 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "perm_check_holds_for_current_crash_states",
+    "type": "logical",
+    "code": "proof fn phi_3_perm_check_holds_for_current_crash_states<Perm: CheckPermission<Seq<u8>>, PMRegion: PersistentMemoryRegion>(\n    wrpm: &WriteRestrictedPersistentMemoryRegion<Perm, PMRegion>,\n    perm: &Perm,\n    start: u64,\n    len: nat,\n    is_writable: spec_fn(int) -> bool,\n    crash_state: Seq<u8>,\n)\n    requires\n        wrpm.inv(),\n        start + len <= wrpm@.len() <= u64::MAX,\n        forall|alt_region_view: PersistentMemoryRegionView, alt_crash_state: Seq<u8>|\n            {\n                &&& #[trigger] alt_region_view.can_crash_as(alt_crash_state)\n                &&& wrpm@.len() == alt_region_view.len()\n                &&& views_differ_only_where_subregion_allows(wrpm@, alt_region_view, start as nat, len, is_writable)\n            } ==> perm.check_permission(alt_crash_state),\n        wrpm@.can_crash_as(crash_state),\n    ensures\n        perm.check_permission(crash_state),\n{\n}",
+    "reason": "The current region's own crash states should satisfy the permission \u2014 if the identity view diff didn't trigger the precondition, the invariant would not cover the current state's crash consistency",
+    "entailed": true,
+    "verus_output": "^^^^^^^^^\n\nwarning: uninterpreted functions (`spec` functions defined without a body) need to be marked as `uninterp`\n         this will become a hard error in the future\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/storage__subregion_new/phi_3_perm_check_holds_for_current_crash_states.rs:51:9\n   |\n51 |     pub closed spec fn constants(&self) -> PersistentMemoryConstants;\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nwarning: 3 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "get_subregion_view_idempotent",
+    "type": "boundary",
+    "code": "proof fn phi_4_get_subregion_view_idempotent(\n    region: PersistentMemoryRegionView,\n    start: nat,\n    len: nat,\n)\n    requires\n        start + len <= region.len(),\n    ensures\n        get_subregion_view(get_subregion_view(region, start, len), 0, len)\n            == get_subregion_view(region, start, len),\n{\n    assert(get_subregion_view(region, start, len).state.subrange(0, len as int)\n        =~= region.state.subrange(start as int, (start + len) as int));\n}",
+    "reason": "Taking a full-range subregion of a subregion should be idempotent \u2014 if double subranging changed the result, nested subregion creation would produce inconsistent views",
+    "entailed": true,
+    "verus_output": "^^^^^^^^^^^^^^^^^^^^^\n\nwarning: uninterpreted functions (`spec` functions defined without a body) need to be marked as `uninterp`\n         this will become a hard error in the future\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/storage__subregion_new/phi_4_get_subregion_view_idempotent.rs:51:9\n   |\n51 |     pub closed spec fn constants(&self) -> PersistentMemoryConstants;\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nwarning: 3 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "views_differ_symmetric_when_nothing_writable",
+    "type": "logical",
+    "code": "proof fn phi_5_views_differ_symmetric_when_nothing_writable(\n    v1: PersistentMemoryRegionView,\n    v2: PersistentMemoryRegionView,\n    start: nat,\n    len: nat,\n)\n    requires\n        v1.len() == v2.len(),\n        start + len <= v1.len(),\n        views_differ_only_where_subregion_allows(v1, v2, start, len, |addr: int| false),\n    ensures\n        views_differ_only_where_subregion_allows(v2, v1, start, len, |addr: int| false),\n{\n}",
+    "reason": "When nothing is writable, views_differ should be symmetric \u2014 if one direction held but not the other, the subregion invariant would be asymmetrically constraining",
+    "entailed": true,
+    "verus_output": "^^^^^^\n\nwarning: uninterpreted functions (`spec` functions defined without a body) need to be marked as `uninterp`\n         this will become a hard error in the future\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/storage__subregion_new/phi_5_views_differ_symmetric_when_nothing_writable.rs:51:9\n   |\n51 |     pub closed spec fn constants(&self) -> PersistentMemoryConstants;\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nwarning: 3 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

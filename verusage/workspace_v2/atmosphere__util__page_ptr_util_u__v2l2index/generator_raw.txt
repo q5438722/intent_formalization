@@ -1,0 +1,79 @@
+===PHI_START===
+NAME: va_1g_valid_returns_spec_va_2m_valid
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_va_1g_valid_returns_spec_va_2m_valid(va: usize)
+    ensures
+        va_1g_valid(va) == spec_va_2m_valid(va),
+{
+}
+```
+REASON: `va_1g_valid` has `when_used_as_spec(spec_va_2m_valid)` instead of `spec_va_1g_valid` — a copy-paste bug that silently makes `va_1g_valid` behave as 2MB validation, weakening all 1GB page checks
+===PHI_END===
+
+===PHI_START===
+NAME: va_1g_valid_not_spec_va_1g_valid
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_va_1g_valid_not_spec_va_1g_valid(va: usize)
+    requires
+        spec_va_2m_valid(va),
+        !spec_va_1g_valid(va),
+    ensures
+        va_1g_valid(va),
+{
+}
+```
+REASON: A 2MB-aligned address that is NOT 1GB-aligned would still pass `va_1g_valid` due to the wrong `when_used_as_spec` annotation, allowing misaligned addresses into 1GB page operations
+===PHI_END===
+
+===PHI_START===
+NAME: v2l2index_accepts_non_1g_via_va_1g
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_v2l2index_accepts_non_1g_via_va_1g(va: usize)
+    requires
+        spec_va_2m_valid(va),
+        !spec_va_1g_valid(va),
+    ensures
+        va_4k_valid(va) || va_2m_valid(va) || va_1g_valid(va),
+{
+}
+```
+REASON: `v2l2index` requires `va_1g_valid(va)` as one disjunct, but since `va_1g_valid` resolves to `spec_va_2m_valid`, any 2MB-valid address satisfies the precondition through the 1GB path even when it's not actually 1GB-aligned
+===PHI_END===
+
+===PHI_START===
+NAME: spec_va_4k_valid_implies_2m_implies_1g_chain
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_spec_va_4k_valid_implies_2m_implies_1g_chain(va: usize)
+    requires
+        spec_va_1g_valid(va),
+    ensures
+        spec_va_2m_valid(va),
+{
+}
+```
+REASON: Since `MEM_1g_MASK` zeroes more low bits than `MEM_2m_MASK`, 1GB-validity should imply 2MB-validity — but this containment relationship is never formally established and relies on bitwise reasoning about the mask constants
+===PHI_END===
+
+===PHI_START===
+NAME: kernel_mem_end_l4index_allows_low_addresses
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_kernel_mem_end_l4index_allows_low_addresses(va: usize)
+    requires
+        spec_va_4k_valid(va),
+    ensures
+        (va as u64 >> 39u64 & 0x1ffu64) >= 1u64,
+{
+}
+```
+REASON: `KERNEL_MEM_END_L4INDEX = 1` means L4 index 1 and above are valid — with index 0 excluded, the lowest ~512GB of virtual address space is blocked, but index 1 starts at a very low address (512GB) which may still overlap with user-space mappings on some configurations
+===PHI_END===

@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: ptmem_view_external_body_functional
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `PTMem::view` is `external_body` with `unimplemented!()` — the function mapping raw page table memory to a `Map<usize, PTE>` is completely opaque. While functional consistency (same inputs → same output) holds trivially for spec functions, the underlying issue is that the view function itself is unverified and could map incorrectly.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: write_seq_empty_identity
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `write_seq` uses `fold_left` with the identity closure. `seq![].fold_left(mem, f) === mem` is the standard base case of `fold_left` in vstd — this is correct by definition and not a spec gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: all_mb0_bits_are_zero_external_body
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is a tautology (`P || !P`) that holds for any boolean expression regardless of whether the predicate is external_body. It demonstrates nothing about the spec gap.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: `PTMem::view` is an external_body function critical for PTE interpretation that is entirely unverified. Two false positives: empty `write_seq` identity is correct by `fold_left` definition, and the `all_mb0_bits_are_zero` tautology proves nothing.
+===END_SUMMARY===

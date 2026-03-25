@@ -1,0 +1,37 @@
+[
+  {
+    "name": "mask_is_zero",
+    "target_fn": "MASK_L1_PG_ADDR",
+    "type": "behavioral",
+    "code": "proof fn phi_1_mask_is_zero()\n    ensures\n        MASK_L1_PG_ADDR_SPEC == 0usize,\n{\n}",
+    "reason": "The L1 page address mask must be non-zero to select any physical address bits"
+  },
+  {
+    "name": "mask_low_bits_set",
+    "target_fn": "MASK_L1_PG_ADDR",
+    "type": "boundary",
+    "code": "proof fn phi_2_mask_low_bits_set()\n    ensures\n        MASK_L1_PG_ADDR_SPEC & bitmask_inc!(0usize, 29usize) != 0usize,\n{\n    axiom_max_phyaddr_width_facts();\n}",
+    "reason": "L1 pages are 1GB-aligned so bits [0,29] must be zero in the mask; non-zero low bits would corrupt page alignment"
+  },
+  {
+    "name": "mask_exceeds_maxphyaddr",
+    "target_fn": "MASK_L1_PG_ADDR",
+    "type": "boundary",
+    "code": "proof fn phi_3_mask_exceeds_maxphyaddr()\n    ensures\n        MASK_L1_PG_ADDR_SPEC >> MAX_PHYADDR_WIDTH != 0usize,\n{\n    axiom_max_phyaddr_width_facts();\n}",
+    "reason": "Bits at or above MAX_PHYADDR_WIDTH must be clear; set bits there would reference non-existent physical address space"
+  },
+  {
+    "name": "mask_all_ones",
+    "target_fn": "MASK_L1_PG_ADDR",
+    "type": "logical",
+    "code": "proof fn phi_4_mask_all_ones()\n    ensures\n        MASK_L1_PG_ADDR_SPEC == !0usize,\n{\n    axiom_max_phyaddr_width_facts();\n}",
+    "reason": "The mask must select only the L1 page-frame bits, not every bit; equaling all-ones would be an overly broad mask"
+  },
+  {
+    "name": "mask_bit30_unset",
+    "target_fn": "MASK_L1_PG_ADDR",
+    "type": "logical",
+    "code": "proof fn phi_5_mask_bit30_unset()\n    ensures\n        MASK_L1_PG_ADDR_SPEC & (1usize << 30u64) == 0usize,\n{\n    axiom_max_phyaddr_width_facts();\n}",
+    "reason": "Bit 30 is the lowest bit of a 1GB-aligned page frame address and must be included in the mask; its absence would lose address information"
+  }
+]

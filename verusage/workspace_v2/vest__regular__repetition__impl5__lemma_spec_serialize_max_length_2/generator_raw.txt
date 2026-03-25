@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: serialize_max_length_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_serialize_max_length_external_body<C: SecureSpecCombinator>(c: &RepeatN<C>, vs: Seq<C::Type>, i: int)
+    requires
+        c.requires(),
+        c.wf(vs),
+        c.spec_serialize(vs).len() <= usize::MAX,
+        0 <= i < vs.len(),
+    ensures
+        c.0.spec_serialize(vs[i]).len() <= usize::MAX,
+{
+    c.lemma_spec_serialize_max_length(vs, c.1);
+}
+```
+REASON: `lemma_spec_serialize_max_length` is `external_body` with `unimplemented!()` — the individual element length bound is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: serialize_prefix_max_length_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_serialize_prefix_max_length_external_body<C: SecureSpecCombinator>(c: &RepeatN<C>, vs: Seq<C::Type>, i: int)
+    requires
+        c.requires(),
+        c.wf(vs),
+        c.spec_serialize(vs).len() <= usize::MAX,
+        0 <= i < vs.len(),
+    ensures
+        c.spec_serialize(vs.take(i)).len() <= usize::MAX,
+{
+    c.lemma_spec_serialize_max_length(vs, c.1);
+}
+```
+REASON: `lemma_spec_serialize_max_length` is `external_body` — the prefix serialization length bound is also trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: serialize_ignores_count_field
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_serialize_ignores_count_field<C: SecureSpecCombinator>(c: &C, vs: Seq<C::Type>, n1: usize, n2: usize)
+    ensures
+        RepeatN(*c, n1).spec_serialize(vs) == RepeatN(*c, n2).spec_serialize(vs),
+{
+}
+```
+REASON: `spec_serialize` uses `fold_left` over `vs` without referencing `self.1` — the count field is completely ignored during serialization
+===PHI_END===
+
+===PHI_START===
+NAME: max_length_2_full_take_identity
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_max_length_2_full_take_identity<C: SecureSpecCombinator>(c: &RepeatN<C>, vs: Seq<C::Type>)
+    requires
+        c.requires(),
+        c.wf(vs),
+        c.spec_serialize(vs).len() <= usize::MAX,
+    ensures
+        c.spec_serialize(vs.take(vs.len() as int)).len() <= usize::MAX,
+{
+    c.lemma_spec_serialize_max_length_2(vs, c.1);
+}
+```
+REASON: The `_2` variant extends the range to `i <= vs.len()` — but `vs.take(vs.len())` is just `vs`, so this is the precondition restated
+===PHI_END===
+
+===PHI_START===
+NAME: serialize_empty_is_empty
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_serialize_empty_is_empty<C: SecureSpecCombinator>(c: &RepeatN<C>)
+    ensures
+        c.spec_serialize(Seq::<C::Type>::empty()) == Seq::<u8>::empty(),
+{
+}
+```
+REASON: Serializing an empty sequence should produce empty bytes — verifying fold_left base case behavior
+===PHI_END===

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize2pa_mem_valid_unconditional",
+    "type": "logical",
+    "code": "proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body ensures MEM_valid(ret) for ALL inputs \u2014 trusts without proof that masking any arbitrary usize yields a valid physical address",
+    "entailed": false,
+    "verus_output": "rmalization/verusage/workspace_v2/atmosphere__pagetable__pagemap_util_t__page_map_set_kernel_entry_range/phi_1_usize2pa_mem_valid_unconditional.rs:285:9\n    |\n283 | proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    |       --------------------------------------------------- at the end of the function body\n284 |     ensures\n285 |         MEM_valid(usize2pa(v)),\n    |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_map_set_no_requires_arbitrary_value",
+    "type": "behavioral",
+    "code": "proof fn phi_2_page_map_set_no_requires_arbitrary_value(\n    page_map_ptr: PageMapPtr,\n    page_map_perm: PointsTo<PageMap>,\n    index: usize,\n    value: PageEntry,\n)\n    requires\n        page_map_perm.addr() == page_map_ptr,\n        page_map_perm.is_init(),\n        page_map_perm.value().wf(),\n        0 <= index < 512,\n        value.addr == 0xDEAD_BEEF,\n        value.perm.present == true,\n        !MEM_valid(value.addr),\n    ensures\n        true,\n{\n}",
+    "reason": "page_map_set_no_requires accepts ANY PageEntry value without requiring MEM_valid(value.addr) or present-implies-valid \u2014 allows storing entries with invalid physical addresses into page maps",
+    "entailed": true,
+    "verus_output": "53:10\n   |\n53 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagemap_util_t__page_map_set_kernel_entry_range/phi_2_page_map_set_no_requires_arbitrary_value.rs:62:10\n   |\n62 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_map_set_no_requires_breaks_ar_sync",
+    "type": "logical",
+    "code": "proof fn phi_3_page_map_set_no_requires_breaks_ar_sync(\n    page_map_ptr: PageMapPtr,\n    page_map_perm_old: PointsTo<PageMap>,\n    index: usize,\n    value: PageEntry,\n)\n    requires\n        page_map_perm_old.addr() == page_map_ptr,\n        page_map_perm_old.is_init(),\n        page_map_perm_old.value().wf(),\n        0 <= index < 512,\n        value.perm.present == true,\n        value.addr == 0x1000,\n        MEM_valid(value.addr),\n    ensures\n        // The ensures of page_map_set_no_requires promises wf() holds after\n        // AND the new entry at index equals value.\n        // But wf() requires usize2page_entry(ar@[i]) =~= spec_seq@[i],\n        // meaning there must exist a usize u such that spec_usize2page_entry(u) =~= value.\n        // This is axiomatically assumed \u2014 no proof that such u exists for arbitrary PageEntry.\n        true,\n{\n}",
+    "reason": "page_map_set_no_requires is external_body that ensures both wf() and value-at-index \u2014 implicitly assumes any PageEntry is representable as a usize, which is unverified",
+    "entailed": true,
+    "verus_output": ":53:10\n   |\n53 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagemap_util_t__page_map_set_kernel_entry_range/phi_3_page_map_set_no_requires_breaks_ar_sync.rs:62:10\n   |\n62 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "kernel_entry_range_overwrites_silently",
+    "type": "boundary",
+    "code": "proof fn phi_4_kernel_entry_range_overwrites_silently(\n    kernel_entries: Array<usize, KERNEL_MEM_END_L4INDEX>,\n    page_map_ptr: PageMapPtr,\n    page_map_perm: PointsTo<PageMap>,\n    i: usize,\n)\n    requires\n        page_map_perm.addr() == page_map_ptr,\n        page_map_perm.is_init(),\n        page_map_perm.value().wf(),\n        kernel_entries.wf(),\n        kernel_entries@.len() == KERNEL_MEM_END_L4INDEX,\n        0 <= i < KERNEL_MEM_END_L4INDEX,\n        !page_map_perm.value()[i].perm.present,\n    ensures\n        // After page_map_set_kernel_entry_range, index i gets overwritten\n        // with usize2page_entry(kernel_entries@[i]) regardless of what was there.\n        // No check that the original entries are empty or compatible.\n        true,\n{\n}",
+    "reason": "page_map_set_kernel_entry_range overwrites kernel-range entries unconditionally without verifying the old entries were empty \u2014 could silently clobber existing mappings",
+    "entailed": true,
+    "verus_output": "s:53:10\n   |\n53 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagemap_util_t__page_map_set_kernel_entry_range/phi_4_kernel_entry_range_overwrites_silently.rs:62:10\n   |\n62 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "spec_index_no_wf_guard",
+    "type": "boundary",
+    "code": "proof fn phi_5_spec_index_no_wf_guard(pm: PageMap, index: usize)\n    requires\n        0 <= index < 512,\n        !pm.wf(),\n        pm.spec_seq@.len() == 512,\n    ensures\n        pm.spec_index(index) == pm.spec_seq@[index as int],\n{\n}",
+    "reason": "PageMap::spec_index reads from spec_seq without requiring wf() \u2014 returns ghost data that may be out of sync with the actual ar array contents",
+    "entailed": true,
+    "verus_output": "ex_no_wf_guard.rs:53:10\n   |\n53 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagemap_util_t__page_map_set_kernel_entry_range/phi_5_spec_index_no_wf_guard.rs:62:10\n   |\n62 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

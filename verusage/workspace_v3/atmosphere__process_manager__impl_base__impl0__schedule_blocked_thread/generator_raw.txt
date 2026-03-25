@@ -1,0 +1,153 @@
+Looking at the specs for `scheduler_push_thread` and `schedule_blocked_thread`, here are 5 candidate undesirable properties:
+
+===PHI_START===
+NAME: push_thread_becomes_head
+TARGET_FN: scheduler_push_thread
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_push_thread_becomes_head(
+    old_container: Container,
+    new_container: Container,
+    thread_ptr: ThreadPtr,
+)
+    requires
+        old_container.scheduler.wf(),
+        old_container.scheduler.unique(),
+        old_container.scheduler.len() < MAX_CONTAINER_SCHEDULER_LEN,
+        old_container.scheduler@.contains(thread_ptr) == false,
+        old_container.scheduler.len() > 0,
+        new_container.scheduler.wf(),
+        new_container.scheduler@ == old_container.scheduler@.push(thread_ptr),
+        new_container.scheduler.len() == old_container.scheduler.len() + 1,
+        new_container.scheduler.unique(),
+    ensures
+        new_container.scheduler@[0] == thread_ptr,
+{
+}
+```
+REASON: Push appends to the tail; the head of a non-empty scheduler must remain the old head element
+===PHI_END===
+
+===PHI_START===
+NAME: push_exceeds_max_capacity
+TARGET_FN: scheduler_push_thread
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_push_exceeds_max_capacity(
+    old_container: Container,
+    new_container: Container,
+    thread_ptr: ThreadPtr,
+)
+    requires
+        old_container.scheduler.wf(),
+        old_container.scheduler.unique(),
+        old_container.scheduler.len() < MAX_CONTAINER_SCHEDULER_LEN,
+        old_container.scheduler@.contains(thread_ptr) == false,
+        new_container.scheduler.wf(),
+        new_container.scheduler@ == old_container.scheduler@.push(thread_ptr),
+        new_container.scheduler.len() == old_container.scheduler.len() + 1,
+        new_container.scheduler.unique(),
+    ensures
+        new_container.scheduler.len() > MAX_CONTAINER_SCHEDULER_LEN,
+{
+}
+```
+REASON: Old length < MAX so new length <= MAX; exceeding MAX would indicate an overflow or off-by-one in the capacity bound
+===PHI_END===
+
+===PHI_START===
+NAME: push_removes_existing_element
+TARGET_FN: scheduler_push_thread
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_push_removes_existing_element(
+    old_container: Container,
+    new_container: Container,
+    thread_ptr: ThreadPtr,
+    existing_ptr: ThreadPtr,
+)
+    requires
+        old_container.scheduler.wf(),
+        old_container.scheduler.unique(),
+        old_container.scheduler.len() < MAX_CONTAINER_SCHEDULER_LEN,
+        old_container.scheduler@.contains(thread_ptr) == false,
+        old_container.scheduler@.contains(existing_ptr),
+        new_container.scheduler.wf(),
+        new_container.scheduler@ == old_container.scheduler@.push(thread_ptr),
+        new_container.scheduler.len() == old_container.scheduler.len() + 1,
+        new_container.scheduler.unique(),
+    ensures
+        !new_container.scheduler@.contains(existing_ptr),
+{
+}
+```
+REASON: Seq::push only appends; all previously present elements must still be contained in the new scheduler
+===PHI_END===
+
+===PHI_START===
+NAME: schedule_empties_multi_element_queue
+TARGET_FN: schedule_blocked_thread
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_schedule_empties_multi_element_queue(
+    old_self: ProcessManager,
+    new_self: ProcessManager,
+    endpoint_ptr: EndpointPtr,
+)
+    requires
+        old_self.wf(),
+        old_self.endpoint_dom().contains(endpoint_ptr),
+        old_self.get_endpoint(endpoint_ptr).queue.len() > 1,
+        old_self.get_container(
+            old_self.get_thread(
+                old_self.get_endpoint(endpoint_ptr).queue@[0],
+            ).owning_container,
+        ).scheduler.len() < MAX_CONTAINER_SCHEDULER_LEN,
+        new_self.wf(),
+        new_self.endpoint_dom() == old_self.endpoint_dom(),
+        new_self.get_endpoint(endpoint_ptr).queue@ == old_self.get_endpoint(endpoint_ptr).queue@.skip(1),
+    ensures
+        new_self.get_endpoint(endpoint_ptr).queue.len() == 0,
+{
+}
+```
+REASON: Skipping one element from a queue with >1 elements must leave a non-empty queue; emptying it would lose blocked threads
+===PHI_END===
+
+===PHI_START===
+NAME: schedule_modifies_other_endpoint
+TARGET_FN: schedule_blocked_thread
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_schedule_modifies_other_endpoint(
+    old_self: ProcessManager,
+    new_self: ProcessManager,
+    endpoint_ptr: EndpointPtr,
+    other_ep: EndpointPtr,
+)
+    requires
+        old_self.wf(),
+        old_self.endpoint_dom().contains(endpoint_ptr),
+        old_self.get_endpoint(endpoint_ptr).queue.len() > 0,
+        old_self.get_container(
+            old_self.get_thread(
+                old_self.get_endpoint(endpoint_ptr).queue@[0],
+            ).owning_container,
+        ).scheduler.len() < MAX_CONTAINER_SCHEDULER_LEN,
+        new_self.wf(),
+        new_self.endpoint_dom() == old_self.endpoint_dom(),
+        new_self.endpoint_dom().contains(other_ep),
+        other_ep != endpoint_ptr,
+        old_self.get_endpoint(other_ep) =~= new_self.get_endpoint(other_ep),
+    ensures
+        new_self.get_endpoint(other_ep).queue@ != old_self.get_endpoint(other_ep).queue@,
+{
+}
+```
+REASON: Scheduling from one endpoint must not modify any other endpoint's queue; violating this frame condition would corrupt unrelated IPC channels
+===PHI_END===

@@ -1,0 +1,6 @@
+[
+  {
+    "name": "create_full",
+    "code": "pub fn create_full(&mut self)\n        ensures self@ == Set::new(|i: int| 0 <= i < COMMIT_MASK_BITS),\n    {\n        let mut i = 0;\n        while i < 8\n            invariant forall|j: int| 0 <= j < i ==> self.mask[j] == !0usize\n        {\n            self.mask.set(i, !0usize);\n            i += 1;\n        }\n        proof {\n            assert(COMMIT_MASK_BITS == 512)by(compute);\n            lemma_is_bit_set();\n            self.lemma_view();\n            let seq_set = Set::new(|i: int| 0 <= i < COMMIT_MASK_BITS);\n            let bit_set = Set::new(|t: (int, int)| 0 <= t.0 < 8 && 0 <= t.1 < 64)\n                   .map(|t: (int, int)| t.0 * 64 + t.1);\n            assert forall|i: int| seq_set.contains(i) implies bit_set.contains(i) by {\n                assert(Set::new(|t: (int, int)| 0 <= t.0 < 8 && 0 <= t.1 < 64).contains((i / 64, i % 64)));\n            }\n            assert(seq_set =~= bit_set);\n            assert(self@ =~= Set::new(|i: int| 0 <= i < COMMIT_MASK_BITS));\n        }\n    }"
+  }
+]

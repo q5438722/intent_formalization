@@ -1,0 +1,84 @@
+===PHI_START===
+NAME: aligned_zero_size
+TARGET_FN: aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_aligned_zero_size()
+    ensures
+        aligned(42, 0),
+{
+}
+```
+REASON: If aligned(addr, 0) is provable, the spec is unsound on division-by-zero (nat % 0 is unspecified in SMT)
+===PHI_END===
+
+===PHI_START===
+NAME: upper_vaddr_equals_base
+TARGET_FN: upper_vaddr (Arch)
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_upper_vaddr_equals_base(arch: Arch, layer: nat, base: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+    ensures
+        arch.upper_vaddr(layer, base) == base,
+{
+}
+```
+REASON: upper_vaddr equalling base would mean a layer maps zero address space, contradicting inv's positive entry_size and num_entries
+===PHI_END===
+
+===PHI_START===
+NAME: entry_next_entry_equal
+TARGET_FN: entry_base / next_entry_base (Arch)
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_entry_next_entry_equal(arch: Arch, layer: nat, base: nat, idx: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+    ensures
+        arch.entry_base(layer, base, idx) == arch.next_entry_base(layer, base, idx),
+{
+}
+```
+REASON: entry_base equalling next_entry_base implies zero-sized entries, violating the positive entry_size invariant
+===PHI_END===
+
+===PHI_START===
+NAME: well_formed_zero_entries
+TARGET_FN: well_formed (Directory)
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_well_formed_zero_entries(d: Directory)
+    requires
+        d.well_formed(),
+    ensures
+        d.entries.len() == 0,
+{
+}
+```
+REASON: A well_formed directory with zero entries would be degenerate; arch.inv() requires num_entries > 0 so entries.len() should be > 0
+===PHI_END===
+
+===PHI_START===
+NAME: dir_upper_leq_base
+TARGET_FN: inv / upper_vaddr (Directory)
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_dir_upper_leq_base(d: Directory)
+    requires
+        d.inv(),
+    ensures
+        d.upper_vaddr() <= d.base_vaddr,
+{
+}
+```
+REASON: A valid directory's upper_vaddr must exceed base_vaddr to map a non-empty region; if upper ≤ base the address range is empty or inverted
+===PHI_END===

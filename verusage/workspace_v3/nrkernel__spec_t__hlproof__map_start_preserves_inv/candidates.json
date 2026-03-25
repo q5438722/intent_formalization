@@ -1,0 +1,37 @@
+[
+  {
+    "name": "aligned_zero_size",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "code": "proof fn phi_1_aligned_zero_size()\n    ensures\n        aligned(0, 0),\n{\n}",
+    "reason": "aligned with size 0 should be rejected or undefined, not vacuously true via 0%0==0"
+  },
+  {
+    "name": "empty_arch_satisfies_inv",
+    "target_fn": "inv",
+    "type": "logical",
+    "code": "proof fn phi_2_empty_arch_satisfies_inv()\n    ensures\n        (Arch { layers: Seq::empty() }).inv(),\n{\n}",
+    "reason": "An architecture with zero layers is degenerate and should not satisfy the well-formedness invariant"
+  },
+  {
+    "name": "upper_vaddr_not_above_base",
+    "target_fn": "upper_vaddr",
+    "type": "behavioral",
+    "code": "proof fn phi_3_upper_vaddr_not_above_base(arch: Arch, layer: nat, base: nat)\n    requires\n        arch.inv(),\n        layer < arch.layers.len(),\n    ensures\n        arch.upper_vaddr(layer, base) <= base,\n{\n}",
+    "reason": "upper_vaddr should always exceed base since num_entries>0 and entry_size>0 under inv; equality or less would mean zero or negative address span"
+  },
+  {
+    "name": "entry_base_collapses_distinct_indices",
+    "target_fn": "entry_base",
+    "type": "behavioral",
+    "code": "proof fn phi_4_entry_base_collapses_distinct_indices(arch: Arch, layer: nat, base: nat, i: nat, j: nat)\n    requires\n        arch.inv(),\n        layer < arch.layers.len(),\n        i < j,\n        j <= arch.num_entries(layer),\n    ensures\n        arch.entry_base(layer, base, i) == arch.entry_base(layer, base, j),\n{\n}",
+    "reason": "Different indices must yield different entry bases; collision would mean overlapping page table entries"
+  },
+  {
+    "name": "entry_size_next_layer_inconsistent",
+    "target_fn": "entry_size_is_next_layer_size",
+    "type": "logical",
+    "code": "proof fn phi_5_entry_size_next_layer_inconsistent(arch: Arch, i: nat)\n    requires\n        arch.inv(),\n        i + 1 < arch.layers.len(),\n    ensures\n        arch.entry_size(i) != arch.entry_size((i + 1) as nat) * arch.num_entries((i + 1) as nat),\n{\n}",
+    "reason": "Under inv the layer size decomposition must hold; if this verifies the invariant is internally contradictory"
+  }
+]

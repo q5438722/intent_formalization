@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: subregion_view_length
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `subrange(start, start + len)` produces a sequence of length `len` by the vstd subrange axiom. Correct by definition.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: subregion_start_cast_roundtrip
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `u64` values fit in `nat`, and `nat` values that originated from `u64` fit back in `u64`. The roundtrip `(start as nat) as u64 == start` is a correct property of Verus integer casting for values in `[0, u64::MAX]`.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: subregion_view_byte_matches_region
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `subrange(start, start+len)[k] == state[start + k]` by the vstd subrange indexing axiom. Correct by definition.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: full_region_subregion_equals_region
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `state.subrange(0, state.len())` is extensionally equal to `state` by the vstd subrange axiom. The proof uses `=~=` to establish this. Correct.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: adjacent_subregions_partition
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Both sides reduce to `pm@.state[start + k]` via the subrange indexing axiom. For `k < len1`, `subrange(start, start+len1+len2)[k] == state[start+k]` and `subrange(start, start+len1)[k] == state[start+k]`. Correct.
+===VERDICT_END===
+
+===SUMMARY===
+All five candidates are false positives. They confirm correct properties of vstd's subrange axioms and Verus integer casting: subrange length preservation, u64↔nat roundtrip, offset-based indexing, full-range identity, and partition consistency. The `PersistentMemorySubregion::new` constructor and `get_subregion_view` are correctly specified.
+===END_SUMMARY===

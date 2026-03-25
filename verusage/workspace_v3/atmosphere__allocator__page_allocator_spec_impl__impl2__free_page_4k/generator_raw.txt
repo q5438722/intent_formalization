@@ -1,0 +1,104 @@
+===PHI_START===
+NAME: freed_page_becomes_mapped
+TARGET_FN: free_page_4k
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_freed_page_becomes_mapped(old_alloc: PageAllocator, new_alloc: PageAllocator, target_ptr: PagePtr)
+    requires
+        old_alloc.wf(),
+        old_alloc.allocated_pages_4k().contains(target_ptr),
+        new_alloc.wf(),
+        new_alloc.free_pages_4k() =~= old_alloc.free_pages_4k().insert(target_ptr),
+        new_alloc.allocated_pages_4k() =~= old_alloc.allocated_pages_4k().remove(target_ptr),
+        new_alloc.mapped_pages_4k() =~= old_alloc.mapped_pages_4k(),
+        new_alloc.mapped_pages_2m() =~= old_alloc.mapped_pages_2m(),
+        new_alloc.mapped_pages_1g() =~= old_alloc.mapped_pages_1g(),
+    ensures
+        new_alloc.page_is_mapped(target_ptr),
+{
+}
+```
+REASON: A freshly freed page appearing in mapped sets would violate state disjointness between free and mapped pages
+===PHI_END===
+
+===PHI_START===
+NAME: free_page_not_in_free_set
+TARGET_FN: free_page_4k
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_free_page_not_in_free_set(old_alloc: PageAllocator, new_alloc: PageAllocator, target_ptr: PagePtr)
+    requires
+        old_alloc.wf(),
+        old_alloc.allocated_pages_4k().contains(target_ptr),
+        new_alloc.wf(),
+        new_alloc.free_pages_4k() =~= old_alloc.free_pages_4k().insert(target_ptr),
+    ensures
+        !new_alloc.free_pages_4k().contains(target_ptr),
+{
+}
+```
+REASON: If the freed page is not actually present in the free set after insertion, the free operation silently lost a page
+===PHI_END===
+
+===PHI_START===
+NAME: free_removes_other_allocated
+TARGET_FN: free_page_4k
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_free_removes_other_allocated(old_alloc: PageAllocator, new_alloc: PageAllocator, target_ptr: PagePtr, other_ptr: PagePtr)
+    requires
+        old_alloc.wf(),
+        old_alloc.allocated_pages_4k().contains(target_ptr),
+        old_alloc.allocated_pages_4k().contains(other_ptr),
+        target_ptr != other_ptr,
+        new_alloc.wf(),
+        new_alloc.allocated_pages_4k() =~= old_alloc.allocated_pages_4k().remove(target_ptr),
+    ensures
+        !new_alloc.allocated_pages_4k().contains(other_ptr),
+{
+}
+```
+REASON: Freeing one page should never cause a different allocated page to disappear from the allocated set
+===PHI_END===
+
+===PHI_START===
+NAME: already_free_page_allocated
+TARGET_FN: free_page_4k
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_already_free_page_allocated(old_alloc: PageAllocator, target_ptr: PagePtr)
+    requires
+        old_alloc.wf(),
+        old_alloc.allocated_pages_4k().contains(target_ptr),
+    ensures
+        old_alloc.free_pages_4k().contains(target_ptr),
+{
+}
+```
+REASON: If wf allows a page to be simultaneously free and allocated, the precondition is too weak to prevent double-free corruption
+===PHI_END===
+
+===PHI_START===
+NAME: free_changes_mapped_status
+TARGET_FN: free_page_4k
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_free_changes_mapped_status(old_alloc: PageAllocator, new_alloc: PageAllocator, target_ptr: PagePtr, other_ptr: PagePtr)
+    requires
+        old_alloc.wf(),
+        old_alloc.allocated_pages_4k().contains(target_ptr),
+        !old_alloc.page_is_mapped(other_ptr),
+        new_alloc.wf(),
+        forall|p: PagePtr| #![auto] new_alloc.page_is_mapped(p) == old_alloc.page_is_mapped(p),
+    ensures
+        new_alloc.page_is_mapped(other_ptr),
+{
+}
+```
+REASON: Freeing a 4k page must never cause an unmapped page to become mapped, as that would create phantom memory mappings
+===PHI_END===

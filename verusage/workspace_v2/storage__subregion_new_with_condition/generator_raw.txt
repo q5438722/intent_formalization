@@ -1,0 +1,133 @@
+===PHI_START===
+NAME: lemma_condition_sufficient_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_lemma_condition_sufficient_external_body<Perm: CheckPermission<Seq<u8>>>(
+    region_view: PersistentMemoryRegionView,
+    perm: &Perm,
+    start: u64,
+    len: nat,
+    is_writable: spec_fn(int) -> bool,
+    condition: spec_fn(Seq<u8>) -> bool,
+    alt_region_view: PersistentMemoryRegionView,
+    alt_crash_state: Seq<u8>,
+)
+    requires
+        condition_sufficient_to_create_wrpm_subregion(region_view, perm, start, len, is_writable, condition),
+        alt_region_view.can_crash_as(alt_crash_state),
+        region_view.len() == alt_region_view.len(),
+        views_differ_only_where_subregion_allows(region_view, alt_region_view, start as nat, len, is_writable),
+    ensures
+        perm.check_permission(alt_crash_state),
+{
+    lemma_condition_sufficient_to_create_wrpm_subregion(region_view, perm, start, len, is_writable, condition);
+}
+```
+REASON: `lemma_condition_sufficient_to_create_wrpm_subregion` is `external_body` — the key permission transfer from condition sufficiency to crash-state permission is trusted without proof; if the crash-state construction in the proof were wrong, unsound writes would be permitted
+===PHI_END===
+
+===PHI_START===
+NAME: condition_closed_under_diff_vacuous_all_writable
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_condition_closed_under_diff_vacuous_all_writable<Perm: CheckPermission<Seq<u8>>>(
+    region_view: PersistentMemoryRegionView,
+    perm: &Perm,
+    start: u64,
+    len: nat,
+    condition: spec_fn(Seq<u8>) -> bool,
+    s1: Seq<u8>,
+    s2: Seq<u8>,
+)
+    requires
+        condition_sufficient_to_create_wrpm_subregion(region_view, perm, start, len, |_: int| true, condition),
+        condition(s1),
+        s1.len() == s2.len() == region_view.len(),
+        start == 0,
+        len == region_view.len(),
+    ensures
+        condition(s2),
+{
+}
+```
+REASON: When the entire region is writable, `memories_differ_only_where_subregion_allows` is vacuously true for any s1/s2, so the condition closure clause forces the condition to hold for ALL sequences of the right length — making it trivially universal
+===PHI_END===
+
+===PHI_START===
+NAME: condition_implies_perm_for_current_crashes
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_condition_implies_perm_for_current_crashes<Perm: CheckPermission<Seq<u8>>>(
+    region_view: PersistentMemoryRegionView,
+    perm: &Perm,
+    start: u64,
+    len: nat,
+    is_writable: spec_fn(int) -> bool,
+    condition: spec_fn(Seq<u8>) -> bool,
+    crash_state: Seq<u8>,
+)
+    requires
+        condition_sufficient_to_create_wrpm_subregion(region_view, perm, start, len, is_writable, condition),
+        region_view.can_crash_as(crash_state),
+    ensures
+        perm.check_permission(crash_state),
+{
+}
+```
+REASON: The current region's own crash states should satisfy permission via condition — tests that the three-part chain (crash→condition→perm) correctly covers the base case before any subregion writes
+===PHI_END===
+
+===PHI_START===
+NAME: memories_differ_transitive
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_memories_differ_transitive(
+    m1: Seq<u8>,
+    m2: Seq<u8>,
+    m3: Seq<u8>,
+    start: nat,
+    len: nat,
+    is_writable: spec_fn(int) -> bool,
+)
+    requires
+        m1.len() == m2.len() == m3.len(),
+        start + len <= m1.len(),
+        memories_differ_only_where_subregion_allows(m1, m2, start, len, is_writable),
+        memories_differ_only_where_subregion_allows(m2, m3, start, len, is_writable),
+    ensures
+        memories_differ_only_where_subregion_allows(m1, m3, start, len, is_writable),
+{
+}
+```
+REASON: Transitivity of memory-differ — if m1 agrees with m2 outside writable and m2 agrees with m3, then m1 agrees with m3; if this failed, chaining subregion mutations would lose the invariant
+===PHI_END===
+
+===PHI_START===
+NAME: get_subregion_view_nested
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_get_subregion_view_nested(
+    region: PersistentMemoryRegionView,
+    start1: nat,
+    len1: nat,
+    start2: nat,
+    len2: nat,
+)
+    requires
+        start1 + len1 <= region.len(),
+        start2 + len2 <= len1,
+    ensures
+        get_subregion_view(get_subregion_view(region, start1, len1), start2, len2)
+            == get_subregion_view(region, start1 + start2, len2),
+{
+    assert(get_subregion_view(get_subregion_view(region, start1, len1), start2, len2).state
+        =~= region.state.subrange((start1 + start2) as int, (start1 + start2 + len2) as int));
+}
+```
+REASON: Nested subregion views should compose correctly — if subrange-of-subrange didn't equal a direct subrange at the composed offset, nested subregion creation would produce wrong views
+===PHI_END===

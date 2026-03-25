@@ -1,0 +1,99 @@
+===PHI_START===
+NAME: interp_aux_equal_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_interp_aux_equal_external_body(d1: Directory, d2: Directory, i: nat)
+    requires
+        d1.inv(),
+        d2.inv(),
+        d1.arch == d2.arch,
+        d1.layer == d2.layer,
+        d1.base_vaddr == d2.base_vaddr,
+        forall|j: nat| i <= j && j < d1.entries.len()
+            ==> (#[trigger] d1.entries[j as int]).interp(d1.entry_base(j)) == d2.entries[j as int].interp(d1.entry_base(j)),
+    ensures
+        d1.interp_aux(i) === d2.interp_aux(i),
+{
+    d1.lemma_entries_interp_equal_implies_interp_aux_equal(d2, i);
+}
+```
+REASON: `lemma_entries_interp_equal_implies_interp_aux_equal` is `external_body` — the inductive proof that equal entry interpretations yield equal interp_aux is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: interp_equal_from_entries
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_interp_equal_from_entries(d1: Directory, d2: Directory)
+    requires
+        d1.inv(),
+        d2.inv(),
+        d1.arch == d2.arch,
+        d1.layer == d2.layer,
+        d1.base_vaddr == d2.base_vaddr,
+        forall|j: nat| j < d1.entries.len()
+            ==> (#[trigger] d1.entries[j as int]).interp(d1.entry_base(j)) == d2.entries[j as int].interp(d1.entry_base(j)),
+    ensures
+        d1.interp() === d2.interp(),
+{
+    d1.lemma_entries_interp_equal_implies_interp_equal(d2);
+}
+```
+REASON: Two directories with same entry interpretations have the same full interp — depends on the external_body axiom
+===PHI_END===
+
+===PHI_START===
+NAME: page_frame_size_matches
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_page_frame_size_matches(d: Directory, i: nat)
+    requires
+        d.inv(),
+        i < d.entries.len(),
+        d.entries[i as int] is Page,
+    ensures
+        d.entries[i as int]->Page_0.frame.size == d.entry_size(),
+{
+}
+```
+REASON: Page frame sizes must match entry size — tests the `pages_match_entry_size` invariant clause
+===PHI_END===
+
+===PHI_START===
+NAME: subdirectory_layer_increment
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_subdirectory_layer_increment(d: Directory, i: nat)
+    requires
+        d.inv(),
+        i < d.entries.len(),
+        d.entries[i as int] is Directory,
+    ensures
+        d.entries[i as int]->Directory_0.layer == d.layer + 1,
+{
+}
+```
+REASON: Subdirectories are always exactly one layer deeper — tests the `directories_are_in_next_layer` invariant
+===PHI_END===
+
+===PHI_START===
+NAME: subdirectory_arch_shared
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_subdirectory_arch_shared(d: Directory, i: nat)
+    requires
+        d.inv(),
+        i < d.entries.len(),
+        d.entries[i as int] is Directory,
+    ensures
+        d.entries[i as int]->Directory_0.arch == d.arch,
+{
+}
+```
+REASON: All subdirectories share the same arch — tests the `directories_match_arch` invariant
+===PHI_END===

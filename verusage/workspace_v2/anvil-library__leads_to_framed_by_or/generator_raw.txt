@@ -1,0 +1,87 @@
+===PHI_START===
+NAME: leads_to_unfold_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_leads_to_unfold_intensional_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>, i: nat)
+    requires
+        p.leads_to(q).satisfied_by(ex),
+    ensures
+        p.implies(eventually(q)).satisfied_by(ex.suffix(i)),
+{
+    leads_to_unfold::<int>(ex, p, q);
+}
+```
+REASON: leads_to_unfold is external_body bridging the forall inside always's TempPred::new closure to a bare forall in the ensures — intensionally distinct formulations equated without proof
+===PHI_END===
+
+===PHI_START===
+NAME: implies_apply_closure_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_implies_apply_closure_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>)
+    requires
+        p.satisfied_by(ex),
+        (p.pred)(ex) ==> (q.pred)(ex),
+    ensures
+        q.satisfied_by(ex),
+{
+    implies_apply::<int>(ex, p, q);
+}
+```
+REASON: implies_apply is external_body bridging p.implies(q).satisfied_by(ex) through TempPred::new closure wrapping and direct implication — silently resolves closure identity mismatch
+===PHI_END===
+
+===PHI_START===
+NAME: execution_equality_forces_fn_equality
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_execution_equality_forces_fn_equality(f: spec_fn(nat) -> int, g: spec_fn(nat) -> int)
+    requires
+        forall |i: nat| #[trigger] f(i) == g(i),
+    ensures
+        f == g,
+{
+    let ex1 = Execution { nat_to_state: f };
+    let ex2 = Execution { nat_to_state: g };
+    execution_equality::<int>(ex1, ex2);
+}
+```
+REASON: execution_equality forces intensional equality of spec_fn from pointwise extensional equivalence — structurally distinct closures collapsed to equal without proof
+===PHI_END===
+
+===PHI_START===
+NAME: eventually_proved_by_witness_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_eventually_proved_by_witness_intensional_bridge(ex: Execution<int>, p: TempPred<int>, witness_idx: nat)
+    requires
+        p.satisfied_by(ex.suffix(witness_idx)),
+    ensures
+        eventually(p).satisfied_by(ex),
+{
+    eventually_proved_by_witness::<int>(ex, p, witness_idx);
+}
+```
+REASON: eventually_proved_by_witness is external_body introducing a witness into eventually's TempPred::new existential closure — bridges the intensional gap between a concrete witness and the closure-wrapped exists
+===PHI_END===
+
+===PHI_START===
+NAME: or_framing_false_spec
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_or_framing_false_spec(p: TempPred<int>, q: TempPred<int>, r: TempPred<int>)
+    requires
+        TempPred::<int>::new(|ex: Execution<int>| false).entails(p.leads_to(q)),
+    ensures
+        TempPred::<int>::new(|ex: Execution<int>| false).entails(p.or(r).leads_to(q.or(r))),
+{
+    leads_to_framed_by_or::<int>(TempPred::new(|ex: Execution<int>| false), p, q, r);
+}
+```
+REASON: an unsatisfiable spec vacuously entails any leads_to including the or-framed version — vacuous truth propagates through the framing lemma without detecting spec inconsistency
+===PHI_END===

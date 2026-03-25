@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "zero_is_empty_external_body_trusted",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`zero_leads_is_empty_page_entry` is `external_body`, axiomatically asserting that decoding zero produces an empty entry. This is provable via bit_vector reasoning (as shown in other files in this codebase), yet left unverified \u2014 a real soundness gap since the entire PageMap init path depends on it."
+  },
+  {
+    "phi": "page_entry2usize_no_roundtrip_guarantee",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "The `page_entry2usize` external_body ensures individual field roundtrips and `usize2page_entry_perm(ret) =~= pe.perm`, but notably does NOT ensure `spec_usize2page_entry(ret) =~= pe`. The addr roundtrip (`usize2pa(ret) == pe.addr`) combined with perm roundtrip does give you both fields, but this relies on the SMT solver connecting the dots \u2014 the explicit structural roundtrip `spec_usize2page_entry(ret) =~= pe` is missing from the contract, which is a spec weakness."
+  },
+  {
+    "phi": "set_non_present_forces_empty",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is an intentional design decision. The `set()` precondition forces non-present entries to be fully empty because the implementation writes literal zero for non-present entries (erasing all fields). This is the correct and expected behavior for a page table \u2014 non-present entries should be zeroed."
+  },
+  {
+    "phi": "pagemap_set_present_loses_entry_identity",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The ensures clause `self@ =~= old(self)@.update(index as int, value)` on `set()` directly guarantees the stored entry equals `value`. This PHI just restates that guarantee via Seq::update semantics \u2014 it's the expected, correct postcondition."
+  }
+]

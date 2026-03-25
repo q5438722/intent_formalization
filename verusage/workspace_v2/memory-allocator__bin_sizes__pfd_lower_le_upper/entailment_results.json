@@ -1,0 +1,47 @@
+[
+  {
+    "name": "pfd_ranges_no_gap",
+    "type": "behavioral",
+    "code": "proof fn phi_1_pfd_ranges_no_gap(bin_idx: int)\n    requires\n        valid_bin_idx(bin_idx),\n        bin_idx > 1,\n    ensures\n        pfd_upper(bin_idx - 1) + 1 == pfd_lower(bin_idx),\n{\n    lemma_bin_sizes_constants();\n}",
+    "reason": "If consecutive bins have no gap between pfd_upper(i-1) and pfd_lower(i), the partition is tight \u2014 but since size_of_bin is external_body, this tightness is only as trustworthy as the unverified constants lemma",
+    "entailed": true,
+    "verus_output": "verification results:: 18 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "size_of_bin_monotone",
+    "type": "logical",
+    "code": "proof fn phi_2_size_of_bin_monotone(i: int, j: int)\n    requires\n        valid_bin_idx(i),\n        valid_bin_idx(j),\n        i < j,\n    ensures\n        size_of_bin(i) < size_of_bin(j),\n{\n    lemma_bin_sizes_constants();\n}",
+    "reason": "Strict monotonicity of bin sizes is assumed via external_body constants \u2014 if any adjacent pair in the 73-entry table had a typo reversing the order, this would still verify due to trusted axioms, silently corrupting all bin-lookup reasoning",
+    "entailed": true,
+    "verus_output": "verification results:: 18 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "size_of_bin_outside_range_unconstrained",
+    "type": "boundary",
+    "code": "proof fn phi_3_size_of_bin_outside_range_unconstrained()\n    ensures\n        size_of_bin(0) == size_of_bin(74),\n{\n    // This should NOT verify \u2014 if it does, size_of_bin is trivially equal outside valid range\n}",
+    "reason": "`size_of_bin` is external_body with no constraining axiom outside indices 1-73, so the SMT solver could unify out-of-range values \u2014 if this verifies, any accidental out-of-bounds call returns an arbitrary but consistent value that could silently propagate",
+    "entailed": false,
+    "verus_output": "^^^^^^^^^^^^ failed this postcondition\n\nnote: recommendation not met\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__bin_sizes__pfd_lower_le_upper/phi_3_size_of_bin_outside_range_unconstrained.rs:287:27\n    |\n170 |     recommends valid_bin_idx(bin_idx)\n    |                ---------------------- recommendation not met\n...\n287 |         size_of_bin(0) == size_of_bin(74),\n    |                           ^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "size_of_bin_divisible_by_intptr",
+    "type": "logical",
+    "code": "proof fn phi_4_size_of_bin_divisible_by_intptr(bin_idx: int)\n    requires\n        valid_bin_idx(bin_idx),\n    ensures\n        size_of_bin(bin_idx) % INTPTR_SIZE as nat == 0,\n{\n    lemma_bin_sizes_constants();\n}",
+    "reason": "All bin sizes being divisible by 8 is asserted through trusted constants \u2014 if any constant were wrong (e.g., off by 1), `pfd_upper` would silently truncate via integer division, and this divisibility wouldn't catch it since it's also derived from the same unverified axiom",
+    "entailed": true,
+    "verus_output": "verification results:: 18 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "shift_div_pow2_zero_edge",
+    "type": "boundary",
+    "code": "proof fn phi_5_shift_div_pow2_zero_edge()\n    ensures\n        0u64 >> 63u64 == 0u64 as nat / pow2(63),\n{\n    shift_is_div(0u64, 63u64);\n}",
+    "reason": "Shifting zero by the maximum valid shift (63) should yield 0 \u2014 while correct, `shift_is_div` only handles `shift < 64` and says nothing about shift == 64, so callers doing `x >> 64` would get no spec coverage and could silently use uninterpreted values",
+    "entailed": true,
+    "verus_output": "verification results:: 18 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

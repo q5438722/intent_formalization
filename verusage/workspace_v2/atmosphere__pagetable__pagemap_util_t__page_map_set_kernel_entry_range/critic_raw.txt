@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: page_map_set_no_requires_arbitrary_value
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `page_map_set_no_requires` is external_body and accepts any PageEntry without requiring `MEM_valid(value.addr)`. Combined with its ensures that `wf()` holds afterward, this means entries with invalid physical addresses can be stored and the page map is still considered well-formed. Higher-level callers may assume all entries in a wf() page map have valid addresses.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: page_map_set_no_requires_breaks_ar_sync
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The external_body ensures both `wf()` (which requires `usize2page_entry(ar@[i]) =~= spec_seq@[i]` for all i) and `value[index] =~= value`. This implicitly assumes every PageEntry is the image of some usize under `spec_usize2page_entry`, which is not true for arbitrary PageEntry values (e.g., addr with non-MEM_MASK-aligned bits). This is a real soundness gap in the trusted axiom.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: kernel_entry_range_overwrites_silently
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This function's purpose is to initialize kernel entries in a fresh page map. Unconditionally overwriting kernel-range entries is the intended behavior — the caller is responsible for providing a suitably initialized page map. The ensures clause clearly documents the overwrite semantics.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: spec_index_no_wf_guard
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `spec_index` has a `recommends` clause (soft precondition) and is a spec function that simply indexes into the ghost sequence. Requiring wf() on every spec-level index would be unnecessarily restrictive; callers that need the ar-sync guarantee already require wf() at their own level.
+===VERDICT_END===
+
+===SUMMARY===
+Two true positives were identified, both stemming from `page_map_set_no_requires` being an external_body with overly strong ensures. It accepts arbitrary PageEntry values without MEM_valid checks, and its simultaneous guarantee of wf() plus exact value storage implicitly assumes every PageEntry is representable as a usize — a non-trivial assumption that is never verified. The kernel entry overwrite and spec_index-without-wf candidates are false positives reflecting intended design choices.
+===END_SUMMARY===

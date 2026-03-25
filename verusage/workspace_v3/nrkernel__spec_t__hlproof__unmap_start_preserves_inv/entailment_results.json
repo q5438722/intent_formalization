@@ -1,0 +1,52 @@
+[
+  {
+    "name": "aligned_zero_size",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "reason": "If alignment to size 0 is satisfied for any nonzero address, the aligned predicate is vacuously permissive for a degenerate input.",
+    "entailed": false,
+    "verified": 12,
+    "errors": 1,
+    "output_tail": "inv/phi_1_aligned_zero_size.rs:395:9\n    |\n393 | proof fn phi_1_aligned_zero_size()\n    |       ---------------------------- at the end of the function body\n394 |     ensures\n395 |         aligned(1, 0),\n    |         ^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "x86_arch_inv_false",
+    "target_fn": "inv",
+    "type": "logical",
+    "reason": "If the concrete x86 architecture constant fails its own invariant, every downstream proof relying on inv is vacuously true.",
+    "entailed": false,
+    "verified": 12,
+    "errors": 1,
+    "output_tail": "h_inv_false.rs:395:9\n    |\n393 | proof fn phi_2_x86_arch_inv_false()\n    |       ----------------------------- at the end of the function body\n394 |     ensures\n395 |         !x86_arch_spec.inv(),\n    |         ^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "entry_base_zero_idx_not_base",
+    "target_fn": "entry_base",
+    "type": "behavioral",
+    "reason": "Indexing at 0 should recover the original base; if not, address calculations for the first entry in every directory are wrong.",
+    "entailed": false,
+    "verified": 12,
+    "errors": 1,
+    "output_tail": "base(base: nat)\n    |       ------------------------------------------------ at the end of the function body\n...\n398 |         x86_arch_spec.entry_base(0, base, 0) != base,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "upper_vaddr_zero_at_root",
+    "target_fn": "upper_vaddr",
+    "type": "behavioral",
+    "reason": "A zero upper virtual address at layer 0 with base 0 would mean the entire x86-64 address space has zero size, making all vaddr checks trivially fail.",
+    "entailed": false,
+    "verified": 12,
+    "errors": 1,
+    "output_tail": "of fn phi_4_upper_vaddr_zero_at_root()\n    |       ----------------------------------- at the end of the function body\n...\n397 |         x86_arch_spec.upper_vaddr(0, 0) == 0nat,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "entry_size_same_across_layers",
+    "target_fn": "entry_size",
+    "type": "logical",
+    "reason": "Layer 0 maps 512 GiB regions while layer 3 maps 4 KiB pages; equal entry sizes would collapse the page-table hierarchy into a single flat level.",
+    "entailed": false,
+    "verified": 12,
+    "errors": 1,
+    "output_tail": "|       ---------------------------------------- at the end of the function body\n...\n398 |         x86_arch_spec.entry_size(0) == x86_arch_spec.entry_size(3),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: max_serialized_size_fits_in_u32
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is a trivial consequence of the constant being 0x100000 (1 MiB). The bound is an intentional design choice for the SHT protocol's network message size limit, not a spec gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: max_serialized_size_is_power_of_two
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This merely confirms the literal value of the constant. Whether 2^20 is a placeholder or carefully chosen is a design decision, not a spec inconsistency — the spec correctly defines and exposes this value.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: max_size_smaller_than_usize_max
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Being far below `usize::MAX / 2` is a desirable safety margin that prevents overflow in size arithmetic. This is a standard engineering practice for serialization bounds, not a spec weakness.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: two_max_sizes_fit_in_usize
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is a straightforward arithmetic consequence of the constant being 1 MiB. It's a useful property ensuring safe addition of sizes, not an indication of a spec gap.
+===VERDICT_END===
+
+===SUMMARY===
+All four candidates are false positives — they are trivial arithmetic consequences of the constant 0x100000 being a small, well-chosen value. The opaque constant intentionally limits serialized hash map size for the SHT protocol, and the resulting properties (fits in u32, power of two, far below usize::MAX, summable without overflow) are all desirable safety margins rather than spec inconsistencies.
+===END_SUMMARY===

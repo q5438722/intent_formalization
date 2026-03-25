@@ -1,0 +1,47 @@
+[
+  {
+    "name": "set_fold_empty_returns_zero",
+    "type": "boundary",
+    "code": "proof fn phi_1_set_fold_empty_returns_zero<B>(zero: B, f: spec_fn(B, int) -> B)\n    ensures\n        set_fold(Set::<int>::empty(), zero, f) == zero,\n{\n}",
+    "reason": "If folding an empty set didn't return the zero element, the base case would inject phantom values",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "set_fold_infinite_returns_zero",
+    "type": "boundary",
+    "code": "proof fn phi_2_set_fold_infinite_returns_zero(s: Set<int>, zero: int, f: spec_fn(int, int) -> int)\n    requires\n        !s.finite(),\n    ensures\n        set_fold(s, zero, f) == zero,\n{\n}",
+    "reason": "Folding an infinite set silently returns zero instead of being undefined \u2014 callers may not realize they get the identity element for non-finite sets",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "map_fold_equals_map",
+    "type": "behavioral",
+    "code": "proof fn phi_3_map_fold_equals_map(s: Set<int>, f: spec_fn(int) -> int)\n    requires\n        s.finite(),\n    ensures\n        map_fold(s, f) == s.map(f),\n{\n    map_fold_ok(s, f);\n}",
+    "reason": "If map_fold and Set::map diverged, the custom set_fold-based implementation would silently compute a different set than the standard map operation",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "map_fold_singleton",
+    "type": "boundary",
+    "code": "proof fn phi_4_map_fold_singleton(x: int, f: spec_fn(int) -> int)\n    ensures\n        map_fold(set![x], f) == set![f(x)],\n{\n    map_fold_ok(set![x], f);\n    assert(set![x].map(f) =~= set![f(x)]);\n}",
+    "reason": "If mapping a singleton set didn't produce a singleton with the mapped element, set_fold's choose+remove recursion would be broken at the simplest case",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "set_fold_singleton_applies_f",
+    "type": "boundary",
+    "code": "proof fn phi_5_set_fold_singleton_applies_f(x: int, zero: int, f: spec_fn(int, int) -> int)\n    ensures\n        set_fold(set![x], zero, f) == f(zero, x),\n{\n    assert(set![x].remove(x) =~= Set::<int>::empty());\n}",
+    "reason": "Folding a singleton should apply f exactly once to (zero, element) \u2014 any other result means set_fold mishandles the base-to-single-element transition",
+    "entailed": false,
+    "verus_output": "ronkv__verus_extra__map_fold_ok/phi_5_set_fold_singleton_applies_f.rs:53:9\n   |\n51 | proof fn phi_5_set_fold_singleton_applies_f(x: int, zero: int, f: spec_fn(int, int) -> int)\n   |       ------------------------------------------------------------------------------------- at the end of the function body\n52 |     ensures\n53 |         set_fold(set![x], zero, f) == f(zero, x),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

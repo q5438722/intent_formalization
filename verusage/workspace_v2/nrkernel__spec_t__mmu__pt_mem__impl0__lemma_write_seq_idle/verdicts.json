@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "lemma_write_seq_external_body",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`lemma_write_seq` is `external_body` with `unimplemented!()` body \u2014 its postconditions (pml4 preservation and domain monotonicity) are trusted without proof. This is an unverified trust assumption in the proof chain."
+  },
+  {
+    "phi": "write_then_read_returns_written",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is correct by construction \u2014 `write` inserts into the map, and `read` indexes into it. `Map::insert` followed by indexing at the same key returns the inserted value. This is standard map semantics, not a spec gap."
+  },
+  {
+    "phi": "write_seq_idle_preserves_read_external_body_dep",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "While `lemma_write_seq_idle` does use `lemma_write_seq` (external_body) via broadcast, it only uses the domain subset property to ensure the key is still present. The actual read-preservation property is proved by induction. The transitive dependency is on a likely-correct property, and flagging downstream users of an already-flagged external_body is a duplicate."
+  },
+  {
+    "phi": "write_to_pml4_addr_no_effect_on_field",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`pml4` is a fixed field representing the root page table base address, not a memory location that changes when memory is written. The PML4 base pointer is set at initialization and is independent of memory contents. This separation is intentional \u2014 the `pml4` field records which address to start the page walk from, not the value stored there."
+  }
+]

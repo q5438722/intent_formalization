@@ -1,0 +1,82 @@
+===PHI_START===
+NAME: execution_equality_forces_fn_equality
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_execution_equality_forces_fn_equality(f: spec_fn(nat) -> int, g: spec_fn(nat) -> int)
+    requires
+        forall |i: nat| #[trigger] f(i) == g(i),
+    ensures
+        f == g,
+{
+    let ex1 = Execution { nat_to_state: f };
+    let ex2 = Execution { nat_to_state: g };
+    execution_equality::<int>(ex1, ex2);
+}
+```
+REASON: execution_equality is external_body forcing intensional equality of spec_fn from pointwise extensional equivalence — two structurally distinct closures are collapsed to equal
+===PHI_END===
+
+===PHI_START===
+NAME: suffix_zero_equals_self
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_suffix_zero_equals_self(ex: Execution<int>)
+    ensures
+        ex.suffix(0) == ex,
+{
+    execution_equality::<int>(ex, ex.suffix(0));
+}
+```
+REASON: ex.suffix(0) creates closure |i| f(i+0) intensionally distinct from ex — execution_equality silently equates these without proof
+===PHI_END===
+
+===PHI_START===
+NAME: always_to_current_no_axiom_needed
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_always_to_current_no_axiom_needed(ex: Execution<int>, p: TempPred<int>)
+    requires
+        always(p).satisfied_by(ex),
+    ensures
+        p.satisfied_by(ex),
+{
+    always_to_current::<int>(ex, p);
+}
+```
+REASON: always_to_current extracts p from always(p) by routing through execution_equality at suffix(0) — if this verifies, the external_body axiom is the sole trust anchor for a fundamental temporal logic property
+===PHI_END===
+
+===PHI_START===
+NAME: always_at_arbitrary_suffix
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_always_at_arbitrary_suffix(ex: Execution<int>, p: TempPred<int>, i: nat)
+    requires
+        always(p).satisfied_by(ex),
+    ensures
+        p.satisfied_by(ex.suffix(i)),
+{
+    execution_equality::<int>(ex.suffix(i), ex.suffix(i));
+}
+```
+REASON: always(p).satisfied_by(ex) embeds forall|i| p.satisfied_by(ex.suffix(i)) inside a TempPred::new closure — extracting p at arbitrary suffix i requires bridging the intensional gap between the closure's forall and a bare forall
+===PHI_END===
+
+===PHI_START===
+NAME: suffix_composition_equals_addition
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_suffix_composition_equals_addition(ex: Execution<int>, i: nat, j: nat)
+    ensures
+        ex.suffix(i).suffix(j) == ex.suffix(i + j),
+{
+    execution_equality::<int>(ex.suffix(i).suffix(j), ex.suffix(i + j));
+}
+```
+REASON: doubly-nested suffix creates a closure intensionally distinct from single-offset suffix — execution_equality collapses them without proof
+===PHI_END===

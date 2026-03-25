@@ -1,121 +1,68 @@
-# Test Summary: `syscall_send_empty_block`
+# Adversarial Test Results: `syscall_send_empty_block`
 
-## File Under Test
-`kernel__syscall_send_empty__impl0__syscall_send_empty_block.rs`
+## Summary
 
-Defines `Kernel::syscall_send_empty_block`, a syscall handler for sending an empty IPC message with blocking semantics. The function handles 5 code paths:
-1. Endpoint descriptor is `None` → return error (NoSwitch)
-2. Endpoint in SEND state with queue room → block sender thread
-3. Endpoint in SEND state, queue full → return error (NoSwitch)
-4. Endpoint in RECEIVE state, empty queue → block sender, change state to SEND
-5. Receiver exists → schedule receiver thread and return success (NoSwitch/Else)
-
-**Requires**: `self.wf()`, thread in domain, valid endpoint index, thread RUNNING  
-**Ensures**: `self.wf()` (kernel remains well-formed)
+All **36 adversarial tests** (12 per category) **FAIL verification** as expected, confirming the specification correctly rejects invalid inputs, incorrect behaviors, and unintended reasoning.
 
 ---
 
-## Correctness Results (should all PASS)
+## Boundary Tests (12/12 FAIL) ✅
 
-| # | Test Name | Description | Expected | Actual |
-|---|-----------|-------------|----------|--------|
-| 1 | `test_preserves_wf` | Basic wf preservation with arbitrary valid inputs | PASS | PASS |
-| 2 | `test_endpoint_index_min` | Boundary: endpoint index = 0 | PASS | PASS |
-| 3 | `test_endpoint_index_max` | Boundary: endpoint index = MAX-1 | PASS | PASS |
-| 4 | `test_none_endpoint_path` | Path: endpoint descriptor is None | PASS | PASS |
-| 5 | `test_send_with_room_path` | Path: SEND state with queue room | PASS | PASS |
-| 6 | `test_send_full_path` | Path: SEND state, queue full | PASS | PASS |
-| 7 | `test_receive_empty_queue_path` | Path: RECEIVE state, empty queue | PASS | PASS |
-| 8 | `test_receiver_exists_path` | Path: receiver exists | PASS | PASS |
-| 9 | `test_receiver_exist_spec` | Spec fn `receiver_exist` is well-defined | PASS | PASS |
-| 10 | `test_get_endpoint_ptr_consistency` | Spec fn `get_endpoint_ptr_by_endpoint_idx` consistent | PASS | PASS |
+| # | Target | Failure Mode |
+|---|--------|-------------|
+| 1 | `syscall_send_empty_block` | `endpoint_index == MAX_NUM_ENDPOINT_DESCRIPTORS` (128) violates upper bound |
+| 2 | `syscall_send_empty_block` | Thread not in `thread_dom` violates containment precondition |
+| 3 | `syscall_send_empty_block` | Thread BLOCKED ≠ RUNNING violates state precondition |
+| 4 | `syscall_send_empty_block` | Thread SCHEDULED ≠ RUNNING violates state precondition |
+| 5 | `schedule_blocked_thread` | Queue length 0 violates `queue.len() > 0` |
+| 6 | `schedule_blocked_thread` | Scheduler at capacity (10) violates `< MAX_CONTAINER_SCHEDULER_LEN` |
+| 7 | `block_running_thread_and_set_trap_frame` | Queue at 128 violates `< MAX_NUM_THREADS_PER_ENDPOINT` |
+| 8 | `block_running_thread_and_set_trap_frame` | None endpoint descriptor violates `is_Some()` |
+| 9 | `page_ptr2page_index` | Non-aligned ptr (0x1001) violates `ptr % 0x1000 == 0` |
+| 10 | `page_index2page_ptr` | `i == NUM_PAGES` violates `i < NUM_PAGES` |
+| 11 | `syscall_send_empty_block` | `usize::MAX` far exceeds endpoint descriptor range |
+| 12 | `get_endpoint` | Endpoint not in domain violates containment precondition |
 
-**Verification**: 53 verified, 0 errors
+## Behavioral Mutation Tests (12/12 FAIL) ✅
 
----
+| # | Target Postcondition | Mutation |
+|---|---------------------|----------|
+| 1 | Thread becomes BLOCKED after block | Claim stays RUNNING |
+| 2 | Queue gets thread pushed | Claim queue unchanged |
+| 3 | Queue skips first after schedule | Claim queue unchanged |
+| 4 | Endpoint domain unchanged after schedule | Claim new endpoint appears |
+| 5 | NoSwitchNew → NoSwitch decision | Claim decision is Switch |
+| 6 | NoNextThreadNew → pcid is None | Claim pcid is Some |
+| 7 | Queue state preserved by block | Claim SEND → RECEIVE |
+| 8 | Thread domain unchanged after schedule | Claim thread removed |
+| 9 | Queue state set to target after change | Claim opposite state |
+| 10 | Endpoint descriptors preserved | Claim length becomes 0 |
+| 11 | Proc domain unchanged after schedule | Claim new proc added |
+| 12 | NoSwitchNew → cr3 is None | Claim cr3 is Some |
 
-## Completeness Results (should all FAIL)
+## Logical Tests (12/12 FAIL) ✅
 
-### Round 1: Precondition Violations
+| # | Unintended Property Tested | Why Not Entailed |
+|---|---------------------------|------------------|
+| 1 | Thread domain preserved across syscall | Postcondition only guarantees `self.wf()` |
+| 2 | Return always Error | Return value unspecified in postcondition |
+| 3 | Sender always BLOCKED after call | Thread state change not in postcondition |
+| 4 | Determinism (same decisions) | No determinism guarantee in spec |
+| 5 | Container domain preserved | Not in postcondition |
+| 6 | Endpoint state always preserved | Not in postcondition |
+| 7 | Dequeued thread becomes RUNNING | Schedule spec only covers queue manipulation |
+| 8 | Return always NoSwitch | NoThread is also possible |
+| 9 | Roundtrip for out-of-range index | Index ≥ NUM_PAGES violates domain |
+| 10 | Page closure preserved | Not in postcondition |
+| 11 | Endpoint domain always non-empty | Not guaranteed by wf() |
+| 12 | Sender ptr < MAX_THREADS_PER_ENDPOINT | Thread ptrs are arbitrary `usize` |
 
-| # | Test Name | What It Tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | `test_no_wf` | Call without `wf()` precondition | FAIL | FAIL |
-| 2 | `test_thread_not_in_domain` | Thread not in `thread_dom()` | FAIL | FAIL |
-| 3 | `test_invalid_endpoint_index_too_large` | Endpoint index = MAX (out of range) | FAIL | FAIL |
-| 4 | `test_thread_not_running_blocked` | Thread in BLOCKED state | FAIL | FAIL |
-| 5 | `test_thread_not_running_scheduled` | Thread in SCHEDULED state | FAIL | FAIL |
+## Key Findings
 
-**Verification**: 43 verified, 5 errors
+**Spec weakness identified**: `syscall_send_empty_block` postcondition (`ensures self.wf()`) is extremely weak. It only guarantees well-formedness is maintained but says nothing about:
+- Thread/endpoint/container domain preservation
+- Return value properties
+- Sender thread state transitions
+- Endpoint queue modifications
 
-### Round 2: Overly Strong Postconditions
-
-| # | Test Name | What It Tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | `test_always_no_switch` | Assert switch_decision always NoSwitch | FAIL | FAIL |
-| 2 | `test_always_error` | Assert error_code always Error | FAIL | FAIL |
-| 3 | `test_thread_dom_unchanged` | Assert thread_dom unchanged (not in spec) | FAIL | FAIL |
-| 4 | `test_page_closure_unchanged` | Assert page_closure unchanged (not in spec) | FAIL | FAIL |
-| 5 | `test_pcid_always_none` | Assert pcid always None | FAIL | FAIL |
-
-**Verification**: 43 verified, 5 errors
-
-### Round 3: Negated/Contradicted Postconditions
-
-| # | Test Name | What It Tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | `test_not_wf_after_call` | Assert `!kernel.wf()` | FAIL | FAIL |
-| 2 | `test_mem_man_not_wf` | Assert `!kernel.mem_man.wf()` | FAIL | FAIL |
-| 3 | `test_proc_man_not_wf` | Assert `!kernel.proc_man.wf()` | FAIL | FAIL |
-| 4 | `test_page_alloc_not_wf` | Assert `!kernel.page_alloc.wf()` | FAIL | FAIL |
-| 5 | `test_mapping_not_wf` | Assert `!kernel.mapping_wf()` | FAIL | FAIL |
-
-**Verification**: 43 verified, 5 errors
-
-### Round 4: Wrong Specific Values
-
-| # | Test Name | What It Tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | `test_always_else` | Assert error_code always Else | FAIL | FAIL |
-| 2 | `test_none_endpoint_wrong_switch` | Assert NoThread when endpoint is None | FAIL | FAIL |
-| 3 | `test_cr3_always_some` | Assert cr3 always Some | FAIL | FAIL |
-| 4 | `test_receiver_wrong_error_code` | Assert Error when success path taken | FAIL | FAIL |
-| 5 | `test_always_switch` | Assert switch_decision always Switch | FAIL | FAIL |
-
-**Verification**: 43 verified, 5 errors
-
-### Round 5: Cross-Function Misuse & Edge Cases
-
-| # | Test Name | What It Tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | `test_double_call_no_recheck` | Call twice without re-establishing RUNNING | FAIL | FAIL |
-| 2 | `test_sender_still_running` | Assert sender thread still RUNNING after call | FAIL | FAIL |
-| 3 | `test_endpoint_dom_grows` | Assert new endpoint appears in domain | FAIL | FAIL |
-| 4 | `test_container_dom_changes` | Assert container_dom changes | FAIL | FAIL |
-| 5 | `test_memory_not_wf` | Assert `!kernel.memory_wf()` | FAIL | FAIL |
-
-**Verification**: 43 verified, 5 errors
-
----
-
-## Overall Assessment
-
-### Correctness: PASS
-All 10 correctness tests pass. The spec correctly guarantees `self.wf()` across all code paths.
-
-### Completeness: PASS
-All 25 completeness tests fail as expected. The spec rejects:
-- All precondition violations (5/5 rejected)
-- All overly strong postcondition assertions (5/5 rejected)
-- All negated postconditions (5/5 rejected)
-- All wrong specific value claims (5/5 rejected)
-- All cross-function misuse patterns (5/5 rejected)
-
-### Spec Gaps
-The spec is **minimal** — it only ensures `self.wf()` without exposing any information about:
-- The return value (error code, switch decision, pcid, cr3)
-- Which code path was taken
-- Whether thread state changed
-- Whether domain sets are preserved
-
-This is a design choice: the function's contract only guarantees kernel integrity, delegating all functional behavior to internal implementation details. This is correct but not informative — callers cannot reason about which result they will get. However, for a kernel syscall where the caller is typically not other verified code, this may be intentional.
+The helper functions (`schedule_blocked_thread`, `block_running_thread_*`) have much richer postconditions, but these properties are not propagated to the caller's postcondition, making the main syscall specification incomplete from a caller's perspective.

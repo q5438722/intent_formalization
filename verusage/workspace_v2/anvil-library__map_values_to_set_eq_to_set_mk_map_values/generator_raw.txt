@@ -1,0 +1,78 @@
+===PHI_START===
+NAME: push_to_set_eq_to_set_insert_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_push_to_set_eq_to_set_insert_bridge(s: Seq<int>, e: int)
+    ensures
+        s.push(e).to_set() == s.to_set().insert(e),
+{
+    push_to_set_eq_to_set_insert(s, e);
+}
+```
+REASON: push_to_set_eq_to_set_insert is external_body asserting intensional equality between push-then-to_set and to_set-then-insert without proof
+===PHI_END===
+
+===PHI_START===
+NAME: empty_seq_map_values_to_set_empty
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_empty_seq_map_values_to_set_empty(map: spec_fn(int) -> int)
+    ensures
+        Seq::<int>::empty().map_values(map).to_set() == Set::<int>::empty(),
+{
+    map_values_to_set_eq_to_set_mk_map_values(Seq::<int>::empty(), map);
+}
+```
+REASON: empty sequence mapped should produce empty set — tests whether mk_map on empty set produces empty map with empty values
+===PHI_END===
+
+===PHI_START===
+NAME: singleton_map_values_to_set
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_singleton_map_values_to_set(v: int, map: spec_fn(int) -> int)
+    ensures
+        seq![v].map_values(map).to_set() == Set::empty().insert(map(v)),
+{
+    map_values_to_set_eq_to_set_mk_map_values(seq![v], map);
+}
+```
+REASON: singleton sequence mapped should produce singleton set — tests base case interaction between to_set, mk_map, and values
+===PHI_END===
+
+===PHI_START===
+NAME: map_values_to_set_len_leq_seq_len
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_map_values_to_set_len_leq_seq_len(s: Seq<int>, map: spec_fn(int) -> int)
+    requires
+        s.to_set().finite(),
+    ensures
+        s.map_values(map).to_set().len() <= s.to_set().len(),
+{
+    map_values_to_set_eq_to_set_mk_map_values(s, map);
+}
+```
+REASON: mapping can collapse values so the image set should never exceed the domain set size — tests that mk_map values count is bounded by domain
+===PHI_END===
+
+===PHI_START===
+NAME: duplicate_push_to_set_idempotent
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_duplicate_push_to_set_idempotent(s: Seq<int>, e: int)
+    requires
+        s.contains(e),
+    ensures
+        s.push(e).to_set() == s.to_set(),
+{
+    push_to_set_eq_to_set_insert(s, e);
+}
+```
+REASON: pushing a duplicate element should not change the set — relies on external_body axiom plus set insert idempotence; if the axiom interacts incorrectly with to_set this could mask an inconsistency
+===PHI_END===

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "flush_idempotent_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_flush_idempotent_external_body(regions_view: PersistentMemoryRegionsView)\n    requires\n        regions_view.no_outstanding_writes(),\n    ensures\n        regions_view.flush() == regions_view,\n{\n    lemma_if_no_outstanding_writes_then_flush_is_idempotent(regions_view);\n}",
+    "reason": "`lemma_if_no_outstanding_writes_then_flush_is_idempotent` is `external_body` \u2014 flush idempotency when there are no outstanding writes is trusted without proof; if flush altered `state_at_last_flush` even with no outstanding writes, the equality would be unsound",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "flush_byte_no_outstanding_is_state",
+    "type": "behavioral",
+    "code": "proof fn phi_2_flush_byte_no_outstanding_is_state(b: PersistentMemoryByte)\n    requires\n        b.outstanding_write.is_none(),\n    ensures\n        b.flush_byte() == b.state_at_last_flush,\n{\n}",
+    "reason": "When there's no outstanding write, flush_byte should return the last flushed state \u2014 if flush_byte returned something else, crash recovery would read corrupted data",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "flush_double_is_flush_single",
+    "type": "behavioral",
+    "code": "proof fn phi_3_flush_double_is_flush_single(b: PersistentMemoryByte)\n    ensures\n        b.flush().flush() == b.flush(),\n{\n}",
+    "reason": "Flushing twice should equal flushing once \u2014 if flush weren't idempotent at the byte level, repeated crash-recovery cycles could produce different states",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "flush_clears_outstanding_write",
+    "type": "behavioral",
+    "code": "proof fn phi_4_flush_clears_outstanding_write(b: PersistentMemoryByte)\n    ensures\n        b.flush().outstanding_write.is_none(),\n{\n}",
+    "reason": "After flushing, a byte should have no outstanding write \u2014 if outstanding writes persisted through flush, the write-ahead log invariant would be violated",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "no_outstanding_writes_empty_regions",
+    "type": "boundary",
+    "code": "proof fn phi_5_no_outstanding_writes_empty_regions()\n    ensures\n        (PersistentMemoryRegionsView { regions: seq![] }).no_outstanding_writes(),\n{\n}",
+    "reason": "An empty regions view should vacuously have no outstanding writes \u2014 if the empty case failed, initialization would be unable to establish the no-outstanding-writes invariant",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

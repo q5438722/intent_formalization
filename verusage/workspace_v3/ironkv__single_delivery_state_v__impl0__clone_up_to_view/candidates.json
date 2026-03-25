@@ -1,0 +1,37 @@
+[
+  {
+    "name": "clone_key_always_zero",
+    "target_fn": "SHTKey::clone (inherent)",
+    "type": "behavioral",
+    "code": "proof fn phi_1_clone_key_always_zero(k: SHTKey, out: SHTKey)\n    requires\n        out == k,\n    ensures\n        out.ukey == 0,\n{\n}",
+    "reason": "If entailed, clone would collapse all keys to zero, destroying key identity"
+  },
+  {
+    "name": "ack_clone_empties_unacked",
+    "target_fn": "CAckState::clone_up_to_view",
+    "type": "boundary",
+    "code": "proof fn phi_2_ack_clone_empties_unacked(pre: CAckState, post: CAckState)\n    requires\n        post@ == pre@,\n    ensures\n        post.un_acked@.len() == 0,\n{\n}",
+    "reason": "If entailed, view-equality would force the un_acked list to always be empty after clone, losing pending messages"
+  },
+  {
+    "name": "range_clone_collapses_lo_hi",
+    "target_fn": "KeyRange::clone (VerusClone impl)",
+    "type": "logical",
+    "code": "proof fn phi_3_range_clone_collapses_lo_hi(kr: KeyRange<AbstractKey>, out: KeyRange<AbstractKey>)\n    requires\n        out == kr,\n    ensures\n        out.lo == out.hi,\n{\n}",
+    "reason": "If entailed, the clone spec would force every key range to be empty, making sharding impossible"
+  },
+  {
+    "name": "ack_clone_resets_seqno",
+    "target_fn": "CAckState::clone_up_to_view",
+    "type": "behavioral",
+    "code": "proof fn phi_4_ack_clone_resets_seqno(pre: CAckState, post: CAckState)\n    requires\n        post@ == pre@,\n    ensures\n        post.num_packets_acked == 0,\n{\n}",
+    "reason": "If entailed, view-equality would force the ack counter to zero, losing acknowledgement progress"
+  },
+  {
+    "name": "iter_clone_loses_some",
+    "target_fn": "KeyIterator::clone (VerusClone impl)",
+    "type": "behavioral",
+    "code": "proof fn phi_5_iter_clone_loses_some(k: SHTKey, ki: KeyIterator<AbstractKey>, out: KeyIterator<AbstractKey>)\n    requires\n        ki.k == Some(k),\n        out == ki,\n    ensures\n        out.k is None,\n{\n}",
+    "reason": "If entailed, cloning a valid iterator would lose its key, breaking iteration over key ranges"
+  }
+]

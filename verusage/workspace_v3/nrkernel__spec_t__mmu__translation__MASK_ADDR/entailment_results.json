@@ -1,0 +1,52 @@
+[
+  {
+    "name": "mask_is_zero",
+    "target_fn": "MASK_ADDR",
+    "type": "behavioral",
+    "reason": "A zero mask would erase all address bits, making address translation completely non-functional",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "DDR/phi_1_mask_is_zero.rs:42:9\n   |\n40 | proof fn phi_1_mask_is_zero()\n   |       ----------------------- at the end of the function body\n41 |     ensures\n42 |         MASK_ADDR_SPEC == 0usize,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "lower_twelve_bits_leak",
+    "target_fn": "MASK_ADDR",
+    "type": "boundary",
+    "reason": "Lower 12 bits represent the page offset and must be zero in the address mask; nonzero would corrupt page-aligned addresses",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": " fn phi_2_lower_twelve_bits_leak()\n   |       --------------------------------- at the end of the function body\n41 |     ensures\n42 |         MASK_ADDR_SPEC & 0xFFFusize != 0usize,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "mask_all_ones",
+    "target_fn": "MASK_ADDR",
+    "type": "logical",
+    "reason": "An all-ones mask would pass through non-physical high bits, defeating the purpose of physical address masking",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "roof fn phi_3_mask_all_ones()\n   |       ------------------------ at the end of the function body\n41 |     ensures\n42 |         MASK_ADDR_SPEC == 0xFFFF_FFFF_FFFF_FFFFusize,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "bit12_not_set",
+    "target_fn": "MASK_ADDR",
+    "type": "boundary",
+    "reason": "Bit 12 is the lowest physical-frame bit and must be included in the mask; excluding it would truncate valid frame addresses",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": " fn phi_4_bit12_not_set()\n   |       ------------------------ at the end of the function body\n41 |     ensures\n42 |         MASK_ADDR_SPEC & (1usize << 12usize) == 0usize,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "exceeds_max_phyaddr",
+    "target_fn": "MASK_ADDR",
+    "type": "logical",
+    "reason": "Bits 52\u201363 exceed the maximum 52-bit physical address width; if set, the mask would accept non-existent physical addresses",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "ddr()\n   |       ------------------------------ at the end of the function body\n41 |     ensures\n42 |         MASK_ADDR_SPEC & 0xFFF0_0000_0000_0000usize != 0usize,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

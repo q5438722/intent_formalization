@@ -1,0 +1,97 @@
+===PHI_START===
+NAME: range_consistent_impl_external_body_trusted
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_range_consistent_impl_external_body_trusted(dm: DelegationMap<AbstractKey>, lo: KeyIterator<AbstractKey>, hi: KeyIterator<AbstractKey>, dst: ID)
+    requires
+        dm.valid(),
+        dm.range_consistent(&lo, &hi, &dst),
+    ensures
+        forall |k: AbstractKey| KeyRange { lo: lo, hi: hi }.contains(k) ==> (#[trigger] dm@[k]) == dst@,
+{
+}
+```
+REASON: `range_consistent_impl` is external_body — if the implementation returns true for a range where some key actually disagrees, the trusted ensures would introduce unsoundness in all delegation lookups
+===PHI_END===
+
+===PHI_START===
+NAME: delegate_for_key_range_vacuous_end_end
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_delegate_for_key_range_vacuous_end_end(dm: DelegationMap<AbstractKey>, dst: ID)
+    requires
+        dm.valid(),
+    ensures
+        AbstractDelegationMap::delegate_for_key_range_is_host(
+            AbstractDelegationMap(dm@),
+            KeyRange { lo: KeyIterator { k: None }, hi: KeyIterator { k: None } },
+            dst@,
+        ),
+{
+}
+```
+REASON: With both lo and hi as end iterators (None), `between` is vacuously false since `ki.lt_spec(None)` requires `!ki.k.is_None()` but `None.lt_spec(ki)` is always false — so `delegate_for_key_range_is_host` holds for any destination, making empty-range delegation claims meaningless
+===PHI_END===
+
+===PHI_START===
+NAME: delegate_for_key_range_contradictory_dsts
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_delegate_for_key_range_contradictory_dsts(dm: DelegationMap<AbstractKey>, k: AbstractKey, dst1: ID, dst2: ID)
+    requires
+        dm.valid(),
+        dst1@ != dst2@,
+    ensures
+        AbstractDelegationMap::delegate_for_key_range_is_host(
+            AbstractDelegationMap(dm@),
+            KeyRange { lo: KeyIterator::new_spec(k), hi: KeyIterator::new_spec(k) },
+            dst1@,
+        ),
+        AbstractDelegationMap::delegate_for_key_range_is_host(
+            AbstractDelegationMap(dm@),
+            KeyRange { lo: KeyIterator::new_spec(k), hi: KeyIterator::new_spec(k) },
+            dst2@,
+        ),
+{
+}
+```
+REASON: A degenerate range [k, k) is simultaneously "delegated" to two different hosts with different abstract endpoints, because `between(new_spec(k), new_spec(k), new_spec(k))` requires `k < k` which is false — callers cannot distinguish "all keys agree" from "empty range"
+===PHI_END===
+
+===PHI_START===
+NAME: sht_key_between_excludes_lo_equal
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_sht_key_between_excludes_lo_equal()
+    ensures
+        !KeyIterator::between(
+            KeyIterator::new_spec(SHTKey { ukey: 5 }),
+            KeyIterator::new_spec(SHTKey { ukey: 5 }),
+            KeyIterator::new_spec(SHTKey { ukey: 10 }),
+        ),
+{
+}
+```
+REASON: `between(lo, ki, hi)` should include the lo endpoint (since `!ki.lt(lo)` when ki == lo), so key 5 should be between [5, 10) — if this verifies, the lower bound is unexpectedly exclusive and range_consistent misses boundary keys
+===PHI_END===
+
+===PHI_START===
+NAME: abstract_delegation_map_complete_unchecked
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_abstract_delegation_map_complete_unchecked(dm: DelegationMap<AbstractKey>, k: AbstractKey)
+    requires
+        dm.valid(),
+    ensures
+        dm@.dom().contains(k),
+        dm@[k].valid_physical_address(),
+{
+}
+```
+REASON: `DelegationMap::valid` requires `self@.dom().is_full()` and all values have valid physical addresses — but the ghost field `m` has no runtime enforcement, so any external_body function that constructs a DelegationMap could silently violate these invariants
+===PHI_END===

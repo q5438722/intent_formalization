@@ -1,0 +1,91 @@
+===PHI_START===
+NAME: arch_inv_allows_empty_layers
+TARGET_FN: inv (Arch)
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_arch_inv_allows_empty_layers(arch: Arch)
+    requires
+        arch.inv(),
+    ensures
+        arch.layers.len() == 0,
+{
+}
+```
+REASON: If inv() is satisfiable with zero layers, the architecture is vacuously valid but maps no address space — likely a degenerate case the spec should exclude.
+===PHI_END===
+
+===PHI_START===
+NAME: arch_inv_forces_equal_entry_sizes
+TARGET_FN: entry_size (Arch)
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_arch_inv_forces_equal_entry_sizes(arch: Arch)
+    requires
+        arch.inv(),
+        arch.layers.len() >= 2,
+    ensures
+        arch.entry_size(0) == arch.entry_size(1),
+{
+}
+```
+REASON: If inv() forced adjacent layers to have equal entry sizes, the hierarchical size decomposition would be broken — each layer should cover a strictly larger region than the next.
+===PHI_END===
+
+===PHI_START===
+NAME: entry_base_collision_distinct_indices
+TARGET_FN: entry_base (Arch)
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_entry_base_collision_distinct_indices(arch: Arch, layer: nat, base: nat, i: nat, j: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+        i < arch.num_entries(layer),
+        j < arch.num_entries(layer),
+        i != j,
+    ensures
+        arch.entry_base(layer, base, i) == arch.entry_base(layer, base, j),
+{
+}
+```
+REASON: If two distinct entry indices produced the same base address, page table entries would alias and the MMU mapping would be ambiguous.
+===PHI_END===
+
+===PHI_START===
+NAME: well_formed_forces_layer_zero
+TARGET_FN: well_formed
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_well_formed_forces_layer_zero(dir: Directory)
+    requires
+        dir.well_formed(),
+    ensures
+        dir.layer == 0,
+{
+}
+```
+REASON: If well_formed() could only be satisfied at layer 0, subdirectories at deeper layers could never be well-formed, breaking the recursive directory invariant.
+===PHI_END===
+
+===PHI_START===
+NAME: inv_allows_zero_size_page_frame
+TARGET_FN: pages_match_entry_size
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_inv_allows_zero_size_page_frame(dir: Directory)
+    requires
+        dir.inv(),
+        dir.entries.len() > 0,
+        dir.entries[0int] is Page,
+    ensures
+        dir.entries[0int]->Page_0.frame.size == 0nat,
+{
+}
+```
+REASON: If a directory satisfying inv() could contain a page with a zero-size frame, it would represent an empty memory mapping — violating the expectation that every mapped page covers a positive region.
+===PHI_END===

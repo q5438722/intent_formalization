@@ -1,0 +1,78 @@
+Same file again. Need genuinely fresh angles. Let me target: write commutativity at different addresses, `pt_walk` sensitivity to pml4, L entry size relationships, `from_bits` invertibility, and `update_range` idempotency.
+
+===PHI_START===
+NAME: write_commutative_different_addrs
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_write_commutative_different_addrs(mem: PTMem, a1: usize, v1: usize, a2: usize, v2: usize)
+    requires
+        a1 != a2,
+    ensures
+        mem.write(a1, v1).write(a2, v2) == mem.write(a2, v2).write(a1, v1),
+{
+}
+```
+REASON: Writes to different addresses should commute — if they don't, the write_seq fold_left order matters even for disjoint addresses, which would be a spec gap
+===PHI_END===
+
+===PHI_START===
+NAME: write_overwrites_same_addr
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_write_overwrites_same_addr(mem: PTMem, addr: usize, v1: usize, v2: usize)
+    ensures
+        mem.write(addr, v1).write(addr, v2) == mem.write(addr, v2),
+{
+}
+```
+REASON: A second write to the same address should fully overwrite the first — tests that Map::insert idempotency holds for PTMem, which is foundational for store buffer reasoning
+===PHI_END===
+
+===PHI_START===
+NAME: l3_entry_size_equals_page_size
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_l3_entry_size_equals_page_size()
+    ensures
+        L3_ENTRY_SIZE == PAGE_SIZE,
+        L2_ENTRY_SIZE == 512 * PAGE_SIZE,
+        L1_ENTRY_SIZE == 512 * 512 * PAGE_SIZE,
+{
+}
+```
+REASON: Entry sizes should form a geometric progression based on 512 entries per level — if the constants are wrong, walk results would produce incorrect vbase/size mappings
+===PHI_END===
+
+===PHI_START===
+NAME: from_bits_supervisor_inverted
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_from_bits_supervisor_inverted()
+    ensures
+        Flags::from_bits(true, true, false).is_supervisor == false,
+        Flags::from_bits(true, false, false).is_supervisor == true,
+{
+}
+```
+REASON: `from_bits` sets `is_supervisor = !flag_US` — a US=true (user-accessible) entry has is_supervisor=false; tests that the inversion is intentional and not a bug
+===PHI_END===
+
+===PHI_START===
+NAME: update_range_at_zero_equals_prefix_replace
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_update_range_at_zero_equals_prefix_replace(s: Seq<u8>, new: Seq<u8>)
+    requires
+        new.len() <= s.len(),
+    ensures
+        update_range(s, 0, new) =~= new + s.subrange(new.len() as int, s.len() as int),
+{
+}
+```
+REASON: Updating at index 0 should replace the prefix — tests that `subrange(0, 0)` correctly produces an empty sequence and doesn't corrupt the result
+===PHI_END===

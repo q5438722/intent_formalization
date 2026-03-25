@@ -1,0 +1,84 @@
+===PHI_START===
+NAME: contains_out_of_upper_bound
+TARGET_FN: create_full
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_contains_out_of_upper_bound(mask: CommitMask)
+    requires
+        mask@ == Set::new(|i: int| 0 <= i < COMMIT_MASK_BITS),
+    ensures
+        mask@.contains(512int),
+{
+}
+```
+REASON: After create_full the set should be {0..511}; containing 512 would mean the upper bound is wrong
+===PHI_END===
+
+===PHI_START===
+NAME: contains_negative_index
+TARGET_FN: create_full
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_contains_negative_index(mask: CommitMask)
+    requires
+        mask@ == Set::new(|i: int| 0 <= i < COMMIT_MASK_BITS),
+    ensures
+        mask@.contains(-1int),
+{
+}
+```
+REASON: After create_full the set should have no negative elements; containing -1 would indicate a lower-bound error
+===PHI_END===
+
+===PHI_START===
+NAME: result_set_is_empty
+TARGET_FN: create_full
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_result_set_is_empty(mask: CommitMask)
+    requires
+        mask@ == Set::new(|i: int| 0 <= i < COMMIT_MASK_BITS),
+    ensures
+        mask@ =~= Set::empty(),
+{
+}
+```
+REASON: create_full should produce a full mask; being empty would mean the spec is trivially unsound or vacuous
+===PHI_END===
+
+===PHI_START===
+NAME: result_equals_half_range
+TARGET_FN: create_full
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_result_equals_half_range(mask: CommitMask)
+    requires
+        mask@ == Set::new(|i: int| 0 <= i < COMMIT_MASK_BITS),
+    ensures
+        mask@ =~= Set::new(|i: int| 0 <= i < 256),
+{
+}
+```
+REASON: The full mask covers 512 bits; equalling only the first 256 would indicate COMMIT_MASK_BITS is misused or halved
+===PHI_END===
+
+===PHI_START===
+NAME: missing_last_element
+TARGET_FN: create_full
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_missing_last_element(mask: CommitMask)
+    requires
+        mask@ == Set::new(|i: int| 0 <= i < COMMIT_MASK_BITS),
+    ensures
+        !mask@.contains(511int),
+{
+}
+```
+REASON: 511 is the last valid index in a 512-bit mask; its absence would indicate an off-by-one in the spec
+===PHI_END===

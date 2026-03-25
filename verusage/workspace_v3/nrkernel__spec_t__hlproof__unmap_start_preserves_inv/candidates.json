@@ -1,0 +1,37 @@
+[
+  {
+    "name": "aligned_zero_size",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "code": "proof fn phi_1_aligned_zero_size()\n    ensures\n        aligned(1, 0),\n{\n}",
+    "reason": "If alignment to size 0 is satisfied for any nonzero address, the aligned predicate is vacuously permissive for a degenerate input."
+  },
+  {
+    "name": "x86_arch_inv_false",
+    "target_fn": "inv",
+    "type": "logical",
+    "code": "proof fn phi_2_x86_arch_inv_false()\n    ensures\n        !x86_arch_spec.inv(),\n{\n}",
+    "reason": "If the concrete x86 architecture constant fails its own invariant, every downstream proof relying on inv is vacuously true."
+  },
+  {
+    "name": "entry_base_zero_idx_not_base",
+    "target_fn": "entry_base",
+    "type": "behavioral",
+    "code": "proof fn phi_3_entry_base_zero_idx_not_base(base: nat)\n    requires\n        x86_arch_spec.inv(),\n        0 < x86_arch_spec.layers.len(),\n    ensures\n        x86_arch_spec.entry_base(0, base, 0) != base,\n{\n}",
+    "reason": "Indexing at 0 should recover the original base; if not, address calculations for the first entry in every directory are wrong."
+  },
+  {
+    "name": "upper_vaddr_zero_at_root",
+    "target_fn": "upper_vaddr",
+    "type": "behavioral",
+    "code": "proof fn phi_4_upper_vaddr_zero_at_root()\n    requires\n        x86_arch_spec.inv(),\n    ensures\n        x86_arch_spec.upper_vaddr(0, 0) == 0nat,\n{\n}",
+    "reason": "A zero upper virtual address at layer 0 with base 0 would mean the entire x86-64 address space has zero size, making all vaddr checks trivially fail."
+  },
+  {
+    "name": "entry_size_same_across_layers",
+    "target_fn": "entry_size",
+    "type": "logical",
+    "code": "proof fn phi_5_entry_size_same_across_layers()\n    requires\n        x86_arch_spec.inv(),\n        x86_arch_spec.layers.len() >= 4,\n    ensures\n        x86_arch_spec.entry_size(0) == x86_arch_spec.entry_size(3),\n{\n}",
+    "reason": "Layer 0 maps 512 GiB regions while layer 3 maps 4 KiB pages; equal entry sizes would collapse the page-table hierarchy into a single flat level."
+  }
+]

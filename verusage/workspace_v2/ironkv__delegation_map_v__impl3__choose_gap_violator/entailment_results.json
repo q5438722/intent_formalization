@@ -1,0 +1,47 @@
+[
+  {
+    "name": "cmp_spec_not_irreflexive",
+    "type": "logical",
+    "code": "proof fn phi_1_cmp_spec_not_irreflexive<K: KeyTrait + VerusClone>(k: K)\n    ensures\n        !k.cmp_spec(k).lt(),\n{\n}",
+    "reason": "KeyTrait::cmp_spec has no axioms \u2014 nothing prevents k.cmp_spec(k).lt() being true, which would break all ordering-based reasoning in StrictlyOrderedMap",
+    "entailed": false,
+    "verus_output": "t_formalization/verusage/workspace_v2/ironkv__delegation_map_v__impl3__choose_gap_violator/phi_1_cmp_spec_not_irreflexive.rs:125:9\n    |\n123 | proof fn phi_1_cmp_spec_not_irreflexive<K: KeyTrait + VerusClone>(k: K)\n    |       ----------------------------------------------------------------- at the end of the function body\n124 |     ensures\n125 |         !k.cmp_spec(k).lt(),\n    |         ^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 8 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "lt_spec_not_transitive",
+    "type": "logical",
+    "code": "proof fn phi_2_lt_spec_not_transitive<K: KeyTrait + VerusClone>(a: KeyIterator<K>, b: KeyIterator<K>, c: KeyIterator<K>)\n    requires\n        a.lt_spec(b),\n        b.lt_spec(c),\n    ensures\n        a.lt_spec(c),\n{\n}",
+    "reason": "KeyIterator::lt_spec delegates to cmp_spec which has no transitivity axiom \u2014 gap reasoning in StrictlyOrderedMap silently assumes transitivity without it being guaranteed",
+    "entailed": false,
+    "verus_output": "3__choose_gap_violator/phi_2_lt_spec_not_transitive.rs:128:9\n    |\n123 | proof fn phi_2_lt_spec_not_transitive<K: KeyTrait + VerusClone>(a: KeyIterator<K>, b: KeyIterator<K>, c: KeyIterator<K>)\n    |       ------------------------------------------------------------------------------------------------------------------ at the end of the function body\n...\n128 |         a.lt_spec(c),\n    |         ^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 8 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "gap_vacuous_when_end_lo",
+    "type": "behavioral",
+    "code": "proof fn phi_3_gap_vacuous_when_end_lo<K: KeyTrait + VerusClone>(m: StrictlyOrderedMap<K>, hi: KeyIterator<K>)\n    requires\n        KeyIterator::<K> { k: None }.is_end_spec(),\n    ensures\n        m.gap(KeyIterator { k: None }, hi),\n{\n}",
+    "reason": "When lo is end (None), lo.lt_spec(ki) is always false since the first disjunct requires !self.k.is_None() \u2014 gap becomes vacuously true regardless of map contents, potentially masking real violations",
+    "entailed": false,
+    "verus_output": "error: struct literals are not allowed here; try surrounding the struct literal with parentheses\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__delegation_map_v__impl3__choose_gap_violator/phi_3_gap_vacuous_when_end_lo.rs:125:9\n    |\n125 |         KeyIterator::<K> { k: None }.is_end_spec(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "choose_gap_violator_get_spec_mismatch",
+    "type": "behavioral",
+    "code": "proof fn phi_4_choose_gap_violator_get_spec_mismatch<K: KeyTrait + VerusClone>(m: StrictlyOrderedMap<K>, lo: KeyIterator<K>, hi: KeyIterator<K>)\n    requires\n        !m.gap(lo, hi),\n    ensures\n        ({\n            let r = m.choose_gap_violator(lo, hi);\n            !r.is_end_spec() && m@.contains_key(*r.get_spec())\n        }),\n{\n    let r = m.choose_gap_violator(lo, hi);\n}",
+    "reason": "choose_gap_violator's ensures uses `*r.get()` (which resolves to get_spec in spec) \u2014 but the proof relies on choose finding a witness, and if cmp_spec is inconsistent the chosen r could have unexpected properties",
+    "entailed": false,
+    "verus_output": "  ^^^^^^^^^^\n\nerror: cannot call function `phi_4_choose_gap_violator_get_spec_mismatch::StrictlyOrderedMap::choose_gap_violator` with mode proof\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__delegation_map_v__impl3__choose_gap_violator/phi_4_choose_gap_violator_get_spec_mismatch.rs:128:21\n    |\n128 |             let r = m.choose_gap_violator(lo, hi);\n    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error; 8 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "delegation_map_ghost_unconstrained",
+    "type": "logical",
+    "code": "proof fn phi_5_delegation_map_ghost_unconstrained<K: KeyTrait + VerusClone>(dm: DelegationMap<K>, k: K, ep: AbstractEndPoint)\n    ensures\n        dm.m@.contains_key(k) || !dm.m@.contains_key(k),\n{\n}",
+    "reason": "DelegationMap's Ghost<Map<K, AbstractEndPoint>> field m has no well-formedness predicate linking it to the lows StrictlyOrderedMap \u2014 the ghost map can contain arbitrary entries completely disconnected from the range-based implementation",
+    "entailed": true,
+    "verus_output": "instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__delegation_map_v__impl3__choose_gap_violator/phi_5_delegation_map_ghost_unconstrained.rs:114:91\n    |\n114 |       || (!self.k.is_None() && !other.k.is_None() && self.k.get_Some_0().cmp_spec(other.k.get_Some_0()).lt())\n    |                                                                                           ^^^^^^^^^^\n\nwarning: 8 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

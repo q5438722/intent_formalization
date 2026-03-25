@@ -1,0 +1,80 @@
+===PHI_START===
+NAME: always_p_is_stable_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_always_p_is_stable_intensional_bridge(p: TempPred<int>, ex: Execution<int>)
+    ensures
+        stable(always(p)).satisfied_by(ex),
+{
+    always_p_is_stable::<int>(p);
+}
+```
+REASON: always_p_is_stable is external_body deriving valid(stable(always(p))) — stable wraps always(p).implies(always(always(p))) in nested closures creating intensional gaps resolved without proof
+===PHI_END===
+
+===PHI_START===
+NAME: leads_to_stable_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_leads_to_stable_intensional_bridge(p: TempPred<int>, q: TempPred<int>, ex: Execution<int>)
+    ensures
+        stable(p.leads_to(q)).satisfied_by(ex),
+{
+    p_leads_to_q_is_stable::<int>(p, q);
+}
+```
+REASON: p_leads_to_q_is_stable relies on always_p_is_stable with p.implies(eventually(q)) — the substitution equates p.leads_to(q) with always(p.implies(eventually(q))) intensionally through closure identity
+===PHI_END===
+
+===PHI_START===
+NAME: always_always_from_always
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_always_always_from_always(p: TempPred<int>, ex: Execution<int>)
+    requires
+        always(p).satisfied_by(ex),
+    ensures
+        always(always(p)).satisfied_by(ex),
+{
+    always_p_is_stable::<int>(p);
+}
+```
+REASON: always_p_is_stable gives always(p) ==> always(always(p)) for all executions — this derives always(always(p)) from always(p), requiring intensional resolution of nested always closures without proof
+===PHI_END===
+
+===PHI_START===
+NAME: stable_implies_always_preservation
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_stable_implies_always_preservation(p: TempPred<int>, q: TempPred<int>, ex: Execution<int>)
+    requires
+        p.leads_to(q).satisfied_by(ex),
+    ensures
+        always(p.leads_to(q)).satisfied_by(ex),
+{
+    p_leads_to_q_is_stable::<int>(p, q);
+}
+```
+REASON: stable(leads_to) applied at ex upgrades leads_to at current state to always(leads_to) — the stable closure bridges implies and always wrapping without verifying the nested closure chain
+===PHI_END===
+
+===PHI_START===
+NAME: any_always_self_reinforcing
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_any_always_self_reinforcing(ex: Execution<int>)
+    requires
+        always(TempPred::<int>::new(|e: Execution<int>| false)).satisfied_by(ex),
+    ensures
+        always(always(TempPred::<int>::new(|e: Execution<int>| false))).satisfied_by(ex),
+{
+    always_p_is_stable::<int>(TempPred::new(|e: Execution<int>| false));
+}
+```
+REASON: always(false) is vacuously satisfiable only on empty domains — always_p_is_stable still derives always(always(false)) from always(false), propagating the vacuous case through intensional closure gaps
+===PHI_END===

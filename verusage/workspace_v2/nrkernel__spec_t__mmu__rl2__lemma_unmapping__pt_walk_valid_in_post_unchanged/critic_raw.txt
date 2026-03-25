@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: update_range_length_preserved
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `update_range` is `s.subrange(0, idx) + new + s.subrange(idx + new.len(), s.len())`. The lengths are `idx + new.len() + (s.len() - idx - new.len()) = s.len()`. This is correct by basic arithmetic on sequence concatenation.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: valid_op_size_excludes_3
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `valid_op_size` is defined as `op_size() == 1 || == 2 || == 4 || == 8`. Since 3 is none of these values, `op_size() != 3` follows trivially. This is correct and intentional — x86 memory operations are power-of-2 sized.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: is_base_pt_walk_vbase_alignment
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `is_base_pt_walk` requires `vbase == vaddr` where `vbase = align_to_usize(vaddr, L3_ENTRY_SIZE)`. Since `align_to_usize(va, 4096) == va` iff `va % 4096 == 0`, this correctly forces page alignment. This is intentional — base addresses in x86 page tables are always page-aligned.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: all_mb0_bits_are_zero_gates_pde_validity
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `all_mb0_bits_are_zero` is `external_body` with `unimplemented!()` and gates `PDE::view` — when it returns false, present entries (P bit set) are treated as Invalid. Since the predicate is completely opaque, Verus cannot verify that it correctly checks the must-be-zero bits for each layer, potentially misclassifying valid or invalid entries.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: `all_mb0_bits_are_zero` is an external_body predicate that gates PDE validity — its behavior is entirely unverified, so the classification of present entries as Directory/Page/Invalid depends on an opaque trust assumption. Three false positives: update_range length preservation follows from arithmetic, valid_op_size exclusion of 3 is trivially correct, and page alignment of base walk addresses is intentional x86 semantics.
+===END_SUMMARY===

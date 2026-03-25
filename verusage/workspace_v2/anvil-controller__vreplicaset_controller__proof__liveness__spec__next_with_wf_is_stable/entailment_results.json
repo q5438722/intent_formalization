@@ -1,0 +1,47 @@
+[
+  {
+    "name": "marshal_unmarshal_no_roundtrip",
+    "type": "logical",
+    "code": "proof fn phi_1_marshal_unmarshal_no_roundtrip(v1: VReplicaSetView, v2: VReplicaSetView)\n    requires\n        v1.metadata == v2.metadata,\n        VReplicaSetView::unmarshal_spec(VReplicaSetView::marshal_spec(v1.spec)) is Ok,\n        VReplicaSetView::unmarshal_spec(VReplicaSetView::marshal_spec(v2.spec)) is Ok,\n        VReplicaSetView::unmarshal_spec(VReplicaSetView::marshal_spec(v1.spec))->Ok_0\n            == VReplicaSetView::unmarshal_spec(VReplicaSetView::marshal_spec(v2.spec))->Ok_0,\n        v1.spec != v2.spec,\n    ensures\n        true,\n{\n}",
+    "reason": "marshal_spec and unmarshal_spec are uninterpreted with no roundtrip axiom, so distinct specs can marshal to values that unmarshal to the same result \u2014 violating injectivity and losing data silently",
+    "entailed": false,
+    "verus_output": "er__proof__liveness__spec__next_with_wf_is_stable/phi_1_marshal_unmarshal_no_roundtrip.rs:3637:48\n     |\n3637 |             == VReplicaSetView::unmarshal_spec(VReplicaSetView::marshal_spec(v2.spec))->Ok_0,\n     |                                                ^^^^^^^^^^^^^^^ use of undeclared type `VReplicaSetView`\n\nerror: aborting due to 10 previous errors; 1 warning emitted\n\nSome errors have detailed explanations: E0425, E0433.\nFor more information about an error, try `rustc --explain E0425`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "unmarshal_ignores_state_validation",
+    "type": "behavioral",
+    "code": "proof fn phi_2_unmarshal_ignores_state_validation(obj: DynamicObjectView)\n    requires\n        obj.kind == VReplicaSetView::kind(),\n        VReplicaSetView::unmarshal_spec(obj.spec) is Ok,\n        VReplicaSetView::unmarshal_status(obj.status) is Ok,\n        !(VReplicaSetView::unmarshal(obj)->Ok_0).state_validation(),\n    ensures\n        VReplicaSetView::unmarshal(obj) is Ok,\n{\n}",
+    "reason": "unmarshal succeeds without checking state_validation, so invalid VReplicaSet objects (e.g. negative replicas, missing template) can enter the system through deserialization",
+    "entailed": false,
+    "verus_output": "clared type `VReplicaSetView`\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__spec__next_with_wf_is_stable/phi_2_unmarshal_ignores_state_validation.rs:3638:9\n     |\n3638 |         VReplicaSetView::unmarshal(obj) is Ok,\n     |         ^^^^^^^^^^^^^^^ use of undeclared type `VReplicaSetView`\n\nerror: aborting due to 5 previous errors; 1 warning emitted\n\nFor more information about this error, try `rustc --explain E0433`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "marshal_spec_not_injective",
+    "type": "logical",
+    "code": "proof fn phi_3_marshal_spec_not_injective(s1: VReplicaSetSpecView, s2: VReplicaSetSpecView)\n    requires\n        s1 != s2,\n        VReplicaSetView::marshal_spec(s1) == VReplicaSetView::marshal_spec(s2),\n    ensures\n        true,\n{\n}",
+    "reason": "marshal_spec is uninterpreted with no injectivity axiom, so two distinct specs could marshal to the same Value, making the API server unable to distinguish different VReplicaSet configurations",
+    "entailed": false,
+    "verus_output": "_vreplicaset_controller__proof__liveness__spec__next_with_wf_is_stable/phi_3_marshal_spec_not_injective.rs:3634:46\n     |\n3634 |         VReplicaSetView::marshal_spec(s1) == VReplicaSetView::marshal_spec(s2),\n     |                                              ^^^^^^^^^^^^^^^ use of undeclared type `VReplicaSetView`\n\nerror: aborting due to 4 previous errors; 1 warning emitted\n\nSome errors have detailed explanations: E0425, E0433.\nFor more information about an error, try `rustc --explain E0425`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "reconcile_id_allocator_no_uniqueness",
+    "type": "boundary",
+    "code": "proof fn phi_4_reconcile_id_allocator_no_uniqueness(a: ReconcileIdAllocator)\n    requires\n        a.reconcile_id_counter == 0,\n    ensures\n        a.allocate().1 == 0,\n        a.allocate().0.allocate().1 == 1,\n        ({\n            let b = ReconcileIdAllocator { reconcile_id_counter: 0 };\n            b.allocate().1 == a.allocate().1\n        }),\n{\n}",
+    "reason": "two independently created ReconcileIdAllocators with the same counter produce identical IDs \u2014 there is no global uniqueness guarantee across controllers, so concurrent reconciliations from different controllers can have colliding reconcile IDs",
+    "entailed": true,
+    "verus_output": " errors\nwarning: `#[is_variant]` is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__spec__next_with_wf_is_stable/phi_4_reconcile_id_allocator_no_uniqueness.rs:314:1\n    |\n314 | / #[is_variant]\n315 | | pub enum BuiltinControllersStep {\n316 | |     RunGarbageCollector,\n317 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "object_ref_ignores_uid",
+    "type": "behavioral",
+    "code": "proof fn phi_5_object_ref_ignores_uid(v1: VReplicaSetView, v2: VReplicaSetView)\n    requires\n        v1.metadata.name is Some,\n        v2.metadata.name is Some,\n        v1.metadata.namespace is Some,\n        v2.metadata.namespace is Some,\n        v1.metadata.name == v2.metadata.name,\n        v1.metadata.namespace == v2.metadata.namespace,\n        v1.metadata.uid != v2.metadata.uid,\n    ensures\n        v1.object_ref() == v2.object_ref(),\n{\n}",
+    "reason": "object_ref uses only kind/name/namespace and ignores uid, so a deleted-and-recreated VReplicaSet with a new uid maps to the same ObjectRef \u2014 stale reconciliation state from the old instance could be applied to the new one",
+    "entailed": false,
+    "verus_output": "t_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__spec__next_with_wf_is_stable/phi_5_object_ref_ignores_uid.rs:3631:64\n     |\n3631 | proof fn phi_5_object_ref_ignores_uid(v1: VReplicaSetView, v2: VReplicaSetView)\n     |                                                                ^^^^^^^^^^^^^^^ not found in this scope\n\nerror: aborting due to 2 previous errors; 1 warning emitted\n\nFor more information about this error, try `rustc --explain E0425`.\n",
+    "timed_out": false
+  }
+]

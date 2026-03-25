@@ -1,0 +1,47 @@
+[
+  {
+    "name": "unmarshal_roundtrip_no_axiom",
+    "type": "logical",
+    "code": "proof fn phi_1_unmarshal_roundtrip_no_axiom(p: PodView)\n    requires\n        true,\n    ensures\n        PodView::unmarshal(p.marshal()) is Ok,\n{\n}",
+    "reason": "marshal_spec/unmarshal_spec are uninterpreted with no roundtrip axiom \u2014 if the solver proves this it reveals an accidental entailment that unmarshal always succeeds on marshalled objects without justification",
+    "entailed": false,
+    "verus_output": "eplicaset_controller__proof__liveness__proof__eventually_stable_reconciliation_holds_per_cr/phi_1_unmarshal_roundtrip_no_axiom.rs:5453:9\n     |\n5449 | proof fn phi_1_unmarshal_roundtrip_no_axiom(p: PodView)\n     |       ------------------------------------------------- at the end of the function body\n...\n5453 |         PodView::unmarshal(p.marshal()) is Ok,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "marshal_spec_injective",
+    "type": "logical",
+    "code": "proof fn phi_2_marshal_spec_injective(s1: Option<PodSpecView>, s2: Option<PodSpecView>)\n    requires\n        PodView::marshal_spec(s1) == PodView::marshal_spec(s2),\n    ensures\n        s1 == s2,\n{\n}",
+    "reason": "marshal_spec is uninterpreted with no injectivity axiom \u2014 if provable the solver implicitly assumes injectivity which is a stronger property than declared",
+    "entailed": false,
+    "verus_output": "eplicaset_controller__proof__liveness__proof__eventually_stable_reconciliation_holds_per_cr/phi_2_marshal_spec_injective.rs:5453:9\n     |\n5449 | proof fn phi_2_marshal_spec_injective(s1: Option<PodSpecView>, s2: Option<PodSpecView>)\n     |       --------------------------------------------------------------------------------- at the end of the function body\n...\n5453 |         s1 == s2,\n     |         ^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "create_key_namespace_diverges_from_obj",
+    "type": "behavioral",
+    "code": "proof fn phi_3_create_key_namespace_diverges_from_obj(req: CreateRequest)\n    requires\n        req.obj.metadata.namespace is Some,\n        req.namespace != req.obj.metadata.namespace->0,\n    ensures\n        req.key().namespace != req.obj.metadata.namespace->0,\n{\n}",
+    "reason": "CreateRequest::key uses self.namespace not self.obj.metadata.namespace \u2014 these can diverge so the key does not faithfully represent the object's namespace",
+    "entailed": true,
+    "verus_output": "iant]` is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__proof__eventually_stable_reconciliation_holds_per_cr/phi_3_create_key_namespace_diverges_from_obj.rs:328:1\n    |\n328 | / #[is_variant]\n329 | | pub enum BuiltinControllersStep {\n330 | |     RunGarbageCollector,\n331 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "unmarshal_skips_state_validation",
+    "type": "behavioral",
+    "code": "proof fn phi_4_unmarshal_skips_state_validation(obj: DynamicObjectView)\n    requires\n        obj.kind == PodView::kind(),\n        PodView::unmarshal_spec(obj.spec) is Ok,\n        PodView::unmarshal_status(obj.status) is Ok,\n    ensures\n        PodView::unmarshal(obj) is Ok,\n{\n}",
+    "reason": "unmarshal succeeds whenever kind/spec/status parse but never checks state_validation \u2014 invalid objects (e.g. pods with spec == None) are successfully unmarshalled",
+    "entailed": true,
+    "verus_output": "is_variant]` is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__proof__eventually_stable_reconciliation_holds_per_cr/phi_4_unmarshal_skips_state_validation.rs:328:1\n    |\n328 | / #[is_variant]\n329 | | pub enum BuiltinControllersStep {\n330 | |     RunGarbageCollector,\n331 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "update_key_kind_from_obj_body",
+    "type": "behavioral",
+    "code": "proof fn phi_5_update_key_kind_from_obj_body(req: UpdateRequest, kind: Kind)\n    requires\n        req.obj.kind != kind,\n    ensures\n        req.key().kind != kind,\n        req.key().kind == req.obj.kind,\n{\n}",
+    "reason": "UpdateRequest::key takes kind from self.obj.kind rather than having an independent kind field \u2014 a request with mismatched obj.kind could target a different resource type than the caller intended",
+    "entailed": true,
+    "verus_output": "`#[is_variant]` is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__proof__eventually_stable_reconciliation_holds_per_cr/phi_5_update_key_kind_from_obj_body.rs:328:1\n    |\n328 | / #[is_variant]\n329 | | pub enum BuiltinControllersStep {\n330 | |     RunGarbageCollector,\n331 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

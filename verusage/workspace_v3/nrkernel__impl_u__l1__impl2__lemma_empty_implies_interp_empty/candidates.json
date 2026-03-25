@@ -1,0 +1,37 @@
+[
+  {
+    "name": "entry_base_zero_idx_not_base",
+    "target_fn": "entry_base (Arch)",
+    "type": "boundary",
+    "code": "proof fn phi_1_entry_base_zero_idx_not_base(arch: Arch, layer: nat, base: nat)\n    requires\n        arch.inv(),\n        layer < arch.layers.len(),\n    ensures\n        arch.entry_base(layer, base, 0) != base,\n{\n}",
+    "reason": "entry_base at index 0 should equal the base address; if this proves, the address calculation is fundamentally broken"
+  },
+  {
+    "name": "entry_base_not_strictly_increasing",
+    "target_fn": "entry_base (Arch)",
+    "type": "logical",
+    "code": "proof fn phi_2_entry_base_not_strictly_increasing(arch: Arch, layer: nat, base: nat, i: nat)\n    requires\n        arch.inv(),\n        layer < arch.layers.len(),\n        i + 1 < arch.num_entries(layer),\n    ensures\n        arch.entry_base(layer, base, (i + 1) as nat) <= arch.entry_base(layer, base, i),\n{\n}",
+    "reason": "consecutive entry bases must be strictly increasing for entries to map disjoint regions; provability implies overlapping or reversed address layout"
+  },
+  {
+    "name": "inv_page_forced_zero_size",
+    "target_fn": "pages_match_entry_size",
+    "type": "behavioral",
+    "code": "proof fn phi_3_inv_page_forced_zero_size(d: Directory, i: nat)\n    requires\n        d.inv(),\n        i < d.entries.len(),\n        d.entries[i as int] is Page,\n    ensures\n        d.entries[i as int]->Page_0.frame.size == 0,\n{\n}",
+    "reason": "under inv, page frame sizes must equal entry_size which is positive; if this proves, the invariant erroneously forces zero-size frames"
+  },
+  {
+    "name": "empty_dir_has_mapping",
+    "target_fn": "interp",
+    "type": "behavioral",
+    "code": "proof fn phi_4_empty_dir_has_mapping(d: Directory)\n    requires\n        d.inv(),\n        d.empty(),\n    ensures\n        exists|k: nat| d.interp().dom().contains(k),\n{\n}",
+    "reason": "an empty directory should have no mappings; provability means the interp of an all-Invalid directory is non-empty, violating the empty semantics"
+  },
+  {
+    "name": "child_entry_size_exceeds_parent",
+    "target_fn": "entry_size_is_next_layer_size",
+    "type": "logical",
+    "code": "proof fn phi_5_child_entry_size_exceeds_parent(arch: Arch, i: nat)\n    requires\n        arch.inv(),\n        i + 1 < arch.layers.len(),\n    ensures\n        arch.entry_size((i + 1) as nat) > arch.entry_size(i),\n{\n}",
+    "reason": "parent layer entries cover larger regions than children (entry_size(i) = entry_size(i+1) * num_entries(i+1)); provability means the size hierarchy is inverted"
+  }
+]

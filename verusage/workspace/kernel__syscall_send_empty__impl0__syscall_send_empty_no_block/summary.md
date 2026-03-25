@@ -1,115 +1,77 @@
-# Test Summary: syscall_send_empty_no_block
+# Test Execution Summary: `syscall_send_empty_no_block`
 
-## File Under Test
+## Target Function
+`Kernel::syscall_send_empty_no_block(&mut self, sender_thread_ptr: ThreadPtr, blocking_endpoint_index: EndpointIdx) -> SyscallReturnStruct`
 
-`kernel__syscall_send_empty__impl0__syscall_send_empty_no_block.rs` — Defines `Kernel::syscall_send_empty_no_block`, an IPC syscall that attempts a non-blocking empty message send. It checks if a receiver exists on the endpoint, and if so, schedules the blocked receiver thread. Otherwise it returns an error. The spec guarantees only that kernel well-formedness (`wf()`) is preserved.
-
-### Spec Summary
-
-**Preconditions (requires):**
-1. `old(self).wf()` — kernel well-formed
-2. `old(self).thread_dom().contains(sender_thread_ptr)` — sender thread exists
-3. `0 <= blocking_endpoint_index < MAX_NUM_ENDPOINT_DESCRIPTORS` — valid index
-4. `old(self).get_thread(sender_thread_ptr).state == ThreadState::RUNNING` — thread running
-
-**Postconditions (ensures):**
-1. `self.wf()` — kernel remains well-formed (only postcondition)
+### Specification
+- **Requires**: `self.wf()`, `thread_dom().contains(sender_thread_ptr)`, `0 <= blocking_endpoint_index < 128`, `thread.state == RUNNING`
+- **Ensures**: `self.wf()` (only)
 
 ---
 
-## Correctness Results
+## Results Overview
 
-All tests **PASSED** (48 verified, 0 errors).
+| Test File | Total Tests | Failed (as expected) | Passed (unexpected) |
+|-----------|-------------|---------------------|---------------------|
+| `boundary_tests.rs` | 10 | 10 ✅ | 0 |
+| `behavioral_mutation_tests.rs` | 7 | 7 ✅ | 0 |
+| `logical_tests.rs` | 9 | 9 ✅ | 0 |
+| **Total** | **26** | **26 ✅** | **0** |
 
-| Test Name | Description | Expected | Actual |
-|-----------|-------------|----------|--------|
-| `test_param_basic` | Call with all preconditions, assert `wf()` | PASS | ✅ PASS |
-| `test_param_return_type` | Verify return type is `SyscallReturnStruct` | PASS | ✅ PASS |
-| `test_param_endpoint_index_zero` | Boundary: endpoint index = 0 | PASS | ✅ PASS |
-| `test_param_endpoint_index_max` | Boundary: endpoint index = MAX-1 | PASS | ✅ PASS |
-| `test_param_wf_available_after` | wf() propagates as ensures clause | PASS | ✅ PASS |
-
----
-
-## Completeness Results
-
-### Round 1: Precondition Violations (43 verified, 5 errors)
-
-All tests **FAILED** as expected — preconditions are properly enforced.
-
-| Test Name | What It Tests | Expected | Actual |
-|-----------|---------------|----------|--------|
-| `test_missing_wf` | Call without `wf()` precondition | FAIL | ✅ FAIL |
-| `test_missing_thread_dom` | Call without thread domain containment | FAIL | ✅ FAIL |
-| `test_endpoint_index_too_large` | Endpoint index = MAX (out of range) | FAIL | ✅ FAIL |
-| `test_wrong_state_blocked` | Thread state BLOCKED instead of RUNNING | FAIL | ✅ FAIL |
-| `test_wrong_state_scheduled` | Thread state SCHEDULED instead of RUNNING | FAIL | ✅ FAIL |
-
-### Round 2: Overly Strong Postconditions (43 verified, 5 errors)
-
-All tests **FAILED** as expected — spec does not over-promise return values.
-
-| Test Name | What It Tests | Expected | Actual |
-|-----------|---------------|----------|--------|
-| `test_always_error` | Assert return is always `Error` | FAIL | ✅ FAIL |
-| `test_always_else` | Assert return is always `Else` | FAIL | ✅ FAIL |
-| `test_always_no_switch` | Assert `switch_decision == NoSwitch` | FAIL | ✅ FAIL |
-| `test_pcid_is_none` | Assert `pcid` is None | FAIL | ✅ FAIL |
-| `test_cr3_is_none` | Assert `cr3` is None | FAIL | ✅ FAIL |
-
-### Round 3: Negated/Contradicted Postconditions (43 verified, 5 errors)
-
-All tests **FAILED** as expected — negations of valid postconditions are rejected.
-
-| Test Name | What It Tests | Expected | Actual |
-|-----------|---------------|----------|--------|
-| `test_negated_wf` | Assert `!kernel.wf()` after call | FAIL | ✅ FAIL |
-| `test_negated_proc_man_wf` | Assert `!kernel.proc_man.wf()` | FAIL | ✅ FAIL |
-| `test_negated_mem_man_wf` | Assert `!kernel.mem_man.wf()` | FAIL | ✅ FAIL |
-| `test_negated_page_alloc_wf` | Assert `!kernel.page_alloc.wf()` | FAIL | ✅ FAIL |
-| `test_ensures_false` | Assert `false` (strongest wrong claim) | FAIL | ✅ FAIL |
-
-### Round 4: Wrong Specific Values (43 verified, 5 errors)
-
-All tests **FAILED** as expected — wrong return value variants are rejected.
-
-| Test Name | What It Tests | Expected | Actual |
-|-----------|---------------|----------|--------|
-| `test_wrong_error_no_quota` | Assert error_code is `ErrorNoQuota` | FAIL | ✅ FAIL |
-| `test_wrong_cpu_idle` | Assert error_code is `CpuIdle` | FAIL | ✅ FAIL |
-| `test_wrong_va_in_use` | Assert error_code is `ErrorVaInUse` | FAIL | ✅ FAIL |
-| `test_wrong_switch` | Assert switch_decision is `Switch` | FAIL | ✅ FAIL |
-| `test_wrong_no_thread` | Assert switch_decision is `NoThread` | FAIL | ✅ FAIL |
-
-### Round 5: Cross-function Misuse & Edge Cases (43 verified, 5 errors)
-
-All tests **FAILED** as expected — frame conditions not in spec are properly unverifiable.
-
-| Test Name | What It Tests | Expected | Actual |
-|-----------|---------------|----------|--------|
-| `test_thread_dom_unchanged` | Assert thread_dom preserved | FAIL | ✅ FAIL |
-| `test_endpoint_dom_unchanged` | Assert endpoint_dom preserved | FAIL | ✅ FAIL |
-| `test_sender_still_running` | Assert sender thread still RUNNING | FAIL | ✅ FAIL |
-| `test_descriptors_unchanged` | Assert endpoint_descriptors unchanged | FAIL | ✅ FAIL |
-| `test_all_domains_unchanged` | Assert proc/container domains unchanged | FAIL | ✅ FAIL |
+All 26 adversarial tests failed verification, which is the expected outcome — each test encodes a property that is NOT entailed by the specification.
 
 ---
 
-## Overall Assessment
+## Boundary Tests (10/10 FAIL ✅)
 
-### Correctness: ✅ PASS
-The spec is correct — `syscall_send_empty_no_block` preserves kernel well-formedness as claimed.
+| # | Test | Violated Precondition |
+|---|------|-----------------------|
+| 1 | `test_boundary_sender_thread_not_in_domain` | `thread_dom.contains(sender_thread_ptr)` |
+| 2 | `test_boundary_endpoint_index_at_max` | `endpoint_index < 128` (at boundary 128) |
+| 3 | `test_boundary_endpoint_index_exceeds_max` | `endpoint_index < 128` (value 256) |
+| 4 | `test_boundary_sender_thread_not_running` | `state == RUNNING` (BLOCKED) |
+| 5 | `test_boundary_sender_thread_scheduled` | `state == RUNNING` (SCHEDULED) |
+| 6 | `test_boundary_page_ptr_not_aligned` | `ptr % 0x1000 == 0` (page_ptr2page_index) |
+| 7 | `test_boundary_page_index_at_max` | `i < NUM_PAGES` (page_index2page_ptr) |
+| 8 | `test_boundary_endpoint_queue_full` | `queue_len < MAX_NUM_THREADS_PER_ENDPOINT` |
+| 9 | `test_boundary_scheduler_at_max_capacity` | `scheduler_len < MAX_CONTAINER_SCHEDULER_LEN` |
+| 10 | `test_boundary_endpoint_index_usize_max` | `endpoint_index < 128` (usize::MAX) |
 
-### Completeness: ✅ PASS
-The spec is appropriately tight for its stated guarantees:
-- All preconditions are enforced (Round 1)
-- The spec does not leak implementation details about return values (Rounds 2, 4)
-- Negations of valid postconditions are rejected (Round 3)
-- Frame conditions (domain/state preservation) are not over-promised (Round 5)
+## Behavioral Mutation Tests (7/7 FAIL ✅)
 
-### Observations
-The `ensures` clause is minimal — it only guarantees `self.wf()`. The function body always returns via `SyscallReturnStruct::NoSwitchNew(...)` which guarantees `pcid.is_None()`, `cr3.is_None()`, and `switch_decision == NoSwitch`, but these facts are intentionally **not** exposed in the ensures clause. This is a design choice rather than a spec gap — callers should not depend on these implementation details.
+| # | Test | Mutated Relation |
+|---|------|-----------------|
+| 1 | `test_mutation_none_descriptor_returns_success` | None descriptor → claim success |
+| 2 | `test_mutation_send_state_small_queue_returns_success` | SEND state → claim success |
+| 3 | `test_mutation_send_state_full_queue_returns_success` | SEND + full queue → claim success |
+| 4 | `test_mutation_receive_empty_queue_returns_success` | RECEIVE + empty → claim success |
+| 5 | `test_mutation_success_returns_error` | Valid conditions → claim error |
+| 6 | `test_mutation_full_scheduler_returns_success` | Full scheduler → claim success |
+| 7 | `test_mutation_queue_unchanged_after_schedule` | Queue shrinks → claim unchanged |
 
-Similarly, the body preserves thread/endpoint/container domains (via `schedule_blocked_thread`'s ensures), but this is not propagated to `syscall_send_empty_no_block`'s ensures. This means callers cannot reason about domain stability across calls, which may limit composability but keeps the interface minimal.
+## Logical Tests (9/9 FAIL ✅)
 
-**No spec gaps found.** All 30 tests behaved as expected (5 pass, 25 fail).
+| # | Test | Unwarranted Property |
+|---|------|---------------------|
+| 1 | `test_logical_determinism` | Determinism of return value |
+| 2 | `test_logical_always_error` | Return is always Error |
+| 3 | `test_logical_always_success` | Return is always Else |
+| 4 | `test_logical_thread_dom_changes` | Thread domain changes |
+| 5 | `test_logical_queue_state_flips` | Queue state flips RECEIVE→SEND |
+| 6 | `test_logical_switch_decision_is_switch` | Switch decision is Switch |
+| 7 | `test_logical_stronger_endpoint_bound` | endpoint_index < 64 (stronger) |
+| 8 | `test_logical_sender_equals_receiver` | Sender equals receiver |
+| 9 | `test_logical_endpoint_dom_grows` | Endpoint domain grows |
+
+---
+
+## Spec Weakness Analysis
+
+The `ensures` clause of `syscall_send_empty_no_block` only guarantees `self.wf()`. This means the specification:
+- Does **not** constrain the return value (`SyscallReturnStruct`) at all
+- Does **not** specify which error paths produce which return codes
+- Does **not** guarantee state preservation (e.g., thread_dom, endpoint_dom unchanged)
+- Does **not** guarantee the endpoint queue shrinks on success
+- Does **not** guarantee the receiver is actually scheduled
+
+The preconditions are well-defined and correctly reject invalid inputs. However, the postcondition is **too weak** to prevent many unintended behaviors — it only preserves the kernel's well-formedness invariant without constraining observable outputs.

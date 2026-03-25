@@ -1,0 +1,100 @@
+===PHI_START===
+NAME: set_modifies_other_indices
+TARGET_FN: set
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_set_modifies_other_indices(old_seq: Seq<usize>, new_seq: Seq<usize>, i: int, n: int, out: usize)
+    requires
+        n > 1,
+        0 <= i < n,
+        old_seq.len() == n,
+        new_seq =~= old_seq.update(i, out),
+        new_seq.len() == n,
+    ensures
+        exists|j: int| 0 <= j < n && j != i && new_seq[j] != old_seq[j],
+{
+}
+```
+REASON: Would mean `set` has side-effects on indices other than the target, violating the frame condition
+===PHI_END===
+
+===PHI_START===
+NAME: set_ignores_value
+TARGET_FN: set
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_set_ignores_value(old_seq: Seq<usize>, new_seq: Seq<usize>, i: int, n: int, out: usize)
+    requires
+        0 <= i < n,
+        old_seq.len() == n,
+        new_seq =~= old_seq.update(i, out),
+        new_seq.len() == n,
+        out != 0usize,
+    ensures
+        new_seq[i] == 0usize,
+{
+}
+```
+REASON: Would mean `set` ignores the provided `out` value and always writes zero, making the method useless for general updates
+===PHI_END===
+
+===PHI_START===
+NAME: init2zero_arbitrary_value
+TARGET_FN: init2zero
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_init2zero_arbitrary_value(seq: Seq<usize>, n: int, v: usize)
+    requires
+        n > 0,
+        seq.len() == n,
+        forall|index: int| 0 <= index < n ==> #[trigger] seq[index] == 0,
+        v != 0usize,
+    ensures
+        seq[0] == v,
+{
+}
+```
+REASON: Would mean init2zero's ensures is inconsistent, allowing elements to be both zero and non-zero simultaneously
+===PHI_END===
+
+===PHI_START===
+NAME: init2zero_vacuous_empty
+TARGET_FN: init2zero
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_init2zero_vacuous_empty(seq: Seq<usize>)
+    requires
+        seq.len() == 0,
+        forall|index: int| 0 <= index < 0 ==> #[trigger] seq[index] == 0,
+    ensures
+        seq.len() > 0,
+{
+}
+```
+REASON: Would mean the vacuously-true forall at N=0 erroneously implies a non-empty array, indicating a boundary-case spec weakness
+===PHI_END===
+
+===PHI_START===
+NAME: set_noop
+TARGET_FN: set
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_set_noop(old_seq: Seq<usize>, new_seq: Seq<usize>, i: int, n: int, out: usize)
+    requires
+        0 <= i < n,
+        old_seq.len() == n,
+        new_seq =~= old_seq.update(i, out),
+        new_seq.len() == n,
+        old_seq[i] != out,
+    ensures
+        new_seq[i] == old_seq[i],
+{
+}
+```
+REASON: Would mean `set` is a no-op that never actually mutates the target index, rendering the method functionally broken
+===PHI_END===

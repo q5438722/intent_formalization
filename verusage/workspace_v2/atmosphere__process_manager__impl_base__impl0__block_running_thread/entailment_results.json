@@ -1,0 +1,47 @@
+[
+  {
+    "name": "get_proc_leaks_container_dom_without_wf",
+    "type": "logical",
+    "code": "proof fn phi_1_get_proc_leaks_container_dom_without_wf(pm: ProcessManager, proc_ptr: ProcPtr)\n    requires\n        pm.proc_perms_wf(),\n        pm.process_fields_wf(),\n        pm.proc_dom().contains(proc_ptr),\n        !pm.wf(),\n    ensures\n        pm.container_dom().contains(pm.get_proc(proc_ptr).owning_container),\n{\n}",
+    "reason": "get_proc's external_body ensures `self.wf() ==> container_dom contains owning_container` but the ensures clause is guarded by wf() \u2014 yet the spec_get_proc inline spec has no such guarantee, creating a gap between the exec ensures and the spec recommends",
+    "entailed": false,
+    "verus_output": "    |\n1610 | proof fn phi_1_get_proc_leaks_container_dom_without_wf(pm: ProcessManager, proc_ptr: ProcPtr)\n     |       --------------------------------------------------------------------------------------- at the end of the function body\n...\n1617 |         pm.container_dom().contains(pm.get_proc(proc_ptr).owning_container),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 22 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "get_thread_leaks_container_scheduler_wf",
+    "type": "logical",
+    "code": "proof fn phi_2_get_thread_leaks_container_scheduler_wf(pm: ProcessManager, t_ptr: ThreadPtr)\n    requires\n        pm.wf(),\n        pm.thread_dom().contains(t_ptr),\n    ensures\n        pm.get_container(pm.get_thread(t_ptr).owning_container).scheduler.wf(),\n        pm.get_container(pm.get_thread(t_ptr).owning_container).owned_procs.wf(),\n        pm.get_container(pm.get_thread(t_ptr).owning_container).children.wf(),\n{\n}",
+    "reason": "get_thread's external_body ensures wf() for scheduler/owned_procs/children of the owning container \u2014 these should follow from wf() invariants, but being in external_body means they're trusted without proof and could mask missing invariant clauses",
+    "entailed": false,
+    "verus_output": "0 | proof fn phi_2_get_thread_leaks_container_scheduler_wf(pm: ProcessManager, t_ptr: ThreadPtr)\n     |       -------------------------------------------------------------------------------------- at the end of the function body\n...\n1616 |         pm.get_container(pm.get_thread(t_ptr).owning_container).owned_procs.wf(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 2 previous errors; 22 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "owned_threads_shared_across_containers",
+    "type": "logical",
+    "code": "proof fn phi_3_owned_threads_shared_across_containers(\n    pm: ProcessManager,\n    c1: ContainerPtr,\n    c2: ContainerPtr,\n    t: ThreadPtr,\n)\n    requires\n        pm.wf(),\n        pm.container_dom().contains(c1),\n        pm.container_dom().contains(c2),\n        c1 != c2,\n        pm.get_container(c1).owned_threads@.contains(t),\n        pm.get_container(c2).owned_threads@.contains(t),\n    ensures\n        true,\n{\n}",
+    "reason": "No disjointness constraint on owned_threads across containers \u2014 two containers can claim the same thread simultaneously despite the resource ownership model requiring exclusive ownership",
+    "entailed": true,
+    "verus_output": "ude::OptionAdditionalFns::is_None`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__impl_base__impl0__block_running_thread/phi_3_owned_threads_shared_across_containers.rs:1560:42\n     |\n1560 |         thread_perm@.value().running_cpu.is_None(),\n     |                                          ^^^^^^^\n\nwarning: 22 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "sll_len_without_wf_returns_value_list_len",
+    "type": "logical",
+    "code": "proof fn phi_4_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    ensures\n        sll.len() == sll.value_list_len,\n{\n}",
+    "reason": "StaticLinkedList::len's external_body unconditionally ensures l == self.value_list_len without requiring wf() \u2014 the raw internal field is exposed even for malformed lists, bypassing the well-formedness abstraction",
+    "entailed": false,
+    "verus_output": "_returns_value_list_len.rs:1612:9\n     |\n1610 | proof fn phi_4_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n     |       -------------------------------------------------------------------------------------------------- at the end of the function body\n1611 |     ensures\n1612 |         sll.len() == sll.value_list_len,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 22 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "inactive_cpu_has_arbitrary_owning_container",
+    "type": "behavioral",
+    "code": "proof fn phi_5_inactive_cpu_has_arbitrary_owning_container(pm: ProcessManager, cpu_i: CpuId)\n    requires\n        pm.wf(),\n        0 <= cpu_i < NUM_CPUS,\n        pm.cpu_list@[cpu_i as int].active == false,\n    ensures\n        pm.container_dom().contains(pm.cpu_list@[cpu_i as int].owning_container),\n{\n}",
+    "reason": "container_cpu_wf requires ALL cpus (active or not) to have owning_container in container_dom \u2014 inactive CPUs should arguably have no meaningful owning_container, yet the spec forces a valid container binding even when the CPU is not running",
+    "entailed": false,
+    "verus_output": "0__block_running_thread/phi_5_inactive_cpu_has_arbitrary_owning_container.rs:1616:37\n     |\n1616 |         pm.container_dom().contains(pm.cpu_list@[cpu_i as int].owning_container),\n     |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^\n     |\n    ::: /home/chentianyu/intent_formalization/verus/vstd/seq.rs:62:13\n     |\n  62 |             0 <= i < self.len(),\n     |             ------------------- recommendation not met\n\nerror: aborting due to 1 previous error; 22 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

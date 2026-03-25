@@ -1,0 +1,94 @@
+===PHI_START===
+NAME: overlap_zero_size_reflexive
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_overlap_zero_size_reflexive(base: nat)
+    ensures
+        overlap(MemRegion { base: base, size: 0 }, MemRegion { base: base, size: 0 }),
+{
+}
+```
+REASON: Two zero-size regions at the same base are considered overlapping via `region1.base == region2.base` — empty intervals should not overlap
+===PHI_END===
+
+===PHI_START===
+NAME: overlap_asymmetric_boundary
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_overlap_asymmetric_boundary(a: nat, sz: nat)
+    requires
+        sz > 0,
+    ensures
+        overlap(MemRegion { base: a, size: sz }, MemRegion { base: a + sz, size: 0 }),
+        !overlap(MemRegion { base: a + sz, size: 0 }, MemRegion { base: a, size: sz }),
+{
+}
+```
+REASON: `overlap` is asymmetric — a zero-size region at the exclusive upper bound of a non-empty region is detected as overlapping in one direction but not the reverse
+===PHI_END===
+
+===PHI_START===
+NAME: if_map_then_unique_ignores_vaddr
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_if_map_then_unique_ignores_vaddr(v1: nat, v2: nat, pte: PTE)
+    requires
+        v1 != v2,
+    ensures
+        ({
+            let ts = Map::empty()
+                .insert(0nat, ThreadState::Map { vaddr: v1, pte: pte })
+                .insert(1nat, ThreadState::Map { vaddr: v2, pte: pte });
+            !inflight_maps_unique(ts)
+        }),
+{
+}
+```
+REASON: `if_map_then_unique` compares entire `ThreadState` values including vaddr — two maps with different vaddrs but identical PTEs are considered unique, but two maps with same PTE and same vaddr are not, even though the uniqueness check should be about physical frame overlap
+===PHI_END===
+
+===PHI_START===
+NAME: inflight_pmem_overlap_idle_ignored
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_inflight_pmem_overlap_idle_ignored(pte: PTE)
+    ensures
+        !candidate_mapping_overlaps_inflight_pmem(
+            set![ThreadState::Idle],
+            pte,
+        ),
+{
+}
+```
+REASON: `candidate_mapping_overlaps_inflight_pmem` ignores Idle threads — tests that the match arm returns false for Idle, which is expected but confirms no physical memory reservation for idle threads
+===PHI_END===
+
+===PHI_START===
+NAME: uniqueness_not_frame_overlap_based
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_uniqueness_not_frame_overlap_based(v1: nat, v2: nat, f1: MemRegion, f2: MemRegion, flags: Flags)
+    requires
+        v1 != v2,
+        f1.base == f2.base,
+        f1.size == f2.size,
+        f1.size > 0,
+    ensures
+        ({
+            let pte1 = PTE { frame: f1, flags: flags };
+            let pte2 = PTE { frame: f2, flags: flags };
+            let ts = Map::empty()
+                .insert(0nat, ThreadState::Map { vaddr: v1, pte: pte1 })
+                .insert(1nat, ThreadState::Map { vaddr: v2, pte: pte2 });
+            inflight_maps_unique(ts)
+        }),
+{
+}
+```
+REASON: Two inflight maps with identical physical frames but different vaddrs pass the uniqueness check because `if_map_then_unique` compares `ThreadState` values (which include vaddr) rather than checking physical frame overlap — allows double-mapping the same physical frame
+===PHI_END===

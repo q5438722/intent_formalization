@@ -1,0 +1,47 @@
+[
+  {
+    "name": "subregion_view_length_matches",
+    "type": "behavioral",
+    "code": "proof fn phi_1_subregion_view_length_matches(\n    region: PersistentMemoryRegionView,\n    start: nat,\n    len: nat,\n)\n    requires\n        start + len <= region.len(),\n    ensures\n        get_subregion_view(region, start, len).len() == len,\n{\n}",
+    "reason": "The subregion view length should equal the requested length \u2014 if `subrange` produced a different length, all offset calculations within the subregion would be invalid",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "subregion_view_byte_offset",
+    "type": "behavioral",
+    "code": "proof fn phi_2_subregion_view_byte_offset(\n    region: PersistentMemoryRegionView,\n    start: nat,\n    len: nat,\n    k: int,\n)\n    requires\n        start + len <= region.len(),\n        0 <= k < len,\n    ensures\n        get_subregion_view(region, start, len).state[k] == region.state[start + k],\n{\n}",
+    "reason": "Subregion byte at relative offset k should equal region byte at absolute offset start+k \u2014 if the mapping were wrong, reads/writes through the subregion would access incorrect physical addresses",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "views_differ_allows_writable_addr_change",
+    "type": "logical",
+    "code": "proof fn phi_3_views_differ_allows_writable_addr_change(\n    v1: PersistentMemoryRegionView,\n    v2: PersistentMemoryRegionView,\n    start: nat,\n    len: nat,\n    addr: int,\n)\n    requires\n        v1.len() == v2.len(),\n        start + len <= v1.len(),\n        start <= addr < start + len,\n        forall |a: int| a != addr && (\n            ||| 0 <= a < start\n            ||| start + len <= a < v1.len()\n            ||| start <= a < start + len\n        ) ==> v1.state[a] == v2.state[a],\n    ensures\n        views_differ_only_where_subregion_allows(v1, v2, start, len, |a: int| a == addr),\n{\n}",
+    "reason": "When only one address is writable and only that address differs, the predicate should hold \u2014 tests that the writable address function correctly permits targeted mutations",
+    "entailed": false,
+    "verus_output": "error: leading ||| must be inside a block {...}\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/storage__subregion_new3/phi_3_views_differ_allows_writable_addr_change.rs:208:13\n    |\n208 |             ||| 0 <= a < start\n    |             ^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "zero_length_subregion_view_empty",
+    "type": "boundary",
+    "code": "proof fn phi_4_zero_length_subregion_view_empty(\n    region: PersistentMemoryRegionView,\n    start: nat,\n)\n    requires\n        start <= region.len(),\n    ensures\n        get_subregion_view(region, start, 0).len() == 0,\n{\n}",
+    "reason": "A zero-length subregion should produce an empty view \u2014 if it had non-zero length, phantom bytes would appear in the subregion",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "adjacent_subregions_cover_range",
+    "type": "logical",
+    "code": "proof fn phi_5_adjacent_subregions_cover_range(\n    region: PersistentMemoryRegionView,\n    start: nat,\n    len1: nat,\n    len2: nat,\n    k: int,\n)\n    requires\n        start + len1 + len2 <= region.len(),\n        0 <= k < len2,\n    ensures\n        get_subregion_view(region, start + len1, len2).state[k]\n            == get_subregion_view(region, start, len1 + len2).state[len1 + k],\n{\n}",
+    "reason": "A subregion starting at `start+len1` should align with the second half of a combined subregion \u2014 if subrange arithmetic were inconsistent, splitting a region into adjacent subregions would produce misaligned views",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

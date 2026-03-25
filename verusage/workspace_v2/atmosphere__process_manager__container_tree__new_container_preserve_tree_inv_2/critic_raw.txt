@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: owned_threads_shared_across_containers
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: Neither `container_perms_wf` nor `container_tree_wf` constrains `owned_threads` at all. The preconditions are simultaneously satisfiable, confirming two distinct containers can own the same thread — violating the unique ownership intent described in code comments.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: new_container_owned_threads_unconstrained
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `new_container_ensures` constrains `children`, `subtree_set`, `uppertree_seq`, `depth`, and `parent` of the new container but never requires `owned_threads@ =~= Set::empty()`. A freshly created container should logically start with no threads, yet the spec permits arbitrary thread sets.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: scheduler_contains_non_owned_thread
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The spec never relates `scheduler` contents to `owned_threads`. A container can schedule threads it doesn't own, breaking the containment model where only owned (or subtree) threads should be schedulable.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: seq_push_lemma_external_body_trusted
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures clauses of `seq_push_lemma` state standard, mathematically correct properties of sequence push (element preservation, new element containment, no spurious elements). These are provable from vstd's sequence axioms and are trusted as a convenience — not a soundness gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: owned_procs_shared_across_containers
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: Neither `container_perms_wf` nor `container_tree_wf` constrains `owned_procs` beyond requiring `children.wf()` and `children.unique()`. The same process can appear in two distinct containers' `owned_procs` lists, violating the single-parent ownership model for processes.
+===VERDICT_END===
+
+===SUMMARY===
+Four true positives identify missing constraints on container-owned resources: `owned_threads` and `owned_procs` lack cross-container disjointness, `scheduler` is unconstrained relative to `owned_threads`, and `new_container_ensures` fails to require empty `owned_threads` for freshly created containers. The `seq_push_lemma` external_body is a false positive — its ensures state standard, mathematically correct sequence properties that are trusted as a convenience rather than representing a real soundness gap.
+===END_SUMMARY===

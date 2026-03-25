@@ -1,0 +1,83 @@
+===PHI_START===
+NAME: unmarshal_roundtrip_identity
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_unmarshal_roundtrip_identity<T: ResourceView>(o: T)
+    requires
+        true,
+    ensures
+        T::unmarshal(o.marshal()) is Ok,
+        T::unmarshal(o.marshal())->Ok_0 == o,
+{
+}
+```
+REASON: no marshal_preserves_integrity axiom exists in this version — marshal_spec/unmarshal_spec are uninterpreted with zero roundtrip guarantees, so unmarshal∘marshal = id should be completely unprovable
+===PHI_END===
+
+===PHI_START===
+NAME: unmarshal_spec_always_succeeds
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_unmarshal_spec_always_succeeds<T: ResourceView>(v: Value)
+    requires
+        true,
+    ensures
+        T::unmarshal_spec(v) is Ok,
+{
+}
+```
+REASON: unmarshal_spec is uninterpreted with no axioms — totality should not be entailed since arbitrary Values may not represent valid specs
+===PHI_END===
+
+===PHI_START===
+NAME: allocate_triple_equals_plus_two
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_allocate_triple_equals_plus_two(a: ReconcileIdAllocator)
+    requires
+        true,
+    ensures
+        a.allocate().0.allocate().0.reconcile_id_counter == a.reconcile_id_counter + 2,
+        a.allocate().0.allocate().0.allocate().1 == a.reconcile_id_counter + 2,
+        a.allocate().0.allocate().1 == a.allocate().1,
+{
+}
+```
+REASON: the third ensures claims the second allocation returns the same ID as the first — but allocate increments the counter so consecutive IDs must differ
+===PHI_END===
+
+===PHI_START===
+NAME: update_status_key_equals_get_then_delete_key
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_update_status_key_equals_get_then_delete_key(usr: UpdateStatusRequest, gdr: GetThenDeleteRequest)
+    requires
+        gdr.key.kind == usr.obj.kind,
+        gdr.key.namespace == usr.namespace,
+    ensures
+        gdr.key() == usr.key(),
+{
+}
+```
+REASON: GetThenDeleteRequest::key returns self.key which has its own name field, while UpdateStatusRequest::key uses self.name — matching kind and namespace does NOT imply the name fields agree
+===PHI_END===
+
+===PHI_START===
+NAME: marshal_spec_unmarshal_status_cross
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_marshal_spec_unmarshal_status_cross<T: ResourceView>(s: T::Spec)
+    requires
+        true,
+    ensures
+        T::unmarshal_status(T::marshal_spec(s)) is Ok,
+{
+}
+```
+REASON: marshal_spec and unmarshal_status are independent uninterpreted functions over different semantic domains — a serialized spec Value should not be guaranteed to deserialize as a valid status
+===PHI_END===

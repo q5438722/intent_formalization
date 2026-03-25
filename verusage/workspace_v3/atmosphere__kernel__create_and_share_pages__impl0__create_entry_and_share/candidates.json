@@ -1,0 +1,37 @@
+[
+  {
+    "name": "share_flips_write_perm",
+    "target_fn": "create_entry_and_share",
+    "type": "behavioral",
+    "code": "proof fn phi_1_share_flips_write_perm(\n    old_src_space: Map<VAddr, MapEntry>,\n    old_target_space: Map<VAddr, MapEntry>,\n    new_target_space: Map<VAddr, MapEntry>,\n    src_va: VAddr,\n    target_va: VAddr,\n)\n    requires\n        old_src_space.dom().contains(src_va),\n        !old_target_space.dom().contains(target_va),\n        new_target_space =~= old_target_space.insert(target_va, old_src_space[src_va]),\n    ensures\n        new_target_space[target_va].write != old_src_space[src_va].write,\n{\n}",
+    "reason": "If sharing flips write permissions, a read-only page could become writable in the target, breaking memory safety"
+  },
+  {
+    "name": "same_proc_src_va_corrupted",
+    "target_fn": "create_entry_and_share",
+    "type": "boundary",
+    "code": "proof fn phi_2_same_proc_src_va_corrupted(\n    old_space: Map<VAddr, MapEntry>,\n    new_space: Map<VAddr, MapEntry>,\n    src_va: VAddr,\n    target_va: VAddr,\n)\n    requires\n        old_space.dom().contains(src_va),\n        !old_space.dom().contains(target_va),\n        new_space =~= old_space.insert(target_va, old_space[src_va]),\n    ensures\n        new_space[src_va] != old_space[src_va],\n{\n}",
+    "reason": "When src_proc_ptr == target_proc_ptr, the original source VA mapping must be preserved; corruption would silently remap existing memory"
+  },
+  {
+    "name": "page_mapping_drops_source",
+    "target_fn": "create_entry_and_share",
+    "type": "logical",
+    "code": "proof fn phi_3_page_mapping_drops_source(\n    old_set: Set<(ProcPtr, VAddr)>,\n    new_set: Set<(ProcPtr, VAddr)>,\n    src_proc_ptr: ProcPtr,\n    src_va: VAddr,\n    target_proc_ptr: ProcPtr,\n    target_va: VAddr,\n)\n    requires\n        old_set.contains((src_proc_ptr, src_va)),\n        new_set =~= old_set.insert((target_proc_ptr, target_va)),\n    ensures\n        !new_set.contains((src_proc_ptr, src_va)),\n{\n}",
+    "reason": "If inserting the new share target drops the original source tracking entry, the kernel would lose the ability to revoke or unmap the source's access"
+  },
+  {
+    "name": "refcount_not_incremented",
+    "target_fn": "create_entry_and_share",
+    "type": "behavioral",
+    "code": "proof fn phi_4_refcount_not_incremented(\n    old_refcount: usize,\n    new_refcount: usize,\n)\n    requires\n        old_refcount <= usize::MAX - 1,\n        old_refcount + 1 == new_refcount,\n    ensures\n        new_refcount <= old_refcount,\n{\n}",
+    "reason": "If the physical page reference counter does not increase after sharing, premature page reclamation could cause use-after-free"
+  },
+  {
+    "name": "target_gains_extra_mappings",
+    "target_fn": "create_entry_and_share",
+    "type": "boundary",
+    "code": "proof fn phi_5_target_gains_extra_mappings(\n    old_target_space: Map<VAddr, MapEntry>,\n    new_target_space: Map<VAddr, MapEntry>,\n    old_src_space: Map<VAddr, MapEntry>,\n    src_va: VAddr,\n    target_va: VAddr,\n    extra_va: VAddr,\n)\n    requires\n        old_src_space.dom().contains(src_va),\n        !old_target_space.dom().contains(target_va),\n        new_target_space =~= old_target_space.insert(target_va, old_src_space[src_va]),\n        !old_target_space.dom().contains(extra_va),\n        extra_va != target_va,\n    ensures\n        new_target_space.dom().contains(extra_va),\n{\n}",
+    "reason": "If sharing introduces unintended extra VA mappings in the target, the target process gains access to memory it should not see"
+  }
+]

@@ -1,0 +1,88 @@
+===PHI_START===
+NAME: align_exceeds_input
+TARGET_FN: align_to_usize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_align_exceeds_input(a: usize, b: usize)
+    requires
+        b > 0,
+        a >= b,
+    ensures
+        align_to_usize(a, b) > a,
+{
+}
+```
+REASON: Floor-alignment must never exceed the original value; if it does, the subtraction logic is inverted
+===PHI_END===
+
+===PHI_START===
+NAME: align_one_not_identity
+TARGET_FN: align_to_usize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_align_one_not_identity(a: usize)
+    requires
+        a < usize::MAX,
+    ensures
+        align_to_usize(a, 1usize) != a,
+{
+}
+```
+REASON: Aligning to 1 should be the identity (every integer is 1-aligned); failure means the modular arithmetic is wrong
+===PHI_END===
+
+===PHI_START===
+NAME: align_not_idempotent
+TARGET_FN: align_to_usize
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_align_not_idempotent(a: usize, b: usize)
+    requires
+        b > 0,
+        a < 0xFFFF_FFFF_FFFF_FFFFusize,
+    ensures
+        align_to_usize(align_to_usize(a, b), b) != align_to_usize(a, b),
+{
+}
+```
+REASON: Alignment must be idempotent; an already-aligned value re-aligned should not change
+===PHI_END===
+
+===PHI_START===
+NAME: align_remainder_ge_modulus
+TARGET_FN: align_to_usize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_align_remainder_ge_modulus(a: usize, b: usize)
+    requires
+        b > 0,
+        a >= b,
+    ensures
+        (a - align_to_usize(a, b)) >= b,
+{
+}
+```
+REASON: The gap between the input and its alignment must be strictly less than b; otherwise a closer aligned address was skipped
+===PHI_END===
+
+===PHI_START===
+NAME: align_multiple_changes_value
+TARGET_FN: align_to_usize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_align_multiple_changes_value(a: usize, b: usize)
+    requires
+        b > 0,
+        a % b == 0usize,
+    ensures
+        align_to_usize(a, b) != a,
+{
+}
+```
+REASON: An input already divisible by b is already aligned; the function must return it unchanged
+===PHI_END===

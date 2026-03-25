@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: tla_exists_proved_by_witness_closure_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_tla_exists_proved_by_witness_closure_bridge(ex: Execution<int>, a_to_p: spec_fn(int) -> TempPred<int>, witness_a: int)
+    requires
+        a_to_p(witness_a).satisfied_by(ex),
+    ensures
+        tla_exists(a_to_p).satisfied_by(ex),
+{
+    tla_exists_proved_by_witness::<int, int>(ex, a_to_p, witness_a);
+}
+```
+REASON: tla_exists_proved_by_witness is external_body bridging a_to_p(witness).satisfied_by(ex) to tla_exists's TempPred::new closure-wrapped existential — resolves closure identity gap without proof
+===PHI_END===
+
+===PHI_START===
+NAME: temp_pred_equality_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_temp_pred_equality_intensional_bridge(p: TempPred<int>, q: TempPred<int>)
+    requires
+        p.entails(q),
+        q.entails(p),
+    ensures
+        p == q,
+{
+    temp_pred_equality::<int>(p, q);
+}
+```
+REASON: temp_pred_equality is external_body forcing intensional equality from mutual entailment — structurally distinct closures collapsed to equal without proof
+===PHI_END===
+
+===PHI_START===
+NAME: mutual_entailment_derives_false_if_distinct
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_mutual_entailment_derives_false_if_distinct(p: TempPred<int>, q: TempPred<int>)
+    requires
+        p.entails(q),
+        q.entails(p),
+        p !== q,
+    ensures
+        false,
+{
+    temp_pred_equality::<int>(p, q);
+}
+```
+REASON: temp_pred_equality forces p == q from mutual entailment — if two preds are intensionally distinct but semantically equivalent this derives false
+===PHI_END===
+
+===PHI_START===
+NAME: tla_exists_or_equality_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_tla_exists_or_equality_bridge(a_to_p: spec_fn(int) -> TempPred<int>, q: TempPred<int>)
+    ensures
+        tla_exists(|a: int| a_to_p(a).or(q)) == tla_exists(a_to_p).or(q),
+{
+    tla_exists_or_equality::<int, int>(a_to_p, q);
+}
+```
+REASON: tla_exists_or_equality forces intensional equality between tla_exists(|a| p(a).or(q)) and tla_exists(p).or(q) — structurally distinct nested closures collapsed via both external_body axioms
+===PHI_END===
+
+===PHI_START===
+NAME: arbitrary_witness_in_else_branch
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_arbitrary_witness_in_else_branch(ex: Execution<int>, a_to_p: spec_fn(int) -> TempPred<int>, q: TempPred<int>)
+    requires
+        q.satisfied_by(ex),
+        !tla_exists(a_to_p).satisfied_by(ex),
+    ensures
+        tla_exists(|a: int| a_to_p(a).or(q)).satisfied_by(ex),
+{
+    tla_exists_or_equality::<int, int>(a_to_p, q);
+}
+```
+REASON: when q holds but no witness for a_to_p exists, tla_exists_or_equality still guarantees tla_exists(|a| p(a).or(q)) — the proof uses arbitrary() as witness, relying on the or-branch being true regardless of which a is chosen, but the existential introduction through the closure bridge is unverified
+===PHI_END===

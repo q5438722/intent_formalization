@@ -1,0 +1,83 @@
+===PHI_START===
+NAME: execution_equality_forces_fn_equality
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_execution_equality_forces_fn_equality(f: spec_fn(nat) -> int, g: spec_fn(nat) -> int)
+    requires
+        forall |i: nat| #[trigger] f(i) == g(i),
+    ensures
+        f == g,
+{
+    let ex1 = Execution { nat_to_state: f };
+    let ex2 = Execution { nat_to_state: g };
+    execution_equality::<int>(ex1, ex2);
+}
+```
+REASON: execution_equality is external_body and forces intensional equality of spec_fn from pointwise extensional equivalence — two distinct closures agreeing on all inputs are collapsed to structurally equal
+===PHI_END===
+
+===PHI_START===
+NAME: suffix_zero_equals_self
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_suffix_zero_equals_self(ex: Execution<int>)
+    ensures
+        ex.suffix(0) == ex,
+{
+    execution_equality::<int>(ex.suffix(0), ex);
+}
+```
+REASON: ex.suffix(0) creates a new closure |i| f(i+0) intensionally distinct from ex — execution_equality silently equates these without proof, papering over the intensional/extensional gap
+===PHI_END===
+
+===PHI_START===
+NAME: suffix_composition_equals_addition
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_suffix_composition_equals_addition(ex: Execution<int>, i: nat, j: nat)
+    ensures
+        ex.suffix(i).suffix(j) == ex.suffix(i + j),
+{
+    execution_equality::<int>(ex.suffix(i).suffix(j), ex.suffix(i + j));
+}
+```
+REASON: doubly-nested suffix creates a closure intensionally distinct from single-offset suffix — execution_equality collapses them without proof, and always_implies_preserved_by_always depends on this at the key composition step
+===PHI_END===
+
+===PHI_START===
+NAME: implies_apply_closure_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_implies_apply_closure_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>)
+    requires
+        p.satisfied_by(ex),
+        (p.pred)(ex) ==> (q.pred)(ex),
+    ensures
+        q.satisfied_by(ex),
+{
+    implies_apply::<int>(ex, p, q);
+}
+```
+REASON: implies_apply is external_body bridging the intensional gap between p.implies(q).satisfied_by(ex) (which wraps in TempPred::new) and direct implication — silently resolves closure identity mismatch
+===PHI_END===
+
+===PHI_START===
+NAME: always_unfold_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_always_unfold_intensional_bridge(ex: Execution<int>, p: TempPred<int>, i: nat)
+    requires
+        always(p).satisfied_by(ex),
+    ensures
+        p.satisfied_by(ex.suffix(i)),
+{
+    always_unfold::<int>(ex, p);
+}
+```
+REASON: always_unfold is external_body bridging the forall embedded in always's TempPred::new closure and a bare forall in the ensures — these are intensionally distinct formulations that the axiom equates without proof
+===PHI_END===

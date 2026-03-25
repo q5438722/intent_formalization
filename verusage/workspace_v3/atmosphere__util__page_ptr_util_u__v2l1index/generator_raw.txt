@@ -1,0 +1,85 @@
+===PHI_START===
+NAME: always_zero
+TARGET_FN: v2l1index
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_always_zero(va: usize)
+    requires
+        spec_va_4k_valid(va) || spec_va_2m_valid(va) || spec_va_1g_valid(va),
+    ensures
+        spec_v2l1index(va) == 0usize,
+{
+}
+```
+REASON: If the L1 index is always zero for every valid address, the page table index extraction is broken and all mappings collapse to a single entry.
+===PHI_END===
+
+===PHI_START===
+NAME: tighter_upper_bound
+TARGET_FN: v2l1index
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_tighter_upper_bound(va: usize)
+    requires
+        spec_va_4k_valid(va) || spec_va_2m_valid(va) || spec_va_1g_valid(va),
+    ensures
+        spec_v2l1index(va) < 0x100usize,
+{
+}
+```
+REASON: If the index is always below 256, the claimed upper bound of 0x1ff is too loose and only half the L1 page table entries are reachable.
+===PHI_END===
+
+===PHI_START===
+NAME: constant_output
+TARGET_FN: v2l1index
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_constant_output(va1: usize, va2: usize)
+    requires
+        spec_va_4k_valid(va1) || spec_va_2m_valid(va1) || spec_va_1g_valid(va1),
+        spec_va_4k_valid(va2) || spec_va_2m_valid(va2) || spec_va_1g_valid(va2),
+    ensures
+        spec_v2l1index(va1) == spec_v2l1index(va2),
+{
+}
+```
+REASON: If any two valid addresses always yield the same L1 index, the function is effectively constant and cannot distinguish different page table entries.
+===PHI_END===
+
+===PHI_START===
+NAME: max_index_unreachable
+TARGET_FN: v2l1index
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_max_index_unreachable(va: usize)
+    requires
+        spec_va_4k_valid(va) || spec_va_2m_valid(va) || spec_va_1g_valid(va),
+    ensures
+        spec_v2l1index(va) != 0x1ffusize,
+{
+}
+```
+REASON: If the maximum L1 index 0x1ff is unreachable, the last page table entry can never be addressed, indicating an off-by-one or masking error in the validity predicates.
+===PHI_END===
+
+===PHI_START===
+NAME: index_equals_full_page_number
+TARGET_FN: v2l1index
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_index_equals_full_page_number(va: usize)
+    requires
+        spec_va_4k_valid(va) || spec_va_2m_valid(va) || spec_va_1g_valid(va),
+    ensures
+        spec_v2l1index(va) == (va >> 12usize) as usize,
+{
+}
+```
+REASON: If the 9-bit mask is redundant and the index equals the full shifted page number, higher-order address bits are leaking into the L1 index, causing incorrect page table lookups.
+===PHI_END===

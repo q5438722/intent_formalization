@@ -1,0 +1,90 @@
+===PHI_START===
+NAME: interp_aux_key_from_entry
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_interp_aux_key_from_entry(d: Directory, va: nat)
+    requires
+        d.inv(),
+        d.interp_aux(0).contains_key(va),
+    ensures
+        exists|i: nat| #![auto] 0 <= i < d.num_entries() && d.interp_of_entry(i).contains_key(va),
+{
+    d.lemma_interp_aux_contains_implies_interp_of_entry_contains(0);
+}
+```
+REASON: Every key in the full interpretation comes from some entry — direct consequence of the verified lemma
+===PHI_END===
+
+===PHI_START===
+NAME: interp_aux_pair_from_entry
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_interp_aux_pair_from_entry(d: Directory, va: nat, pte: PTE)
+    requires
+        d.inv(),
+        d.interp_aux(0).contains_pair(va, pte),
+    ensures
+        exists|i: nat| #![auto] 0 <= i < d.num_entries() && d.interp_of_entry(i).contains_pair(va, pte),
+{
+    d.lemma_interp_aux_contains_implies_interp_of_entry_contains(0);
+}
+```
+REASON: Every key-value pair in the interpretation comes from some entry — tests that union_prefer_right doesn't fabricate new pairs
+===PHI_END===
+
+===PHI_START===
+NAME: page_entry_contains_base_key
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_page_entry_contains_base_key(d: Directory, i: nat)
+    requires
+        d.inv(),
+        i < d.entries.len(),
+        d.entries[i as int] is Page,
+    ensures
+        d.interp_of_entry(i).contains_key(d.entry_base(i)),
+{
+}
+```
+REASON: A page entry always contributes its entry_base as a key — tests the open spec singleton map definition
+===PHI_END===
+
+===PHI_START===
+NAME: invalid_entry_empty_interp
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_invalid_entry_empty_interp(d: Directory, i: nat)
+    requires
+        d.inv(),
+        i < d.entries.len(),
+        d.entries[i as int] is Invalid,
+    ensures
+        d.interp_of_entry(i) === Map::<nat, PTE>::empty(),
+{
+}
+```
+REASON: Invalid entries contribute nothing to the interpretation — tests the open spec definition
+===PHI_END===
+
+===PHI_START===
+NAME: interp_aux_superset_of_entry
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_interp_aux_superset_of_entry(d: Directory, i: nat, va: nat, pte: PTE)
+    requires
+        d.inv(),
+        i < d.entries.len(),
+        d.interp_of_entry(i).contains_pair(va, pte),
+    ensures
+        d.interp_aux(0).contains_key(va),
+{
+    d.lemma_interp_aux_contains_implies_interp_of_entry_contains(0);
+}
+```
+REASON: Every entry's keys appear in the full interpretation — tests that union_prefer_right preserves all keys from earlier entries
+===PHI_END===

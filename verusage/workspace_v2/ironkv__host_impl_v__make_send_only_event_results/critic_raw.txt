@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: well_typed_allows_empty_everything
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: An empty event batch being well-typed is standard — it represents a no-op or internal step. Whether such steps can refine real transitions is constrained elsewhere (e.g., `next_ensures`), not by `well_typed_events` alone.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: well_typed_no_upper_bound_on_sends
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is intentional for I/O automata modeling in IronFleet-style systems — a single protocol step may produce multiple sends (e.g., broadcasting to all replicas). The bound on clocks (≤1) reflects that you read the clock at most once per step, while sends are naturally unbounded.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: event_seq_ordering_fixed
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The fixed `recvs + clocks + sends` ordering is the intentional design — the implementation first receives, then reads the clock, then sends. This canonical ordering simplifies refinement proofs and matches the actual execution model where receives precede sends within a single step.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: well_typed_allows_multiple_recvs
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: medium
+REASONING: While many I/O automaton formalizations restrict to one receive per step, the IronFleet/SHT model this code is based on allows batching multiple receives in a single step for performance. Additional constraints on receive counts would be imposed at the protocol level, not at the event-results typing level.
+===VERDICT_END===
+
+===SUMMARY===
+All four candidates are false positives. The `well_typed_events` predicate is intentionally permissive — it enforces type correctness (receives are Receive, sends are Send, etc.) and a single clock-read bound, while leaving cardinality and ordering constraints to higher-level protocol specifications. The empty batch, unbounded sends, fixed ordering, and multiple receives are all deliberate design choices consistent with IronFleet-style distributed systems verification.
+===END_SUMMARY===

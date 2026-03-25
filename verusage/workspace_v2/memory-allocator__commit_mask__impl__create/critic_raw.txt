@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: is_bit_set_not0_no_bound
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The axiom `forall|j: usize| is_bit_set(!0usize, j)` has no `j < 64` guard. For `j >= 64`, `1usize << j` wraps around, so the axiom asserts properties about non-existent bit positions that could enable unsound reasoning chains.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: or_bit_set_no_bound
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The OR biconditional axiom `is_bit_set(a | b, j) <==> is_bit_set(a, j) || is_bit_set(b, j)` lacks a `j < 64` guard. For out-of-range bit positions where shift wraps, this relates three `is_bit_set` calls at wrapped positions where the logical meaning breaks down.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: lemma_view_no_range_guard
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The first ensures of `lemma_view` decomposes `i` into `a = i/64` and `b = i%64` then accesses `self.mask[a]` without guarding `0 <= a < 8`. For `i >= 512` or `i < 0`, this produces an out-of-bounds array access in spec, and the external_body axiom doesn't faithfully reflect the `view()` definition which does constrain `0 <= t.0 < 8`.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: lemma_change_one_entry_no_new_mask_constraint
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The lemma correctly derives `other@` from whatever value is actually in `other.mask[i]` — this is exactly the intended design. The lemma relates the abstract view to the concrete mask values, and the caller (`create`) is responsible for setting `other.mask[i]` to the correct bitmask before invoking this lemma.
+===VERDICT_END===
+
+===SUMMARY===
+Three true positives identify real soundness gaps in the external_body axioms: two missing `j < 64` guards in `lemma_is_bit_set` (the `!0usize` clause and the OR biconditional) and a missing `0 <= a < 8` guard in `lemma_view`'s decomposition ensures. These allow reasoning about out-of-range bit positions and out-of-bounds array accesses. The `lemma_change_one_entry` candidate is a false positive — it correctly derives the abstract view from the concrete mask value, which is the intended design pattern where the caller controls what value gets stored.
+===END_SUMMARY===

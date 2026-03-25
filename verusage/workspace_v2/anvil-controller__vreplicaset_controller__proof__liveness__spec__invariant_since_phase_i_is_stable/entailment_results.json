@@ -1,0 +1,47 @@
+[
+  {
+    "name": "crash_disabled_ignores_other_controllers",
+    "type": "behavioral",
+    "code": "proof fn phi_1_crash_disabled_ignores_other_controllers(controller_id: int, other_id: int, s: ClusterState)\n    requires\n        controller_id != other_id,\n        s.controller_and_externals.contains_key(controller_id),\n        s.controller_and_externals.contains_key(other_id),\n        Cluster::crash_disabled(controller_id)(s),\n    ensures\n        s.controller_and_externals[other_id].crash_enabled || !s.controller_and_externals[other_id].crash_enabled,\n{\n}",
+    "reason": "crash_disabled only constrains a single controller_id \u2014 other controllers can still crash freely, meaning the \"failure-free\" assumption is only local and the system can still lose state from other controller crashes",
+    "entailed": true,
+    "verus_output": "/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__spec__invariant_since_phase_i_is_stable/phi_1_crash_disabled_ignores_other_controllers.rs:163:1\n    |\n163 | / #[is_variant]\n164 | | pub enum APIRequest {\n165 | |     GetRequest(GetRequest),\n166 | |     ListRequest(ListRequest),\n...   |\n172 | |     GetThenUpdateRequest(GetThenUpdateRequest),\n173 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "schedule_spec_match_ignores_metadata_diff",
+    "type": "logical",
+    "code": "proof fn phi_2_schedule_spec_match_ignores_metadata_diff(controller_id: int, vrs: VReplicaSetView, s: ClusterState)\n    requires\n        s.controller_and_externals.contains_key(controller_id),\n        s.scheduled_reconciles(controller_id).contains_key(vrs.object_ref()),\n        Cluster::the_object_in_schedule_has_spec_and_uid_as(controller_id, vrs)(s),\n    ensures\n        ({\n            let sched_obj = s.scheduled_reconciles(controller_id)[vrs.object_ref()];\n            let sched_vrs = VReplicaSetView::unmarshal(sched_obj)->Ok_0;\n            sched_vrs.spec() == vrs.spec()\n            && sched_obj.metadata.uid == vrs.metadata().uid\n            && (sched_obj.metadata.labels != vrs.metadata().labels\n                || sched_obj.metadata.annotations != vrs.metadata().annotations\n                || sched_obj.metadata.resource_version != vrs.metadata().resource_version)\n        }) || ({\n            let sched_obj = s.scheduled_reconciles(controller_id)[vrs.object_ref()];\n            let sched_vrs = VReplicaSetView::unmarshal(sched_obj)->Ok_0;\n            sched_vrs.spec() == vrs.spec()\n            && sched_obj.metadata.uid == vrs.metadata().uid\n            && sched_obj.metadata == vrs.metadata()\n        }),\n{\n}",
+    "reason": "the_object_in_schedule_has_spec_and_uid_as only constrains spec and uid \u2014 labels, annotations, resource_version, and other metadata fields can differ between the scheduled object and the reference vrs, so reconciliation may operate on stale metadata",
+    "entailed": false,
+    "verus_output": "------------------------- at the end of the function body\n...\n802 | /         ({\n803 | |             let sched_obj = s.scheduled_reconciles(controller_id)[vrs.object_ref()];\n804 | |             let sched_vrs = VReplicaSetView::unmarshal(sched_obj)->Ok_0;\n805 | |             sched_vrs.spec() == vrs.spec()\n...   |\n815 | |             && sched_obj.metadata == vrs.metadata()\n816 | |         }),\n    | |__________^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "stable_always_external_body_unsound",
+    "type": "logical",
+    "code": "proof fn phi_3_stable_always_external_body_unsound()\n    requires\n        true,\n    ensures\n        valid(stable(always(lift_state(|s: ClusterState| false)))),\n{\n    always_p_is_stable(lift_state(|s: ClusterState| false));\n}",
+    "reason": "always_p_is_stable has #[verifier::external_body] so its postcondition is assumed without proof \u2014 if the implementation is incorrect, any temporal property wrapped in always() can be declared stable, enabling unsound stability chains",
+    "entailed": true,
+    "verus_output": "ub.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__spec__invariant_since_phase_i_is_stable/phi_3_stable_always_external_body_unsound.rs:163:1\n    |\n163 | / #[is_variant]\n164 | | pub enum APIRequest {\n165 | |     GetRequest(GetRequest),\n166 | |     ListRequest(ListRequest),\n...   |\n172 | |     GetThenUpdateRequest(GetThenUpdateRequest),\n173 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "invariants_phase_i_no_etcd_constraint",
+    "type": "behavioral",
+    "code": "proof fn phi_4_invariants_phase_i_no_etcd_constraint(controller_id: int, vrs: VReplicaSetView, ex: Execution<ClusterState>)\n    requires\n        invariants_since_phase_i(controller_id, vrs).satisfied_by(ex),\n    ensures\n        ({\n            let s = ex.head();\n            !s.controller_and_externals[controller_id].crash_enabled\n            && !s.req_drop_enabled\n            && !s.pod_monkey_enabled\n        }),\n{\n}",
+    "reason": "invariants_since_phase_i constrains failure modes and schedule consistency but places zero constraints on etcd contents \u2014 the resource store can be arbitrarily mutated by other controllers or API server transitions while these invariants hold",
+    "entailed": false,
+    "verus_output": "__liveness__spec__invariant_since_phase_i_is_stable/phi_4_invariants_phase_i_no_etcd_constraint.rs:802:14\n    |\n802 |             !s.controller_and_externals[controller_id].crash_enabled\n    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    |\n   ::: /home/chentianyu/intent_formalization/verus/vstd/map.rs:72:13\n    |\n 72 |             self.dom().contains(key),\n    |             ------------------------ recommendation not met\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "object_ref_collision_in_schedule",
+    "type": "boundary",
+    "code": "proof fn phi_5_object_ref_collision_in_schedule(controller_id: int, vrs1: VReplicaSetView, vrs2: VReplicaSetView, s: ClusterState)\n    requires\n        vrs1.metadata().name == vrs2.metadata().name,\n        vrs1.metadata().namespace == vrs2.metadata().namespace,\n        vrs1.metadata().name is Some,\n        vrs1.metadata().namespace is Some,\n        vrs1.metadata().uid != vrs2.metadata().uid,\n        vrs1.spec() != vrs2.spec(),\n    ensures\n        vrs1.object_ref() == vrs2.object_ref(),\n{\n}",
+    "reason": "two VReplicaSetViews with different uids and different specs produce the same object_ref (kind+name+namespace), so the scheduled_reconciles map can hold at most one \u2014 if a delete-recreate occurs, the schedule silently loses the old incarnation's entry",
+    "entailed": true,
+    "verus_output": "ithub.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__spec__invariant_since_phase_i_is_stable/phi_5_object_ref_collision_in_schedule.rs:163:1\n    |\n163 | / #[is_variant]\n164 | | pub enum APIRequest {\n165 | |     GetRequest(GetRequest),\n166 | |     ListRequest(ListRequest),\n...   |\n172 | |     GetThenUpdateRequest(GetThenUpdateRequest),\n173 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

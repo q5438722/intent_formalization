@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize2pa_mem_valid_unconditional",
+    "type": "logical",
+    "code": "proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body ensures MEM_valid(ret) for ALL inputs \u2014 trusts without proof that masking any arbitrary usize yields a valid physical address",
+    "entailed": false,
+    "verus_output": "tent_formalization/verusage/workspace_v2/atmosphere__memory_manager__spec_impl__impl0__alloc_page_table/phi_1_usize2pa_mem_valid_unconditional.rs:872:9\n    |\n870 | proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    |       --------------------------------------------------- at the end of the function body\n871 |     ensures\n872 |         MEM_valid(usize2pa(v)),\n    |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 11 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "free_pcid_empty_implies_no_page_closure",
+    "type": "behavioral",
+    "code": "proof fn phi_2_free_pcid_empty_implies_no_page_closure(mm: MemoryManager, pcid: Pcid)\n    requires\n        mm.pagetables_wf(),\n        0 <= pcid < PCID_MAX,\n        mm.get_free_pcids_as_set().contains(pcid),\n    ensures\n        mm.page_tables@[pcid as int].unwrap().l3_tables@.dom() == Set::<PageMapPtr>::empty(),\n        mm.page_tables@[pcid as int].unwrap().l2_tables@.dom() == Set::<PageMapPtr>::empty(),\n        mm.page_tables@[pcid as int].unwrap().l1_tables@.dom() == Set::<PageMapPtr>::empty(),\n        mm.page_tables@[pcid as int].unwrap().mapping_4k() == Map::<VAddr, MapEntry>::empty(),\n{\n}",
+    "reason": "Free PCIDs have is_empty() tables, which guarantees empty lower-level tables and mappings \u2014 but the L4 table itself (cr3) still exists in page_closure, so \"empty\" tables still consume a page frame",
+    "entailed": true,
+    "verus_output": "sure.rs:53:10\n   |\n53 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__memory_manager__spec_impl__impl0__alloc_page_table/phi_2_free_pcid_empty_implies_no_page_closure.rs:62:10\n   |\n62 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 11 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pagetable_page_closure_always_nonempty",
+    "type": "boundary",
+    "code": "proof fn phi_3_pagetable_page_closure_always_nonempty(mm: MemoryManager, pcid: Pcid)\n    requires\n        mm.pagetables_wf(),\n        0 <= pcid < PCID_MAX,\n    ensures\n        mm.page_tables@[pcid as int].unwrap().page_closure().contains(\n            mm.page_tables@[pcid as int].unwrap().cr3\n        ),\n{\n}",
+    "reason": "page_closure includes l4_table@.dom() which always contains cr3 \u2014 even \"empty\" free page tables have a non-empty page_closure, meaning free PCIDs still hold allocated page frames that cannot be reclaimed",
+    "entailed": false,
+    "verus_output": "75:9\n    |\n870 |   proof fn phi_3_pagetable_page_closure_always_nonempty(mm: MemoryManager, pcid: Pcid)\n    |         ------------------------------------------------------------------------------ at the end of the function body\n...\n875 | /         mm.page_tables@[pcid as int].unwrap().page_closure().contains(\n876 | |             mm.page_tables@[pcid as int].unwrap().cr3\n877 | |         ),\n    | |_________^ failed this postcondition\n\nerror: aborting due to 1 previous error; 11 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "iommu_kernel_l4_end_zero_vacuous_is_empty",
+    "type": "boundary",
+    "code": "proof fn phi_4_iommu_kernel_l4_end_zero_vacuous_is_empty(mm: MemoryManager, ioid: IOid)\n    requires\n        mm.iommutables_wf(),\n        0 <= ioid < IOID_MAX,\n    ensures\n        mm.iommu_tables@[ioid as int].unwrap().kernel_l4_end == 0,\n{\n}",
+    "reason": "iommutables_wf forces kernel_l4_end == 0 for all IOMMU tables \u2014 combined with is_empty checking indices [kernel_l4_end, 512), IOMMU is_empty checks ALL 512 L4 entries while process page tables skip kernel entries, creating an asymmetry that could mask bugs",
+    "entailed": true,
+    "verus_output": "ty.rs:53:10\n   |\n53 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__memory_manager__spec_impl__impl0__alloc_page_table/phi_4_iommu_kernel_l4_end_zero_vacuous_is_empty.rs:62:10\n   |\n62 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 11 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "disjoint_pcid_closures_no_shared_l4",
+    "type": "logical",
+    "code": "proof fn phi_5_disjoint_pcid_closures_no_shared_l4(mm: MemoryManager, pcid_i: Pcid, pcid_j: Pcid)\n    requires\n        mm.pagetables_wf(),\n        0 <= pcid_i < PCID_MAX,\n        0 <= pcid_j < PCID_MAX,\n        pcid_i != pcid_j,\n    ensures\n        mm.page_tables@[pcid_i as int].unwrap().cr3 != mm.page_tables@[pcid_j as int].unwrap().cr3,\n{\n}",
+    "reason": "Disjoint page_closures between distinct PCIDs implies distinct cr3 values \u2014 the spec enforces isolation at the page-frame level but this means no two address spaces can ever share an L4 root, even if intentional sharing were desired",
+    "entailed": false,
+    "verus_output": "no_shared_l4(mm: MemoryManager, pcid_i: Pcid, pcid_j: Pcid)\n    |       ------------------------------------------------------------------------------------------- at the end of the function body\n...\n877 |         mm.page_tables@[pcid_i as int].unwrap().cr3 != mm.page_tables@[pcid_j as int].unwrap().cr3,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 11 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

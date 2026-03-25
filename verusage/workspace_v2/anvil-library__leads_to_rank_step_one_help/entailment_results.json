@@ -1,0 +1,47 @@
+[
+  {
+    "name": "leads_to_self_temp_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_1_leads_to_self_temp_intensional_bridge(p: TempPred<int>, spec: TempPred<int>)\n    ensures\n        spec.entails(p.leads_to(p)),\n{\n    leads_to_self_temp::<int>(p);\n}",
+    "reason": "leads_to_self_temp is external_body deriving valid(p.leads_to(p)) which makes any spec entail p.leads_to(p) \u2014 the reflexive leads_to requires resolving nested always/implies/eventually closure gaps without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "leads_to_trans_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_2_leads_to_trans_intensional_bridge(spec: TempPred<int>, p: TempPred<int>, q: TempPred<int>, r: TempPred<int>)\n    requires\n        spec.entails(p.leads_to(q)),\n        spec.entails(q.leads_to(r)),\n    ensures\n        spec.entails(p.leads_to(r)),\n{\n    leads_to_trans::<int>(spec, p, q, r);\n}",
+    "reason": "leads_to_trans is external_body composing two leads_to into a transitive chain \u2014 each leads_to involves nested always/implies/eventually closures and the composition bridges intensional gaps without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "leads_to_trans_chain_unbounded",
+    "type": "logical",
+    "code": "proof fn phi_3_leads_to_trans_chain_unbounded(spec: TempPred<int>, p: spec_fn(nat) -> TempPred<int>, n: nat)\n    requires\n        forall |n: nat| #![trigger p(n)] (n > 0 ==> spec.entails(p(n).leads_to(p((n - 1) as nat)))),\n    ensures\n        spec.entails(p(n).leads_to(p(0))),\n{\n    leads_to_rank_step_one_help::<int>(spec, p, n);\n}",
+    "reason": "chaining leads_to_trans inductively over unbounded n composes arbitrarily many external_body axiom invocations \u2014 each step trusts leads_to_trans to resolve fresh intensional closure gaps",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "false_spec_any_leads_to",
+    "type": "boundary",
+    "code": "proof fn phi_4_false_spec_any_leads_to(p: TempPred<int>, q: TempPred<int>, r: TempPred<int>)\n    requires\n        TempPred::<int>::new(|ex: Execution<int>| false).entails(p.leads_to(q)),\n        TempPred::<int>::new(|ex: Execution<int>| false).entails(q.leads_to(r)),\n    ensures\n        TempPred::<int>::new(|ex: Execution<int>| false).entails(p.leads_to(r)),\n{\n    leads_to_trans::<int>(TempPred::new(|ex: Execution<int>| false), p, q, r);\n}",
+    "reason": "an unsatisfiable spec vacuously entails any leads_to chain \u2014 leads_to_trans propagates vacuous truth without detecting spec inconsistency",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "leads_to_self_any_spec",
+    "type": "boundary",
+    "code": "proof fn phi_5_leads_to_self_any_spec(spec: TempPred<int>, p: TempPred<int>)\n    ensures\n        spec.entails(p.leads_to(p)),\n{\n    leads_to_self_temp::<int>(p);\n}",
+    "reason": "leads_to_self_temp produces valid(p.leads_to(p)) with no preconditions \u2014 any spec (including unrelated or unsatisfiable ones) entails reflexive leads_to, making the spec parameter irrelevant",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

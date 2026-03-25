@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: rl3_interp_external_body_view_chain
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `rl3::State::interp` is `external_body` `closed spec` — the equality `s@.pt_mem === s.interp().writer_mem()` chains through the opaque rl3→rl2 interp. Since `interp` is unverified, Verus can only prove this via structural equality of `s` values, confirming the rl3→rl2 mapping is an unverified trust assumption.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: overlap_not_symmetric
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `overlap` splits on `region1.base <= region2.base`. When swapped, the other branch applies. Case analysis: if `r1.base <= r2.base` and overlap holds (either `r1.base == r2.base` or `r2.base < r1.base + r1.size`), then for `overlap(r2, r1)` we're in the else branch (`r2.base >= r1.base` doesn't hold if `r2.base < r1.base`, but in this case we had `r1.base <= r2.base`). The symmetry follows from correct case splitting in both directions.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: overlap_zero_size_region
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: With `base1 != base2` and `size: 0`, WLOG `base1 < base2`: the first branch checks `base1 == base2` (false) or `base2 < base1 + 0 = base1` (false since `base1 < base2`). Similarly for `base1 > base2`. Non-overlap is correct for distinct-base zero-size regions.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: candidate_mapping_in_bounds_allows_overflow
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `base + pte.frame.size < upper_vaddr` with nat arithmetic (no overflow) directly implies both `base < upper_vaddr` (since `pte.frame.size >= 0`) and `pte.frame.size < upper_vaddr` (since `base >= 0`). This is correct — the sum bound implies individual bounds over naturals.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: arch_entry_size_layer0_equals_l0
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `x86_arch_spec` is defined with layer 0 having `entry_size: L0_ENTRY_SIZE as nat`. `entry_size(0)` returns `self.layers[0].entry_size` which is exactly `L0_ENTRY_SIZE as nat`. Correct by construction.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: the rl3→rl2 interp is `external_body` `closed spec`, making the entire `s@.pt_mem === s.interp().writer_mem()` chain an unverified trust assumption. Four false positives: overlap symmetry and zero-size non-overlap follow from case analysis of the definition, candidate_mapping individual bounds follow from nat arithmetic, and arch entry size layer 0 is correct by construction of `x86_arch_spec`.
+===END_SUMMARY===

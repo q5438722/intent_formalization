@@ -1,0 +1,47 @@
+[
+  {
+    "name": "unmarshal_spec_total",
+    "type": "boundary",
+    "code": "proof fn phi_1_unmarshal_spec_total<T: ResourceView>(v: Value)\n    requires\n        true,\n    ensures\n        T::unmarshal_spec(v) is Ok,\n{\n}",
+    "reason": "unmarshal_spec is uninterpreted \u2014 there is no axiom making it total, so arbitrary Values should be rejectable",
+    "entailed": false,
+    "verus_output": "set_controller__proof__helper_invariants__proof__lemma_always_every_msg_from_vrs_controller_carries_vrs_key/phi_1_unmarshal_spec_total.rs:4314:9\n     |\n4310 | proof fn phi_1_unmarshal_spec_total<T: ResourceView>(v: Value)\n     |       -------------------------------------------------------- at the end of the function body\n...\n4314 |         T::unmarshal_spec(v) is Ok,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "marshal_status_unmarshal_spec_compatible",
+    "type": "logical",
+    "code": "proof fn phi_2_marshal_status_unmarshal_spec_compatible<T: ResourceView>(s: T::Status)\n    requires\n        true,\n    ensures\n        T::unmarshal_spec(T::marshal_status(s)) is Ok,\n{\n}",
+    "reason": "marshal_status and unmarshal_spec operate on unrelated domains \u2014 a marshalled status Value should NOT be decodable as a valid spec",
+    "entailed": false,
+    "verus_output": "y/phi_2_marshal_status_unmarshal_spec_compatible.rs:4314:9\n     |\n4310 | proof fn phi_2_marshal_status_unmarshal_spec_compatible<T: ResourceView>(s: T::Status)\n     |       -------------------------------------------------------------------------------- at the end of the function body\n...\n4314 |         T::unmarshal_spec(T::marshal_status(s)) is Ok,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "allocate_idempotent",
+    "type": "behavioral",
+    "code": "proof fn phi_3_allocate_idempotent(a: ReconcileIdAllocator)\n    requires\n        a.reconcile_id_counter >= 0,\n    ensures\n        a.allocate().0 == a,\n{\n}",
+    "reason": "allocate increments reconcile_id_counter by 1, so the returned allocator must differ from the original \u2014 idempotence would mean IDs are never consumed",
+    "entailed": false,
+    "verus_output": "-controller__vreplicaset_controller__proof__helper_invariants__proof__lemma_always_every_msg_from_vrs_controller_carries_vrs_key/phi_3_allocate_idempotent.rs:4314:9\n     |\n4310 | proof fn phi_3_allocate_idempotent(a: ReconcileIdAllocator)\n     |       ----------------------------------------------------- at the end of the function body\n...\n4314 |         a.allocate().0 == a,\n     |         ^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "object_ref_ignores_namespace",
+    "type": "behavioral",
+    "code": "proof fn phi_4_object_ref_ignores_namespace(req1: UpdateRequest, req2: UpdateRequest)\n    requires\n        req1.obj.kind == req2.obj.kind,\n        req1.name == req2.name,\n        req1.namespace != req2.namespace,\n    ensures\n        req1.key() == req2.key(),\n{\n}",
+    "reason": "key() includes namespace \u2014 two requests with different namespaces but same name should produce different ObjectRefs, not equal ones",
+    "entailed": false,
+    "verus_output": "emma_always_every_msg_from_vrs_controller_carries_vrs_key/phi_4_object_ref_ignores_namespace.rs:4316:9\n     |\n4310 | proof fn phi_4_object_ref_ignores_namespace(req1: UpdateRequest, req2: UpdateRequest)\n     |       ------------------------------------------------------------------------------- at the end of the function body\n...\n4316 |         req1.key() == req2.key(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "marshal_roundtrip_preserves_kind_field",
+    "type": "logical",
+    "code": "proof fn phi_5_marshal_roundtrip_preserves_kind_field<T: ResourceView>(obj: DynamicObjectView)\n    requires\n        obj.kind == T::kind(),\n        T::unmarshal_spec(obj.spec) is Ok,\n        T::unmarshal_status(obj.status) is Ok,\n    ensures\n        T::unmarshal(obj)->Ok_0.marshal().spec == obj.spec,\n{\n}",
+    "reason": "marshal_spec is uninterpreted so marshal(unmarshal(obj)).spec = marshal_spec(unmarshal_spec(obj.spec)) which need not equal obj.spec \u2014 only the reverse roundtrip (unmarshal\u2218marshal = id) is guaranteed",
+    "entailed": false,
+    "verus_output": "p_preserves_kind_field.rs:4316:9\n     |\n4310 | proof fn phi_5_marshal_roundtrip_preserves_kind_field<T: ResourceView>(obj: DynamicObjectView)\n     |       ---------------------------------------------------------------------------------------- at the end of the function body\n...\n4316 |         T::unmarshal(obj)->Ok_0.marshal().spec == obj.spec,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

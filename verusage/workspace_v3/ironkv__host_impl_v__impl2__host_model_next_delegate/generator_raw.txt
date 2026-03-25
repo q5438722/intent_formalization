@@ -1,0 +1,93 @@
+===PHI_START===
+NAME: delegate_output_nonempty
+TARGET_FN: next_delegate
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_delegate_output_nonempty(pre: AbstractHostState, post: AbstractHostState, pkt: Packet, out: Set<Packet>)
+    requires
+        pkt.msg is Message,
+        pre.delegation_map.is_complete(),
+        next_delegate(pre, post, pkt, out),
+    ensures
+        !(out =~= Set::<Packet>::empty()),
+{
+}
+```
+REASON: next_delegate mandates out == empty; if non-empty output is entailed the spec is inconsistent
+===PHI_END===
+
+===PHI_START===
+NAME: authorized_no_increment
+TARGET_FN: next_delegate
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_authorized_no_increment(pre: AbstractHostState, post: AbstractHostState, pkt: Packet, out: Set<Packet>)
+    requires
+        pkt.msg is Message,
+        pre.delegation_map.is_complete(),
+        next_delegate(pre, post, pkt, out),
+        pre.constants.host_ids.contains(pkt.src),
+    ensures
+        post.num_delegations == pre.num_delegations,
+{
+}
+```
+REASON: When source is authorized the counter must increment by 1; staying the same means delegation bookkeeping is lost
+===PHI_END===
+
+===PHI_START===
+NAME: unauthorized_changes_hashtable
+TARGET_FN: next_delegate
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_unauthorized_changes_hashtable(pre: AbstractHostState, post: AbstractHostState, pkt: Packet, out: Set<Packet>)
+    requires
+        pkt.msg is Message,
+        pre.delegation_map.is_complete(),
+        next_delegate(pre, post, pkt, out),
+        !pre.constants.host_ids.contains(pkt.src),
+    ensures
+        post.h !== pre.h,
+{
+}
+```
+REASON: An unauthorized source must not alter the hashtable; entailment here means the spec allows unauthenticated mutation
+===PHI_END===
+
+===PHI_START===
+NAME: none_value_invalid
+TARGET_FN: valid_optional_value
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_none_value_invalid()
+    requires
+        true,
+    ensures
+        !valid_optional_value(Option::<AbstractValue>::None),
+{
+}
+```
+REASON: None should be a valid optional value; declaring it invalid would reject legitimate absent-value messages
+===PHI_END===
+
+===PHI_START===
+NAME: update_domain_drops_new_key
+TARGET_FN: bulk_update_domain
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_update_domain_drops_new_key(h: Hashtable, kr: KeyRange<AbstractKey>, u: Hashtable, k: AbstractKey)
+    requires
+        u.dom().contains(k),
+        kr.contains(k),
+    ensures
+        !bulk_update_domain(h, kr, u).contains(k),
+{
+}
+```
+REASON: A key present in the update map and inside the delegated range must appear in the result; exclusion means delegated data is silently lost
+===PHI_END===

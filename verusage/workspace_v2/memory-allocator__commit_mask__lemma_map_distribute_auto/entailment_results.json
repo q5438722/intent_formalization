@@ -1,0 +1,47 @@
+[
+  {
+    "name": "map_distribute_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_map_distribute_external_body<S, T>(s1: Set<S>, s2: Set<S>, f: spec_fn(S) -> T)\n    ensures\n        s1.union(s2).map(f) == s1.map(f).union(s2.map(f)),\n{\n    lemma_map_distribute(s1, s2, f);\n}",
+    "reason": "`lemma_map_distribute` is `external_body` \u2014 the set map distributivity over union is trusted without proof, and if the axiom is wrong for infinite sets or non-injective `f`, it could enable unsound reasoning",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "map_union_empty_left",
+    "type": "boundary",
+    "code": "proof fn phi_2_map_union_empty_left<S, T>(s: Set<S>, f: spec_fn(S) -> T)\n    ensures\n        Set::<S>::empty().union(s).map(f) == s.map(f),\n{\n    lemma_map_distribute(Set::empty(), s, f);\n}",
+    "reason": "Combining distributivity with empty set union could silently mask issues if `Set::empty().map(f)` doesn't equal `Set::empty()` in Verus's set axioms \u2014 the external_body lemma would paper over this",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "map_self_union_idempotent",
+    "type": "behavioral",
+    "code": "proof fn phi_3_map_self_union_idempotent<S, T>(s: Set<S>, f: spec_fn(S) -> T)\n    ensures\n        s.union(s).map(f) == s.map(f),\n{\n    lemma_map_distribute(s, s, f);\n    // s.map(f).union(s.map(f)) should equal s.map(f) by set idempotence\n}",
+    "reason": "The distributivity lemma combined with union idempotence gives `s.union(s).map(f) == s.map(f)` \u2014 if `union` on `Set` is not truly idempotent for all sets (e.g., infinite), the external_body axiom would hide the discrepancy",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "auto_trigger_unbounded_instantiation",
+    "type": "logical",
+    "code": "proof fn phi_4_auto_trigger_unbounded_instantiation<S, T>(s1: Set<S>, s2: Set<S>, s3: Set<S>, f: spec_fn(S) -> T)\n    ensures\n        s1.union(s2).union(s3).map(f) == s1.map(f).union(s2.map(f)).union(s3.map(f)),\n{\n    lemma_map_distribute_auto::<S, T>();\n}",
+    "reason": "The auto lemma's universal trigger `s1.map(f).union(s2.map(f))` could cause cascading instantiation \u2014 each application produces new `map(f).union(...)` terms that re-trigger the quantifier, potentially leading to solver resource exhaustion or unsound matching loops",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "map_distribute_non_injective_collapse",
+    "type": "behavioral",
+    "code": "proof fn phi_5_map_distribute_non_injective_collapse(s1: Set<int>, s2: Set<int>)\n    requires\n        s1 == set![1, 2],\n        s2 == set![3, 4],\n    ensures\n        ({\n            let f = |x: int| 0int;\n            s1.union(s2).map(f) == s1.map(f).union(s2.map(f))\n        }),\n{\n    let f = |x: int| 0int;\n    lemma_map_distribute(s1, s2, f);\n}",
+    "reason": "With a constant (non-injective) function, both sides collapse to `{0}` \u2014 the distributivity holds trivially here but the external_body axiom asserts it for all `f` including pathological cases without verification",
+    "entailed": false,
+    "verus_output": "teger`\nnote: required by a bound in `vstd::prelude::spec_literal_integer`\n  --> /home/runner/work/verus/verus/source/builtin/src/lib.rs:1021:0\nhelp: consider specifying the generic argument\n   |\n27 |         s1 == set![1::<hint_please_add_suffix_on_literal_like_100u32_or_100int_or_100nat>, 2],\n   |                     +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0283`.\n",
+    "timed_out": false
+  }
+]

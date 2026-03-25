@@ -1,0 +1,25 @@
+Looking at this carefully, I need to check whether the claimed property is mathematically sound.
+
+**Analysis of `double_align_collapse`:**
+
+The property claims that `align_down(x, y) == align_down(x, 2*y)` for all valid inputs. Let me test with a concrete counterexample:
+
+- `x = 7, y = 2`
+- `res1 = (7 / 2) * 2 = 6` → preconditions: `6 <= 7 < 8` ✓, `6 % 2 == 0` ✓
+- `res2 = (7 / 4) * 4 = 4` → preconditions: `4 <= 7 < 8` ✓, `4 % 4 == 0` ✓
+- `ensures res1 == res2` → `6 == 4` ✗
+
+The property is **mathematically false**. All preconditions are satisfiable with a witness that violates the ensures clause. This cannot actually be entailed by the spec of `align_down`, because the spec correctly characterizes floor-aligned division—different granularities naturally yield different results.
+
+---
+
+===VERDICT_START===
+PHI: double_align_collapse
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The property is mathematically false: x=7, y=2 gives res1=6 (aligned to 2) and res2=4 (aligned to 4), with all preconditions satisfied but res1 ≠ res2. The spec of `align_down` correctly describes floor-division rounding; different alignment granularities are *supposed* to yield different results. This property cannot be entailed by the spec and does not expose a spec weakness.
+===VERDICT_END===
+
+===SUMMARY===
+The single candidate property `double_align_collapse` is a false positive. It asserts that aligning to `y` and `2*y` always produce the same result, but a trivial counterexample (x=7, y=2 → 6 vs 4) disproves this. The spec of `align_down` is consistent and correctly captures the semantics of floor-aligned division: the result is the largest multiple of `y` not exceeding `x`, the remainder is bounded, and the result is divisible by `y`. These postconditions do not—and should not—collapse distinct alignment granularities, so no spec issue exists.
+===END_SUMMARY===

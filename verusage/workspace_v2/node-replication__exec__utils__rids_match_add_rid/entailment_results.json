@@ -1,0 +1,47 @@
+[
+  {
+    "name": "rids_match_add_rid_extends_both",
+    "type": "behavioral",
+    "code": "proof fn phi_1_rids_match_add_rid_extends_both(\n    bools: Seq<Option<ReqId>>,\n    rids: Seq<ReqId>,\n    bools_start: nat,\n    bools_end: nat,\n    rids_start: nat,\n    rids_end: nat,\n    rid: ReqId,\n)\n    requires\n        0 <= bools_start <= bools_end <= bools.len(),\n        0 <= rids_start <= rids_end <= rids.len(),\n        rids_match(bools, rids, bools_start, bools_end, rids_start, rids_end),\n    ensures\n        rids_match(\n            bools.push(Option::Some(rid)),\n            rids.push(rid),\n            bools_start,\n            (bools_end + 1) as nat,\n            rids_start,\n            (rids_end + 1) as nat,\n        ),\n{\n    rids_match_add_rid(bools, rids, bools_start, bools_end, rids_start, rids_end, rid);\n    // After push, bools_new[bools_end] == Some(rid) and rids_new[rids_end] == rid\n}",
+    "reason": "Pushing `Some(rid)` and extending both windows by 1 preserves the match \u2014 tests that appending a matched pair extends the relation",
+    "entailed": false,
+    "verus_output": " bools: Seq<Option<ReqId>>,\n 99 | |     rids: Seq<ReqId>,\n100 | |     bools_start: nat,\n...   |\n104 | |     rid: ReqId,\n105 | | )\n    | |_- at the end of the function body\n...\n111 | /         rids_match(\n112 | |             bools.push(Option::Some(rid)),\n113 | |             rids.push(rid),\n114 | |             bools_start,\n...   |\n117 | |             (rids_end + 1) as nat,\n118 | |         ),\n    | |_________^ failed this postcondition\n\nerror: aborting due to 1 previous error; 3 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "rids_match_empty_preserves_after_push",
+    "type": "boundary",
+    "code": "proof fn phi_2_rids_match_empty_preserves_after_push(rid: ReqId)\n    ensures\n        rids_match(\n            seq![Option::Some(rid)],\n            seq![rid],\n            0,\n            0,\n            0,\n            0,\n        ),\n{\n}",
+    "reason": "Empty match is preserved after constructing sequences with one element each \u2014 the empty window `[0,0)` trivially matches `[0,0)` regardless of sequence contents",
+    "entailed": true,
+    "verus_output": "\n\nwarning: use of deprecated method `vstd::prelude::OptionAdditionalFns::is_Some`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/node-replication__exec__utils__rids_match_add_rid/phi_2_rids_match_empty_preserves_after_push.rs:69:33\n   |\n69 |         if bools[bools_end - 1].is_Some() {\n   |                                 ^^^^^^^\n\nwarning: 3 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "rids_match_single_push",
+    "type": "boundary",
+    "code": "proof fn phi_3_rids_match_single_push(rid: ReqId)\n    ensures\n        rids_match(\n            seq![Option::Some(rid)],\n            seq![rid],\n            0,\n            1,\n            0,\n            1,\n        ),\n{\n    let bools = Seq::<Option<ReqId>>::empty();\n    let rids = Seq::<ReqId>::empty();\n    rids_match_add_rid(bools, rids, 0, 0, 0, 0, rid);\n}",
+    "reason": "A single `Some(rid)` pushed onto empty sequences matches a single rid \u2014 tests the minimal non-trivial extension",
+    "entailed": true,
+    "verus_output": "     ^^^^^^^^^^\n\nwarning: use of deprecated method `vstd::prelude::OptionAdditionalFns::is_Some`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/node-replication__exec__utils__rids_match_add_rid/phi_3_rids_match_single_push.rs:69:33\n   |\n69 |         if bools[bools_end - 1].is_Some() {\n   |                                 ^^^^^^^\n\nwarning: 3 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "rids_match_duplicate_rids_allowed",
+    "type": "logical",
+    "code": "proof fn phi_4_rids_match_duplicate_rids_allowed(rid: ReqId)\n    ensures\n        rids_match(\n            seq![Option::Some(rid), Option::Some(rid)],\n            seq![rid, rid],\n            0,\n            2,\n            0,\n            2,\n        ),\n{\n    let bools0 = Seq::<Option<ReqId>>::empty();\n    let rids0 = Seq::<ReqId>::empty();\n    rids_match_add_rid(bools0, rids0, 0, 0, 0, 0, rid);\n    let bools1 = bools0.push(Option::Some(rid));\n    let rids1 = rids0.push(rid);\n    rids_match_add_rid(bools1, rids1, 0, 1, 0, 1, rid);\n}",
+    "reason": "The same `rid` can appear multiple times in both sequences \u2014 `rids_match` imposes no uniqueness constraint on request IDs",
+    "entailed": false,
+    "verus_output": " |\n 97 |   proof fn phi_4_rids_match_duplicate_rids_allowed(rid: ReqId)\n    |         ------------------------------------------------------ at the end of the function body\n 98 |       ensures\n 99 | /         rids_match(\n100 | |             seq![Option::Some(rid), Option::Some(rid)],\n101 | |             seq![rid, rid],\n102 | |             0,\n...   |\n105 | |             2,\n106 | |         ),\n    | |_________^ failed this postcondition\n\nerror: aborting due to 1 previous error; 3 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "rids_match_add_rid_idempotent_window",
+    "type": "behavioral",
+    "code": "proof fn phi_5_rids_match_add_rid_idempotent_window(\n    bools: Seq<Option<ReqId>>,\n    rids: Seq<ReqId>,\n    bools_start: nat,\n    bools_end: nat,\n    rids_start: nat,\n    rids_end: nat,\n    rid1: ReqId,\n    rid2: ReqId,\n)\n    requires\n        0 <= bools_start <= bools_end <= bools.len(),\n        0 <= rids_start <= rids_end <= rids.len(),\n        rids_match(bools, rids, bools_start, bools_end, rids_start, rids_end),\n    ensures\n        rids_match(\n            bools.push(Option::Some(rid1)).push(Option::Some(rid2)),\n            rids.push(rid1).push(rid2),\n            bools_start,\n            bools_end,\n            rids_start,\n            rids_end,\n        ),\n{\n    rids_match_add_rid(bools, rids, bools_start, bools_end, rids_start, rids_end, rid1);\n    let bools1 = bools.push(Option::Some(rid1));\n    let rids1 = rids.push(rid1);\n    rids_match_add_rid(bools1, rids1, bools_start, bools_end, rids_start, rids_end, rid2);\n}",
+    "reason": "Pushing two rid pairs preserves the original window match \u2014 the original `[bools_start, bools_end)` window is unaffected by appending beyond it",
+    "entailed": true,
+    "verus_output": "^\n\nwarning: use of deprecated method `vstd::prelude::OptionAdditionalFns::is_Some`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/node-replication__exec__utils__rids_match_add_rid/phi_5_rids_match_add_rid_idempotent_window.rs:69:33\n   |\n69 |         if bools[bools_end - 1].is_Some() {\n   |                                 ^^^^^^^\n\nwarning: 3 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

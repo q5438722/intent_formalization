@@ -1,0 +1,89 @@
+===PHI_START===
+NAME: align_exceeds_input
+TARGET_FN: align_to_usize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_align_exceeds_input(a: usize, b: usize)
+    requires
+        b > 0,
+        a >= b,
+    ensures
+        align_to_usize(a, b) > a,
+{
+}
+```
+REASON: Alignment rounding down should never produce a value exceeding the original input
+===PHI_END===
+
+===PHI_START===
+NAME: align_not_multiple
+TARGET_FN: align_to_usize
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_align_not_multiple(a: usize, b: usize)
+    requires
+        b > 0,
+        a < 0xFFFF_FFFF_FFFF_FFFFusize,
+    ensures
+        align_to_usize(a, b) % b != 0,
+{
+}
+```
+REASON: The whole purpose of align_to_usize is to produce a multiple of b; failing this means alignment is broken
+===PHI_END===
+
+===PHI_START===
+NAME: align_changes_already_aligned
+TARGET_FN: align_to_usize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_align_changes_already_aligned(a: usize, b: usize)
+    requires
+        b > 0,
+        a % b == 0,
+    ensures
+        align_to_usize(a, b) != a,
+{
+}
+```
+REASON: An already-aligned value should be a fixed point; changing it means the function over-rounds
+===PHI_END===
+
+===PHI_START===
+NAME: align_not_idempotent
+TARGET_FN: align_to_usize
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_align_not_idempotent(a: usize, b: usize)
+    requires
+        b > 0,
+        a >= b,
+    ensures
+        align_to_usize(align_to_usize(a, b), b) != align_to_usize(a, b),
+{
+}
+```
+REASON: Alignment must be idempotent; applying it twice should yield the same result as once
+===PHI_END===
+
+===PHI_START===
+NAME: align_distance_exceeds_modulus
+TARGET_FN: align_to_usize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_align_distance_exceeds_modulus(a: usize, b: usize)
+    requires
+        b > 0,
+        a >= b,
+    ensures
+        a - align_to_usize(a, b) >= b,
+{
+}
+```
+REASON: The gap between the input and its aligned value must be strictly less than b; a gap >= b means an entire alignment block was skipped
+===PHI_END===

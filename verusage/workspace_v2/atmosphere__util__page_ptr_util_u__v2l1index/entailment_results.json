@@ -1,0 +1,47 @@
+[
+  {
+    "name": "va_1g_valid_uses_spec_va_2m_valid",
+    "type": "logical",
+    "code": "proof fn phi_1_va_1g_valid_uses_spec_va_2m_valid(va: usize)\n    requires\n        spec_va_1g_valid(va),\n        !spec_va_2m_valid(va),\n    ensures\n        false,\n{\n}",
+    "reason": "va_1g_valid has `when_used_as_spec(spec_va_2m_valid)` instead of `spec_va_1g_valid` \u2014 every 1G-valid address is also 2M-valid by the copy-paste bug, but the converse should not hold; this tests whether the two specs are forced equivalent",
+    "entailed": false,
+    "verus_output": "ults:: 7 verified, 1 errors\nerror: postcondition not satisfied\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__util__page_ptr_util_u__v2l1index/phi_1_va_1g_valid_uses_spec_va_2m_valid.rs:86:9\n   |\n81 | proof fn phi_1_va_1g_valid_uses_spec_va_2m_valid(va: usize)\n   |       ----------------------------------------------------- at the end of the function body\n...\n86 |         false,\n   |         ^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "va_1g_valid_fn_returns_2m_spec",
+    "type": "behavioral",
+    "code": "proof fn phi_2_va_1g_valid_fn_returns_2m_spec(va: usize)\n    requires\n        spec_va_2m_valid(va),\n    ensures\n        va_1g_valid(va) == true,\n{\n}",
+    "reason": "Due to `when_used_as_spec(spec_va_2m_valid)` on va_1g_valid, calling va_1g_valid as a spec fn resolves to spec_va_2m_valid \u2014 so any 2M-valid address is reported as 1G-valid, silently weakening all 1G address validation",
+    "entailed": true,
+    "verus_output": "verification results:: 8 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "v2l1index_accepts_2m_only_address",
+    "type": "boundary",
+    "code": "proof fn phi_3_v2l1index_accepts_2m_only_address(va: usize)\n    requires\n        spec_va_2m_valid(va),\n        !spec_va_4k_valid(va),\n        !spec_va_1g_valid(va),\n    ensures\n        va_1g_valid(va) || va_2m_valid(va) || va_4k_valid(va),\n{\n}",
+    "reason": "v2l1index's requires uses runtime va_1g_valid which resolves to spec_va_2m_valid \u2014 so 2M-valid addresses satisfy the va_1g_valid disjunct even when spec_va_1g_valid is false, widening the precondition",
+    "entailed": true,
+    "verus_output": "verification results:: 8 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "spec_va_2m_implies_spec_va_1g_mask",
+    "type": "logical",
+    "code": "proof fn phi_4_spec_va_2m_implies_spec_va_1g_mask(va: usize)\n    requires\n        va & (!MEM_1g_MASK) as usize == 0,\n    ensures\n        va & (!MEM_2m_MASK) as usize == 0,\n{\n}",
+    "reason": "MEM_1g_MASK zeros more bits than MEM_2m_MASK, so 1G-alignment implies 2M-alignment \u2014 if this verifies, it confirms the copy-paste bug makes va_1g_valid strictly weaker than intended (accepts 2M-aligned, not just 1G-aligned)",
+    "entailed": false,
+    "verus_output": "         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nnote: recommendation not met: value may be out of range of the target type (use `#[verifier::truncate]` on the cast to silence this warning)\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__util__page_ptr_util_u__v2l1index/phi_4_spec_va_2m_implies_spec_va_1g_mask.rs:85:14\n   |\n85 |         va & (!MEM_2m_MASK) as usize == 0,\n   |              ^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "va_1g_valid_when_used_as_spec_mismatch",
+    "type": "logical",
+    "code": "proof fn phi_5_va_1g_valid_when_used_as_spec_mismatch(va: usize)\n    requires\n        va_1g_valid(va),\n    ensures\n        spec_va_2m_valid(va),\n{\n}",
+    "reason": "va_1g_valid's when_used_as_spec points to spec_va_2m_valid, so calling va_1g_valid(va) in spec context actually evaluates spec_va_2m_valid(va) \u2014 the function name misleads callers about which alignment is being checked",
+    "entailed": true,
+    "verus_output": "verification results:: 8 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

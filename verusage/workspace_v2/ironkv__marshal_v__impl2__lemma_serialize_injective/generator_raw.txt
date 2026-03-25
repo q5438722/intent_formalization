@@ -1,0 +1,95 @@
+===PHI_START===
+NAME: vec_u8_injectivity_proved
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_vec_u8_injectivity_proved(a: Vec<u8>, b: Vec<u8>)
+    requires
+        a.is_marshalable(),
+        b.is_marshalable(),
+        a.ghost_serialize() == b.ghost_serialize(),
+    ensures
+        a@ == b@,
+{
+    a.lemma_serialize_injective(&b);
+}
+```
+REASON: Vec<u8> injectivity is verified (not external_body) but chains through u64's external_body injectivity for the length prefix — the proved Vec<u8> injectivity is only as trustworthy as the unverified u64 axiom it depends on
+===PHI_END===
+
+===PHI_START===
+NAME: vec_t_serialize_injective_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_vec_t_serialize_injective_external_body(a: Vec<u64>, b: Vec<u64>)
+    requires
+        a.is_marshalable(),
+        b.is_marshalable(),
+        a.ghost_serialize() == b.ghost_serialize(),
+    ensures
+        a.view_equal(&b),
+{
+    a.lemma_serialize_injective(&b);
+}
+```
+REASON: `Vec<T>::lemma_serialize_injective` is `external_body` — injectivity of generic Vec serialization (length prefix + fold of elements) is entirely trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: usize_serialize_injective_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_usize_serialize_injective_external_body(a: usize, b: usize)
+    requires
+        a.is_marshalable(),
+        b.is_marshalable(),
+        a.ghost_serialize() == b.ghost_serialize(),
+    ensures
+        a == b,
+{
+    a.lemma_serialize_injective(&b);
+}
+```
+REASON: `usize::lemma_serialize_injective` is `external_body` despite serializing via cast to u64 — provable from u64 injectivity but left unverified
+===PHI_END===
+
+===PHI_START===
+NAME: vec_u8_length_prefix_fixed_8
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_vec_u8_length_prefix_fixed_8(v: Vec<u8>)
+    requires
+        v.is_marshalable(),
+    ensures
+        v.ghost_serialize().len() == 8 + v@.len(),
+{
+    lemma_auto_spec_u64_to_from_le_bytes();
+}
+```
+REASON: The length prefix for Vec<u8> is always exactly 8 bytes (u64 LE encoding of a usize cast) — this fixed overhead is implicit and never stated, so consumers cannot rely on it without knowing the usize→u64 serialization detail
+===PHI_END===
+
+===PHI_START===
+NAME: empty_vec_serialize_not_empty
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_empty_vec_serialize_not_empty()
+    ensures
+        ({
+            let v: Vec<u8> = Vec::new();
+            v.is_marshalable() && v.ghost_serialize().len() > 0
+        }),
+{
+    let v: Vec<u8> = Vec::new();
+    lemma_auto_spec_u64_to_from_le_bytes();
+    assert(v@.len() == 0);
+    assert(v.is_marshalable());
+    assert((0usize).ghost_serialize().len() == 8);
+}
+```
+REASON: An empty Vec<u8> serializes to 8 bytes (the length prefix) rather than 0 — the serialization format has non-trivial overhead that makes `ghost_serialize().len() == 0` impossible for any Vec, potentially surprising consumers expecting empty containers to have empty serializations
+===PHI_END===

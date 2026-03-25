@@ -1,0 +1,78 @@
+This round includes `Lbl` enum, `read_from_mem_tso`, `RLbl` (presumably), `Walk::flags`, and the `inv_mapping__valid_is_not_in_sbuf` invariant. Let me target fresh aspects.
+
+===PHI_START===
+NAME: read_from_mem_tso_equals_core_mem_read
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_read_from_mem_tso_equals_core_mem_read(state: State, core: Core, addr: usize)
+    ensures
+        state.read_from_mem_tso(core, addr) == state.pt_mem.write_seq(state.sbuf[core]).read(addr),
+{
+}
+```
+REASON: `read_from_mem_tso` should unfold to `core_mem(core).read(addr)` which is `pt_mem.write_seq(sbuf[core]).read(addr)` — tests definitional unfolding consistency
+===PHI_END===
+
+===PHI_START===
+NAME: flags_combine_absorbs_supervisor
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_flags_combine_absorbs_supervisor(f: Flags)
+    requires
+        f.is_supervisor,
+    ensures
+        forall|g: Flags| f.combine(g).is_supervisor,
+{
+}
+```
+REASON: Once `is_supervisor` is true, combining with any flags keeps it true (OR absorbs true) — this means a supervisor-only directory entry makes the entire subtree supervisor-only, potentially too restrictive
+===PHI_END===
+
+===PHI_START===
+NAME: flags_combine_restricts_writable
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_flags_combine_restricts_writable(f: Flags)
+    requires
+        !f.is_writable,
+    ensures
+        forall|g: Flags| !f.combine(g).is_writable,
+{
+}
+```
+REASON: Once `is_writable` is false, combining with any flags keeps it false (AND absorbs false) — a read-only directory makes the entire subtree read-only regardless of leaf permissions
+===PHI_END===
+
+===PHI_START===
+NAME: view_external_body_unconstrained
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_view_external_body_unconstrained(mem1: PTMem, mem2: PTMem)
+    requires
+        mem1.mem === mem2.mem,
+        mem1.pml4 == mem2.pml4,
+    ensures
+        mem1@ === mem2@,
+{
+}
+```
+REASON: `PTMem::view` is `external_body` — structural equality of inputs should imply equal outputs, but this is trusted without proof; the PTE interpretation could be nondeterministic
+===PHI_END===
+
+===PHI_START===
+NAME: lemma_write_seq_idle_external_body_direct
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_lemma_write_seq_idle_external_body_direct(mem: PTMem, addr: usize)
+    ensures
+        mem.write_seq(seq![]).read(addr) == mem.read(addr),
+{
+}
+```
+REASON: `write_seq(seq![])` should be identity by fold_left base case — tests that even the trivial case (empty writes) preserves reads without needing the external_body lemma
+===PHI_END===

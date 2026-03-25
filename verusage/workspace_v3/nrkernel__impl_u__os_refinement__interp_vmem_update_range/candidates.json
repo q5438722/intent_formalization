@@ -1,0 +1,37 @@
+[
+  {
+    "name": "upper_vaddr_no_progress",
+    "target_fn": "upper_vaddr",
+    "type": "behavioral",
+    "code": "proof fn phi_1_upper_vaddr_no_progress(arch: Arch, layer: nat, base: nat)\n    requires\n        arch.inv(),\n        layer < arch.layers.len(),\n    ensures\n        arch.upper_vaddr(layer, base) == base,\n{\n}",
+    "reason": "If upper_vaddr equals the base, the layer maps a zero-sized address range, making page table traversal useless"
+  },
+  {
+    "name": "entry_base_collapses_indices",
+    "target_fn": "entry_base",
+    "type": "behavioral",
+    "code": "proof fn phi_2_entry_base_collapses_indices(arch: Arch, layer: nat, base: nat, idx1: nat, idx2: nat)\n    requires\n        arch.inv(),\n        layer < arch.layers.len(),\n        idx1 < arch.num_entries(layer),\n        idx2 < arch.num_entries(layer),\n        idx1 != idx2,\n    ensures\n        arch.entry_base(layer, base, idx1) == arch.entry_base(layer, base, idx2),\n{\n}",
+    "reason": "Distinct entry indices mapping to the same base address would mean page table entries alias, breaking address space partitioning"
+  },
+  {
+    "name": "inv_allows_empty_arch",
+    "target_fn": "inv",
+    "type": "logical",
+    "code": "proof fn phi_3_inv_allows_empty_arch(arch: Arch)\n    requires\n        arch.layers.len() == 0,\n    ensures\n        arch.inv(),\n{\n}",
+    "reason": "An architecture with zero layers satisfies inv vacuously, yet cannot perform any translation\u2014the invariant may be too weak"
+  },
+  {
+    "name": "entry_size_non_decreasing_across_layers",
+    "target_fn": "entry_size_is_next_layer_size",
+    "type": "boundary",
+    "code": "proof fn phi_4_entry_size_non_decreasing(arch: Arch, i: nat)\n    requires\n        arch.inv(),\n        i + 1 < arch.layers.len(),\n    ensures\n        arch.entry_size(i) <= arch.entry_size((i + 1) as nat),\n{\n}",
+    "reason": "Parent layers must map strictly larger regions than child layers; equal-or-smaller sizes would break the hierarchical decomposition of the address space"
+  },
+  {
+    "name": "num_entries_allows_degenerate",
+    "target_fn": "num_entries",
+    "type": "boundary",
+    "code": "proof fn phi_5_num_entries_allows_degenerate(arch: Arch, layer: nat)\n    requires\n        arch.inv(),\n        layer < arch.layers.len(),\n    ensures\n        arch.num_entries(layer) <= 1nat,\n{\n}",
+    "reason": "A layer with at most one entry makes the directory level pointless and would collapse the page table hierarchy, indicating the invariant permits degenerate configurations"
+  }
+]

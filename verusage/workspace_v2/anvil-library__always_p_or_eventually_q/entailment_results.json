@@ -1,0 +1,47 @@
+[
+  {
+    "name": "execution_equality_forces_fn_equality",
+    "type": "logical",
+    "code": "proof fn phi_1_execution_equality_forces_fn_equality(f: spec_fn(nat) -> int, g: spec_fn(nat) -> int)\n    requires\n        forall |i: nat| #[trigger] f(i) == g(i),\n    ensures\n        f == g,\n{\n    let ex1 = Execution { nat_to_state: f };\n    let ex2 = Execution { nat_to_state: g };\n    execution_equality::<int>(ex1, ex2);\n}",
+    "reason": "execution_equality is external_body forcing intensional equality of spec_fn from pointwise extensional equivalence \u2014 two structurally distinct closures are collapsed to equal",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "not_eventually_implies_always_not",
+    "type": "logical",
+    "code": "proof fn phi_2_not_eventually_implies_always_not(ex: Execution<int>, p: TempPred<int>)\n    requires\n        not(eventually(p)).satisfied_by(ex),\n    ensures\n        always(not(p)).satisfied_by(ex),\n{\n    not_eventually_unfold::<int>(ex, p);\n}",
+    "reason": "not_eventually_unfold extracts a bare forall of negations, and repacking into always(not(p)) requires the SMT solver to close the intensional gap between the always closure and the bare quantifier \u2014 if this verifies, the axiom is strong enough to enable duality rewrites",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "always_p_or_eventually_q_rec_no_bound",
+    "type": "boundary",
+    "code": "proof fn phi_3_always_p_or_eventually_q_rec_no_bound(ex: Execution<int>, next: TempPred<int>, p: TempPred<int>, q: TempPred<int>)\n    requires\n        forall |idx| p.satisfied_by(ex.suffix(idx)) && next.satisfied_by(ex.suffix(idx)) ==> p.satisfied_by(ex.suffix(idx + 1)) || q.satisfied_by(ex.suffix(idx + 1)),\n        forall |idx| next.satisfied_by(#[trigger] ex.suffix(idx)),\n        forall |idx| !q.satisfied_by(#[trigger] ex.suffix(idx)),\n        p.satisfied_by(ex),\n    ensures\n        forall |i: nat| p.satisfied_by(#[trigger] ex.suffix(i)),\n{\n    assert forall |i: nat| p.satisfied_by(#[trigger] ex.suffix(i)) by {\n        always_p_or_eventually_q_rec::<int>(ex, next, p, q, i);\n    };\n}",
+    "reason": "always_p_or_eventually_q_rec is external_body with a decreases clause on i but no base case verification \u2014 the induction is trusted without proof, and composing it over all i yields unbounded invariance from a single-step induction axiom",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "suffix_composition_via_execution_equality",
+    "type": "logical",
+    "code": "proof fn phi_4_suffix_composition_via_execution_equality(ex: Execution<int>, i: nat, j: nat)\n    ensures\n        ex.suffix(i).suffix(j) == ex.suffix(i + j),\n{\n    execution_equality::<int>(ex.suffix(i).suffix(j), ex.suffix(i + j));\n}",
+    "reason": "ex.suffix(i).suffix(j) produces a doubly-nested closure intensionally distinct from ex.suffix(i+j) \u2014 execution_equality collapses them without proof, and always_p_or_eventually_q depends on this at every inductive step",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "always_propagate_then_unfold_double_suffix",
+    "type": "logical",
+    "code": "proof fn phi_5_always_propagate_then_unfold_double_suffix(ex: Execution<int>, p: TempPred<int>, i: nat, j: nat)\n    requires\n        always(p).satisfied_by(ex),\n    ensures\n        p.satisfied_by(ex.suffix(i).suffix(j)),\n{\n    always_propagate_forwards::<int>(ex, p, i);\n    always_unfold::<int>(ex.suffix(i), p);\n}",
+    "reason": "chaining always_propagate_forwards with always_unfold yields p on doubly-nested suffix ex.suffix(i).suffix(j) which is intensionally distinct from ex.suffix(i+j) \u2014 the two external_body axioms compose to resolve arbitrary suffix nesting without an explicit composition lemma",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

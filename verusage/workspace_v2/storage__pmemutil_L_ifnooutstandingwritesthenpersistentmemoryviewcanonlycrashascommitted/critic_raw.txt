@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: wherever_no_writes_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `lemma_wherever_no_outstanding_writes_persistent_memory_view_can_only_crash_as_committed` is `external_body` with `unimplemented!()`. It asserts that for any address without an outstanding write, any crash state must match `committed()` at that address. This requires reasoning that both chunk-level crash branches (ignoring writes vs after flush) produce `state_at_last_flush` when `outstanding_write` is `None` — trusted without verification.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: crash_as_preserves_length
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `can_crash_as` directly requires `bytes.len() == self.len()` as its first conjunct. Trivially correct by definition.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: chunk_vacuous_for_out_of_bounds
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: For chunk = -1, no address `addr` with `0 <= addr < self.len()` satisfies `addr / 8 == -1` (since non-negative integers divided by positive give non-negative results). The quantifier antecedent is always false, making both predicates vacuously true.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: committed_at_addr_equals_state_at_last_flush
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `committed()` is `self.state.map(|_, b| b.state_at_last_flush)`. By the vstd map indexing axiom, `committed()[addr] == state[addr].state_at_last_flush`. Correct by definition.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: outstanding_write_in_chunk_allows_flushed_crash
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: All 8 bytes have `outstanding_write == Some(val)`, so `flush_byte() == val` for each. `chunk_corresponds_after_flush(0, flushed)` holds since `flushed[addr] == val == flush_byte()`. For any other chunk, the predicate is vacuously true. Correct by the crash model definition.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: the per-address crash determinism lemma for bytes without outstanding writes is `external_body`, trusting that both chunk crash branches yield `state_at_last_flush` when no write is pending — this requires non-trivial reasoning about the chunk-level disjunction. Four false positives confirm correct definitional properties: length preservation, vacuous truth for invalid chunks, map projection for committed, and flushed crash state for a uniform chunk.
+===END_SUMMARY===

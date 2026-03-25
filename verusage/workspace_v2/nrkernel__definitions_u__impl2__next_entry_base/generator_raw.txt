@@ -1,0 +1,84 @@
+===PHI_START===
+NAME: overflow_bounds_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_overflow_bounds_external_body()
+    ensures
+        X86_MAX_ENTRY_SIZE * (X86_NUM_ENTRIES + 1) < 0x10000000000000000,
+        MAX_BASE + X86_MAX_ENTRY_SIZE * (X86_NUM_ENTRIES + 1) < 0x10000000000000000,
+{
+    overflow_bounds();
+}
+```
+REASON: `overflow_bounds` is `external_body` — the u64 overflow safety of max entry calculations is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: entry_size_exec_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_entry_size_exec_external_body(arch: ArchExec, layer: usize)
+    requires
+        layer < arch@.layers.len(),
+    ensures
+        arch.entry_size(layer) == arch@.entry_size(layer as nat),
+{
+}
+```
+REASON: `ArchExec::entry_size` is `external_body` — the exec-to-spec correspondence for layer entry size is trusted without implementation
+===PHI_END===
+
+===PHI_START===
+NAME: next_entry_base_off_by_one
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_next_entry_base_off_by_one(arch: Arch, layer: nat, base: nat, idx: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+    ensures
+        arch.next_entry_base(layer, base, idx) == base + idx * arch.entry_size(layer) + arch.entry_size(layer),
+{
+}
+```
+REASON: `next_entry_base` computes `base + (idx+1)*entry_size` which equals `entry_base(idx) + entry_size` — it returns the END of the idx-th entry, not the START of the (idx+1)-th, but these are the same value, potentially confusing callers about semantics
+===PHI_END===
+
+===PHI_START===
+NAME: next_entry_base_at_max_idx
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_next_entry_base_at_max_idx(arch: Arch, layer: nat, base: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+    ensures
+        arch.next_entry_base(layer, base, (arch.num_entries(layer) - 1) as nat) == base + arch.num_entries(layer) * arch.entry_size(layer),
+{
+}
+```
+REASON: At the last valid index, `next_entry_base` equals `base + num_entries * entry_size` — the function can produce addresses at the very end of the layer's address space
+===PHI_END===
+
+===PHI_START===
+NAME: next_entry_base_exceeds_parent_entry
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_next_entry_base_exceeds_parent_entry(arch: Arch, layer: nat, base: nat, idx: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+        layer > 0,
+        idx == arch.num_entries(layer),
+    ensures
+        arch.next_entry_base(layer, base, idx) == base + (arch.num_entries(layer) + 1) * arch.entry_size(layer),
+{
+}
+```
+REASON: When `idx == num_entries` (one past valid range), `next_entry_base` produces an address beyond the parent entry's mapped region — no runtime guard prevents this since the precondition only bounds `idx <= X86_NUM_ENTRIES`
+===PHI_END===

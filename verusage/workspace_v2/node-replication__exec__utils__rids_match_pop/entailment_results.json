@@ -1,0 +1,47 @@
+[
+  {
+    "name": "rids_match_empty_bools_empty_rids",
+    "type": "boundary",
+    "code": "proof fn phi_1_rids_match_empty_bools_empty_rids(bools: Seq<Option<ReqId>>, rids: Seq<ReqId>, b: nat, r: nat)\n    requires\n        b <= bools.len(),\n        r <= rids.len(),\n    ensures\n        rids_match(bools, rids, b, b, r, r),\n{\n}",
+    "reason": "Empty bools range trivially matches empty rids range at any position \u2014 base case of the recursion",
+    "entailed": true,
+    "verus_output": " ^^^^^^^\n\nwarning: use of deprecated method `vstd::prelude::OptionAdditionalFns::is_Some`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/node-replication__exec__utils__rids_match_pop/phi_1_rids_match_empty_bools_empty_rids.rs:85:33\n   |\n85 |         if bools[bools_end - 1].is_Some() {\n   |                                 ^^^^^^^\n\nwarning: 6 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "rids_match_pop_some_consumes_rid",
+    "type": "behavioral",
+    "code": "proof fn phi_2_rids_match_pop_some_consumes_rid(bools: Seq<Option<ReqId>>, rids: Seq<ReqId>, bools_start: nat, bools_end: nat, rids_start: nat, rids_end: nat)\n    requires\n        0 <= bools_start < bools_end <= bools.len(),\n        0 <= rids_start <= rids_end <= rids.len(),\n        rids_match(bools, rids, bools_start, bools_end, rids_start, rids_end),\n        bools[bools_start as int].is_Some(),\n    ensures\n        rids_start < rids_end,\n        rids[rids_start as int] == bools[bools_start as int].get_Some_0(),\n{\n    rids_match_pop(bools, rids, bools_start, bools_end, rids_start, rids_end);\n}",
+    "reason": "A `Some` at `bools_start` forces `rids_start < rids_end` and value equality \u2014 tests that `rids_match_pop` correctly inverts the right-to-left definition into left-to-right access",
+    "entailed": true,
+    "verus_output": "ionalFns::get_Some_0`: get_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/node-replication__exec__utils__rids_match_pop/phi_2_rids_match_pop_some_consumes_rid.rs:112:62\n    |\n112 |         rids[rids_start as int] == bools[bools_start as int].get_Some_0(),\n    |                                                              ^^^^^^^^^^\n\nwarning: 8 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "rids_match_pop_none_preserves",
+    "type": "behavioral",
+    "code": "proof fn phi_3_rids_match_pop_none_preserves(bools: Seq<Option<ReqId>>, rids: Seq<ReqId>, bools_start: nat, bools_end: nat, rids_start: nat, rids_end: nat)\n    requires\n        0 <= bools_start < bools_end <= bools.len(),\n        0 <= rids_start <= rids_end <= rids.len(),\n        rids_match(bools, rids, bools_start, bools_end, rids_start, rids_end),\n        bools[bools_start as int].is_None(),\n    ensures\n        rids_match(bools, rids, (bools_start + 1) as nat, bools_end, rids_start, rids_end),\n{\n    rids_match_pop(bools, rids, bools_start, bools_end, rids_start, rids_end);\n}",
+    "reason": "A `None` at `bools_start` can be skipped without consuming a rid \u2014 tests that left-to-right popping of `None` preserves the match relation",
+    "entailed": true,
+    "verus_output": "^^^^\n\nwarning: use of deprecated method `vstd::prelude::OptionAdditionalFns::is_None`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/node-replication__exec__utils__rids_match_pop/phi_3_rids_match_pop_none_preserves.rs:109:35\n    |\n109 |         bools[bools_start as int].is_None(),\n    |                                   ^^^^^^^\n\nwarning: 7 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "rids_match_single_some_singleton",
+    "type": "boundary",
+    "code": "proof fn phi_4_rids_match_single_some_singleton(rid: ReqId)\n    ensures ({\n        let bools = seq![Option::Some(rid)];\n        let rids = seq![rid];\n        rids_match(bools, rids, 0, 1, 0, 1)\n    }),\n{\n}",
+    "reason": "A single `Some(rid)` matches a single `rid` \u2014 tests the minimal non-trivial case of the matching relation",
+    "entailed": false,
+    "verus_output": "ingleton.rs:105:13\n    |\n104 |   proof fn phi_4_rids_match_single_some_singleton(rid: ReqId)\n    |         ----------------------------------------------------- at the end of the function body\n105 |       ensures ({\n    |  _____________^\n106 | |         let bools = seq![Option::Some(rid)];\n107 | |         let rids = seq![rid];\n108 | |         rids_match(bools, rids, 0, 1, 0, 1)\n109 | |     }),\n    | |______^ failed this postcondition\n\nerror: aborting due to 1 previous error; 6 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "rids_match_implies_rid_count",
+    "type": "logical",
+    "code": "proof fn phi_5_rids_match_implies_rid_count(bools: Seq<Option<ReqId>>, rids: Seq<ReqId>, bools_start: nat, bools_end: nat, rids_start: nat, rids_end: nat)\n    requires\n        0 <= bools_start <= bools_end <= bools.len(),\n        0 <= rids_start <= rids_end <= rids.len(),\n        rids_match(bools, rids, bools_start, bools_end, rids_start, rids_end),\n    ensures\n        rids_end - rids_start <= bools_end - bools_start,\n    decreases bools_end - bools_start,\n{\n    if bools_end == bools_start {\n    } else {\n        if bools[bools_end - 1].is_Some() {\n            phi_5_rids_match_implies_rid_count(bools, rids, bools_start, (bools_end - 1) as nat, rids_start, (rids_end - 1) as nat);\n        } else {\n            phi_5_rids_match_implies_rid_count(bools, rids, bools_start, (bools_end - 1) as nat, rids_start, rids_end);\n        }\n    }\n}",
+    "reason": "The number of matched rids never exceeds the number of bools entries \u2014 the `None` entries are skipped, so `rids_end - rids_start <= bools_end - bools_start`",
+    "entailed": true,
+    "verus_output": " ^^^^^^^\n\nwarning: use of deprecated method `vstd::prelude::OptionAdditionalFns::is_Some`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/node-replication__exec__utils__rids_match_pop/phi_5_rids_match_implies_rid_count.rs:115:33\n    |\n115 |         if bools[bools_end - 1].is_Some() {\n    |                                 ^^^^^^^\n\nwarning: 7 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,76 @@
+===PHI_START===
+NAME: rl2_interp_pt_mem_is_writer_mem
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_rl2_interp_pt_mem_is_writer_mem(s: crate::rl2::State)
+    ensures
+        s.interp().pt_mem === s.pt_mem.write_seq(s.sbuf[s.writes.core]),
+{
+}
+```
+REASON: The rl2→rl1 interp sets `pt_mem: self.writer_mem()` which is `self.core_mem(self.writes.core)` = `self.pt_mem.write_seq(self.sbuf[self.writes.core])` — the rl1 view's page table is the writer's TSO-applied memory, meaning non-writer cores' pending writes are invisible at rl1 level
+===PHI_END===
+
+===PHI_START===
+NAME: candidate_mapping_overlaps_empty_map
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_candidate_mapping_overlaps_empty_map(base: nat, pte: PTE)
+    ensures
+        !candidate_mapping_overlaps_existing_vmem(Map::empty(), base, pte),
+{
+}
+```
+REASON: With an empty mapping table, no existing mapping can overlap — tests that the existential in `candidate_mapping_overlaps_existing_vmem` correctly returns false when the map has no keys
+===PHI_END===
+
+===PHI_START===
+NAME: arch_inv_holds_for_x86
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_arch_inv_holds_for_x86()
+    ensures
+        x86_arch_spec.inv(),
+{
+}
+```
+REASON: `x86_arch_spec` is a concrete constant — if `inv()` doesn't hold, all recommends-guarded functions using `x86_arch_spec` operate outside their intended preconditions, silently producing arbitrary results
+===PHI_END===
+
+===PHI_START===
+NAME: between_exclusive_upper
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_between_exclusive_upper(a: nat, b: nat)
+    requires
+        a < b,
+    ensures
+        !between(b, a, b),
+{
+}
+```
+REASON: `between(x, a, b)` uses strict `<` for the upper bound — the endpoint `b` itself should not be "between" a and b; if it were, fence-post errors would corrupt range checks throughout the spec
+===PHI_END===
+
+===PHI_START===
+NAME: overlap_adjacent_no_overlap
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_overlap_adjacent_no_overlap(base: nat, size: nat)
+    requires
+        size > 0,
+    ensures
+        !overlap(
+            MemRegion { base, size },
+            MemRegion { base: base + size, size },
+        ),
+{
+}
+```
+REASON: Two adjacent regions (one ends exactly where the next begins) should not overlap — tests that `overlap` uses strict `<` correctly; if adjacent regions overlapped, contiguous memory layouts would be impossible
+===PHI_END===

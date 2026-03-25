@@ -1,0 +1,88 @@
+Looking at the source, `to_vec` is an `external_body` method on `CKeyHashMap` returning `Vec<CKeyKV>`, with `spec_to_vec` as its spec counterpart. I'll generate 5 candidates probing whether the specification is too weak or admits undesirable behaviors.
+
+===PHI_START===
+NAME: to_vec_always_empty
+TARGET_FN: to_vec
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_to_vec_always_empty(h: CKeyHashMap)
+    requires
+        h.is_marshalable(),
+    ensures
+        h.spec_to_vec()@.len() == 0,
+{
+}
+```
+REASON: If entailed, to_vec ignores all hashmap contents and always returns an empty vector
+===PHI_END===
+
+===PHI_START===
+NAME: to_vec_length_at_most_one
+TARGET_FN: to_vec
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_to_vec_length_at_most_one(h: CKeyHashMap)
+    requires
+        h.is_marshalable(),
+    ensures
+        h.spec_to_vec()@.len() <= 1,
+{
+}
+```
+REASON: If entailed, to_vec can never faithfully represent a hashmap with more than one entry
+===PHI_END===
+
+===PHI_START===
+NAME: to_vec_serialize_constant
+TARGET_FN: to_vec
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_to_vec_serialize_constant(h1: CKeyHashMap, h2: CKeyHashMap)
+    requires
+        h1.is_marshalable(),
+        h2.is_marshalable(),
+    ensures
+        h1.spec_to_vec().ghost_serialize() == h2.spec_to_vec().ghost_serialize(),
+{
+}
+```
+REASON: If entailed, serialization of to_vec is identical for all hashmaps, destroying injectivity
+===PHI_END===
+
+===PHI_START===
+NAME: to_vec_all_view_equal
+TARGET_FN: to_vec
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_to_vec_all_view_equal(h1: CKeyHashMap, h2: CKeyHashMap)
+    requires
+        h1.is_marshalable(),
+        h2.is_marshalable(),
+    ensures
+        h1.spec_to_vec().view_equal(&h2.spec_to_vec()),
+{
+}
+```
+REASON: If entailed, to_vec produces view-equal results for any two hashmaps, collapsing all maps to one value
+===PHI_END===
+
+===PHI_START===
+NAME: to_vec_serialize_len_too_small
+TARGET_FN: to_vec
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_to_vec_serialize_len_too_small(h: CKeyHashMap)
+    requires
+        h.is_marshalable(),
+    ensures
+        h.spec_to_vec().ghost_serialize().len() <= 8,
+{
+}
+```
+REASON: If entailed, serialized to_vec output is at most 8 bytes (a single usize length prefix), meaning element data is never serialized
+===PHI_END===

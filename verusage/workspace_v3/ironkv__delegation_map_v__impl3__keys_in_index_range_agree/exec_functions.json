@@ -1,0 +1,10 @@
+[
+  {
+    "name": "is_lt",
+    "code": "pub const fn is_lt(self) -> (b:bool)\n        ensures b == self.lt(),\n    {\n        matches!(self, Ordering::Less)\n    }"
+  },
+  {
+    "name": "keys_in_index_range_agree",
+    "code": "fn keys_in_index_range_agree(&self, lo: usize, hi: usize, v: &ID) -> (ret:(bool, bool))\n        requires \n            self.valid(),\n            0 <= lo <= hi < self.keys@.len(),\n        ensures \n            ret.0 == forall |i| #![auto] lo <= i <= hi ==> self@[self.keys@[i]]@ == v@,\n            !ret.0 ==> (ret.1 == (self@[self.keys@[hi as int]]@ != v@ && (forall |i| #![auto] lo <= i < hi ==> self@[self.keys@[i]]@ == v@))),\n    {\n        assert(self.valid());\n        assert(forall |i| lo <= i <= hi ==> self@[self.keys@[i]] == self.vals@[i]);\n        let (agree, almost) = self.values_agree(lo, hi, v);\n        \n        (agree, almost)\n    }"
+  }
+]

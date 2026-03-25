@@ -1,0 +1,37 @@
+[
+  {
+    "name": "pa_always_zero",
+    "target_fn": "range_alloc_and_map_io",
+    "type": "behavioral",
+    "code": "proof fn phi_1_pa_always_zero(v: usize)\n    ensures\n        spec_usize2pa(v) == 0usize,\n{\n}",
+    "reason": "If PA masking zeroes all addresses, range_alloc_and_map_io would map every IO page to physical address 0"
+  },
+  {
+    "name": "nonzero_produces_empty_entry",
+    "target_fn": "range_alloc_and_map_io",
+    "type": "logical",
+    "code": "proof fn phi_2_nonzero_produces_empty_entry(v: usize)\n    requires\n        v != 0,\n    ensures\n        spec_usize2page_entry(v).is_empty(),\n{\n}",
+    "reason": "If non-zero usize values decode to empty page entries, IO page table entries created during mapping would all appear unmapped"
+  },
+  {
+    "name": "present_implies_write",
+    "target_fn": "range_alloc_and_map_io",
+    "type": "boundary",
+    "code": "proof fn phi_3_present_implies_write(v: usize)\n    ensures\n        spec_usize2page_entry_perm(v).present ==> spec_usize2page_entry_perm(v).write,\n{\n}",
+    "reason": "If every present page entry is writable, read-only IO mappings are impossible and memory protection for device MMIO regions is broken"
+  },
+  {
+    "name": "pa_preserves_all_bits",
+    "target_fn": "range_alloc_and_map_io",
+    "type": "behavioral",
+    "code": "proof fn phi_4_pa_preserves_all_bits(v: usize)\n    ensures\n        spec_usize2pa(v) == v,\n{\n}",
+    "reason": "If PA masking is identity, permission and flag bits leak into physical addresses used for IO mappings, corrupting device memory targets"
+  },
+  {
+    "name": "present_implies_execute_disable",
+    "target_fn": "range_alloc_and_map_io",
+    "type": "logical",
+    "code": "proof fn phi_5_present_implies_execute_disable(v: usize)\n    ensures\n        spec_usize2page_entry_perm(v).present ==> spec_usize2page_entry_perm(v).execute_disable,\n{\n}",
+    "reason": "If all present entries have execute-disable set, executable device MMIO regions mapped by range_alloc_and_map_io become non-executable"
+  }
+]

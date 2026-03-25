@@ -1,0 +1,98 @@
+===PHI_START===
+NAME: interp_log_length_equals_gtail
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_interp_log_length_equals_gtail<DT: Dispatch>(
+    i_log: Map<LogIdx, LogEntry<DT>>,
+    gtail: nat,
+)
+    requires
+        forall|i| 0 <= i < gtail ==> i_log.contains_key(i),
+    ensures
+        interp_log::<DT>(gtail, i_log).len() == gtail,
+{
+}
+```
+REASON: `interp_log` uses `Seq::new(global_tail, ...)` so its length is always `gtail` — but `i_log` could contain entries beyond `gtail` that are silently dropped by the interpretation
+===PHI_END===
+
+===PHI_START===
+NAME: refinement_at_zero
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_refinement_at_zero<DT: Dispatch>(
+    i_log: Map<LogIdx, LogEntry<DT>>,
+    gtail: nat,
+)
+    requires
+        forall|i| 0 <= i < gtail ==> i_log.contains_key(i),
+    ensures
+        s_nrstate_at_version::<DT>(interp_log(gtail, i_log), 0) == i_nrstate_at_version::<DT>(i_log, 0),
+{
+    state_at_version_refines(interp_log(gtail, i_log), i_log, gtail, 0);
+}
+```
+REASON: Refinement at version 0 is trivially `init_spec() == init_spec()` — tests the vacuous base case
+===PHI_END===
+
+===PHI_START===
+NAME: interp_log_ignores_extra_entries
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_interp_log_ignores_extra_entries<DT: Dispatch>(
+    i_log: Map<LogIdx, LogEntry<DT>>,
+    extra: LogEntry<DT>,
+    gtail: nat,
+)
+    requires
+        forall|i| 0 <= i < gtail ==> i_log.contains_key(i),
+        !i_log.contains_key(gtail),
+    ensures
+        interp_log::<DT>(gtail, i_log) == interp_log::<DT>(gtail, i_log.insert(gtail, extra)),
+{
+    assert(interp_log::<DT>(gtail, i_log) =~= interp_log::<DT>(gtail, i_log.insert(gtail, extra)));
+}
+```
+REASON: Entries at or beyond `gtail` are invisible to `interp_log` — the map-to-seq interpretation silently truncates, so appending entries doesn't change the interpreted log
+===PHI_END===
+
+===PHI_START===
+NAME: refinement_proof_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_refinement_proof_external_body<DT: Dispatch>()
+    ensures
+        exists|p: RefinementProof<DT>| true,
+{
+}
+```
+REASON: `RefinementProof` is `external_body` with only a `PhantomData` field — its existence is unconditionally provable, meaning the refinement witness carries no actual proof content
+===PHI_END===
+
+===PHI_START===
+NAME: state_at_version_node_id_irrelevant
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_state_at_version_node_id_irrelevant<DT: Dispatch>(
+    i_log: Map<LogIdx, LogEntry<DT>>,
+    op: DT::WriteOperation,
+    nid1: types::NodeId,
+    nid2: types::NodeId,
+)
+    requires
+        nid1 != nid2,
+    ensures ({
+        let log1 = Map::empty().insert(0nat, LogEntry::<DT> { op, node_id: nid1 });
+        let log2 = Map::empty().insert(0nat, LogEntry::<DT> { op, node_id: nid2 });
+        i_nrstate_at_version::<DT>(log1, 1) == i_nrstate_at_version::<DT>(log2, 1)
+    }),
+{
+}
+```
+REASON: `node_id` is stored in `LogEntry` but completely ignored by `compute_nrstate_at_version` — `interp_log` strips it via `.op`, so the refinement erases node provenance entirely
+===PHI_END===

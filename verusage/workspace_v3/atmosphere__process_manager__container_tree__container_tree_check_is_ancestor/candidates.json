@@ -1,0 +1,37 @@
+[
+  {
+    "name": "always_ancestor",
+    "target_fn": "container_tree_check_is_ancestor",
+    "type": "behavioral",
+    "code": "proof fn phi_1_always_ancestor(\n    root_container: ContainerPtr,\n    container_perms: Map<ContainerPtr, PointsTo<Container>>,\n    a_ptr: ContainerPtr,\n    child_ptr: ContainerPtr,\n)\n    requires\n        container_perms_wf(container_perms),\n        container_tree_wf(root_container, container_perms),\n        container_perms.dom().contains(a_ptr),\n        container_perms.dom().contains(child_ptr),\n        container_perms[a_ptr].value().depth < container_perms[child_ptr].value().depth,\n    ensures\n        container_perms[child_ptr].value().uppertree_seq@.contains(a_ptr),\n{\n}",
+    "reason": "Any node with smaller depth being an ancestor would collapse the tree into a total order, violating branching structure."
+  },
+  {
+    "name": "never_ancestor",
+    "target_fn": "container_tree_check_is_ancestor",
+    "type": "behavioral",
+    "code": "proof fn phi_2_never_ancestor(\n    root_container: ContainerPtr,\n    container_perms: Map<ContainerPtr, PointsTo<Container>>,\n    a_ptr: ContainerPtr,\n    child_ptr: ContainerPtr,\n)\n    requires\n        container_perms_wf(container_perms),\n        container_tree_wf(root_container, container_perms),\n        container_perms.dom().contains(a_ptr),\n        container_perms.dom().contains(child_ptr),\n        container_perms[a_ptr].value().depth < container_perms[child_ptr].value().depth,\n    ensures\n        !container_perms[child_ptr].value().uppertree_seq@.contains(a_ptr),\n{\n}",
+    "reason": "No ancestry ever holding would mean the tree has no parent-child paths, contradicting tree well-formedness."
+  },
+  {
+    "name": "depth_one_diff_always_ancestor",
+    "target_fn": "container_tree_check_is_ancestor",
+    "type": "boundary",
+    "code": "proof fn phi_3_depth_one_diff_always_ancestor(\n    root_container: ContainerPtr,\n    container_perms: Map<ContainerPtr, PointsTo<Container>>,\n    a_ptr: ContainerPtr,\n    child_ptr: ContainerPtr,\n)\n    requires\n        container_perms_wf(container_perms),\n        container_tree_wf(root_container, container_perms),\n        container_perms.dom().contains(a_ptr),\n        container_perms.dom().contains(child_ptr),\n        container_perms[a_ptr].value().depth + 1 == container_perms[child_ptr].value().depth,\n    ensures\n        container_perms[a_ptr].value().subtree_set@.contains(child_ptr),\n{\n}",
+    "reason": "A depth difference of exactly 1 does not imply ancestry \u2014 siblings' parents are different nodes at the same depth."
+  },
+  {
+    "name": "subtree_uppertree_disagree",
+    "target_fn": "container_tree_check_is_ancestor",
+    "type": "logical",
+    "code": "proof fn phi_4_subtree_uppertree_disagree(\n    root_container: ContainerPtr,\n    container_perms: Map<ContainerPtr, PointsTo<Container>>,\n    a_ptr: ContainerPtr,\n    child_ptr: ContainerPtr,\n)\n    requires\n        container_perms_wf(container_perms),\n        container_tree_wf(root_container, container_perms),\n        container_perms.dom().contains(a_ptr),\n        container_perms.dom().contains(child_ptr),\n        container_perms[a_ptr].value().depth < container_perms[child_ptr].value().depth,\n    ensures\n        container_perms[child_ptr].value().uppertree_seq@.contains(a_ptr)\n          != container_perms[a_ptr].value().subtree_set@.contains(child_ptr),\n{\n}",
+    "reason": "The two ensures clauses both equal ret; if subtree_set and uppertree_seq could disagree the spec would be inconsistent."
+  },
+  {
+    "name": "ancestor_independent_of_a_ptr",
+    "target_fn": "container_tree_check_is_ancestor",
+    "type": "logical",
+    "code": "proof fn phi_5_ancestor_independent_of_a_ptr(\n    root_container: ContainerPtr,\n    container_perms: Map<ContainerPtr, PointsTo<Container>>,\n    a_ptr1: ContainerPtr,\n    a_ptr2: ContainerPtr,\n    child_ptr: ContainerPtr,\n)\n    requires\n        container_perms_wf(container_perms),\n        container_tree_wf(root_container, container_perms),\n        container_perms.dom().contains(a_ptr1),\n        container_perms.dom().contains(a_ptr2),\n        container_perms.dom().contains(child_ptr),\n        container_perms[a_ptr1].value().depth < container_perms[child_ptr].value().depth,\n        container_perms[a_ptr2].value().depth < container_perms[child_ptr].value().depth,\n        a_ptr1 != a_ptr2,\n    ensures\n        container_perms[child_ptr].value().uppertree_seq@.contains(a_ptr1)\n          == container_perms[child_ptr].value().uppertree_seq@.contains(a_ptr2),\n{\n}",
+    "reason": "Ancestry being independent of which candidate node is tested would mean all shallower nodes are equivalent, destroying tree branching."
+  }
+]

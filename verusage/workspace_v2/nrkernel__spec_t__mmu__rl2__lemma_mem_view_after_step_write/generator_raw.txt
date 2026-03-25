@@ -1,0 +1,94 @@
+===PHI_START===
+NAME: ptmem_view_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_ptmem_view_external_body(mem1: PTMem, mem2: PTMem)
+    requires
+        mem1.mem === mem2.mem,
+        mem1.pml4 == mem2.pml4,
+    ensures
+        mem1@ === mem2@,
+{
+}
+```
+REASON: `PTMem::view` is `external_body` — the mapping from raw page table memory to PTE map is completely opaque, so identical memories could theoretically produce different PTE views
+===PHI_END===
+
+===PHI_START===
+NAME: lemma_write_seq_push_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_lemma_write_seq_push_external_body(mem: PTMem, writes: Seq<(usize, usize)>, addr: usize, value: usize)
+    ensures
+        mem.write_seq(writes.push((addr, value)))
+            == (PTMem {
+                pml4: mem.pml4,
+                mem: mem.write_seq(writes).mem.insert(addr, value),
+            }),
+{
+    mem.lemma_write_seq_push(writes, addr, value);
+}
+```
+REASON: `lemma_write_seq_push` is `external_body` — the inductive step for write_seq decomposition is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: wf_ptmem_range_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_wf_ptmem_range_external_body(s1: State, s2: State, c: Constants)
+    requires
+        s1.pt_mem === s2.pt_mem,
+        s1.sbuf === s2.sbuf,
+        s1.writes === s2.writes,
+    ensures
+        s1.wf_ptmem_range(c) == s2.wf_ptmem_range(c),
+{
+}
+```
+REASON: `wf_ptmem_range` is `external_body` — the well-formedness condition on page table memory ranges is completely opaque and unverified
+===PHI_END===
+
+===PHI_START===
+NAME: can_flip_polarity_commented_out_conditions
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_can_flip_polarity_commented_out_conditions(pre: State, c: Constants)
+    requires
+        pre.writes.tso === set![],
+        pre.writes.nonpos === set![],
+        !pre.hist.pending_maps.is_empty(),
+    ensures
+        pre.can_flip_polarity(c),
+{
+}
+```
+REASON: `can_flip_polarity` has commented-out conditions for `pending_maps` and `pending_unmaps` — polarity can flip even with outstanding pending maps/unmaps, potentially allowing unsafe interleaving of mapping and unmapping operations
+===PHI_END===
+
+===PHI_START===
+NAME: writer_sbuf_empty_after_core_change
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_writer_sbuf_empty_after_core_change(pre: State, post: State, c: Constants, lbl: Lbl)
+    requires
+        pre.happy,
+        pre.wf(c),
+        pre.inv_sbuf_facts(c),
+        step_WriteNonneg(pre, post, c, lbl) || step_WriteNonpos(pre, post, c, lbl),
+        lbl->Write_0 != pre.writes.core,
+    ensures
+        pre.writer_sbuf() =~= seq![],
+{
+    assert(pre.writes.tso.contains(pre.writer_sbuf()[0].0)) by {
+        // If sbuf non-empty, tso must be non-empty, but step requires either tso empty or same core
+    };
+}
+```
+REASON: When a different core writes, the precondition `!tso.is_empty() ==> core == writes.core` combined with `writer_sbuf_subset_tso_writes` forces the old writer's sbuf to be empty — tests that the invariant correctly prevents concurrent writers
+===PHI_END===

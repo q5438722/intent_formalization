@@ -1,0 +1,47 @@
+[
+  {
+    "name": "clone_up_to_view_variant_mismatch",
+    "type": "logical",
+    "code": "proof fn phi_1_clone_up_to_view_variant_mismatch(msg: CSingleMessage)\n    requires\n        msg is Message,\n        msg@ is Message,\n    ensures\n        msg.clone_up_to_view()@ is Message,\n{\n}",
+    "reason": "`clone_up_to_view` external_body only ensures `c@ == self@` \u2014 it guarantees the abstract view matches but not the concrete variant, so the clone could theoretically be an `Ack` or `InvalidMessage` with the same abstract view (though the view function maps different variants to different abstract variants, making this a tautology rather than a real gap)",
+    "entailed": false,
+    "verus_output": "error: cannot call function `phi_1_clone_up_to_view_variant_mismatch::CSingleMessage::clone_up_to_view` with mode exec\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__single_delivery_state_v__impl0__lemma_seqno_in_un_acked_list/phi_1_clone_up_to_view_variant_mismatch.rs:761:9\n    |\n761 |         msg.clone_up_to_view()@ is Message,\n    |         ^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "valid_list_empty_any_seqno",
+    "type": "logical",
+    "code": "proof fn phi_2_valid_list_empty_any_seqno(n: u64, dst: AbstractEndPoint)\n    requires\n        n as int <= AbstractParameters::static_params().max_seqno,\n    ensures\n        CAckState::valid_list(Seq::<CSingleMessage>::empty(), n as int, dst),\n{\n}",
+    "reason": "With an empty un_acked list, `valid_list` accepts any `num_packets_acked` up to `max_seqno` \u2014 there is no constraint linking `num_packets_acked` to actual protocol history, allowing fabricated ack counters",
+    "entailed": true,
+    "verus_output": "verification results:: 5 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "un_acked_list_sequential_vacuous_singleton",
+    "type": "boundary",
+    "code": "proof fn phi_3_un_acked_list_sequential_vacuous_singleton(msg: CSingleMessage)\n    requires\n        msg is Message,\n    ensures\n        CAckState::un_acked_list_sequential(seq![msg]),\n{\n}",
+    "reason": "A singleton un_acked list vacuously satisfies `un_acked_list_sequential` regardless of its seqno value \u2014 combined with `valid_list` only checking the first element equals `num_packets_acked + 1`, a single message with any seqno can be made valid by choosing the right `num_packets_acked`",
+    "entailed": true,
+    "verus_output": "verification results:: 5 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "valid_ackstate_no_dst_validity",
+    "type": "logical",
+    "code": "proof fn phi_4_valid_ackstate_no_dst_validity(ack: CAckState, dst: AbstractEndPoint)\n    requires\n        ack.valid(dst),\n        !dst.valid_physical_address(),\n    ensures\n        false,\n{\n}",
+    "reason": "`CAckState::valid` never checks `dst.valid_physical_address()` \u2014 a valid ack state can target an endpoint with an arbitrarily long id (>= 0x100000 bytes), which would fail physical address validation elsewhere in the system",
+    "entailed": false,
+    "verus_output": "entianyu/intent_formalization/verusage/workspace_v2/ironkv__single_delivery_state_v__impl0__lemma_seqno_in_un_acked_list/phi_4_valid_ackstate_no_dst_validity.rs:761:9\n    |\n756 | proof fn phi_4_valid_ackstate_no_dst_validity(ack: CAckState, dst: AbstractEndPoint)\n    |       ------------------------------------------------------------------------------ at the end of the function body\n...\n761 |         false,\n    |         ^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "abstractable_allows_invalid_message_marshalable",
+    "type": "behavioral",
+    "code": "proof fn phi_5_abstractable_allows_invalid_message_marshalable(msg: CSingleMessage)\n    requires\n        msg is InvalidMessage,\n    ensures\n        msg.abstractable(),\n{\n}",
+    "reason": "`InvalidMessage` is unconditionally abstractable \u2014 this means invalid/unparseable messages pass the abstractability check and can flow through protocol layers that gate on `abstractable()`, potentially allowing garbage messages to propagate where only well-formed messages should be accepted",
+    "entailed": true,
+    "verus_output": "verification results:: 5 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

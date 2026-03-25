@@ -1,0 +1,95 @@
+===PHI_START===
+NAME: contains_below_idx
+TARGET_FN: create
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_contains_below_idx(cm: CommitMask, idx: usize, count: usize)
+    requires
+        idx + count <= COMMIT_MASK_BITS,
+        count > 0,
+        idx > 0,
+        cm@ == Set::new(|i: int| idx <= i < idx + count),
+    ensures
+        cm@.contains((idx - 1) as int),
+{
+}
+```
+REASON: Undesirable if the spec allows the result set to include indices below the requested range start
+===PHI_END===
+
+===PHI_START===
+NAME: contains_above_range
+TARGET_FN: create
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_contains_above_range(cm: CommitMask, idx: usize, count: usize)
+    requires
+        idx + count <= COMMIT_MASK_BITS,
+        count > 0,
+        idx + count < COMMIT_MASK_BITS,
+        cm@ == Set::new(|i: int| idx <= i < idx + count),
+    ensures
+        cm@.contains((idx + count) as int),
+{
+}
+```
+REASON: Undesirable if the spec allows the result set to include the element one past the end of the range
+===PHI_END===
+
+===PHI_START===
+NAME: empty_when_nonzero_count
+TARGET_FN: create
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_empty_when_nonzero_count(cm: CommitMask, idx: usize, count: usize)
+    requires
+        idx + count <= COMMIT_MASK_BITS,
+        count > 0,
+        cm@ == Set::new(|i: int| idx <= i < idx + count),
+    ensures
+        cm@ =~= Set::<int>::empty(),
+{
+}
+```
+REASON: Undesirable if a positive count produces an empty set, meaning create has no observable effect
+===PHI_END===
+
+===PHI_START===
+NAME: create_ignores_idx
+TARGET_FN: create
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_create_ignores_idx(cm1: CommitMask, cm2: CommitMask)
+    requires
+        cm1@ == Set::new(|i: int| 0 <= i < 10),
+        cm2@ == Set::new(|i: int| 1 <= i < 11),
+    ensures
+        cm1@ =~= cm2@,
+{
+}
+```
+REASON: Undesirable if the spec cannot distinguish sets at different offsets, meaning idx is effectively ignored
+===PHI_END===
+
+===PHI_START===
+NAME: contains_negative
+TARGET_FN: create
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_contains_negative(cm: CommitMask, idx: usize, count: usize)
+    requires
+        idx + count <= COMMIT_MASK_BITS,
+        count > 0,
+        cm@ == Set::new(|i: int| idx <= i < idx + count),
+    ensures
+        cm@.contains(-1int),
+{
+}
+```
+REASON: Undesirable if the spec allows the result set to contain negative indices which are outside valid bit positions
+===PHI_END===

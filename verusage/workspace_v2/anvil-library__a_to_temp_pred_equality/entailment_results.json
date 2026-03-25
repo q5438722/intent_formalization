@@ -1,0 +1,47 @@
+[
+  {
+    "name": "temp_pred_equality_collapses_distinct",
+    "type": "logical",
+    "code": "proof fn phi_1_temp_pred_equality_collapses_distinct()\n    ensures\n        TempPred::<int>::new(|ex: Execution<int>| true) == TempPred::<int>::new(|ex: Execution<int>| true),\n{\n    let p = TempPred::<int>::new(|ex: Execution<int>| true);\n    let q = TempPred::<int>::new(|ex: Execution<int>| true);\n    temp_pred_equality::<int>(p, q);\n}",
+    "reason": "temp_pred_equality is external_body and equates structurally distinct TempPred values (different closure allocations) based only on extensional equivalence \u2014 this axiom could unsoundly collapse distinct spec_fn identities that Verus normally distinguishes intensionally",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "entails_antisymmetry_forces_equality",
+    "type": "logical",
+    "code": "proof fn phi_2_entails_antisymmetry_forces_equality(p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.entails(q),\n        q.entails(p),\n    ensures\n        p.pred == q.pred,\n{\n    temp_pred_equality::<int>(p, q);\n}",
+    "reason": "mutual entailment only guarantees extensional equivalence of predicates, but temp_pred_equality forces intensional equality of the underlying spec_fn fields \u2014 this conflates logical equivalence with structural identity",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "a_to_temp_pred_equality_forces_fn_equality",
+    "type": "logical",
+    "code": "proof fn phi_3_a_to_temp_pred_equality_forces_fn_equality(\n    p: spec_fn(bool) -> TempPred<int>,\n    q: spec_fn(bool) -> TempPred<int>,\n)\n    requires\n        forall |a: bool| #[trigger] p(a).entails(q(a)) && q(a).entails(p(a)),\n    ensures\n        p == q,\n{\n    a_to_temp_pred_equality::<int, bool>(p, q);\n}",
+    "reason": "extensional equivalence of TempPred outputs is lifted to full equality of higher-order functions, which could equate functions that differ on non-TempPred-observable behavior or internal representation",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "trivial_mutual_entailment",
+    "type": "boundary",
+    "code": "proof fn phi_4_trivial_mutual_entailment()\n    ensures\n        TempPred::<int>::new(|ex: Execution<int>| false) == TempPred::<int>::new(|ex: Execution<int>| false),\n{\n    let p = TempPred::<int>::new(|ex: Execution<int>| false);\n    let q = TempPred::<int>::new(|ex: Execution<int>| false);\n    temp_pred_equality::<int>(p, q);\n}",
+    "reason": "two independently constructed always-false predicates are forced equal, demonstrating the axiom equates any two extensionally equivalent closures regardless of provenance \u2014 could mask distinct failure modes",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "valid_false_implies_anything",
+    "type": "logical",
+    "code": "proof fn phi_5_valid_false_implies_anything(q: TempPred<int>)\n    requires\n        valid::<int>(TempPred::new(|ex: Execution<int>| false)),\n    ensures\n        valid::<int>(q),\n{\n}",
+    "reason": "if valid(false) were ever provable (e.g. via unsound external_body chain), every temporal property would follow \u2014 the spec has no guard preventing valid from being instantiated on contradictory predicates",
+    "entailed": false,
+    "verus_output": "fied, 1 errors\nerror: postcondition not satisfied\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-library__a_to_temp_pred_equality/phi_5_valid_false_implies_anything.rs:75:9\n   |\n71 | proof fn phi_5_valid_false_implies_anything(q: TempPred<int>)\n   |       ------------------------------------------------------- at the end of the function body\n...\n75 |         valid::<int>(q),\n   |         ^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

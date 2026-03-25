@@ -1,0 +1,17 @@
+===VERDICT_START===
+PHI: page_entry_to_map_entry_drops_user_bit
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The `MapEntry` struct contains only `addr`, `write`, and `execute_disable` — it omits the `user` bit entirely. This means the mapping layer cannot distinguish user-accessible from kernel-only pages, which is a real spec gap: page table mappings used for access control checks lose the user/supervisor distinction.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: l4_dom_singleton_cr3
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This follows directly from `wf_l4` which explicitly sets `self.l4_table@.dom() =~= Set::empty().insert(self.cr3)`. A single L4 table per PageTable struct is the intended x86-64 design — each process/address space has its own PageTable struct with its own cr3, and PCID switching swaps the entire struct.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive and one false positive. The `page_entry_to_map_entry_drops_user_bit` finding identifies a real spec gap: `MapEntry` lacks a `user` field, so the user/supervisor permission bit is silently discarded when converting `PageEntry` to `MapEntry`, making kernel-only and user-accessible pages indistinguishable in the mapping abstraction. The `l4_dom_singleton_cr3` finding is an expected structural property of the x86-64 page table design where each PageTable struct owns exactly one L4 table.
+===END_SUMMARY===

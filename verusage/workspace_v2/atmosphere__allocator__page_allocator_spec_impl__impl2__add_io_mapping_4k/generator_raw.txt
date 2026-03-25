@@ -1,0 +1,80 @@
+===PHI_START===
+NAME: usize_u64_roundtrip_unconstrained
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_usize_u64_roundtrip_unconstrained(x: u64)
+    ensures
+        x as usize as u64 == x,
+{
+    lemma_usize_u64(x);
+}
+```
+REASON: lemma_usize_u64 is external_body with no requires — claims ALL u64 values roundtrip through usize without proof
+===PHI_END===
+
+===PHI_START===
+NAME: sll_wf_external_body_opaque
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_sll_wf_external_body_opaque(sll: StaticLinkedList<usize, 10>)
+    requires
+        sll.wf(),
+    ensures
+        sll.len() == sll@.len(),
+{
+    let _ = sll.len();
+}
+```
+REASON: StaticLinkedList::wf() is external_body closed spec — completely opaque, any property could be vacuously true if wf() is unsatisfiable
+===PHI_END===
+
+===PHI_START===
+NAME: wf_to_no_duplicates_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_wf_to_no_duplicates_external_body(sll: StaticLinkedList<usize, 10>)
+    requires
+        sll.wf(),
+    ensures
+        sll.spec_seq@.no_duplicates(),
+{
+    sll.wf_to_no_duplicates();
+}
+```
+REASON: wf_to_no_duplicates is external_body — unverified claim that wf() implies no_duplicates on the ghost sequence
+===PHI_END===
+
+===PHI_START===
+NAME: container_map_2m_subset_allocated_4k
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_container_map_2m_subset_allocated_4k(alloc: PageAllocator)
+    requires
+        alloc.wf(),
+    ensures
+        alloc.container_map_2m@.dom().subset_of(alloc.allocated_pages_4k@),
+{
+}
+```
+REASON: container_wf asserts container_map_2m domain is subset of allocated_pages_4k instead of allocated_pages_2m — likely copy-paste bug
+===PHI_END===
+
+===PHI_START===
+NAME: container_map_1g_subset_allocated_4k
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_container_map_1g_subset_allocated_4k(alloc: PageAllocator)
+    requires
+        alloc.wf(),
+    ensures
+        alloc.container_map_1g@.dom().subset_of(alloc.allocated_pages_4k@),
+{
+}
+```
+REASON: container_wf asserts container_map_1g domain is subset of allocated_pages_4k instead of allocated_pages_1g — likely copy-paste bug
+===PHI_END===

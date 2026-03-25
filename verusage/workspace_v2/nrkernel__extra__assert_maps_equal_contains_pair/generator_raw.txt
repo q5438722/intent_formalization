@@ -1,0 +1,75 @@
+===PHI_START===
+NAME: maps_equal_from_contains_pair
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_maps_equal_from_contains_pair(m1: Map<nat, nat>, m2: Map<nat, nat>)
+    requires
+        forall|k: nat, v: nat| m1.contains_pair(k, v) ==> m2.contains_pair(k, v),
+        forall|k: nat, v: nat| m2.contains_pair(k, v) ==> m1.contains_pair(k, v),
+    ensures
+        m1 === m2,
+{
+    assert_maps_equal_contains_pair(m1, m2);
+}
+```
+REASON: Two maps with identical contains_pair sets are extensionally equal — direct consequence of the verified lemma
+===PHI_END===
+
+===PHI_START===
+NAME: empty_maps_equal
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_empty_maps_equal()
+    ensures
+        Map::<nat, nat>::empty() === Map::<nat, nat>::empty(),
+{
+}
+```
+REASON: Two empty maps are trivially equal — tests the degenerate case where both precondition quantifiers are vacuously true
+===PHI_END===
+
+===PHI_START===
+NAME: singleton_maps_equal
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_singleton_maps_equal(k: nat, v: nat)
+    ensures
+        map![k => v] === map![k => v],
+{
+}
+```
+REASON: Two identical singleton maps are equal — tests the minimal non-trivial case
+===PHI_END===
+
+===PHI_START===
+NAME: contains_pair_symmetric_implies_equal
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_contains_pair_symmetric_implies_equal(m1: Map<nat, nat>, m2: Map<nat, nat>)
+    requires
+        m1 =~= m2,
+    ensures
+        m1 === m2,
+{
+}
+```
+REASON: Extensional equality (`=~=`) implies deep equality (`===`) for maps — tests that the `=~=` to `===` step works directly
+===PHI_END===
+
+===PHI_START===
+NAME: insert_preserves_equality
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_insert_preserves_equality(m: Map<nat, nat>, k: nat, v: nat)
+    ensures
+        m.insert(k, v).contains_pair(k, v),
+{
+}
+```
+REASON: Inserting a key-value pair makes it a contained pair — tests the basic Map axiom that the lemma relies on
+===PHI_END===

@@ -1,0 +1,118 @@
+===PHI_START===
+NAME: trivial_not_found
+TARGET_FN: next_run
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_trivial_not_found(cm: &CommitMask, idx: usize)
+    requires
+        0 <= idx < COMMIT_MASK_BITS,
+    ensures
+        ({
+            let next_idx: usize = COMMIT_MASK_BITS as usize;
+            let count: usize = 0;
+            next_idx + count <= COMMIT_MASK_BITS
+            && (forall |t: int| next_idx <= t < next_idx + count ==> cm@.contains(t))
+        }),
+{
+    const_facts();
+}
+```
+REASON: Spec allows always returning (512, 0) regardless of bit state, making the function vacuously correct but useless
+===PHI_END===
+
+===PHI_START===
+NAME: run_before_search
+TARGET_FN: next_run
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_run_before_search(cm: &CommitMask, idx: usize)
+    requires
+        idx == 256,
+        cm@.contains(0int),
+    ensures
+        ({
+            let next_idx: usize = 0;
+            let count: usize = 1;
+            next_idx + count <= COMMIT_MASK_BITS
+            && (forall |t: int| next_idx <= t < next_idx + count ==> cm@.contains(t))
+        }),
+{
+    const_facts();
+}
+```
+REASON: Spec allows returning a run at position 0 when searching from position 256, violating the forward-scan contract
+===PHI_END===
+
+===PHI_START===
+NAME: zero_count_implies_empty
+TARGET_FN: next_run
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_zero_count_implies_empty(cm: &CommitMask, idx: usize, next_idx: usize, count: usize)
+    requires
+        0 <= idx < COMMIT_MASK_BITS,
+        next_idx + count <= COMMIT_MASK_BITS,
+        forall |t: int| next_idx <= t < next_idx + count ==> cm@.contains(t),
+        count == 0,
+    ensures
+        cm@ =~= Set::<int>::empty(),
+{
+}
+```
+REASON: If entailed, count==0 would force the entire mask to be empty, over-constraining callers who expect partial scans
+===PHI_END===
+
+===PHI_START===
+NAME: non_maximal_run
+TARGET_FN: next_run
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_non_maximal_run(cm: &CommitMask, idx: usize, next_idx: usize)
+    requires
+        0 <= idx < COMMIT_MASK_BITS,
+        next_idx + 2 <= COMMIT_MASK_BITS,
+        cm@.contains(next_idx as int),
+        cm@.contains((next_idx + 1) as int),
+    ensures
+        ({
+            let count: usize = 1;
+            next_idx + count <= COMMIT_MASK_BITS
+            && (forall |t: int| next_idx <= t < next_idx + count ==> cm@.contains(t))
+        }),
+{
+    const_facts();
+}
+```
+REASON: Spec allows returning count=1 when the actual contiguous run is at least 2, so callers cannot trust count is maximal
+===PHI_END===
+
+===PHI_START===
+NAME: skipped_earlier_run
+TARGET_FN: next_run
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_skipped_earlier_run(cm: &CommitMask, idx: usize, later_idx: usize)
+    requires
+        0 <= idx < COMMIT_MASK_BITS,
+        idx < later_idx,
+        later_idx + 1 <= COMMIT_MASK_BITS,
+        cm@.contains(idx as int),
+        cm@.contains(later_idx as int),
+    ensures
+        ({
+            let next_idx: usize = later_idx;
+            let count: usize = 1;
+            next_idx + count <= COMMIT_MASK_BITS
+            && (forall |t: int| next_idx <= t < next_idx + count ==> cm@.contains(t))
+        }),
+{
+    const_facts();
+}
+```
+REASON: Spec allows skipping a set bit at idx and reporting a later run, so callers cannot rely on getting the first available run
+===PHI_END===

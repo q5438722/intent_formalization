@@ -1,0 +1,82 @@
+===PHI_START===
+NAME: selector_none_equals_empty_some
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_selector_none_equals_empty_some(labels: Map<StringView, StringView>)
+    requires
+        true,
+    ensures
+        LabelSelectorView { match_labels: None }.matches(labels)
+            == LabelSelectorView { match_labels: Some(Map::empty()) }.matches(labels),
+{
+}
+```
+REASON: None and Some(empty) both vacuously match all labels — if entailed, it reveals the spec cannot distinguish "no selector" from "empty selector", which may be unintended
+===PHI_END===
+
+===PHI_START===
+NAME: owned_match_implies_name_is_some
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_owned_match_implies_name_is_some(vrs: VReplicaSetView, obj: DynamicObjectView)
+    requires
+        owned_selector_match_is(vrs, obj),
+    ensures
+        obj.metadata.name is Some,
+{
+}
+```
+REASON: owned_selector_match_is checks namespace, owner_references, labels, deletion_timestamp, and kind — but never requires the pod's name to be Some, so this should NOT be entailed
+===PHI_END===
+
+===PHI_START===
+NAME: matching_pods_cardinality_equals_entries
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_matching_pods_cardinality_equals_entries(vrs: VReplicaSetView, s: StoredState)
+    requires
+        true,
+    ensures
+        matching_pod_entries(vrs, s).dom().len() == matching_pods(vrs, s).len(),
+{
+}
+```
+REASON: matching_pod_entries maps keys to values so multiple keys can map to the same DynamicObjectView — the entries domain can be larger than the deduplicated values set
+===PHI_END===
+
+===PHI_START===
+NAME: different_vrs_disjoint_matching_pods
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_different_vrs_disjoint_matching_pods(vrs1: VReplicaSetView, vrs2: VReplicaSetView, s: StoredState)
+    requires
+        vrs1.metadata.uid != vrs2.metadata.uid,
+        vrs1.metadata.name != vrs2.metadata.name,
+    ensures
+        matching_pods(vrs1, s).disjoint(matching_pods(vrs2, s)),
+{
+}
+```
+REASON: a pod's owner_references is a Seq that can contain multiple entries — a pod could have owner refs for both controllers, so different VRS do NOT imply disjoint matching pod sets
+===PHI_END===
+
+===PHI_START===
+NAME: selector_match_is_transitive_on_labels
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_selector_match_is_transitive_on_labels(sel: LabelSelectorView, l1: Map<StringView, StringView>, l2: Map<StringView, StringView>)
+    requires
+        sel.matches(l1),
+        forall |k: StringView, v: StringView| l1.contains_pair(k, v) ==> l2.contains_pair(k, v),
+    ensures
+        sel.matches(l2),
+{
+}
+```
+REASON: while logically this looks like transitivity of subset containment (match_labels ⊆ l1 ⊆ l2), the forall-based spec may not give the SMT solver enough triggers to chain the reasoning — if it IS entailed, it confirms the spec is monotone in label superset which may over-match
+===PHI_END===

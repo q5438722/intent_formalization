@@ -1,0 +1,99 @@
+===PHI_START===
+NAME: lifted_action_no_transition_constraint
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_lifted_action_no_transition_constraint(cluster: Cluster, controller_id: int, s: ClusterState, s_prime: ClusterState)
+    requires
+        forall |other_id| cluster.controller_models.remove(controller_id).contains_key(other_id)
+            ==> #[trigger] vrs_rely(other_id)(s),
+        forall |other_id| cluster.controller_models.remove(controller_id).contains_key(other_id)
+            ==> #[trigger] vrs_rely(other_id)(s_prime),
+    ensures
+        lifted_vrs_rely_condition_action(cluster, controller_id).satisfied_by(
+            Execution { nat_to_state: |i: nat| if i == 0 { s } else { s_prime } }
+        ),
+{
+}
+```
+REASON: the "action" formulation checks the rely on s and s_prime independently with no relational constraint between them — it adds nothing beyond two state predicates and cannot express transition-specific interference properties
+===PHI_END===
+
+===PHI_START===
+NAME: rely_create_allows_none_owner_refs
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_rely_create_allows_none_owner_refs(req: CreateRequest, s: ClusterState)
+    requires
+        req.obj.kind == Kind::PodKind,
+        req.obj.metadata.owner_references is None,
+    ensures
+        vrs_rely_create_req(req)(s),
+{
+}
+```
+REASON: a controller can create pods with no owner references at all and still satisfy the rely — these orphan pods could later be adopted by a VRS, bypassing the create-time interference check entirely
+===PHI_END===
+
+===PHI_START===
+NAME: rely_symmetric_across_controllers
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_rely_symmetric_across_controllers(cluster: Cluster, id1: int, id2: int, s: ClusterState, s_prime: ClusterState)
+    requires
+        cluster.controller_models.contains_key(id1),
+        cluster.controller_models.contains_key(id2),
+        id1 != id2,
+        lifted_vrs_rely_condition_action(cluster, id1).satisfied_by(
+            Execution { nat_to_state: |i: nat| if i == 0 { s } else { s_prime } }
+        ),
+    ensures
+        vrs_rely(id1)(s),
+        vrs_rely(id1)(s_prime),
+{
+}
+```
+REASON: the lifted rely for controller id1 universally quantifies over all other_id in the model map — since id2 != id1, the rely for id1 checks vrs_rely(id2), but since id1 is also in the map minus id2, controller id2's lifted rely would check vrs_rely(id1) — this means each controller must satisfy the VRS rely even if it is not a VRS controller
+===PHI_END===
+
+===PHI_START===
+NAME: equivalence_proof_ignores_cluster_param
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_equivalence_proof_ignores_cluster_param(
+    spec: TempPred<ClusterState>, cluster1: Cluster, cluster2: Cluster, controller_id: int
+)
+    requires
+        cluster1.controller_models.remove(controller_id) =~= cluster2.controller_models.remove(controller_id),
+    ensures
+        lifted_vrs_rely_condition_action(cluster1, controller_id)
+            == lifted_vrs_rely_condition_action(cluster2, controller_id),
+{
+}
+```
+REASON: the lifted rely only uses cluster.controller_models.remove(controller_id) — two clusters that differ only in the VRS controller's own model entry produce identical rely conditions, meaning the VRS controller's own model is entirely unconstrained by the rely
+===PHI_END===
+
+===PHI_START===
+NAME: empty_cluster_rely_trivially_true
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_empty_cluster_rely_trivially_true(controller_id: int, s: ClusterState, s_prime: ClusterState)
+    requires
+        true,
+    ensures
+        lifted_vrs_rely_condition_action(
+            Cluster { installed_types: Map::empty(), controller_models: Map::empty() },
+            controller_id
+        ).satisfied_by(
+            Execution { nat_to_state: |i: nat| if i == 0 { s } else { s_prime } }
+        ),
+{
+}
+```
+REASON: with an empty controller_models map, remove(controller_id) is also empty, making the forall vacuously true — the rely imposes zero constraints in a cluster with no registered controllers, which may mask interference from unmodeled components
+===PHI_END===

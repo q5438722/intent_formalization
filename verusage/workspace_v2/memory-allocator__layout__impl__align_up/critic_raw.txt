@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: bitand_rounding_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `bitand_with_mask_gives_rounding` is `external_body` trusting the bitwise-arithmetic equivalence for power-of-two rounding without proof. This is the key lemma enabling the fast path in `align_up`, and any error would make the bitwise branch unsound.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: mul_mod_right_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `mul_mod_right` is `external_body` trusting `(a * b) % b == 0` without proof. This fundamental arithmetic property is used to establish `res % y == 0` in `align_up`'s postcondition and should be provable via nonlinear_arith.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: align_up_equals_x_when_aligned
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: When `x` is already a multiple of `y`, `align_up` returning `x` is the correct and expected behavior of ceiling alignment. This is basic arithmetic: `(128 + 63) / 64 * 64 == 128`.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: align_up_zero_input
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `align_up(0, 16) == 0` is correct — zero is already aligned to any value. `(0 + 15) / 16 * 16 == 0` is standard ceiling-alignment behavior.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: align_up_overflow_boundary
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The result fitting in `usize` follows directly from the precondition `x + y - 1 <= usize::MAX` and the fact that the aligned result is at most `x + y - 1`. The precondition is appropriately placed — callers must ensure no overflow, which is standard practice.
+===VERDICT_END===
+
+===SUMMARY===
+Two true positives identify external_body trust gaps: `bitand_with_mask_gives_rounding` trusts the bitwise rounding equivalence for the power-of-two fast path, and `mul_mod_right` trusts a fundamental modular arithmetic property — both could be proved but are instead assumed. Three false positives test correct expected behaviors: alignment of already-aligned values, alignment of zero, and result fitting within `usize` bounds.
+===END_SUMMARY===

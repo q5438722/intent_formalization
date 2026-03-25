@@ -1,0 +1,52 @@
+[
+  {
+    "name": "always_zero",
+    "target_fn": "v2l1index",
+    "type": "behavioral",
+    "reason": "If the L1 index is always zero for every valid address, the page table index extraction is broken and all mappings collapse to a single entry.",
+    "entailed": false,
+    "verified": 7,
+    "errors": 1,
+    "output_tail": "always_zero.rs:85:9\n   |\n81 | proof fn phi_1_always_zero(va: usize)\n   |       ------------------------------- at the end of the function body\n...\n85 |         spec_v2l1index(va) == 0usize,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "tighter_upper_bound",
+    "target_fn": "v2l1index",
+    "type": "boundary",
+    "reason": "If the index is always below 256, the claimed upper bound of 0x1ff is too loose and only half the L1 page table entries are reachable.",
+    "entailed": false,
+    "verified": 7,
+    "errors": 1,
+    "output_tail": " |\n81 | proof fn phi_2_tighter_upper_bound(va: usize)\n   |       --------------------------------------- at the end of the function body\n...\n85 |         spec_v2l1index(va) < 0x100usize,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "constant_output",
+    "target_fn": "v2l1index",
+    "type": "logical",
+    "reason": "If any two valid addresses always yield the same L1 index, the function is effectively constant and cannot distinguish different page table entries.",
+    "entailed": false,
+    "verified": 7,
+    "errors": 1,
+    "output_tail": "a1: usize, va2: usize)\n   |       ------------------------------------------------ at the end of the function body\n...\n86 |         spec_v2l1index(va1) == spec_v2l1index(va2),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "max_index_unreachable",
+    "target_fn": "v2l1index",
+    "type": "boundary",
+    "reason": "If the maximum L1 index 0x1ff is unreachable, the last page table entry can never be addressed, indicating an off-by-one or masking error in the validity predicates.",
+    "entailed": false,
+    "verified": 7,
+    "errors": 1,
+    "output_tail": "| proof fn phi_4_max_index_unreachable(va: usize)\n   |       ----------------------------------------- at the end of the function body\n...\n85 |         spec_v2l1index(va) != 0x1ffusize,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "index_equals_full_page_number",
+    "target_fn": "v2l1index",
+    "type": "behavioral",
+    "reason": "If the 9-bit mask is redundant and the index equals the full shifted page number, higher-order address bits are leaking into the L1 index, causing incorrect page table lookups.",
+    "entailed": false,
+    "verified": 7,
+    "errors": 1,
+    "output_tail": "er(va: usize)\n   |       ------------------------------------------------- at the end of the function body\n...\n85 |         spec_v2l1index(va) == (va >> 12usize) as usize,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "pm_write_external_body_trusted",
+    "type": "logical",
+    "code": "proof fn phi_1_pm_write_external_body_trusted(\n    view: PersistentMemoryRegionView,\n    addr: int,\n    bytes: Seq<u8>,\n    k: int,\n)\n    requires\n        addr + bytes.len() <= view.len(),\n        view.no_outstanding_writes_in_range(addr, addr + bytes.len()),\n        addr <= k < addr + bytes.len(),\n    ensures\n        view.write(addr, bytes).state[k].outstanding_write == Some(bytes[k - addr]),\n{\n}",
+    "reason": "The write spec sets outstanding_write to Some(byte) for each written position \u2014 if the map function had an off-by-one in `bytes[pos - addr]`, written bytes would be shifted relative to their intended addresses",
+    "entailed": false,
+    "verus_output": " |\n230 |   proof fn phi_1_pm_write_external_body_trusted(\n    |  _______-\n231 | |     view: PersistentMemoryRegionView,\n232 | |     addr: int,\n233 | |     bytes: Seq<u8>,\n234 | |     k: int,\n235 | | )\n    | |_- at the end of the function body\n...\n241 |           view.write(addr, bytes).state[k].outstanding_write == Some(bytes[k - addr]),\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "write_relative_writable_check_absolute_translation",
+    "type": "boundary",
+    "code": "proof fn phi_2_write_relative_writable_check_absolute_translation(\n    start: nat,\n    relative_addr: int,\n)\n    requires\n        0 <= relative_addr,\n    ensures\n        ({\n            let abs = relative_addr + start;\n            let back = abs - start;\n            back == relative_addr\n        }),\n{\n}",
+    "reason": "The `is_writable_relative_addr` translates via `addr + self.start()` while `write_relative` uses `relative_addr + self.start_` \u2014 if the translation between relative and absolute addressing were inconsistent, the writability check would guard the wrong range",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "write_preserves_views_differ_outside_writable",
+    "type": "logical",
+    "code": "proof fn phi_3_write_preserves_views_differ_outside_writable(\n    initial_view: PersistentMemoryRegionView,\n    current_view: PersistentMemoryRegionView,\n    start: nat,\n    len: nat,\n    is_writable: spec_fn(int) -> bool,\n    addr: int,\n    bytes: Seq<u8>,\n    k: int,\n)\n    requires\n        views_differ_only_where_subregion_allows(initial_view, current_view, start, len, is_writable),\n        initial_view.len() == current_view.len(),\n        start <= addr,\n        addr + bytes.len() <= start + len,\n        forall|i: int| addr <= i < addr + bytes.len() ==> is_writable(i),\n        current_view.no_outstanding_writes_in_range(addr, addr + bytes.len()),\n        0 <= k < initial_view.len(),\n        !(start <= k < start + len && is_writable(k)),\n    ensures\n        initial_view.state[k] == current_view.write(addr, bytes).state[k],\n{\n}",
+    "reason": "After writing within the writable subregion, non-writable addresses must still match the initial view \u2014 if the views_differ invariant weren't preserved through writes, the opaque_inv would break after the first mutation",
+    "entailed": false,
+    "verus_output": ": Could not automatically infer triggers for this quantifier.  Use #[trigger] annotations to manually mark trigger terms instead.\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/storage__subregion_write_relative3/phi_3_write_preserves_views_differ_outside_writable.rs:245:9\n    |\n245 |         forall|i: int| addr <= i < addr + bytes.len() ==> is_writable(i),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "write_double_outstanding_silently_overwrites",
+    "type": "behavioral",
+    "code": "proof fn phi_4_write_double_outstanding_silently_overwrites(\n    byte: PersistentMemoryByte,\n    b1: u8,\n    b2: u8,\n)\n    requires\n        byte.outstanding_write.is_none(),\n    ensures\n        byte.write(b1).write(b2).outstanding_write == Some(b2),\n        byte.write(b1).write(b2).state_at_last_flush == byte.state_at_last_flush,\n{\n}",
+    "reason": "The write spec overwrites any existing outstanding_write without checking \u2014 a second write before flush silently discards the first written value, even though the `no_outstanding_writes_in_range` precondition on `PersistentMemoryRegion::write` is supposed to prevent this; if the precondition check were bypassed, data loss would occur",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "write_relative_no_outstanding_forwarding",
+    "type": "logical",
+    "code": "proof fn phi_5_write_relative_no_outstanding_forwarding(\n    view: PersistentMemoryRegionView,\n    start: nat,\n    len: nat,\n    relative_addr: int,\n    bytes_len: nat,\n)\n    requires\n        start + len <= view.len(),\n        0 <= relative_addr,\n        relative_addr + bytes_len <= len,\n        get_subregion_view(view, start, len).no_outstanding_writes_in_range(relative_addr, relative_addr + bytes_len),\n    ensures\n        view.no_outstanding_writes_in_range(start + relative_addr, start + relative_addr + bytes_len),\n{\n}",
+    "reason": "The `write_relative` function checks no-outstanding-writes on the subregion view but calls `pm.write` which requires it on absolute addresses \u2014 if the subrange indexing didn't correctly forward this property, the precondition of the underlying write would not be met",
+    "entailed": false,
+    "verus_output": "_-\n231 | |     view: PersistentMemoryRegionView,\n232 | |     start: nat,\n233 | |     len: nat,\n234 | |     relative_addr: int,\n235 | |     bytes_len: nat,\n236 | | )\n    | |_- at the end of the function body\n...\n243 |           view.no_outstanding_writes_in_range(start + relative_addr, start + relative_addr + bytes_len),\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

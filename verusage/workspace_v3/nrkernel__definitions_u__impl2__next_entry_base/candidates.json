@@ -1,0 +1,37 @@
+[
+  {
+    "name": "result_equals_base",
+    "target_fn": "ArchExec::next_entry_base",
+    "type": "behavioral",
+    "code": "proof fn phi_1_result_equals_base(arch: ArchExec, layer: usize, base: usize)\n    requires\n        arch@.inv(),\n        layer < arch@.layers.len(),\n        base <= MAX_BASE,\n        0usize <= X86_NUM_ENTRIES,\n    ensures\n        arch@.next_entry_base(layer as nat, base as nat, 0nat) == base as nat,\n{\n}",
+    "reason": "If next_entry_base with idx=0 equals base, entries would start at the same address as the base, meaning no address space is actually mapped by the first entry."
+  },
+  {
+    "name": "result_less_than_base",
+    "target_fn": "ArchExec::next_entry_base",
+    "type": "boundary",
+    "code": "proof fn phi_2_result_less_than_base(arch: ArchExec, layer: usize, base: usize, idx: usize)\n    requires\n        arch@.inv(),\n        layer < arch@.layers.len(),\n        base <= MAX_BASE,\n        idx <= X86_NUM_ENTRIES,\n    ensures\n        arch@.next_entry_base(layer as nat, base as nat, idx as nat) < base as nat,\n{\n}",
+    "reason": "If next_entry_base returned a value less than base, page table entries would map backwards into already-mapped address space, corrupting translations."
+  },
+  {
+    "name": "entry_size_zero",
+    "target_fn": "inv",
+    "type": "logical",
+    "code": "proof fn phi_3_entry_size_zero(arch: Arch, layer: nat)\n    requires\n        arch.inv(),\n        layer < arch.layers.len(),\n    ensures\n        arch.entry_size(layer) == 0nat,\n{\n}",
+    "reason": "If inv permitted zero-sized entries, page table walks would never make progress and every entry would degenerate to a zero-length region."
+  },
+  {
+    "name": "layer_sizes_inverted",
+    "target_fn": "entry_size_is_next_layer_size",
+    "type": "logical",
+    "code": "proof fn phi_4_layer_sizes_inverted(arch: Arch)\n    requires\n        arch.inv(),\n        arch.layers.len() >= 2,\n    ensures\n        arch.entry_size(0) <= arch.entry_size(1),\n{\n}",
+    "reason": "If coarser layers had entry sizes no larger than finer layers, the hierarchical decomposition would be flat or inverted, breaking multi-level address translation."
+  },
+  {
+    "name": "num_entries_always_one",
+    "target_fn": "num_entries",
+    "type": "boundary",
+    "code": "proof fn phi_5_num_entries_always_one(arch: Arch, layer: nat)\n    requires\n        arch.inv(),\n        layer < arch.layers.len(),\n    ensures\n        arch.num_entries(layer) <= 1nat,\n{\n}",
+    "reason": "If every layer were limited to a single entry, the page table could only map one contiguous region per level, making the entire translation structure useless."
+  }
+]

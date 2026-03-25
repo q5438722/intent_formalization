@@ -1,0 +1,105 @@
+===PHI_START===
+NAME: fresh_rid_not_in_combiner_ids
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_fresh_rid_not_in_combiner_ids(
+    combiners: Map<NodeId, CombinerState>,
+    rid: ReqId,
+)
+    requires
+        combiners.dom().finite(),
+        combiner_request_id_fresh(combiners, rid),
+    ensures
+        !combiner_request_ids(combiners).contains(rid),
+{
+    combiner_request_ids_not_contains(combiners, rid);
+}
+```
+REASON: A fresh rid (not in any combiner's queued_ops) is absent from the aggregate set — tests one direction of the biconditional proved by `combiner_request_ids_not_contains`
+===PHI_END===
+
+===PHI_START===
+NAME: not_in_ids_implies_fresh
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_not_in_ids_implies_fresh(
+    combiners: Map<NodeId, CombinerState>,
+    rid: ReqId,
+)
+    requires
+        combiners.dom().finite(),
+        !combiner_request_ids(combiners).contains(rid),
+    ensures
+        combiner_request_id_fresh(combiners, rid),
+{
+    combiner_request_ids_not_contains(combiners, rid);
+}
+```
+REASON: The reverse direction — absence from the aggregate set implies freshness across all nodes — tests that the fold-over-choose correctly captures all combiners
+===PHI_END===
+
+===PHI_START===
+NAME: single_combiner_fresh_iff_not_in_queue
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_single_combiner_fresh_iff_not_in_queue(
+    nid: NodeId,
+    cs: CombinerState,
+    rid: ReqId,
+)
+    requires
+        !cs.queued_ops().contains(rid),
+    ensures
+        combiner_request_id_fresh(Map::empty().insert(nid, cs), rid),
+{
+}
+```
+REASON: For a single-node combiner map, freshness reduces to the rid not being in that node's queue — tests the single-element case
+===PHI_END===
+
+===PHI_START===
+NAME: combiner_ids_infinite_unconstrained
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_combiner_ids_infinite_unconstrained(
+    combiners: Map<NodeId, CombinerState>,
+    rid: ReqId,
+)
+    requires
+        !combiners.dom().finite(),
+    ensures
+        combiner_request_ids(combiners).contains(rid),
+{
+}
+```
+REASON: When the domain is infinite, `combiner_request_ids` returns `arbitrary()` which could be any set — an infinite combiner map makes every rid appear to be contained (or not), depending on the arbitrary choice
+===PHI_END===
+
+===PHI_START===
+NAME: ready_combiner_contributes_nothing
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_ready_combiner_contributes_nothing(
+    combiners: Map<NodeId, CombinerState>,
+    nid: NodeId,
+    rid: ReqId,
+)
+    requires
+        combiners.dom().finite(),
+        combiners.contains_key(nid),
+        combiners[nid] is Ready,
+        !combiner_request_ids(combiners.remove(nid)).contains(rid),
+    ensures
+        !combiner_request_ids(combiners).contains(rid),
+{
+    combiner_request_ids_not_contains(combiners, rid);
+    combiner_request_ids_not_contains(combiners.remove(nid), rid);
+}
+```
+REASON: A Ready combiner with empty queued_ops adds nothing to the aggregate set — tests that adding a Ready node doesn't spuriously include rids
+===PHI_END===

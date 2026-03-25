@@ -1,0 +1,52 @@
+[
+  {
+    "name": "l2index_always_zero_4k",
+    "target_fn": "v2l2index",
+    "type": "behavioral",
+    "reason": "If every 4K-valid address maps to L2 index 0, the function cannot distinguish any L2 page-table entries for 4K pages",
+    "entailed": false,
+    "verified": 7,
+    "errors": 1,
+    "output_tail": "rs:87:9\n   |\n83 | proof fn phi_1_l2index_always_zero_4k(va: usize)\n   |       ------------------------------------------ at the end of the function body\n...\n87 |         spec_v2l2index(va) == 0,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "l2index_never_reaches_max",
+    "target_fn": "v2l2index",
+    "type": "boundary",
+    "reason": "The ensures clause promises ret <= 0x1ff; if 0x1ff is unreachable, the upper bound is too loose and the full 9-bit index space is not usable",
+    "entailed": false,
+    "verified": 7,
+    "errors": 1,
+    "output_tail": "\n83 | proof fn phi_2_l2index_never_reaches_max(va: usize)\n   |       --------------------------------------------- at the end of the function body\n...\n87 |         spec_v2l2index(va) < 0x1ff,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "l2index_determines_2m_addr",
+    "target_fn": "v2l2index",
+    "type": "logical",
+    "reason": "Two 2M-valid addresses can share an L2 index yet differ in higher bits (L3/L4); if entailed, the spec conflates distinct address ranges",
+    "entailed": false,
+    "verified": 7,
+    "errors": 1,
+    "output_tail": "   |\n83 | proof fn phi_3_l2index_determines_2m_addr(va1: usize, va2: usize)\n   |       ----------------------------------------------------------- at the end of the function body\n...\n89 |         va1 == va2,\n   |         ^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "l2index_always_zero_2m",
+    "target_fn": "v2l2index",
+    "type": "behavioral",
+    "reason": "2M alignment zeros bits 0\u201320 but bits 21\u201329 are free; if the index were always 0, the L2 table could only map one 2M region per L3 entry",
+    "entailed": false,
+    "verified": 7,
+    "errors": 1,
+    "output_tail": "rs:87:9\n   |\n83 | proof fn phi_4_l2index_always_zero_2m(va: usize)\n   |       ------------------------------------------ at the end of the function body\n...\n87 |         spec_v2l2index(va) == 0,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "l2index_upper_half_unreachable",
+    "target_fn": "v2l2index",
+    "type": "boundary",
+    "reason": "If the top bit of the 9-bit index is never set, only 256 of 512 L2 entries are addressable, halving usable virtual address space per L3 slot",
+    "entailed": false,
+    "verified": 7,
+    "errors": 1,
+    "output_tail": "proof fn phi_5_l2index_upper_half_unreachable(va: usize)\n   |       -------------------------------------------------- at the end of the function body\n...\n87 |         spec_v2l2index(va) < 256,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

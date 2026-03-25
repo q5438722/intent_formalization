@@ -1,0 +1,77 @@
+Looking at the function, `MASK_L3_PG_ADDR` returns a bitmask from bit 12 to bit `MAX_PHYADDR_WIDTH - 1` (where `32 <= MAX_PHYADDR_WIDTH <= 52`). I'll generate 5 undesirable property candidates targeting its specification.
+
+===PHI_START===
+NAME: mask_is_zero
+TARGET_FN: MASK_L3_PG_ADDR
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_mask_is_zero()
+    ensures
+        MASK_L3_PG_ADDR_SPEC == 0usize,
+{
+}
+```
+REASON: The mask selecting physical page address bits should never be zero; that would mean no address bits are extractable.
+===PHI_END===
+
+===PHI_START===
+NAME: lower_twelve_bits_nonzero
+TARGET_FN: MASK_L3_PG_ADDR
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_lower_twelve_bits_nonzero()
+    ensures
+        MASK_L3_PG_ADDR_SPEC & 0xFFFusize != 0usize,
+{
+}
+```
+REASON: Bits 0–11 are the page offset; a page-address mask with any of these bits set would corrupt the page offset during address translation.
+===PHI_END===
+
+===PHI_START===
+NAME: bit12_not_set
+TARGET_FN: MASK_L3_PG_ADDR
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_bit12_not_set()
+    ensures
+        MASK_L3_PG_ADDR_SPEC & (1usize << 12usize) == 0usize,
+{
+}
+```
+REASON: Bit 12 is the lowest bit of an L3 page address; if the mask excludes it, the translated physical address loses its least significant address bit.
+===PHI_END===
+
+===PHI_START===
+NAME: high_bits_above_phyaddr_set
+TARGET_FN: MASK_L3_PG_ADDR
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_high_bits_above_phyaddr_set()
+    ensures
+        MASK_L3_PG_ADDR_SPEC >> MAX_PHYADDR_WIDTH != 0usize,
+{
+    proof { axiom_max_phyaddr_width_facts(); }
+}
+```
+REASON: Bits at or above MAX_PHYADDR_WIDTH are beyond the physical address space; setting them would produce invalid physical addresses.
+===PHI_END===
+
+===PHI_START===
+NAME: mask_all_ones
+TARGET_FN: MASK_L3_PG_ADDR
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_mask_all_ones()
+    ensures
+        MASK_L3_PG_ADDR_SPEC == 0xFFFF_FFFF_FFFF_FFFFusize,
+{
+}
+```
+REASON: An all-ones mask means no masking at all, which would pass through page-offset bits and reserved high bits, violating page-table address extraction semantics.
+===PHI_END===

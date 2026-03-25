@@ -1,0 +1,52 @@
+[
+  {
+    "name": "entry_base_collision",
+    "target_fn": "Arch::entry_base",
+    "type": "behavioral",
+    "reason": "Two distinct entry indices mapping to the same base address would cause virtual address aliasing in the page table",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": "-------------------------------- at the end of the function body\n...\n270 |         arch.entry_base(layer, base, i) == arch.entry_base(layer, base, j),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "well_formed_allows_zero_entries",
+    "target_fn": "Directory::well_formed",
+    "type": "boundary",
+    "reason": "A well-formed directory with zero entries is degenerate and would mean the page table maps no address space at that subtree",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": "of fn phi_2_well_formed_allows_zero_entries(d: Directory)\n    |       ------------------------------------------------------ at the end of the function body\n...\n266 |         d.entries.len() == 0,\n    |         ^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "inv_allows_subpage_entry_size",
+    "target_fn": "Arch::inv",
+    "type": "boundary",
+    "reason": "A leaf-layer entry_size below 4096 bytes would violate the x86 minimum page size, making the architecture physically unrealizable",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": "      -------------------------------------------------- at the end of the function body\n...\n267 |         arch.entry_size((arch.layers.len() - 1) as nat) < 4096,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "dir_base_vaddr_mismatch",
+    "target_fn": "Directory::directories_are_in_next_layer",
+    "type": "logical",
+    "reason": "A child directory whose base_vaddr disagrees with its parent's layout would break the contiguous virtual address mapping invariant",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": "---- at the end of the function body\n...\n268 |         d.entries[i as int]->Directory_0.base_vaddr != d.base_vaddr + i * d.entry_size(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "entry_size_not_decomposable",
+    "target_fn": "Arch::entry_size_is_next_layer_size",
+    "type": "logical",
+    "reason": "If a layer's entry_size is not the product of the next layer's entry_size and num_entries, the hierarchical address space decomposition is inconsistent",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": "of the function body\n...\n267 |         arch.entry_size(i) != arch.entry_size((i + 1) as nat) * arch.num_entries((i + 1) as nat),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

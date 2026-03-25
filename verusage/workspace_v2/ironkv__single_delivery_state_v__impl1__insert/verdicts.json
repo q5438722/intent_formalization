@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "insert_allows_overwrite_tombstone",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "The `CTombstoneTable::insert` spec has no precondition requiring `last_seqno >= old_seqno`, allowing a tombstone entry to be overwritten with a lower sequence number. In a single-delivery protocol, tombstones should monotonically increase to prevent replay of already-acknowledged messages."
+  },
+  {
+    "phi": "abstractable_no_value_constraint",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The ensures `ct@[ep] >= 0` is trivially true for `nat` (which is non-negative by definition). The `abstractable` predicate intentionally only checks key validity \u2014 value constraints like `max_seqno` bounds are enforced at higher protocol layers (e.g., `CAckState::valid_list`), not at the tombstone table level."
+  },
+  {
+    "phi": "insert_preserves_stale_entries",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This property proves `false` from contradictory preconditions: `ct.abstractable()` requires all keys have valid physical addresses, but the precondition asserts `!other_ep.valid_physical_address()` for an existing key. The contradiction is expected \u2014 it confirms that `abstractable` is a consistent invariant, not a spec gap."
+  },
+  {
+    "phi": "hashmap_insert_view_no_remove_guarantee",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The property is a standard consequence of `Map::insert` \u2014 inserting at key `ep2@` preserves membership of a different key `ep1@`. This is a basic map axiom from vstd, not a gap. The external_body trust of `HashMap::insert` is the standard pattern for wrapping Rust collections in Verus."
+  }
+]

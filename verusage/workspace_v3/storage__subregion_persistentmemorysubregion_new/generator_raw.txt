@@ -1,0 +1,129 @@
+===PHI_START===
+NAME: start_always_zero
+TARGET_FN: new
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_start_always_zero<PMRegion: PersistentMemoryRegion>(
+    pm: &PMRegion,
+    start: u64,
+    len: nat,
+    result: PersistentMemorySubregion,
+)
+    requires
+        pm.inv(),
+        start + len <= pm@.len() <= u64::MAX,
+        result.start() == start,
+        result.len() == len,
+        result.view(pm) == get_subregion_view(pm@, start as nat, len),
+    ensures
+        result.start() == 0,
+{
+}
+```
+REASON: Would mean the subregion ignores the caller-supplied start offset, always anchoring at 0
+===PHI_END===
+
+===PHI_START===
+NAME: len_always_zero
+TARGET_FN: new
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_len_always_zero<PMRegion: PersistentMemoryRegion>(
+    pm: &PMRegion,
+    start: u64,
+    len: nat,
+    result: PersistentMemorySubregion,
+)
+    requires
+        pm.inv(),
+        start + len <= pm@.len() <= u64::MAX,
+        result.start() == start,
+        result.len() == len,
+        result.view(pm) == get_subregion_view(pm@, start as nat, len),
+    ensures
+        result.len() == 0,
+{
+}
+```
+REASON: Would mean the subregion always has zero length, discarding the requested size
+===PHI_END===
+
+===PHI_START===
+NAME: view_len_mismatches_len
+TARGET_FN: new
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_view_len_mismatches_len<PMRegion: PersistentMemoryRegion>(
+    pm: &PMRegion,
+    start: u64,
+    len: nat,
+    result: PersistentMemorySubregion,
+)
+    requires
+        pm.inv(),
+        start + len <= pm@.len() <= u64::MAX,
+        result.start() == start,
+        result.len() == len,
+        result.view(pm) == get_subregion_view(pm@, start as nat, len),
+    ensures
+        result.view(pm).len() != len,
+{
+}
+```
+REASON: Would mean the materialized view has a different byte count than the logical length, breaking internal consistency between len() and view()
+===PHI_END===
+
+===PHI_START===
+NAME: start_len_interchangeable
+TARGET_FN: new
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_start_len_interchangeable<PMRegion: PersistentMemoryRegion>(
+    pm: &PMRegion,
+    start: u64,
+    len: nat,
+    result: PersistentMemorySubregion,
+)
+    requires
+        pm.inv(),
+        start + len <= pm@.len() <= u64::MAX,
+        result.start() == start,
+        result.len() == len,
+        result.view(pm) == get_subregion_view(pm@, start as nat, len),
+    ensures
+        result.start() == result.len(),
+{
+}
+```
+REASON: Would mean start and len are always equal, collapsing two independent parameters into one
+===PHI_END===
+
+===PHI_START===
+NAME: subregion_covers_full_region
+TARGET_FN: new
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_subregion_covers_full_region<PMRegion: PersistentMemoryRegion>(
+    pm: &PMRegion,
+    start: u64,
+    len: nat,
+    result: PersistentMemorySubregion,
+)
+    requires
+        pm.inv(),
+        start + len <= pm@.len() <= u64::MAX,
+        result.start() == start,
+        result.len() == len,
+        result.view(pm) == get_subregion_view(pm@, start as nat, len),
+    ensures
+        result.start() == 0 && result.len() == pm@.len(),
+{
+}
+```
+REASON: Would mean every subregion spans the entire backing region, making sub-region slicing meaningless
+===PHI_END===

@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "owned_threads_shared_across_containers",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "Neither `container_perms_wf` nor `container_tree_wf` includes any constraint on `owned_threads` disjointness across containers. The `owned_threads` field is a `Ghost<Set<ThreadPtr>>` that is completely unconstrained by the tree invariants, allowing two distinct containers to claim ownership of the same thread \u2014 a real resource ownership gap."
+  },
+  {
+    "phi": "owned_endpoints_shared_across_containers",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "Same pattern as owned_threads \u2014 `owned_endpoints` is a `Ghost<Set<EndpointPtr>>` with no disjointness constraint anywhere in `container_perms_wf` or `container_tree_wf`. Two containers can simultaneously claim the same endpoint, undermining the ownership model described in the comments about endpoint kill semantics."
+  },
+  {
+    "phi": "owned_procs_shared_across_containers",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "The `owned_procs` field is a `StaticLinkedList<ProcPtr, CONTAINER_PROC_LIST_LEN>` with no cross-container disjointness constraint in the tree invariants. While `unique()` ensures no duplicates within a single container's list, nothing prevents the same `ProcPtr` from appearing in two different containers' `owned_procs`."
+  },
+  {
+    "phi": "root_container_parent_unconstrained",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`container_root_wf` sets `depth == 0` for the root and requires non-root nodes to have `parent.is_Some()` and `depth != 0`, but never explicitly asserts `container_perms[root_container].value().parent.is_None()`. The root container can have a spurious `parent` pointer pointing anywhere, which could cause confusion in algorithms that traverse upward."
+  }
+]

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize2pa_mem_valid_unconditional",
+    "type": "logical",
+    "code": "proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body unconditionally ensures MEM_valid(ret) for ANY input \u2014 arbitrary usize values produce \"valid\" physical addresses without proof",
+    "entailed": false,
+    "verus_output": "ation/verusage/workspace_v2/atmosphere__kernel__mem_util__impl0__get_address_space_va_range_none/phi_1_usize2pa_mem_valid_unconditional.rs:2195:9\n     |\n2193 | proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n     |       --------------------------------------------------- at the end of the function body\n2194 |     ensures\n2195 |         MEM_valid(usize2pa(v)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 20 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "sll_len_without_wf_returns_value_list_len",
+    "type": "logical",
+    "code": "proof fn phi_2_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    ensures\n        sll.len() == sll.value_list_len,\n{\n}",
+    "reason": "StaticLinkedList::len's external_body ensures l == self.value_list_len unconditionally without requiring wf() \u2014 corrupted linked list returns raw field as trusted length",
+    "entailed": false,
+    "verus_output": "_returns_value_list_len.rs:2195:9\n     |\n2193 | proof fn phi_2_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n     |       -------------------------------------------------------------------------------------------------- at the end of the function body\n2194 |     ensures\n2195 |         sll.len() == sll.value_list_len,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 20 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_entry_to_map_entry_drops_present",
+    "type": "behavioral",
+    "code": "proof fn phi_3_page_entry_to_map_entry_drops_present(pe: PageEntry)\n    requires\n        pe.perm.present == false,\n        pe.addr != 0,\n    ensures\n        spec_page_entry_to_map_entry(&pe).addr == pe.addr,\n{\n}",
+    "reason": "page_entry_to_map_entry copies addr even when present==false \u2014 a non-present entry with a stale address produces a MapEntry with that address, losing the \"not present\" information",
+    "entailed": true,
+    "verus_output": "0\n    |\n179 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__kernel__mem_util__impl0__get_address_space_va_range_none/phi_3_page_entry_to_map_entry_drops_present.rs:188:10\n    |\n188 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: 20 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "container_map_4k_allows_double_ownership",
+    "type": "logical",
+    "code": "proof fn phi_4_container_map_4k_allows_double_ownership(pa: PageAllocator, c1: ContainerPtr, c2: ContainerPtr, p: PagePtr)\n    requires\n        c1 != c2,\n        pa.container_map_4k@.dom().contains(c1),\n        pa.container_map_4k@.dom().contains(c2),\n        pa.container_map_4k@[c1].contains(p),\n        pa.container_map_4k@[c2].contains(p),\n    ensures\n        pa.container_map_4k@[c1].contains(p) && pa.container_map_4k@[c2].contains(p),\n{\n}",
+    "reason": "container_map_4k is a Ghost field with no disjointness predicate \u2014 two distinct containers can simultaneously claim the same physical page",
+    "entailed": true,
+    "verus_output": "   |\n179 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__kernel__mem_util__impl0__get_address_space_va_range_none/phi_4_container_map_4k_allows_double_ownership.rs:188:10\n    |\n188 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: 20 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "map_entry_drops_user_bit",
+    "type": "behavioral",
+    "code": "proof fn phi_5_map_entry_drops_user_bit(pe: PageEntry)\n    requires\n        pe.perm.user == true,\n        pe.perm.present == true,\n    ensures\n        spec_page_entry_to_map_entry(&pe) == MapEntry { addr: pe.addr, write: pe.perm.write, execute_disable: pe.perm.execute_disable },\n{\n}",
+    "reason": "spec_page_entry_to_map_entry discards the user permission bit \u2014 MapEntry has no user field, so user/supervisor distinction is lost when converting page entries to map entries used in mapping specs",
+    "entailed": false,
+    "verus_output": " struct literal with parentheses\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__kernel__mem_util__impl0__get_address_space_va_range_none/phi_5_map_entry_drops_user_bit.rs:2198:46\n     |\n2198 | ...map_entry(&pe) == MapEntry { addr: pe.addr, write: pe.perm.write, execute_disable: pe.perm.execute_disable },\n     |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

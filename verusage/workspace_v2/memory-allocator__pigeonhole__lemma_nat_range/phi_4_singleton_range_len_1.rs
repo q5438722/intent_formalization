@@ -1,0 +1,39 @@
+use vstd::prelude::*;
+
+fn main(){}
+
+verus! {
+
+pub open spec fn set_nat_range(lo: nat, hi: nat) -> Set<nat> {
+    Set::new(|i: nat| lo <= i && i < hi)
+}
+
+pub proof fn lemma_nat_range(lo: nat, hi: nat)
+    requires
+        lo <= hi,
+    ensures
+        set_nat_range(lo, hi).finite(),
+        set_nat_range(lo, hi).len() == hi - lo,
+    decreases
+        hi - lo,
+{
+    if lo == hi {
+        assert(set_nat_range(lo, hi) =~= Set::empty());
+    } else {
+        lemma_nat_range(lo, (hi - 1) as nat);
+        assert(set_nat_range(lo, (hi - 1) as nat).insert((hi - 1) as nat) =~= set_nat_range(lo, hi));
+    }
+}
+
+
+
+// === Entailment query ===
+proof fn phi_4_singleton_range_len_1(n: nat)
+    ensures
+        set_nat_range(n, (n + 1) as nat).finite(),
+        set_nat_range(n, (n + 1) as nat).len() == 1,
+{
+    lemma_nat_range(n, (n + 1) as nat);
+}
+
+}

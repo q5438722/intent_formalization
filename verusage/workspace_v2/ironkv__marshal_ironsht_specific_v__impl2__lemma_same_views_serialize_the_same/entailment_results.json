@@ -1,0 +1,47 @@
+[
+  {
+    "name": "view_equal_not_reflexive_trait",
+    "type": "logical",
+    "code": "proof fn phi_1_view_equal_not_reflexive_trait(a: CKeyKV)\n    requires\n        a.is_marshalable(),\n    ensures\n        a.view_equal(&a),\n{\n}",
+    "reason": "The `view_equal` relation should be reflexive for the serialization lemma to be useful, but since `lemma_same_views_serialize_the_same` is external_body at every impl, there is no verified proof that view_equal is actually an equivalence relation \u2014 if reflexivity fails, the lemma's precondition is never satisfiable",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "lemma_to_vec_view_self_tautology",
+    "type": "logical",
+    "code": "proof fn phi_2_lemma_to_vec_view_self_tautology(h: CKeyHashMap)\n    ensures\n        h@ == h@,\n        h.spec_to_vec()@ == h.spec_to_vec()@,\n{\n}",
+    "reason": "The external_body `lemma_to_vec_view` claims a biconditional between view equality and to_vec equality \u2014 testing with self should be trivially true, but the biconditional is trusted and could be inconsistent if the uninterpreted functions don't actually satisfy it",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "ghost_serialize_external_body_unconstrained",
+    "type": "logical",
+    "code": "proof fn phi_3_ghost_serialize_external_body_unconstrained(a: u64, b: u64)\n    requires\n        a != b,\n    ensures\n        a.ghost_serialize() != b.ghost_serialize(),\n{\n}",
+    "reason": "The trait-level `ghost_serialize` is external_body with no injectivity ensures \u2014 while u64's open spec uses `spec_u64_to_le_bytes` which should be injective, there is no verified proof that distinct u64 values produce distinct byte sequences",
+    "entailed": false,
+    "verus_output": "pecific_v__impl2__lemma_same_views_serialize_the_same/phi_3_ghost_serialize_external_body_unconstrained.rs:372:9\n    |\n368 | proof fn phi_3_ghost_serialize_external_body_unconstrained(a: u64, b: u64)\n    |       -------------------------------------------------------------------- at the end of the function body\n...\n372 |         a.ghost_serialize() != b.ghost_serialize(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "view_equal_implies_serialize_equal_no_marshalable",
+    "type": "logical",
+    "code": "proof fn phi_4_view_equal_implies_serialize_equal_no_marshalable(a: CKeyKV, b: CKeyKV)\n    requires\n        a.view_equal(&b),\n        !a.is_marshalable(),\n    ensures\n        a.ghost_serialize() == b.ghost_serialize(),\n{\n    a.lemma_same_views_serialize_the_same(&b);\n}",
+    "reason": "The external_body `lemma_same_views_serialize_the_same` ensures `self.ghost_serialize() == other.ghost_serialize()` with only `view_equal` as precondition \u2014 it does not require `is_marshalable`, yet `ghost_serialize` at the trait level has `recommends self.is_marshalable()`, meaning the lemma claims equality of serializations even for non-marshalable values where ghost_serialize is under-specified",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "to_vec_view_biconditional_forces_injective_view",
+    "type": "behavioral",
+    "code": "proof fn phi_5_to_vec_view_biconditional_forces_injective_view(h1: CKeyHashMap, h2: CKeyHashMap)\n    requires\n        h1.spec_to_vec()@ == h2.spec_to_vec()@,\n    ensures\n        h1@ == h2@,\n{\n    h1.lemma_to_vec_view(h2);\n}",
+    "reason": "The external_body `lemma_to_vec_view` claims `self@ == other@ <==> self.spec_to_vec()@ == other.spec_to_vec()@` \u2014 the backward direction forces `spec_to_vec` to be injective on views, which is a strong trusted assumption about two uninterpreted functions on an external_body type with no verified connection between them",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

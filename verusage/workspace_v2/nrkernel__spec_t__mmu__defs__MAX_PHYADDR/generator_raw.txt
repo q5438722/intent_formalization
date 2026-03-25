@@ -1,0 +1,76 @@
+===PHI_START===
+NAME: max_phyaddr_width_not_52
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_max_phyaddr_width_not_52()
+    ensures
+        MAX_PHYADDR_WIDTH != 52,
+{
+    axiom_max_phyaddr_width_facts();
+}
+```
+REASON: `MAX_PHYADDR_WIDTH` is `external_body` constant set to 52 but the axiom only constrains it to `[32, 52]` — the SMT solver could assume it's not 52
+===PHI_END===
+
+===PHI_START===
+NAME: max_phyaddr_width_equals_32
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_max_phyaddr_width_equals_32()
+    ensures
+        MAX_PHYADDR_WIDTH == 32,
+{
+    axiom_max_phyaddr_width_facts();
+}
+```
+REASON: The axiom allows `MAX_PHYADDR_WIDTH == 32`, which would make `MAX_PHYADDR` only 4GB — dramatically smaller than the intended 52-bit physical address space
+===PHI_END===
+
+===PHI_START===
+NAME: max_phyaddr_spec_smaller_than_expected
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_max_phyaddr_spec_smaller_than_expected()
+    ensures
+        MAX_PHYADDR_SPEC < 0xFFFF_FFFF_FFFFusize,
+{
+    axiom_max_phyaddr_width_facts();
+}
+```
+REASON: If `MAX_PHYADDR_WIDTH < 48`, `MAX_PHYADDR_SPEC` would be smaller than the typical 48-bit virtual address space limit — the weak axiom allows this
+===PHI_END===
+
+===PHI_START===
+NAME: axiom_max_phyaddr_width_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_axiom_max_phyaddr_width_external_body()
+    ensures
+        32 <= MAX_PHYADDR_WIDTH <= 52,
+{
+    axiom_max_phyaddr_width_facts();
+}
+```
+REASON: `axiom_max_phyaddr_width_facts` is `external_body` — trusted without proof, the axiom could be unsound if `MAX_PHYADDR_WIDTH` is not actually constrained to `[32, 52]` at runtime
+===PHI_END===
+
+===PHI_START===
+NAME: max_phyaddr_width_odd_value
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_max_phyaddr_width_odd_value(w: usize)
+    requires
+        32 <= w <= 52,
+        w != 36 && w != 39 && w != 46 && w != 48 && w != 52,
+    ensures
+        w == w,
+{
+}
+```
+REASON: The axiom allows non-standard physical address widths (e.g., 33, 37, 41) that no real x86 CPU supports — only 36, 39, 46, 48, and 52 are used in practice
+===PHI_END===

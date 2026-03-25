@@ -1,0 +1,14 @@
+[
+  {
+    "name": "valid_physical_address",
+    "code": "pub fn valid_physical_address(&self) -> (out: bool)\n    ensures\n        out == self@.valid_physical_address(),\n    {\n        self.id.len() < 0x100000\n    }"
+  },
+  {
+    "name": "new",
+    "code": "#[verifier(external_body)]\n    pub fn new() -> (out: Self)\n        ensures out@ == Map::<AbstractEndPoint, V>::empty()\n    {\n      HashMap { m: collections::HashMap::new() }\n    }"
+  },
+  {
+    "name": "un_acked_messages_for_dest_up_to",
+    "code": "pub open spec(checked) fn un_acked_messages_for_dest_up_to(self, src: AbstractEndPoint, dst: AbstractEndPoint, count: nat) -> Set<Packet>\n    recommends\n        self.send_state.contains_key(dst),\n        count <= self.send_state[dst].un_acked.len()\n    {\n        Set::new(|p: Packet| {\n                &&& p.src == src\n                &&& exists |i: int| {\n                    &&& 0 <= i < count\n                    &&& self.send_state[dst].un_acked[i] is Message\n                    &&& p.msg == self.send_state[dst].un_acked[i]\n                    &&& p.dst == p.msg.arrow_Message_dst()\n                }\n        })\n    }"
+  }
+]

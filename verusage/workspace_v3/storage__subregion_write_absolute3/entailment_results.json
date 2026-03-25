@@ -1,0 +1,52 @@
+[
+  {
+    "name": "zero_len_write_changes_view",
+    "target_fn": "write_absolute",
+    "type": "behavioral",
+    "reason": "Writing zero bytes should be a no-op; if the spec entails a state change, the write postcondition is too broad",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": ": PersistentMemoryRegionView,\n244 | |     addr: int,\n245 | | )\n    | |_- at the end of the function body\n...\n250 |           view.write(addr, Seq::<u8>::empty()) != view,\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "write_changes_view_length",
+    "target_fn": "write_absolute",
+    "type": "boundary",
+    "reason": "A write should never change the length of the subregion view; if it can, the ensures of write_absolute fails to preserve region geometry",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "ew,\n244 | |     addr: int,\n245 | |     bytes: Seq<u8>,\n246 | | )\n    | |_- at the end of the function body\n...\n252 |           view.write(addr, bytes).len() != view.len(),\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "write_modifies_outside_range",
+    "target_fn": "write_absolute",
+    "type": "behavioral",
+    "reason": "Bytes outside the written range must be unchanged; if the spec allows modification of untouched positions, data corruption is possible",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": " |     bytes: Seq<u8>,\n246 | |     k: int,\n247 | | )\n    | |_- at the end of the function body\n...\n255 |           view.write(addr, bytes).state[k] != view.state[k],\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "write_not_idempotent",
+    "target_fn": "write_absolute",
+    "type": "logical",
+    "reason": "Writing the same bytes to the same location twice should be idempotent; non-idempotency would indicate the write spec accumulates phantom state",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": ">,\n246 | | )\n    | |_- at the end of the function body\n...\n252 |           view.write(addr, bytes).write(addr, bytes) != view.write(addr, bytes),\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "write_creates_outstanding_outside_range",
+    "target_fn": "write_absolute",
+    "type": "logical",
+    "reason": "A write must not create outstanding writes at positions outside the target range; if it can, flush semantics for unrelated regions become unsound",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "\n246 | |     k: int,\n247 | | )\n    | |_- at the end of the function body\n...\n256 |           view.write(addr, bytes).state[k].outstanding_write.is_some(),\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

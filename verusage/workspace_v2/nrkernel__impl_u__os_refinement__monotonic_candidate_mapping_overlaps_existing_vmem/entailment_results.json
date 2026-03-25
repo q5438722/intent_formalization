@@ -1,0 +1,47 @@
+[
+  {
+    "name": "overlap_zero_size_reflexive",
+    "type": "boundary",
+    "code": "proof fn phi_1_overlap_zero_size_reflexive(base: nat)\n    ensures\n        overlap(MemRegion { base: base, size: 0 }, MemRegion { base: base, size: 0 }),\n{\n}",
+    "reason": "Two zero-size regions at the same base are considered overlapping via the `region1.base == region2.base` branch \u2014 empty intervals should not overlap",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "overlap_not_symmetric",
+    "type": "logical",
+    "code": "proof fn phi_2_overlap_not_symmetric(a: nat, b: nat)\n    requires\n        a < b,\n        b < a + 1,\n    ensures\n        overlap(MemRegion { base: a, size: 1 }, MemRegion { base: b, size: 0 }),\n        !overlap(MemRegion { base: b, size: 0 }, MemRegion { base: a, size: 1 }),\n{\n}",
+    "reason": "`overlap` is not symmetric \u2014 a zero-size region inside a non-zero region is detected in one direction but not the other",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "candidate_overlap_zero_size_self",
+    "type": "boundary",
+    "code": "proof fn phi_3_candidate_overlap_zero_size_self(base: nat, pte: PTE)\n    requires\n        pte.frame.size == 0,\n    ensures\n        candidate_mapping_overlaps_existing_vmem(\n            Map::empty().insert(base, pte),\n            base,\n            pte,\n        ),\n{\n}",
+    "reason": "A zero-size PTE at a base overlaps itself \u2014 could block re-insertion of sentinel/empty mappings at the same address",
+    "entailed": false,
+    "verus_output": "phi_3_candidate_overlap_zero_size_self.rs:76:9\n   |\n72 |   proof fn phi_3_candidate_overlap_zero_size_self(base: nat, pte: PTE)\n   |         -------------------------------------------------------------- at the end of the function body\n...\n76 | /         candidate_mapping_overlaps_existing_vmem(\n77 | |             Map::empty().insert(base, pte),\n78 | |             base,\n79 | |             pte,\n80 | |         ),\n   | |_________^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "monotonic_does_not_require_key_preservation",
+    "type": "logical",
+    "code": "proof fn phi_4_monotonic_does_not_require_key_preservation(base: nat, pte1: PTE, pte2: PTE)\n    requires\n        pte1.frame.size > 0,\n        pte2.frame.size > 0,\n        overlap(MemRegion { base: base, size: pte1.frame.size }, MemRegion { base: base, size: pte2.frame.size }),\n    ensures\n        candidate_mapping_overlaps_existing_vmem(\n            Map::empty().insert(base, pte1).insert(base, pte2),\n            base,\n            pte2,\n        ),\n{\n}",
+    "reason": "Submap monotonicity holds even when mappings2 overwrites a key from mappings1 \u2014 the lemma's `submap_of` precondition doesn't account for value changes at existing keys",
+    "entailed": false,
+    "verus_output": " phi_4_monotonic_does_not_require_key_preservation(base: nat, pte1: PTE, pte2: PTE)\n   |         ------------------------------------------------------------------------------------- at the end of the function body\n...\n78 | /         candidate_mapping_overlaps_existing_vmem(\n79 | |             Map::empty().insert(base, pte1).insert(base, pte2),\n80 | |             base,\n81 | |             pte2,\n82 | |         ),\n   | |_________^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "overlap_asymmetric_containment",
+    "type": "boundary",
+    "code": "proof fn phi_5_overlap_asymmetric_containment(a: nat, sz: nat)\n    requires\n        sz > 0,\n    ensures\n        overlap(MemRegion { base: a, size: sz }, MemRegion { base: a + sz, size: 0 }),\n        !overlap(MemRegion { base: a + sz, size: 0 }, MemRegion { base: a, size: sz }),\n{\n}",
+    "reason": "A zero-size region at the exclusive upper bound of another region is detected as overlapping in one direction but not the reverse \u2014 `overlap` is asymmetric at boundary points",
+    "entailed": false,
+    "verus_output": "ing_overlaps_existing_vmem/phi_5_overlap_asymmetric_containment.rs:76:9\n   |\n72 | proof fn phi_5_overlap_asymmetric_containment(a: nat, sz: nat)\n   |       -------------------------------------------------------- at the end of the function body\n...\n76 |         overlap(MemRegion { base: a, size: sz }, MemRegion { base: a + sz, size: 0 }),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

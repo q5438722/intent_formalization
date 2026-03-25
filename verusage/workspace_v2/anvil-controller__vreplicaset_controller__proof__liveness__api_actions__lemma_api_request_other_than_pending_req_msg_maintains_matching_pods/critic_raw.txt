@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: unmarshal_skips_state_validation
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Unmarshal is intentionally a parsing operation separate from validation. In Kubernetes, deserialization succeeds if the wire format is valid; state validation is a separate admission step applied by the API server.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: create_key_namespace_diverges
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `CreateRequest::key()` uses `self.namespace` while the embedded object carries its own `metadata.namespace`. If these diverge, the key identifies a different namespace than the object claims, which could cause the object to be stored under the wrong namespace key.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: object_ref_ignores_uid
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This mirrors real Kubernetes semantics where ObjectRef identifies resources by (kind, name, namespace), not UID. UID distinguishes incarnations but is not part of the logical identity used for lookups.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: `CreateRequest::key()` derives namespace from `self.namespace` rather than `self.obj.metadata.namespace`, allowing divergence between the request's key and the embedded object's namespace. The other two are false positives reflecting intentional Kubernetes design — unmarshal is separate from validation, and ObjectRef intentionally excludes UID.
+===END_SUMMARY===

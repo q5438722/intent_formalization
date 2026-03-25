@@ -1,0 +1,6 @@
+[
+  {
+    "name": "new",
+    "code": "pub exec fn new<PMRegion: PersistentMemoryRegion>(\n        pm: &PMRegion,\n        start: u64,\n        Ghost(len): Ghost<nat>,\n        Ghost(is_writable_absolute_addr_fn): Ghost<spec_fn(int) -> bool>,\n    ) -> (result: Self)\n        requires\n            pm.inv(),\n            0 <= len,\n            start + len <= pm@.len() <= u64::MAX,\n        ensures\n            result.inv(pm),\n            result.constants() == pm.constants(),\n            result.start() == start,\n            result.len() == len,\n            result.initial_region_view() == pm@,\n            result.is_writable_absolute_addr_fn() == is_writable_absolute_addr_fn,\n            result.view(pm) == result.initial_subregion_view(),\n            result.view(pm) == get_subregion_view(pm@, start as nat, len),\n    {\n        let result = Self{\n            start_: start,\n            len_: Ghost(len),\n            constants_: Ghost(pm.constants()),\n            initial_region_view_: Ghost(pm@),\n            is_writable_absolute_addr_fn_: Ghost(is_writable_absolute_addr_fn),\n        };\n        result\n    }"
+  }
+]

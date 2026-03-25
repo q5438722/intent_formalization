@@ -1,0 +1,52 @@
+[
+  {
+    "name": "always_some_1g",
+    "target_fn": "get_entry_1g_l3",
+    "type": "behavioral",
+    "reason": "If every L3 lookup unconditionally returns Some, non-present or non-PS entries would be treated as valid 1G mappings.",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "------------------------------------------- at the end of the function body\n...\n1087 |         pt.spec_resolve_mapping_1g_l3(l4i, l3i).is_Some(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 45 warnings emitted\n\n"
+  },
+  {
+    "name": "always_none_1g",
+    "target_fn": "get_entry_1g_l3",
+    "type": "behavioral",
+    "reason": "If the result is always None, 1G large-page resolution is completely broken and no gigabyte page can ever be used.",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "------------------------------------------- at the end of the function body\n...\n1087 |         pt.spec_resolve_mapping_1g_l3(l4i, l3i).is_None(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 45 warnings emitted\n\n"
+  },
+  {
+    "name": "some_implies_addr_zero",
+    "target_fn": "get_entry_1g_l3",
+    "type": "boundary",
+    "reason": "A resolved 1G mapping with physical address 0 would alias the null frame, corrupting low physical memory.",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "------------------------- at the end of the function body\n...\n1088 |         pt.spec_resolve_mapping_1g_l3(l4i, l3i).unwrap().addr == 0,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 45 warnings emitted\n\n"
+  },
+  {
+    "name": "some_implies_user_not_set",
+    "target_fn": "get_entry_1g_l3",
+    "type": "logical",
+    "reason": "User-space page table entries must have the user bit set; lacking it would prevent ring-3 access and violate user_only invariant.",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "----------------------- at the end of the function body\n...\n1088 |         !pt.spec_resolve_mapping_1g_l3(l4i, l3i).unwrap().perm.user,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 45 warnings emitted\n\n"
+  },
+  {
+    "name": "some_implies_ps_not_set",
+    "target_fn": "get_entry_1g_l3",
+    "type": "logical",
+    "reason": "A 1G mapping must have PS set; without it hardware interprets the entry as an L2 table pointer, causing memory corruption.",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "--------------------------- at the end of the function body\n...\n1088 |         !pt.spec_resolve_mapping_1g_l3(l4i, l3i).unwrap().perm.ps,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 45 warnings emitted\n\n"
+  }
+]

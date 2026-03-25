@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "block_start_at_diff_underflow",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The lemma operates on mathematical integers (`int`), where `block_idx2 - block_idx1` being negative is perfectly well-defined. The equation `addr2 = addr1 + (idx2 - idx1) * size` is correct regardless of ordering. This is a general arithmetic identity, not a spec gap."
+  },
+  {
+    "phi": "block_start_at_diff_zero_size",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "With `block_size == 0`, the equation `0 * anything == 0` makes all block addresses equal, which is arithmetically correct. The degenerate case is excluded elsewhere \u2014 `is_block_ptr1` requires `block_size >= size_of::<Node>()`. This helper lemma doesn't need to enforce that constraint."
+  },
+  {
+    "phi": "page_start_exceeds_segment",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`page_start` is a pure address computation function \u2014 it correctly computes `segment_start + SLICE_SIZE * idx` for any `idx`. Bounds checking is the responsibility of callers (e.g., `is_block_ptr1` constrains addresses to within the segment). A helper function not enforcing bounds is normal design."
+  },
+  {
+    "phi": "start_offset_small_block_384",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The 384-byte offset (3 \u00d7 128 = 3 \u00d7 MAX_ALIGN_GUARANTEE) for small blocks is the intended mimalloc design from `_mi_segment_page_start_from_slice`. This ensures alignment guarantees for small allocations. It's the correct and expected behavior."
+  },
+  {
+    "phi": "block_start_at_diff_arbitrary_pages",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is just arithmetic \u2014 subtracting two `block_start_at` calls with the same `block_size` and `idx` cancels the `start_offset` and `idx * block_size` terms, leaving `page_start` differences. This is a trivially true algebraic identity with no spec implications."
+  }
+]

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "segment_start_mult_segment_size",
+    "type": "behavioral",
+    "code": "proof fn phi_1_segment_start_mult_segment_size(segment_id: SegmentId)\n    ensures\n        segment_start(segment_id) % SEGMENT_SIZE as int == 0,\n{\n}",
+    "reason": "Segment start is always SEGMENT_SIZE-aligned \u2014 a trivial consequence of `id * SEGMENT_SIZE`, but over-constrains placement to natural alignment",
+    "entailed": false,
+    "verus_output": "llocator__layout__segment_start_mult_commit_size/phi_1_segment_start_mult_segment_size.rs:46:9\n   |\n44 | proof fn phi_1_segment_start_mult_segment_size(segment_id: SegmentId)\n   |       --------------------------------------------------------------- at the end of the function body\n45 |     ensures\n46 |         segment_start(segment_id) % SEGMENT_SIZE as int == 0,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "segment_start_zero_for_id_zero",
+    "type": "boundary",
+    "code": "proof fn phi_2_segment_start_zero_for_id_zero(segment_id: SegmentId)\n    requires\n        segment_id.id == 0,\n    ensures\n        segment_start(segment_id) == 0,\n{\n}",
+    "reason": "Segment ID 0 maps to address 0 (null) \u2014 address 0 is conventionally invalid, yet the spec allows it as a valid segment start",
+    "entailed": true,
+    "verus_output": "verification results:: 9 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "segment_start_nonneg",
+    "type": "logical",
+    "code": "proof fn phi_3_segment_start_nonneg(segment_id: SegmentId)\n    ensures\n        segment_start(segment_id) >= 0,\n{\n}",
+    "reason": "Segment starts are always non-negative since `id: nat` \u2014 no constraint prevents `id == 0` which yields address 0",
+    "entailed": true,
+    "verus_output": "verification results:: 9 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "distinct_ids_distinct_starts",
+    "type": "logical",
+    "code": "proof fn phi_4_distinct_ids_distinct_starts(s1: SegmentId, s2: SegmentId)\n    requires\n        s1.id != s2.id,\n    ensures\n        segment_start(s1) != segment_start(s2),\n{\n    assert(SEGMENT_SIZE > 0) by (compute);\n}",
+    "reason": "Different segment IDs always yield different start addresses \u2014 but `SegmentId`s with same `id` but different `provenance`/`uniq` are semantically distinct segments sharing the same address",
+    "entailed": false,
+    "verus_output": "ation/verusage/workspace_v2/memory-allocator__layout__segment_start_mult_commit_size/phi_4_distinct_ids_distinct_starts.rs:48:9\n   |\n44 | proof fn phi_4_distinct_ids_distinct_starts(s1: SegmentId, s2: SegmentId)\n   |       ------------------------------------------------------------------- at the end of the function body\n...\n48 |         segment_start(s1) != segment_start(s2),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "commit_size_equals_slice_size",
+    "type": "logical",
+    "code": "proof fn phi_5_commit_size_equals_slice_size()\n    ensures\n        COMMIT_SIZE == SLICE_SIZE,\n        COMMIT_SIZE == 65536,\n{\n}",
+    "reason": "`COMMIT_SIZE` is defined as `SLICE_SIZE` \u2014 commit granularity is locked to slice granularity with no independent configuration, so changing one silently changes the other",
+    "entailed": true,
+    "verus_output": "verification results:: 9 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

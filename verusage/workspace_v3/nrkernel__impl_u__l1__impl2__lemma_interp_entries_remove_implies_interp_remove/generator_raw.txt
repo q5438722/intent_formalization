@@ -1,0 +1,93 @@
+===PHI_START===
+NAME: arch_inv_allows_zero_layers
+TARGET_FN: Arch::inv
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_arch_inv_allows_zero_layers(arch: Arch)
+    requires
+        arch.inv(),
+    ensures
+        arch.layers.len() == 0,
+{
+}
+```
+REASON: An arch with zero layers is degenerate and should be excluded by inv, but the constraint `layers.len() <= X86_NUM_LAYERS` does not enforce a positive lower bound
+===PHI_END===
+
+===PHI_START===
+NAME: entry_base_equals_next_entry_base
+TARGET_FN: Arch::entry_base
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_entry_base_equals_next_entry_base(arch: Arch, layer: nat, base: nat, idx: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+        idx < arch.num_entries(layer),
+    ensures
+        arch.entry_base(layer, base, idx) == arch.next_entry_base(layer, base, idx),
+{
+}
+```
+REASON: If entry_base equals next_entry_base for a valid arch, entries have zero size contradicting the positive entry_size invariant
+===PHI_END===
+
+===PHI_START===
+NAME: well_formed_allows_zero_entries
+TARGET_FN: Directory::well_formed
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_well_formed_allows_zero_entries(dir: Directory)
+    requires
+        dir.inv(),
+    ensures
+        dir.entries.len() == 0,
+{
+}
+```
+REASON: A directory with zero entries is degenerate; inv should prevent this via num_entries > 0 from arch.inv
+===PHI_END===
+
+===PHI_START===
+NAME: next_entry_base_not_greater
+TARGET_FN: Arch::next_entry_base
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_next_entry_base_not_greater(arch: Arch, layer: nat, base: nat, idx: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+        idx < arch.num_entries(layer),
+    ensures
+        arch.next_entry_base(layer, base, idx) <= arch.entry_base(layer, base, idx),
+{
+}
+```
+REASON: next_entry_base should always be strictly greater than entry_base under a valid arch; if not, address regions would be empty or inverted
+===PHI_END===
+
+===PHI_START===
+NAME: subdirectory_base_vaddr_overlap
+TARGET_FN: Directory::directories_are_in_next_layer
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_subdirectory_base_vaddr_overlap(dir: Directory, i: nat, j: nat)
+    requires
+        dir.inv(),
+        i < dir.entries.len(),
+        j < dir.entries.len(),
+        i != j,
+        dir.entries[i as int] is Directory,
+        dir.entries[j as int] is Directory,
+    ensures
+        dir.entries[i as int]->Directory_0.base_vaddr == dir.entries[j as int]->Directory_0.base_vaddr,
+{
+}
+```
+REASON: Two distinct subdirectory entries sharing the same base_vaddr would mean overlapping address spaces, violating isolation between page table entries
+===PHI_END===

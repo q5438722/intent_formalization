@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: segment_start_zero_for_id_zero
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Segment ID 0 mapping to address 0 is a correct arithmetic consequence of the definition. In practice, the allocator would never use segment ID 0 — higher-level invariants ensure segments are at valid non-null addresses. The spec function itself is just a mathematical mapping.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: segment_start_nonneg
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Non-negative segment starts follow directly from `id: nat` and `SEGMENT_SIZE > 0`. This is correct and expected for a userspace allocator operating on non-negative virtual addresses.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: commit_size_equals_slice_size
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `COMMIT_SIZE = SLICE_SIZE` is the deliberate mimalloc design — commit granularity equals slice granularity by construction. This is an intentional constant alias, not a spec gap.
+===VERDICT_END===
+
+===SUMMARY===
+All three candidates are false positives. The segment-start-at-zero concern is mitigated by higher-level invariants, non-negative starts are correct by design for a userspace allocator, and `COMMIT_SIZE == SLICE_SIZE` is an intentional mimalloc design choice. This file defines simple constants and a basic multiplicative address mapping with no external_body trust gaps or spec weaknesses.
+===END_SUMMARY===

@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: do_end_points_match_external_body_unimplemented
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `do_end_points_match` is `external_body` with `unimplemented!()` — the exec body panics at runtime. The spec property itself (extensional equality of id implies view equality) is correct, but the trusted exec function has no real implementation backing its ensures clause.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: abstractify_preserves_length
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `abstractify_end_points` is defined as `end_points@.map(...)` and `Seq::map` preserves length by definition. This is a direct definitional consequence, not a spec gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: endpoints_contain_false_for_absent
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is a correct and desirable property — if all concrete endpoints have different IDs from the query, the abstract sequence should not contain the query's abstract view. It follows from `AbstractEndPoint` being a single-field struct where equality is determined by `id`, so distinct IDs yield distinct abstract endpoints.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: view_preserves_id_identity
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `AbstractEndPoint` has a single field `id`, so extensional equality of `id` implies structural equality of `AbstractEndPoint`. This is a trivial definitional consequence of the struct layout, not a spec gap.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: `do_end_points_match` is `external_body` with `unimplemented!()`, meaning the exec function panics at runtime while its ensures clause is trusted without verification. The remaining three candidates are false positives — they are direct definitional consequences of `Seq::map` preserving length, `AbstractEndPoint` being a single-field struct where equality reduces to `id` equality, and the view function faithfully mapping the `id` field.
+===END_SUMMARY===

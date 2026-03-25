@@ -1,0 +1,85 @@
+===PHI_START===
+NAME: parse_serialize_roundtrip_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_parse_serialize_roundtrip_external_body<C: SecureSpecCombinator>(c: &RepeatN<C>, buf: Seq<u8>, n: int, vs: Seq<C::Type>)
+    requires
+        c.requires(),
+        c.spec_parse(buf) == Some((n, vs)),
+    ensures
+        c.wf(vs),
+        c.spec_serialize(vs) == buf.take(n),
+{
+    c.theorem_parse_serialize_roundtrip(buf);
+}
+```
+REASON: `RepeatN::theorem_parse_serialize_roundtrip` is `external_body` with `unimplemented!()` — the parse-serialize roundtrip is trusted without proof despite a verified helper existing
+===PHI_END===
+
+===PHI_START===
+NAME: parse_length_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_parse_length_external_body<C: SecureSpecCombinator>(c: &RepeatN<C>, s: Seq<u8>, n: int, vs: Seq<C::Type>)
+    requires
+        c.requires(),
+        c.spec_parse(s) == Some((n, vs)),
+    ensures
+        0 <= n <= s.len(),
+{
+    c.lemma_parse_length(s);
+}
+```
+REASON: `RepeatN::lemma_parse_length` is `external_body` with `unimplemented!()` — the parse length bound is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: parse_length_helper_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_parse_length_helper_external_body<C: SecureSpecCombinator>(c: &RepeatN<C>, s: Seq<u8>, n: usize, m: int, vs: Seq<C::Type>)
+    requires
+        c.requires(),
+        c.spec_parse_helper(s, n) == Some((m, vs)),
+    ensures
+        0 <= m <= s.len(),
+{
+    c.lemma_parse_length_helper(s, n);
+}
+```
+REASON: `lemma_parse_length_helper` is `external_body` with `unimplemented!()` — the helper parse length bound is trusted and used as a critical dependency in the verified roundtrip helper
+===PHI_END===
+
+===PHI_START===
+NAME: serialize_ignores_count_field
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_serialize_ignores_count_field<C: SecureSpecCombinator>(c: &C, vs: Seq<C::Type>, n1: usize, n2: usize)
+    ensures
+        RepeatN(*c, n1).spec_serialize(vs) == RepeatN(*c, n2).spec_serialize(vs),
+{
+}
+```
+REASON: `spec_serialize` uses `fold_left` over `vs` without referencing `self.1` — the count field is completely ignored during serialization
+===PHI_END===
+
+===PHI_START===
+NAME: wf_implies_all_inner_wf
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_wf_implies_all_inner_wf<C: SecureSpecCombinator>(c: &RepeatN<C>, vs: Seq<C::Type>, i: int)
+    requires
+        c.wf(vs),
+        0 <= i < vs.len(),
+    ensures
+        c.0.wf(vs[i]),
+{
+}
+```
+REASON: Well-formedness of the sequence implies well-formedness of each element — if the inner wf were not propagated, serializing individual elements could produce incorrect bytes
+===PHI_END===

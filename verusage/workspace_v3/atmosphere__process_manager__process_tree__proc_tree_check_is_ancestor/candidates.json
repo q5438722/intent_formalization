@@ -1,0 +1,37 @@
+[
+  {
+    "name": "always_ancestor",
+    "target_fn": "proc_tree_check_is_ancestor",
+    "type": "behavioral",
+    "code": "proof fn phi_1_always_ancestor(\n    root_proc: ProcPtr,\n    proc_tree_dom: Set<ProcPtr>,\n    proc_perms: Map<ProcPtr, PointsTo<Process>>,\n    a_ptr: ProcPtr,\n    child_ptr: ProcPtr,\n)\n    requires\n        proc_perms_wf(proc_perms),\n        proc_tree_wf(root_proc, proc_tree_dom, proc_perms),\n        proc_tree_dom_subset_of_proc_dom(proc_tree_dom, proc_perms),\n        proc_tree_dom.contains(a_ptr),\n        proc_tree_dom.contains(child_ptr),\n        proc_perms[a_ptr].value().depth < proc_perms[child_ptr].value().depth,\n        child_ptr != root_proc,\n    ensures\n        proc_perms[child_ptr].value().uppertree_seq@.contains(a_ptr),\n{\n}",
+    "reason": "Would mean every node with lower depth is always an ancestor, collapsing the tree into a total order"
+  },
+  {
+    "name": "never_ancestor",
+    "target_fn": "proc_tree_check_is_ancestor",
+    "type": "behavioral",
+    "code": "proof fn phi_2_never_ancestor(\n    root_proc: ProcPtr,\n    proc_tree_dom: Set<ProcPtr>,\n    proc_perms: Map<ProcPtr, PointsTo<Process>>,\n    a_ptr: ProcPtr,\n    child_ptr: ProcPtr,\n)\n    requires\n        proc_perms_wf(proc_perms),\n        proc_tree_wf(root_proc, proc_tree_dom, proc_perms),\n        proc_tree_dom_subset_of_proc_dom(proc_tree_dom, proc_perms),\n        proc_tree_dom.contains(a_ptr),\n        proc_tree_dom.contains(child_ptr),\n        proc_perms[a_ptr].value().depth < proc_perms[child_ptr].value().depth,\n        child_ptr != root_proc,\n    ensures\n        !proc_perms[child_ptr].value().uppertree_seq@.contains(a_ptr),\n{\n}",
+    "reason": "Would mean no node is ever recognized as an ancestor, making the function trivially return false"
+  },
+  {
+    "name": "root_not_ancestor",
+    "target_fn": "proc_tree_check_is_ancestor",
+    "type": "boundary",
+    "code": "proof fn phi_3_root_not_ancestor(\n    root_proc: ProcPtr,\n    proc_tree_dom: Set<ProcPtr>,\n    proc_perms: Map<ProcPtr, PointsTo<Process>>,\n    child_ptr: ProcPtr,\n)\n    requires\n        proc_perms_wf(proc_perms),\n        proc_tree_wf(root_proc, proc_tree_dom, proc_perms),\n        proc_tree_dom_subset_of_proc_dom(proc_tree_dom, proc_perms),\n        proc_tree_dom.contains(root_proc),\n        proc_tree_dom.contains(child_ptr),\n        proc_perms[root_proc].value().depth < proc_perms[child_ptr].value().depth,\n        child_ptr != root_proc,\n    ensures\n        !proc_perms[child_ptr].value().uppertree_seq@.contains(root_proc),\n{\n}",
+    "reason": "Would mean the root process is never an ancestor of any child, contradicting the fundamental tree property"
+  },
+  {
+    "name": "ancestor_implies_direct_parent",
+    "target_fn": "proc_tree_check_is_ancestor",
+    "type": "logical",
+    "code": "proof fn phi_4_ancestor_implies_direct_parent(\n    root_proc: ProcPtr,\n    proc_tree_dom: Set<ProcPtr>,\n    proc_perms: Map<ProcPtr, PointsTo<Process>>,\n    a_ptr: ProcPtr,\n    child_ptr: ProcPtr,\n)\n    requires\n        proc_perms_wf(proc_perms),\n        proc_tree_wf(root_proc, proc_tree_dom, proc_perms),\n        proc_tree_dom_subset_of_proc_dom(proc_tree_dom, proc_perms),\n        proc_tree_dom.contains(a_ptr),\n        proc_tree_dom.contains(child_ptr),\n        proc_perms[a_ptr].value().depth < proc_perms[child_ptr].value().depth,\n        child_ptr != root_proc,\n        proc_perms[child_ptr].value().uppertree_seq@.contains(a_ptr),\n    ensures\n        proc_perms[child_ptr].value().parent == Some(a_ptr),\n{\n}",
+    "reason": "Would collapse ancestry to only direct parents, meaning grandparents and higher ancestors are never detected"
+  },
+  {
+    "name": "depth_diff_one_always_ancestor",
+    "target_fn": "proc_tree_check_is_ancestor",
+    "type": "boundary",
+    "code": "proof fn phi_5_depth_diff_one_always_ancestor(\n    root_proc: ProcPtr,\n    proc_tree_dom: Set<ProcPtr>,\n    proc_perms: Map<ProcPtr, PointsTo<Process>>,\n    a_ptr: ProcPtr,\n    child_ptr: ProcPtr,\n)\n    requires\n        proc_perms_wf(proc_perms),\n        proc_tree_wf(root_proc, proc_tree_dom, proc_perms),\n        proc_tree_dom_subset_of_proc_dom(proc_tree_dom, proc_perms),\n        proc_tree_dom.contains(a_ptr),\n        proc_tree_dom.contains(child_ptr),\n        proc_perms[a_ptr].value().depth == (proc_perms[child_ptr].value().depth - 1),\n        child_ptr != root_proc,\n    ensures\n        proc_perms[child_ptr].value().uppertree_seq@.contains(a_ptr),\n{\n}",
+    "reason": "Would mean any node one level above is always an ancestor, conflating same-depth siblings' parents with unrelated nodes at that depth"
+  }
+]

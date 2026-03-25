@@ -1,0 +1,47 @@
+[
+  {
+    "name": "container_map_4k_not_subset_allocated",
+    "type": "logical",
+    "code": "proof fn phi_1_container_map_4k_not_subset_allocated(\n    pa: PageAllocator,\n    c: ContainerPtr,\n    p: PagePtr,\n)\n    requires\n        pa.wf(),\n        pa.container_map_4k@.dom().contains(c),\n        pa.container_map_4k@[c].contains(p),\n        !pa.allocated_pages_4k@.contains(p),\n    ensures\n        pa.container_map_4k@[c].contains(p),\n{\n}",
+    "reason": "container_map_4k tracks per-container page ownership but wf() may not require these pages to actually be in allocated_pages_4k \u2014 containers could claim unallocated pages",
+    "entailed": true,
+    "verus_output": "or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__allocator__page_allocator_spec_impl__impl2__remove_mapping_4k_helper2/phi_1_container_map_4k_not_subset_allocated.rs:491:72\n    |\n491 |             0 <= i < NUM_PAGES && self.page_array@[i].owning_container.is_Some() ==> (\n    |                                                                        ^^^^^^^\n\nwarning: 4 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "container_map_2m_not_subset_allocated",
+    "type": "logical",
+    "code": "proof fn phi_2_container_map_2m_not_subset_allocated(\n    pa: PageAllocator,\n    c: ContainerPtr,\n    p: PagePtr,\n)\n    requires\n        pa.wf(),\n        pa.container_map_2m@.dom().contains(c),\n        pa.container_map_2m@[c].contains(p),\n        !pa.allocated_pages_2m@.contains(p),\n    ensures\n        pa.container_map_2m@[c].contains(p),\n{\n}",
+    "reason": "container_map_2m pages may not be required to exist in allocated_pages_2m \u2014 2M container ownership could reference non-allocated pages",
+    "entailed": true,
+    "verus_output": "or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__allocator__page_allocator_spec_impl__impl2__remove_mapping_4k_helper2/phi_2_container_map_2m_not_subset_allocated.rs:491:72\n    |\n491 |             0 <= i < NUM_PAGES && self.page_array@[i].owning_container.is_Some() ==> (\n    |                                                                        ^^^^^^^\n\nwarning: 4 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "container_map_1g_not_subset_allocated",
+    "type": "logical",
+    "code": "proof fn phi_3_container_map_1g_not_subset_allocated(\n    pa: PageAllocator,\n    c: ContainerPtr,\n    p: PagePtr,\n)\n    requires\n        pa.wf(),\n        pa.container_map_1g@.dom().contains(c),\n        pa.container_map_1g@[c].contains(p),\n        !pa.allocated_pages_1g@.contains(p),\n    ensures\n        pa.container_map_1g@[c].contains(p),\n{\n}",
+    "reason": "container_map_1g pages may not be required to exist in allocated_pages_1g \u2014 1G container ownership could reference non-allocated pages",
+    "entailed": true,
+    "verus_output": "or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__allocator__page_allocator_spec_impl__impl2__remove_mapping_4k_helper2/phi_3_container_map_1g_not_subset_allocated.rs:491:72\n    |\n491 |             0 <= i < NUM_PAGES && self.page_array@[i].owning_container.is_Some() ==> (\n    |                                                                        ^^^^^^^\n\nwarning: 4 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "free_and_allocated_pages_overlap",
+    "type": "logical",
+    "code": "proof fn phi_4_free_and_allocated_pages_overlap(\n    pa: PageAllocator,\n    p: PagePtr,\n)\n    requires\n        pa.wf(),\n        pa.free_pages_4k@.contains(p),\n        pa.allocated_pages_4k@.contains(p),\n    ensures\n        pa.free_pages_4k@.contains(p),\n        pa.allocated_pages_4k@.contains(p),\n{\n}",
+    "reason": "A page could simultaneously be in the free list and the allocated set if wf() doesn't enforce state exclusivity between Free4k and Allocated4k at the page_array level",
+    "entailed": true,
+    "verus_output": "`->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__allocator__page_allocator_spec_impl__impl2__remove_mapping_4k_helper2/phi_4_free_and_allocated_pages_overlap.rs:491:72\n    |\n491 |             0 <= i < NUM_PAGES && self.page_array@[i].owning_container.is_Some() ==> (\n    |                                                                        ^^^^^^^\n\nwarning: 4 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "mapped_page_no_mappings_tracked",
+    "type": "behavioral",
+    "code": "proof fn phi_5_mapped_page_no_mappings_tracked(\n    pa: PageAllocator,\n    p: PagePtr,\n)\n    requires\n        pa.wf(),\n        pa.mapped_pages_4k@.contains(p),\n        pa.page_mappings(p) =~= Set::empty(),\n    ensures\n        pa.mapped_pages_4k@.contains(p),\n{\n}",
+    "reason": "A page can be in mapped_pages_4k state yet have an empty mappings set \u2014 the spec may not require mapped pages to have at least one mapping recorded",
+    "entailed": true,
+    "verus_output": " `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__allocator__page_allocator_spec_impl__impl2__remove_mapping_4k_helper2/phi_5_mapped_page_no_mappings_tracked.rs:491:72\n    |\n491 |             0 <= i < NUM_PAGES && self.page_array@[i].owning_container.is_Some() ==> (\n    |                                                                        ^^^^^^^\n\nwarning: 4 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: view_only_contains_valid_walks
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `is_base_pt_walk` uses `self.pt_walk(vaddr).result() matches WalkResult::Valid { vbase, pte }` which is a pattern match that only succeeds when the result is the `Valid` variant. This directly implies `result() is Valid` by Verus match semantics.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: lemma_pt_walk_complete_always_true
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: While `pt_walk` does set `complete: true` in all visible branches, the proof relies on the `external_body` `lemma_pt_walk` rather than unfolding the open spec. The `complete` field being always true is provable from the open definition alone, but the fact that this proof goes through the external_body path confirms an unverified trust assumption is being used.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: is_base_pt_walk_vaddr_bounded
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `is_base_pt_walk` explicitly includes `vaddr < MAX_BASE` as its first conjunct. The ensures directly follows from unfolding this definition.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: walk_vaddr_preserved_in_result
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `pt_walk` constructs `Walk { vaddr, ... }` in every branch of the match, using the input `vaddr` parameter. The Walk struct stores it directly, so `.vaddr == va` by construction.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: `lemma_pt_walk_complete_always_true` relies on the `external_body` `lemma_pt_walk` to prove completeness, which is an unverified trust assumption (though the property happens to be trivially true from the open spec). Three false positives: valid walk from `is_base_pt_walk` follows from pattern match semantics, vaddr boundedness is a direct conjunct, and vaddr preservation is by construction.
+===END_SUMMARY===

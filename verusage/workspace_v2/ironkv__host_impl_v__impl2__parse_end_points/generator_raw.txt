@@ -1,0 +1,72 @@
+===PHI_START===
+NAME: parse_args_none_implies_invalid_endpoint
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_parse_args_none_implies_invalid_endpoint(args: AbstractArgs)
+    requires
+        parse_args(args).is_None(),
+    ensures
+        exists |i: int| 0 <= i < args.len() && !parse_arg_as_end_point(args[i]).valid_physical_address(),
+{
+}
+```
+REASON: If `parse_args` returns None, there must exist at least one invalid endpoint — but since `parse_arg_as_end_point` just wraps the arg bytes as an id, this means some arg has length >= 0x100000, which leaks the validity threshold to callers
+===PHI_END===
+
+===PHI_START===
+NAME: parse_arg_identity_no_validation
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_parse_arg_identity_no_validation(arg: AbstractArg)
+    ensures
+        parse_arg_as_end_point(arg).id == arg,
+{
+}
+```
+REASON: `parse_arg_as_end_point` performs zero validation — it directly copies raw bytes into an endpoint id, meaning any byte sequence (including empty, malformed, or adversarial) becomes a valid-looking endpoint identity
+===PHI_END===
+
+===PHI_START===
+NAME: abstractify_end_points_empty
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_abstractify_end_points_empty()
+    ensures
+        abstractify_end_points(Vec::empty()) =~= Seq::<AbstractEndPoint>::empty(),
+{
+}
+```
+REASON: An empty vector of endpoints abstractifies to an empty sequence — if this verifies, `parse_end_points` with an empty args list returns `Some(empty)` which means an SHT host can be initialized with zero peers, potentially leaving the system with no reachable nodes
+===PHI_END===
+
+===PHI_START===
+NAME: parse_args_empty_is_some
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_parse_args_empty_is_some()
+    ensures
+        parse_args(Seq::<AbstractArg>::empty()).is_Some(),
+        parse_args(Seq::<AbstractArg>::empty()).unwrap().len() == 0,
+{
+}
+```
+REASON: `parse_args` on empty input succeeds with an empty endpoint list because the `forall` over an empty domain is vacuously true — a caller could accidentally initialize the system with no hosts and no error
+===PHI_END===
+
+===PHI_START===
+NAME: parse_end_point_external_body_unchecked
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_parse_end_point_external_body_unchecked(arg: AbstractArg)
+    ensures
+        parse_arg_as_end_point(arg) == AbstractEndPoint { id: arg },
+{
+}
+```
+REASON: `HostState::parse_end_point` is external_body ensuring `out@ == parse_arg_as_end_point(arg@)` — but the spec `parse_arg_as_end_point` trivially wraps bytes without checking structure, so the external_body implementation could return any EndPoint with matching view bytes, including one whose runtime representation diverges from the logical spec
+===PHI_END===

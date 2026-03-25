@@ -1,0 +1,47 @@
+[
+  {
+    "name": "sorted_keys_empty_trivially_true",
+    "type": "boundary",
+    "code": "proof fn phi_1_sorted_keys_empty_trivially_true()\n    ensures\n        spec_sorted_keys(Vec::<CKeyKV> { inner: Ghost(Seq::empty()) }),\n{\n}",
+    "reason": "An empty vector is vacuously sorted \u2014 callers expecting a non-empty sorted collection get no guarantee of any elements",
+    "entailed": false,
+    "verus_output": "e/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__marshal_ironsht_specific_v__sorted_keys/phi_1_sorted_keys_empty_trivially_true.rs:80:42\n   |\n80 |         spec_sorted_keys(Vec::<CKeyKV> { inner: Ghost(Seq::empty()) }),\n   |                                          ^^^^^ `std::vec::Vec<CKeyKV>` does not have this field\n   |\n   = note: all struct fields are already assigned\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0560`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "sorted_keys_no_duplicate_exclusion",
+    "type": "logical",
+    "code": "proof fn phi_2_sorted_keys_no_duplicate_exclusion(k: CKey, v1: Vec<u8>, v2: Vec<u8>)\n    requires\n        v1@ != v2@,\n    ensures\n        !spec_sorted_keys(Vec::<CKeyKV> { inner: Ghost(seq![CKeyKV { k: k, v: v1 }, CKeyKV { k: k, v: v2 }]) }),\n{\n}",
+    "reason": "Two entries with the same key but different values cannot be sorted (strict `<` prevents equal keys) \u2014 but the spec implicitly forbids duplicate keys through `ckeykvlt`'s strict ordering rather than an explicit uniqueness constraint, which is fragile",
+    "entailed": false,
+    "verus_output": "orkspace_v2/ironkv__marshal_ironsht_specific_v__sorted_keys/phi_2_sorted_keys_no_duplicate_exclusion.rs:82:43\n   |\n82 |         !spec_sorted_keys(Vec::<CKeyKV> { inner: Ghost(seq![CKeyKV { k: k, v: v1 }, CKeyKV { k: k, v: v2 }]) }),\n   |                                           ^^^^^ `std::vec::Vec<CKeyKV>` does not have this field\n   |\n   = note: all struct fields are already assigned\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0560`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "ckeykvlt_ignores_value",
+    "type": "behavioral",
+    "code": "proof fn phi_3_ckeykvlt_ignores_value(k1: CKey, k2: CKey, v1: Vec<u8>, v2: Vec<u8>, v3: Vec<u8>)\n    requires\n        k1.ukey < k2.ukey,\n    ensures\n        ckeykvlt(CKeyKV { k: k1, v: v1 }, CKeyKV { k: k2, v: v2 })\n            == ckeykvlt(CKeyKV { k: k1, v: v3 }, CKeyKV { k: k2, v: v2 }),\n{\n}",
+    "reason": "`ckeykvlt` compares only keys and completely ignores values \u2014 two entries with the same key but different values are considered equal by the ordering, so a sorted key-value list could silently drop value distinctions",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "sorted_singleton_any_key",
+    "type": "boundary",
+    "code": "proof fn phi_4_sorted_singleton_any_key(kv: CKeyKV)\n    ensures\n        spec_sorted_keys(Vec::<CKeyKV> { inner: Ghost(seq![kv]) }),\n{\n}",
+    "reason": "Any single-element vector is vacuously sorted regardless of the key value \u2014 there is no well-formedness check on individual keys (e.g., no range constraint on `ukey`)",
+    "entailed": false,
+    "verus_output": "`\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__marshal_ironsht_specific_v__sorted_keys/phi_4_sorted_singleton_any_key.rs:80:42\n   |\n80 |         spec_sorted_keys(Vec::<CKeyKV> { inner: Ghost(seq![kv]) }),\n   |                                          ^^^^^ `std::vec::Vec<CKeyKV>` does not have this field\n   |\n   = note: all struct fields are already assigned\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0560`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "view_loses_key_identity",
+    "type": "behavioral",
+    "code": "proof fn phi_5_view_loses_key_identity(k: CKey, v: Vec<u8>)\n    ensures\n        ({\n            let kv = CKeyKV { k: k, v: v };\n            kv@.0 == k && kv@.1 == v@\n        }),\n{\n}",
+    "reason": "`CKeyKV::view` returns the key by value (not wrapped) and the value as `Seq<u8>` \u2014 the view always preserves exact key identity, meaning the abstract model conflates `CKey` with `AbstractKey` with no abstraction barrier, so any internal key representation change would break all downstream specs",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

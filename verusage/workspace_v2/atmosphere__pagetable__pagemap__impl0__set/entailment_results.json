@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize2pa_mem_valid_unconditional",
+    "type": "logical",
+    "code": "proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body ensures MEM_valid(ret) for ALL inputs \u2014 trusts without proof that masking any arbitrary usize yields a valid physical address",
+    "entailed": false,
+    "verus_output": "> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagemap__impl0__set/phi_1_usize2pa_mem_valid_unconditional.rs:276:9\n    |\n274 | proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    |       --------------------------------------------------- at the end of the function body\n275 |     ensures\n276 |         MEM_valid(usize2pa(v)),\n    |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "zero_is_empty_external_body_trusted",
+    "type": "logical",
+    "code": "proof fn phi_2_zero_is_empty_external_body_trusted()\n    ensures\n        spec_usize2page_entry(0).is_empty(),\n        spec_usize2page_entry(0).addr == 0,\n        spec_usize2page_entry(0).perm.present == false,\n        spec_usize2page_entry(0).perm.ps == false,\n        spec_usize2page_entry(0).perm.write == false,\n        spec_usize2page_entry(0).perm.execute_disable == false,\n        spec_usize2page_entry(0).perm.user == false,\n{\n    zero_leads_is_empty_page_entry();\n}",
+    "reason": "zero_leads_is_empty_page_entry is external_body \u2014 the foundational property that zero decodes to an empty page entry is axiomatically trusted rather than verified with bit_vector proofs",
+    "entailed": true,
+    "verus_output": "s_empty_external_body_trusted.rs:77:10\n   |\n77 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagemap__impl0__set/phi_2_zero_is_empty_external_body_trusted.rs:86:10\n   |\n86 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_entry2usize_no_roundtrip_guarantee",
+    "type": "behavioral",
+    "code": "proof fn phi_3_page_entry2usize_no_roundtrip_guarantee(pe: PageEntry, v: usize)\n    requires\n        MEM_valid(pe.addr),\n        usize2present(v) == pe.perm.present,\n        usize2ps(v) == pe.perm.ps,\n        usize2write(v) == pe.perm.write,\n        usize2execute_disable(v) == pe.perm.execute_disable,\n        usize2user(v) == pe.perm.user,\n        usize2pa(v) == pe.addr,\n        usize2page_entry_perm(v) =~= pe.perm,\n    ensures\n        spec_usize2page_entry(v).perm =~= pe.perm,\n        spec_usize2page_entry(v).addr == pe.addr,\n{\n}",
+    "reason": "page_entry2usize ensures individual field roundtrips but does NOT ensure spec_usize2page_entry(ret) =~= page_entry \u2014 the full structural roundtrip is missing from the spec",
+    "entailed": true,
+    "verus_output": "ze_no_roundtrip_guarantee.rs:77:10\n   |\n77 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagemap__impl0__set/phi_3_page_entry2usize_no_roundtrip_guarantee.rs:86:10\n   |\n86 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "set_non_present_forces_empty",
+    "type": "boundary",
+    "code": "proof fn phi_4_set_non_present_forces_empty(pm: PageMap, index: usize, value: PageEntry)\n    requires\n        pm.wf(),\n        0 <= index < 512,\n        value.perm.present == false,\n        value.is_empty(),\n    ensures\n        ({\n            let new_view = pm@.update(index as int, value);\n            new_view[index as int].addr == 0\n            &&\n            new_view[index as int].perm.ps == false\n            &&\n            new_view[index as int].perm.write == false\n            &&\n            new_view[index as int].perm.execute_disable == false\n            &&\n            new_view[index as int].perm.user == false\n        }),\n{\n}",
+    "reason": "set() requires non-present entries to be fully empty \u2014 this prevents storing non-present entries with non-zero addr or other permission bits, silently discarding information that could be useful for lazy allocation or dirty-bit tracking",
+    "entailed": true,
+    "verus_output": "t/phi_4_set_non_present_forces_empty.rs:77:10\n   |\n77 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagemap__impl0__set/phi_4_set_non_present_forces_empty.rs:86:10\n   |\n86 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pagemap_set_present_loses_entry_identity",
+    "type": "behavioral",
+    "code": "proof fn phi_5_pagemap_set_present_loses_entry_identity(pm: PageMap, index: usize, value: PageEntry)\n    requires\n        pm.wf(),\n        0 <= index < 512,\n        value.perm.present == true,\n        MEM_valid(value.addr),\n    ensures\n        ({\n            let new_view = pm@.update(index as int, value);\n            new_view[index as int] == value\n        }),\n{\n}",
+    "reason": "For present entries, set() stores page_entry2usize(value) then the wf invariant reconstructs via usize2page_entry \u2014 if the encode-decode roundtrip is not identity-preserving, the stored entry could differ from value despite ensures claiming otherwise",
+    "entailed": true,
+    "verus_output": "ent_loses_entry_identity.rs:77:10\n   |\n77 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagemap__impl0__set/phi_5_pagemap_set_present_loses_entry_identity.rs:86:10\n   |\n86 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

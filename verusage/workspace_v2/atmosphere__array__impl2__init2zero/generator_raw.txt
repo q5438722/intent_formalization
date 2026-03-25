@@ -1,0 +1,95 @@
+===PHI_START===
+NAME: set_no_length_preservation_check
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_set_no_length_preservation_check<A>(old_arr: Array<A, 5>, new_arr: Array<A, 5>, i: usize, v: A)
+    requires
+        old_arr.wf(),
+        0 <= i < 5,
+        new_arr.seq@ =~= old_arr.seq@.update(i as int, v),
+        new_arr.wf(),
+    ensures
+        new_arr.seq@.len() == old_arr.seq@.len(),
+{
+}
+```
+REASON: set's ensures guarantee wf() on the output, but the length preservation is derived from Seq::update semantics — if update had a different axiomatization, wf() alone wouldn't catch length changes
+===PHI_END===
+
+===PHI_START===
+NAME: set_frame_only_from_extensional_eq
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_set_frame_only_from_extensional_eq<A>(old_arr: Array<A, 5>, new_arr: Array<A, 5>, i: usize, v: A, j: usize)
+    requires
+        old_arr.wf(),
+        0 <= i < 5,
+        0 <= j < 5,
+        i != j,
+        new_arr.seq@ =~= old_arr.seq@.update(i as int, v),
+    ensures
+        new_arr.seq@[j as int] == old_arr.seq@[j as int],
+{
+}
+```
+REASON: The frame condition (untouched indices preserved) relies entirely on vstd Seq::update axioms — set's external_body provides no independent frame guarantee beyond extensional equality
+===PHI_END===
+
+===PHI_START===
+NAME: set_external_body_ar_ghost_desync
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_set_external_body_ar_ghost_desync<A>(arr: Array<A, 5>, i: usize, v: A)
+    requires
+        arr.wf(),
+        0 <= i < 5,
+    ensures
+        ({
+            let new_seq = arr.seq@.update(i as int, v);
+            new_seq.len() == 5
+        }),
+{
+}
+```
+REASON: set's external_body ensures only constrain the Ghost<Seq<A>> field — the concrete `ar: [A;N]` array is never mentioned in ensures, so ghost and runtime could desync
+===PHI_END===
+
+===PHI_START===
+NAME: init2zero_accepts_empty_array
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_init2zero_accepts_empty_array(arr: Array<u8, 0>)
+    requires
+        arr.wf(),
+        0usize <= usize::MAX,
+    ensures
+        arr.wf(),
+{
+}
+```
+REASON: init2zero requires N <= usize::MAX which is always true for usize — the vacuous forall on empty arrays means init2zero "succeeds" with no actual work, potentially masking off-by-one issues
+===PHI_END===
+
+===PHI_START===
+NAME: set_arbitrary_value_no_bounds_on_A
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_set_arbitrary_value_no_bounds_on_A(arr: Array<u8, 5>, i: usize)
+    requires
+        arr.wf(),
+        0 <= i < 5,
+    ensures
+        ({
+            let new_seq = arr.seq@.update(i as int, 255u8);
+            new_seq[i as int] == 255u8
+        }),
+{
+}
+```
+REASON: set's external_body places no domain constraint on the value being written — any A is accepted, meaning the spec trusts that the runtime array can store arbitrary values without validation
+===PHI_END===

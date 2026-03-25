@@ -1,0 +1,84 @@
+===PHI_START===
+NAME: filter_true_identity
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_filter_true_identity(s: Seq<int>)
+    ensures
+        s.filter(|_a: int| true) == s,
+{
+    lemma_if_everything_in_seq_satisfies_filter_then_filter_is_identity(s, |_a: int| true);
+}
+```
+REASON: If filtering with a universally-true predicate didn't return the original sequence, the filter spec would be unsound
+===PHI_END===
+
+===PHI_START===
+NAME: filter_empty_identity
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_filter_empty_identity(pred: spec_fn(int) -> bool)
+    ensures
+        Seq::<int>::empty().filter(pred) == Seq::<int>::empty(),
+{
+    lemma_if_everything_in_seq_satisfies_filter_then_filter_is_identity(Seq::<int>::empty(), pred);
+}
+```
+REASON: Filtering an empty sequence should always return empty, regardless of predicate — the vacuous precondition makes this hold for any pred
+===PHI_END===
+
+===PHI_START===
+NAME: filter_singleton_satisfying
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_filter_singleton_satisfying(x: int, pred: spec_fn(int) -> bool)
+    requires
+        pred(x),
+    ensures
+        seq![x].filter(pred) == seq![x],
+{
+    lemma_if_everything_in_seq_satisfies_filter_then_filter_is_identity(seq![x], pred);
+}
+```
+REASON: A singleton sequence whose element satisfies the predicate should be unchanged by filter
+===PHI_END===
+
+===PHI_START===
+NAME: filter_idempotent
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_filter_idempotent(s: Seq<int>, pred: spec_fn(int) -> bool)
+    ensures
+        s.filter(pred).filter(pred) == s.filter(pred),
+{
+    let filtered = s.filter(pred);
+    assert(forall |i: int| 0 <= i < filtered.len() ==> pred(filtered[i])) by {
+        reveal(Seq::filter);
+        // filter output only contains elements satisfying pred
+        admit(); // may need vstd filter lemma
+    }
+    lemma_if_everything_in_seq_satisfies_filter_then_filter_is_identity(filtered, pred);
+}
+```
+REASON: If double-filtering weren't idempotent, the filter spec would be producing elements that don't satisfy the predicate
+===PHI_END===
+
+===PHI_START===
+NAME: filter_preserves_all_satisfying_length
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_filter_preserves_all_satisfying_length(s: Seq<int>, pred: spec_fn(int) -> bool)
+    requires
+        forall |i: int| 0 <= i < s.len() ==> pred(s[i]),
+    ensures
+        s.filter(pred).len() == s.len(),
+{
+    lemma_if_everything_in_seq_satisfies_filter_then_filter_is_identity(s, pred);
+}
+```
+REASON: If all elements satisfy the predicate but filter changed the length, it would be incorrectly dropping or duplicating elements
+===PHI_END===

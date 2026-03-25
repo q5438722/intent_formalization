@@ -1,0 +1,47 @@
+[
+  {
+    "name": "view_equal_symmetric_usize_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_view_equal_symmetric_usize_external_body(a: usize, b: usize)\n    ensures\n        a.view_equal(&b) == b.view_equal(&a),\n{\n    a.lemma_view_equal_symmetric(&b);\n}",
+    "reason": "`usize::lemma_view_equal_symmetric` is `external_body` despite being trivially provable from `===` symmetry \u2014 unnecessarily trusted assumption",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "view_equal_symmetric_vec_u8_external_body",
+    "type": "logical",
+    "code": "proof fn phi_2_view_equal_symmetric_vec_u8_external_body(a: Vec<u8>, b: Vec<u8>)\n    ensures\n        a.view_equal(&b) == b.view_equal(&a),\n{\n    a.lemma_view_equal_symmetric(&b);\n}",
+    "reason": "`Vec<u8>::lemma_view_equal_symmetric` is `external_body` despite being trivially provable from `===` symmetry \u2014 unnecessarily trusted assumption",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "view_equal_implies_equal_usize",
+    "type": "logical",
+    "code": "proof fn phi_3_view_equal_implies_equal_usize(a: usize, b: usize)\n    requires\n        a.view_equal(&b),\n    ensures\n        a == b,\n{\n}",
+    "reason": "For usize, `view_equal` (defined as `self@ === other@`) collapses to full equality \u2014 the abstraction barrier provides no separation from `==` for primitive types",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "trait_symmetry_no_preconditions",
+    "type": "logical",
+    "code": "proof fn phi_4_trait_symmetry_no_preconditions(a: usize, b: usize)\n    requires\n        !a.view_equal(&b),\n    ensures\n        !b.view_equal(&a),\n{\n    a.lemma_view_equal_symmetric(&b);\n}",
+    "reason": "The trait-level `lemma_view_equal_symmetric` has no preconditions at all \u2014 any implementation's `external_body` version is trusted to maintain symmetry with zero verification obligation, even for complex types where symmetry might genuinely fail",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "vec_t_view_equal_not_transitive",
+    "type": "logical",
+    "code": "proof fn phi_5_vec_t_view_equal_not_transitive(a: Vec<usize>, b: Vec<usize>, c: Vec<usize>)\n    requires\n        a.view_equal(&b),\n        b.view_equal(&c),\n    ensures\n        a.view_equal(&c),\n{\n}",
+    "reason": "`view_equal` for `Vec<T>` is defined via element-wise `view_equal` \u2014 transitivity holds by accident for usize (where view_equal is `===`) but the trait never requires or proves transitivity, so implementations could provide a non-transitive `view_equal` without violating any trait-level specification",
+    "entailed": false,
+    "verus_output": "_formalization/verusage/workspace_v2/ironkv__marshal_v__impl4__lemma_view_equal_symmetric/phi_5_vec_t_view_equal_not_transitive.rs:90:9\n   |\n85 | proof fn phi_5_vec_t_view_equal_not_transitive(a: Vec<usize>, b: Vec<usize>, c: Vec<usize>)\n   |       ------------------------------------------------------------------------------------- at the end of the function body\n...\n90 |         a.view_equal(&c),\n   |         ^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

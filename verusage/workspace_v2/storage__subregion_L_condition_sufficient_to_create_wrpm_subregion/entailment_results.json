@@ -1,0 +1,47 @@
+[
+  {
+    "name": "condition_transfer_vacuous_empty",
+    "type": "boundary",
+    "code": "proof fn phi_1_condition_transfer_vacuous_empty(\n    region_view: PersistentMemoryRegionView,\n    start: u64,\n    len: nat,\n    is_writable_absolute_addr_fn: spec_fn(int) -> bool,\n)\n    requires\n        region_view.len() == 0,\n        len == 0,\n        start == 0,\n    ensures\n        forall |alt_region_view: PersistentMemoryRegionView, alt_crash_state: Seq<u8>| {\n            &&& #[trigger] alt_region_view.can_crash_as(alt_crash_state)\n            &&& region_view.len() == alt_region_view.len()\n            &&& views_differ_only_where_subregion_allows(region_view, alt_region_view, start as nat, len,\n                                                       is_writable_absolute_addr_fn)\n        } ==> alt_crash_state.len() == 0,\n{\n}",
+    "reason": "Empty regions make all predicates vacuously true \u2014 if the proof relied on non-vacuous reasoning, the empty case could slip through without checking real crash consistency",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "views_differ_vacuous_all_writable",
+    "type": "logical",
+    "code": "proof fn phi_2_views_differ_vacuous_all_writable(\n    v1: PersistentMemoryRegionView,\n    v2: PersistentMemoryRegionView,\n    start: nat,\n    len: nat,\n)\n    requires\n        v1.len() == v2.len(),\n        start == 0,\n        len == v1.len(),\n    ensures\n        views_differ_only_where_subregion_allows(v1, v2, start, len, |addr: int| true),\n{\n}",
+    "reason": "When the entire region is writable, `views_differ_only_where_subregion_allows` is vacuously true for any two views \u2014 if the condition transfer doesn't restrict the writable range, any view mutation is silently permitted",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "memories_differ_reflexive",
+    "type": "behavioral",
+    "code": "proof fn phi_3_memories_differ_reflexive(\n    mem: Seq<u8>,\n    start: nat,\n    len: nat,\n    is_writable: spec_fn(int) -> bool,\n)\n    requires\n        start + len <= mem.len(),\n    ensures\n        memories_differ_only_where_subregion_allows(mem, mem, start, len, is_writable),\n{\n}",
+    "reason": "Any memory should differ from itself only where allowed (trivially, since it doesn't differ anywhere) \u2014 if reflexivity failed, the condition transfer would reject identity transitions",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "crash_state_constructed_in_proof_may_not_be_unique",
+    "type": "logical",
+    "code": "proof fn phi_4_crash_state_constructed_in_proof_may_not_be_unique(\n    view: PersistentMemoryRegionView,\n    s1: Seq<u8>,\n    s2: Seq<u8>,\n)\n    requires\n        view.can_crash_as(s1),\n        view.can_crash_as(s2),\n        s1.len() == s2.len() == view.len(),\n        view.len() >= 16,\n    ensures\n        forall |addr: int| 0 <= addr < view.len() && view.state[addr].outstanding_write.is_none()\n            ==> s1[addr] == #[trigger] s2[addr],\n{\n}",
+    "reason": "Two crash states must agree on all bytes without outstanding writes \u2014 if they could disagree at clean addresses, the crash model would be nondeterministic even for stable data, undermining crash recovery correctness",
+    "entailed": false,
+    "verus_output": "tate_constructed_in_proof_may_not_be_unique(\n    |  _______-\n238 | |     view: PersistentMemoryRegionView,\n239 | |     s1: Seq<u8>,\n240 | |     s2: Seq<u8>,\n241 | | )\n    | |_- at the end of the function body\n...\n248 | /         forall |addr: int| 0 <= addr < view.len() && view.state[addr].outstanding_write.is_none()\n249 | |             ==> s1[addr] == #[trigger] s2[addr],\n    | |_______________________________________________^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "condition_not_closed_under_arbitrary_writes",
+    "type": "behavioral",
+    "code": "proof fn phi_5_condition_not_closed_under_arbitrary_writes(\n    b: PersistentMemoryByte,\n)\n    requires\n        b.outstanding_write.is_none(),\n        b.state_at_last_flush == 0,\n    ensures\n        ({\n            let view = PersistentMemoryRegionView {\n                state: seq![b, b, b, b, b, b, b, b],\n            };\n            let s1 = seq![0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8];\n            let s2 = seq![0u8, 0u8, 0u8, 0u8, 42u8, 42u8, 42u8, 42u8];\n            !memories_differ_only_where_subregion_allows(s1, s2, 0, 4, |addr: int| true)\n        }),\n{\n}",
+    "reason": "Writes outside the subregion range [start, start+len) should not be allowed \u2014 if `memories_differ_only_where_subregion_allows` permitted changes outside the subregion, the permission transfer would be unsound",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

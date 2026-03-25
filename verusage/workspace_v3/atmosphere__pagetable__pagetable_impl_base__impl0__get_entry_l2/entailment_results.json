@@ -1,0 +1,52 @@
+[
+  {
+    "name": "l2_always_none",
+    "target_fn": "get_entry_l2",
+    "type": "behavioral",
+    "reason": "If L2 resolution always fails, the page table can never walk past L2 to reach 4K pages, making 4K mappings dead code.",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": " the end of the function body\n...\n1203 |         pt.spec_resolve_mapping_l2(target_l4i, target_l3i, target_l2i).is_None(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 47 warnings emitted\n\n"
+  },
+  {
+    "name": "l2_entry_addr_zero",
+    "target_fn": "get_entry_l2",
+    "type": "boundary",
+    "reason": "If every resolved L2 entry points to address 0, all L1 tables would alias to the null page, collapsing the entire 4K mapping space.",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "nction body\n...\n1204 |         pt.spec_resolve_mapping_l2(target_l4i, target_l3i, target_l2i).unwrap().addr == 0,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 47 warnings emitted\n\n"
+  },
+  {
+    "name": "l2_some_implies_writable",
+    "target_fn": "get_entry_l2",
+    "type": "logical",
+    "reason": "If all resolvable L2 entries are forced writable, read-only page protections at L2 would be impossible, breaking memory safety.",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "04 |         pt.spec_resolve_mapping_l2(target_l4i, target_l3i, target_l2i).unwrap().perm.write == true,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 47 warnings emitted\n\n"
+  },
+  {
+    "name": "l2_none_empties_all_4k",
+    "target_fn": "get_entry_l2",
+    "type": "behavioral",
+    "reason": "If L2 returning None forces the L3 entry address to zero, it conflates absent L2 sub-tables with null L3 pointers, over-constraining reachable states.",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "--------------------------------------------------------------------------------------------------------- at the end of the function body\n...\n1205 |         l3_entry.addr == 0,\n     |         ^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 47 warnings emitted\n\n"
+  },
+  {
+    "name": "l2_result_equals_l3",
+    "target_fn": "get_entry_l2",
+    "type": "logical",
+    "reason": "If the L2 resolution always returns the L3 entry itself, the L2 table walk is a no-op and no independent L2-level translation occurs.",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": " body\n...\n1204 |         pt.spec_resolve_mapping_l2(target_l4i, target_l3i, target_l2i).unwrap() =~= l3_entry,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 47 warnings emitted\n\n"
+  }
+]

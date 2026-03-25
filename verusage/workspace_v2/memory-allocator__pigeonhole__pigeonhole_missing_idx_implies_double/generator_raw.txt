@@ -1,0 +1,119 @@
+===PHI_START===
+NAME: pigeonhole_helper_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_pigeonhole_helper_external_body(m: Map<nat, nat>, missing: nat, len: nat)
+    requires
+        len >= 2,
+        forall |i: nat| (0 <= i < len <==> m.dom().contains(i)),
+        forall |i: nat| (#[trigger] m.dom().contains(i) ==> (
+            0 <= m[i] < len && m[i] != missing
+        )),
+        0 <= missing < len,
+    ensures ({
+        let dup2 = pigeonhole_missing_idx_implies_double_helper(m, missing, len, Set::empty(), 0);
+        m.dom().contains(dup2) && exists |dup1| #![auto] dup1 != dup2 && m.dom().contains(dup1) && 0 <= dup1 < len && m[dup1] == m[dup2]
+    }),
+{
+    let dup2 = pigeonhole_missing_idx_implies_double_helper(m, missing, len, Set::empty(), 0);
+}
+```
+REASON: `pigeonhole_missing_idx_implies_double_helper` is `external_body` — the core pigeonhole argument (finding a duplicate) is entirely trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: pigeonhole_len_2_trivial
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_pigeonhole_len_2_trivial(m: Map<nat, nat>)
+    requires
+        forall |i: nat| (0 <= i < 2 <==> m.dom().contains(i)),
+        forall |i: nat| (#[trigger] m.dom().contains(i) ==> (
+            0 <= m[i] < 2 && m[i] != 0
+        )),
+    ensures ({
+        let (i, j) = pigeonhole_missing_idx_implies_double(m, 0, 2);
+        i != j && m[i] == m[j]
+    }),
+{
+    let (i, j) = pigeonhole_missing_idx_implies_double(m, 0, 2);
+}
+```
+REASON: With `len == 2` and `missing == 0`, both `m[0]` and `m[1]` must equal 1 — the simplest pigeonhole case relies on the external_body helper
+===PHI_END===
+
+===PHI_START===
+NAME: helper_prev_vals_unconstrained
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_helper_prev_vals_unconstrained(m: Map<nat, nat>, missing: nat, len: nat)
+    requires
+        len >= 2,
+        forall |i: nat| (0 <= i < len <==> m.dom().contains(i)),
+        forall |i: nat| (#[trigger] m.dom().contains(i) ==> (
+            0 <= m[i] < len && m[i] != missing
+        )),
+        0 <= missing < len,
+    ensures ({
+        let bogus_set = Set::<nat>::empty().insert(42);
+        let dup2 = pigeonhole_missing_idx_implies_double_helper(m, missing, len, bogus_set, 1);
+        m.dom().contains(dup2)
+    }),
+{
+    let bogus_set = Set::<nat>::empty().insert(42);
+    let dup2 = pigeonhole_missing_idx_implies_double_helper(m, missing, len, bogus_set, 1);
+}
+```
+REASON: The helper's `prev_vals` precondition only requires `exists |j| 0 <= j < k && m[j] == elt` for contained elements — a set containing value 42 (outside `[0, len)`) satisfies this vacuously if no such j exists, allowing the external_body to be called with semantically bogus accumulator state
+===PHI_END===
+
+===PHI_START===
+NAME: pigeonhole_returns_in_range
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_pigeonhole_returns_in_range(m: Map<nat, nat>, missing: nat, len: nat)
+    requires
+        forall |i: nat| (0 <= i < len <==> m.dom().contains(i)),
+        forall |i: nat| (#[trigger] m.dom().contains(i) ==> (
+            0 <= m[i] < len && m[i] != missing
+        )),
+        0 <= missing < len,
+    ensures ({
+        let (i, j) = pigeonhole_missing_idx_implies_double(m, missing, len);
+        0 <= i < len && 0 <= j < len
+    }),
+{
+    let (i, j) = pigeonhole_missing_idx_implies_double(m, missing, len);
+    // j == dup2, i == dup1 which has 0 <= dup1 < len by the choose
+    // dup2 is from helper which ensures m.dom().contains(dup2), so 0 <= dup2 < len
+}
+```
+REASON: Both returned indices are in `[0, len)` — the ensures of `pigeonhole_missing_idx_implies_double` guarantees `m.dom().contains(i)` and `m.dom().contains(j)` but doesn't explicitly state `0 <= i < len` and `0 <= j < len`; this is derived from the domain biconditional
+===PHI_END===
+
+===PHI_START===
+NAME: pigeonhole_shared_value_not_missing
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_pigeonhole_shared_value_not_missing(m: Map<nat, nat>, missing: nat, len: nat)
+    requires
+        forall |i: nat| (0 <= i < len <==> m.dom().contains(i)),
+        forall |i: nat| (#[trigger] m.dom().contains(i) ==> (
+            0 <= m[i] < len && m[i] != missing
+        )),
+        0 <= missing < len,
+    ensures ({
+        let (i, j) = pigeonhole_missing_idx_implies_double(m, missing, len);
+        m[i] != missing && m[j] != missing
+    }),
+{
+    let (i, j) = pigeonhole_missing_idx_implies_double(m, missing, len);
+}
+```
+REASON: The duplicated value is never the missing index — follows from the precondition, but confirms the pigeonhole maps `len` keys into `len - 1` values (excluding `missing`)
+===PHI_END===

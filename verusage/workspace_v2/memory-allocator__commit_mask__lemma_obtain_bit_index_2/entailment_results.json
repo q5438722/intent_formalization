@@ -1,0 +1,47 @@
+[
+  {
+    "name": "obtain_bit_index_1_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_obtain_bit_index_1_external_body(a: usize) -> (b: usize)\n    requires\n        a != 0,\n    ensures\n        b < 64,\n        is_bit_set(a, b),\n{\n    lemma_obtain_bit_index_1(a)\n}",
+    "reason": "`lemma_obtain_bit_index_1` is `external_body` \u2014 the existence of a set bit in a nonzero usize is trusted without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "not_all_ones_has_zero_bit",
+    "type": "behavioral",
+    "code": "proof fn phi_2_not_all_ones_has_zero_bit(a: usize) -> (b: usize)\n    requires\n        a != !0usize,\n    ensures\n        b < 64,\n        !is_bit_set(a, b),\n{\n    lemma_obtain_bit_index_2(a)\n}",
+    "reason": "Any non-`!0` usize has a clear bit below 64 \u2014 this depends on the external_body `lemma_obtain_bit_index_1` being correct; if that axiom is wrong, this derived property is also wrong",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "zero_has_zero_bit",
+    "type": "boundary",
+    "code": "proof fn phi_3_zero_has_zero_bit() -> (b: usize)\n    ensures\n        b < 64,\n        !is_bit_set(0usize, b),\n{\n    lemma_obtain_bit_index_2(0usize)\n}",
+    "reason": "Zero is not `!0usize`, so `lemma_obtain_bit_index_2` applies \u2014 but the result depends on the external_body axiom correctly finding a set bit in `!0usize` (which is all ones)",
+    "entailed": false,
+    "verus_output": "verification results:: 3 verified, 1 errors\nerror: precondition not satisfied\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__commit_mask__lemma_obtain_bit_index_2/phi_3_zero_has_zero_bit.rs:57:5\n   |\n20 |     requires a != !0usize\n   |              ------------ failed precondition\n...\n57 |     lemma_obtain_bit_index_2(0usize)\n   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "is_bit_set_definition_match",
+    "type": "logical",
+    "code": "proof fn phi_4_is_bit_set_definition_match(a: usize, b: usize)\n    requires\n        b < 64,\n        a & (1usize << b) == (1usize << b),\n    ensures\n        is_bit_set(a, b),\n{\n    reveal(is_bit_set);\n}",
+    "reason": "The spec fn `is_bit_set` is defined as `a & (1usize << b) == (1usize << b)` but for `b >= 64` the shift wraps \u2014 the spec has no `b < 64` guard in its definition, so `is_bit_set(a, 64)` has wrapped semantics",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "is_bit_set_wrap_at_64",
+    "type": "boundary",
+    "code": "proof fn phi_5_is_bit_set_wrap_at_64(a: usize)\n    requires\n        is_bit_set(a, 0),\n    ensures\n        is_bit_set(a, 64),\n{\n    reveal(is_bit_set);\n    assert(1usize << 64 == 1usize << 0) by (bit_vector);\n}",
+    "reason": "`1usize << 64` wraps to `1usize << 0` on 64-bit, so `is_bit_set(a, 64) == is_bit_set(a, 0)` \u2014 the spec fn conflates bit 0 and \"bit 64\" due to missing bounds check",
+    "entailed": false,
+    "verus_output": "verification results:: 4 verified, 1 errors\nerror: bitvector assertion not satisfied\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__commit_mask__lemma_obtain_bit_index_2/phi_5_is_bit_set_wrap_at_64.rs:59:5\n   |\n59 |     assert(1usize << 64 == 1usize << 0) by (bit_vector);\n   |     ^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

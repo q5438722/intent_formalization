@@ -1,0 +1,37 @@
+[
+  {
+    "name": "removed_still_present",
+    "target_fn": "remove_helper5",
+    "type": "behavioral",
+    "code": "proof fn phi_1_removed_still_present<T: Copy, const N: usize>(\n    old_self: StaticLinkedList<T, N>,\n    new_self: StaticLinkedList<T, N>,\n    remove_index: SLLIndex,\n    v: T,\n    ret: T,\n)\n    requires\n        old_self.wf(),\n        old_self@.contains(v),\n        old_self.get_node_ref(v) == remove_index,\n        old_self.value_list_len != 1,\n        old_self.free_list_len != 0 && old_self.value_list_head == remove_index && old_self.value_list_len != 1,\n        new_self.wf(),\n        new_self.len() == old_self.len() - 1,\n        new_self.unique(),\n        new_self@ =~= old_self@.remove_value(ret),\n        ret == v,\n        forall|w: T| #![auto] new_self@.contains(w) ==> old_self.get_node_ref(w) == new_self.get_node_ref(w),\n    ensures\n        new_self@.contains(ret),\n{\n}",
+    "reason": "If the removed value persists in the result sequence, the removal operation is semantically broken"
+  },
+  {
+    "name": "length_drops_to_zero",
+    "target_fn": "remove_helper5",
+    "type": "boundary",
+    "code": "proof fn phi_2_length_drops_to_zero<T: Copy, const N: usize>(\n    old_self: StaticLinkedList<T, N>,\n    new_self: StaticLinkedList<T, N>,\n    remove_index: SLLIndex,\n    v: T,\n    ret: T,\n)\n    requires\n        old_self.wf(),\n        old_self@.contains(v),\n        old_self.get_node_ref(v) == remove_index,\n        old_self.value_list_len != 1,\n        old_self.free_list_len != 0 && old_self.value_list_head == remove_index && old_self.value_list_len != 1,\n        new_self.wf(),\n        new_self.len() == old_self.len() - 1,\n        new_self.unique(),\n        new_self@ =~= old_self@.remove_value(ret),\n        ret == v,\n        forall|w: T| #![auto] new_self@.contains(w) ==> old_self.get_node_ref(w) == new_self.get_node_ref(w),\n    ensures\n        new_self@.len() == 0,\n{\n}",
+    "reason": "A list with value_list_len != 1 (so at least 2 elements) should never become empty after a single removal"
+  },
+  {
+    "name": "spurious_element_introduced",
+    "target_fn": "remove_helper5",
+    "type": "logical",
+    "code": "proof fn phi_3_spurious_element_introduced<T: Copy, const N: usize>(\n    old_self: StaticLinkedList<T, N>,\n    new_self: StaticLinkedList<T, N>,\n    remove_index: SLLIndex,\n    v: T,\n    ret: T,\n    w: T,\n)\n    requires\n        old_self.wf(),\n        old_self@.contains(v),\n        old_self.get_node_ref(v) == remove_index,\n        old_self.value_list_len != 1,\n        old_self.free_list_len != 0 && old_self.value_list_head == remove_index && old_self.value_list_len != 1,\n        new_self.wf(),\n        new_self.len() == old_self.len() - 1,\n        new_self.unique(),\n        new_self@ =~= old_self@.remove_value(ret),\n        ret == v,\n        forall|w: T| #![auto] new_self@.contains(w) ==> old_self.get_node_ref(w) == new_self.get_node_ref(w),\n        !old_self@.contains(w),\n    ensures\n        new_self@.contains(w),\n{\n}",
+    "reason": "An element absent from the original list must never appear in the post-removal result"
+  },
+  {
+    "name": "head_removal_scrambles_order",
+    "target_fn": "remove_helper5",
+    "type": "behavioral",
+    "code": "proof fn phi_4_head_removal_scrambles_order<T: Copy, const N: usize>(\n    old_self: StaticLinkedList<T, N>,\n    new_self: StaticLinkedList<T, N>,\n    remove_index: SLLIndex,\n    v: T,\n    ret: T,\n)\n    requires\n        old_self.wf(),\n        old_self@.contains(v),\n        old_self.get_node_ref(v) == remove_index,\n        old_self.value_list_len != 1,\n        old_self.free_list_len != 0 && old_self.value_list_head == remove_index && old_self.value_list_len != 1,\n        new_self.wf(),\n        new_self.len() == old_self.len() - 1,\n        new_self.unique(),\n        new_self@ =~= old_self@.remove_value(ret),\n        ret == v,\n        forall|w: T| #![auto] new_self@.contains(w) ==> old_self.get_node_ref(w) == new_self.get_node_ref(w),\n        old_self@.len() >= 3,\n    ensures\n        new_self@[1] != old_self@[2],\n{\n}",
+    "reason": "After removing the head element, the relative ordering of remaining elements must be preserved"
+  },
+  {
+    "name": "spec_vacuously_true",
+    "target_fn": "remove_helper5",
+    "type": "logical",
+    "code": "proof fn phi_5_spec_vacuously_true<T: Copy, const N: usize>(\n    old_self: StaticLinkedList<T, N>,\n    new_self: StaticLinkedList<T, N>,\n    remove_index: SLLIndex,\n    v: T,\n    ret: T,\n)\n    requires\n        old_self.wf(),\n        old_self@.contains(v),\n        old_self.get_node_ref(v) == remove_index,\n        old_self.value_list_len != 1,\n        old_self.free_list_len != 0 && old_self.value_list_head == remove_index && old_self.value_list_len != 1,\n        new_self.wf(),\n        new_self.len() == old_self.len() - 1,\n        new_self.unique(),\n        new_self@ =~= old_self@.remove_value(ret),\n        ret == v,\n        forall|w: T| #![auto] new_self@.contains(w) ==> old_self.get_node_ref(w) == new_self.get_node_ref(w),\n    ensures\n        false,\n{\n}",
+    "reason": "If provable, the combined pre- and postconditions are contradictory, making all guarantees vacuously true"
+  }
+]

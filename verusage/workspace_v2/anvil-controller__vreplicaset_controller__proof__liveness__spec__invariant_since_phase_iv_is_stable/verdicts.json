@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "gc_invariant_allows_non_delete_mutations",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The invariant is specifically about the garbage collector's delete behavior, as its name states. Update requests from the builtin controller are constrained by other invariants elsewhere in the codebase (e.g., no_pending_interfering_update_request from phase III). The ensures clause is literally `true`, making this a tautology that demonstrates nothing about the spec."
+  },
+  {
+    "phi": "controller_owner_ref_ignores_namespace",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This faithfully models real Kubernetes OwnerReference semantics \u2014 owner references contain kind, name, and uid but not namespace, because ownership is always within the same namespace. UID provides global uniqueness across the cluster, so two objects with the same uid are the same object regardless of namespace."
+  },
+  {
+    "phi": "owner_references_contains_ignores_none",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Returning false for None owner_references is correct \u2014 an object with no owner references list does not contain any owner reference. This is standard Option handling. The GC invariant's protection correctly excludes such objects since they are genuinely unowned."
+  },
+  {
+    "phi": "always_p_is_stable_external_body_unsound",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The `#[verifier::external_body]` annotation means the lemma's postcondition `valid(stable(always(p)))` is assumed for any `p` without proof. While mathematically correct (always(p) is indeed stable for any p \u2014 if always(p) holds at some point, it holds at all future points), the external_body means this correctness is trusted, not verified. Any bug in this reasoning would silently compromise all temporal stability proofs built on it."
+  }
+]

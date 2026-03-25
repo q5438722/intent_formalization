@@ -1,0 +1,37 @@
+[
+  {
+    "name": "alloc_always_max",
+    "target_fn": "create_iommu_table_entry",
+    "type": "behavioral",
+    "code": "proof fn phi_1_alloc_always_max(ret_0: usize, old_free: usize, new_free: usize)\n    requires\n        ret_0 <= 3,\n        old_free >= 3,\n        new_free == old_free - ret_0,\n    ensures\n        ret_0 == 3,\n{\n}",
+    "reason": "If entailed, the function always allocates 3 pages and never reuses existing intermediate page table entries"
+  },
+  {
+    "name": "alloc_always_zero",
+    "target_fn": "create_iommu_table_entry",
+    "type": "behavioral",
+    "code": "proof fn phi_2_alloc_always_zero(ret_0: usize, old_free: usize, new_free: usize)\n    requires\n        ret_0 <= 3,\n        old_free >= 3,\n        new_free == old_free - ret_0,\n    ensures\n        ret_0 == 0,\n{\n}",
+    "reason": "If entailed, the function never allocates any pages making it a no-op that cannot create new table structure"
+  },
+  {
+    "name": "no_partial_alloc",
+    "target_fn": "create_iommu_table_entry",
+    "type": "boundary",
+    "code": "proof fn phi_3_no_partial_alloc(ret_0: usize)\n    requires\n        ret_0 <= 3,\n    ensures\n        ret_0 == 0 || ret_0 == 3,\n{\n}",
+    "reason": "If entailed, partial reuse of existing L4/L3/L2 tables is impossible \u2014 the function either does nothing or allocates all three levels"
+  },
+  {
+    "name": "va_indices_all_zero",
+    "target_fn": "create_iommu_table_entry",
+    "type": "logical",
+    "code": "proof fn phi_4_va_indices_all_zero(va: VAddr)\n    requires\n        va_4k_valid(va),\n    ensures\n        spec_va2index(va).0 == 0 && spec_va2index(va).1 == 0 && spec_va2index(va).2 == 0,\n{\n}",
+    "reason": "If entailed, va_4k_valid is so restrictive that all valid VAs decompose to index (0,0,0,_), collapsing the entire IOMMU address space to a single L2 entry"
+  },
+  {
+    "name": "mem_valid_only_zero",
+    "target_fn": "create_iommu_table_entry",
+    "type": "logical",
+    "code": "proof fn phi_5_mem_valid_only_zero(addr: PAddr)\n    requires\n        MEM_valid(addr),\n    ensures\n        addr == 0,\n{\n}",
+    "reason": "If entailed, MEM_valid is vacuously satisfied only by zero, making every page entry address (including the returned L2 ptr ret.1) null"
+  }
+]

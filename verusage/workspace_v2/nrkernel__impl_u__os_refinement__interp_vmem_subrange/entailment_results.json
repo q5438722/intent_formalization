@@ -1,0 +1,47 @@
+[
+  {
+    "name": "ptmem_view_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_ptmem_view_external_body(pt_mem: PTMem, addr: usize, value: usize)\n    requires\n        true,\n    ensures\n        pt_mem.write(addr, value).view() == pt_mem.view(),\n{\n}",
+    "reason": "`PTMem::view` is `external_body` with no specification \u2014 since it's completely unspecified, Verus could derive anything including that writes don't change the view",
+    "entailed": false,
+    "verus_output": "_impl_u__os_refinement__interp_vmem_subrange/phi_1_ptmem_view_external_body.rs:488:9\n    |\n484 | proof fn phi_1_ptmem_view_external_body(pt_mem: PTMem, addr: usize, value: usize)\n    |       --------------------------------------------------------------------------- at the end of the function body\n...\n488 |         pt_mem.write(addr, value).view() == pt_mem.view(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "rl3_interp_external_body_unconstrained",
+    "type": "logical",
+    "code": "proof fn phi_2_rl3_interp_external_body_unconstrained(s1: crate::rl3::State, s2: crate::rl3::State)\n    requires\n        true,\n    ensures\n        s1.interp() == s2.interp(),\n{\n}",
+    "reason": "`rl3::State::interp` is `external_body` closed spec \u2014 completely opaque with no postconditions, so any two states could have the same interpretation",
+    "entailed": false,
+    "verus_output": "l_u__os_refinement__interp_vmem_subrange/phi_2_rl3_interp_external_body_unconstrained.rs:488:9\n    |\n484 | proof fn phi_2_rl3_interp_external_body_unconstrained(s1: crate::rl3::State, s2: crate::rl3::State)\n    |       --------------------------------------------------------------------------------------------- at the end of the function body\n...\n488 |         s1.interp() == s2.interp(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "extra_mappings_external_body_unconstrained",
+    "type": "logical",
+    "code": "proof fn phi_3_extra_mappings_external_body_unconstrained(s: crate::os::State)\n    requires\n        true,\n    ensures\n        s.extra_mappings() === Map::empty(),\n{\n}",
+    "reason": "`extra_mappings` is `external_body` with no specification \u2014 since it's completely unspecified, the SMT solver could assume it's always empty",
+    "entailed": false,
+    "verus_output": "ace_v2/nrkernel__impl_u__os_refinement__interp_vmem_subrange/phi_3_extra_mappings_external_body_unconstrained.rs:488:9\n    |\n484 | proof fn phi_3_extra_mappings_external_body_unconstrained(s: crate::os::State)\n    |       ------------------------------------------------------------------------ at the end of the function body\n...\n488 |         s.extra_mappings() === Map::empty(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "applied_mappings_no_overlap_not_enforced",
+    "type": "behavioral",
+    "code": "proof fn phi_4_applied_mappings_no_overlap_not_enforced(s: crate::os::State, base1: nat, base2: nat)\n    requires\n        s.applied_mappings().dom().contains(base1),\n        s.applied_mappings().dom().contains(base2),\n        base1 != base2,\n    ensures\n        base1 + s.applied_mappings()[base1].frame.size <= base2\n        || base2 + s.applied_mappings()[base2].frame.size <= base1,\n{\n}",
+    "reason": "`no_overlaps` is only a precondition of `interp_vmem_subrange` but never enforced as an invariant of `applied_mappings` \u2014 overlapping mappings could exist in the OS state",
+    "entailed": false,
+    "verus_output": "erlap_not_enforced(s: crate::os::State, base1: nat, base2: nat)\n    |         ---------------------------------------------------------------------------------------------- at the end of the function body\n...\n490 | /         base1 + s.applied_mappings()[base1].frame.size <= base2\n491 | |         || base2 + s.applied_mappings()[base2].frame.size <= base1,\n    | |__________________________________________________________________^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "vmem_unmapped_is_zero",
+    "type": "behavioral",
+    "code": "proof fn phi_5_vmem_unmapped_is_zero(s: crate::os::State, c: crate::os::Constants, vaddr: nat)\n    requires\n        vaddr < MAX_BASE,\n        !crate::os::State::has_base_and_pte_for_vaddr(s.applied_mappings(), vaddr as int),\n    ensures\n        s.interp_vmem(c)[vaddr as int] == 0,\n{\n}",
+    "reason": "Unmapped virtual addresses silently return 0 rather than being undefined or causing an error \u2014 could mask bugs where unmapped memory is accidentally read as valid zero data",
+    "entailed": true,
+    "verus_output": "verification results:: 7 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

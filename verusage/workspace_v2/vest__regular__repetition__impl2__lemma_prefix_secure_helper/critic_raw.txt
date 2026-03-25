@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: prefix_secure_external_body_trait
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `SecureSpecCombinator::lemma_prefix_secure` is `external_body` with `unimplemented!()` at the trait level. The foundational prefix security property for all combinators is entirely trusted without verification.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: repeatn_prefix_secure_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `RepeatN::lemma_prefix_secure` is `external_body` with `unimplemented!()` despite a verified `lemma_prefix_secure_helper` existing that proves the same property. The trait obligation bypasses the actual proof — though this is a separate `external_body` from the trait-level one.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: parse_length_helper_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `lemma_parse_length_helper` is `external_body` with `unimplemented!()`. This is an independent unverified assumption — the parse length bound `0 <= m <= s.len()` for `RepeatN` is trusted and used as a critical dependency in the verified `lemma_prefix_secure_helper`.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: prefix_secure_helper_verified_but_unused
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The property itself (prefix security of `spec_parse_helper`) is correct and expected. While the proof depends on the `external_body` `lemma_parse_length_helper`, that dependency is already captured by φ3. This candidate flags a downstream consequence, not an independent spec gap.
+===VERDICT_END===
+
+===SUMMARY===
+Three true positives: the trait-level `lemma_prefix_secure` is an unverified foundational axiom, `RepeatN::lemma_prefix_secure` is `external_body` despite a verified helper existing, and `lemma_parse_length_helper` is an independent unverified assumption used as a dependency. One false positive: the prefix security helper property is correct and its dependency on `external_body` is already captured by other candidates.
+===END_SUMMARY===

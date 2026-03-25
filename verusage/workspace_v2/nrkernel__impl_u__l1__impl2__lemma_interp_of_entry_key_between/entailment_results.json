@@ -1,0 +1,47 @@
+[
+  {
+    "name": "interp_of_entry_between_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_interp_of_entry_between_external_body(d: Directory, i: nat, va: nat, pte: PTE)\n    requires\n        d.inv(),\n        i < d.entries.len(),\n        d.interp_of_entry(i).contains_pair(va, pte),\n    ensures\n        d.entry_base(i) <= va,\n        va < d.next_entry_base(i),\n        d.entry_base(i) < va + pte.frame.size,\n        va + pte.frame.size <= d.next_entry_base(i),\n{\n    d.lemma_interp_of_entry_between(i, va, pte);\n}",
+    "reason": "`lemma_interp_of_entry_between` is `external_body` \u2014 both VA bounds and frame size bounds within entry range are trusted without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "key_between_depends_on_external_body",
+    "type": "logical",
+    "code": "proof fn phi_2_key_between_depends_on_external_body(d: Directory, i: nat, va: nat)\n    requires\n        d.inv(),\n        i < d.entries.len(),\n        d.interp_of_entry(i).contains_key(va),\n    ensures\n        d.entry_base(i) <= va,\n        va < d.next_entry_base(i),\n{\n    d.lemma_interp_of_entry_key_between(i, va);\n}",
+    "reason": "`lemma_interp_of_entry_key_between` is verified but delegates entirely to the external_body `lemma_interp_of_entry_between` \u2014 the VA bounding chain is rooted in an unproven axiom",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "frame_size_positive_from_entry",
+    "type": "boundary",
+    "code": "proof fn phi_3_frame_size_positive_from_entry(d: Directory, i: nat, va: nat, pte: PTE)\n    requires\n        d.inv(),\n        i < d.entries.len(),\n        d.interp_of_entry(i).contains_pair(va, pte),\n    ensures\n        pte.frame.size > 0,\n{\n    d.lemma_interp_of_entry_between(i, va, pte);\n}",
+    "reason": "The external_body ensures `entry_base(i) < va + pte.frame.size` and `entry_base(i) <= va`, implying `frame.size > 0` \u2014 but this positivity is trusted, not proved",
+    "entailed": false,
+    "verus_output": "ation/verusage/workspace_v2/nrkernel__impl_u__l1__impl2__lemma_interp_of_entry_key_between/phi_3_frame_size_positive_from_entry.rs:286:9\n    |\n280 | proof fn phi_3_frame_size_positive_from_entry(d: Directory, i: nat, va: nat, pte: PTE)\n    |       -------------------------------------------------------------------------------- at the end of the function body\n...\n286 |         pte.frame.size > 0,\n    |         ^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "frame_fits_within_single_entry",
+    "type": "behavioral",
+    "code": "proof fn phi_4_frame_fits_within_single_entry(d: Directory, i: nat, va: nat, pte: PTE)\n    requires\n        d.inv(),\n        i < d.entries.len(),\n        d.interp_of_entry(i).contains_pair(va, pte),\n    ensures\n        pte.frame.size <= d.entry_size(),\n{\n    d.lemma_interp_of_entry_between(i, va, pte);\n}",
+    "reason": "The external_body constrains `va + frame.size <= next_entry_base(i)` and `entry_base(i) <= va`, so `frame.size <= entry_size` \u2014 but this upper bound on frame size within an entry is unproven",
+    "entailed": false,
+    "verus_output": "nrkernel__impl_u__l1__impl2__lemma_interp_of_entry_key_between/phi_4_frame_fits_within_single_entry.rs:286:9\n    |\n280 | proof fn phi_4_frame_fits_within_single_entry(d: Directory, i: nat, va: nat, pte: PTE)\n    |       -------------------------------------------------------------------------------- at the end of the function body\n...\n286 |         pte.frame.size <= d.entry_size(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "inv_no_frames_aligned",
+    "type": "boundary",
+    "code": "proof fn phi_5_inv_no_frames_aligned(arch: Arch, entries: Seq<NodeEntry>, layer: nat, pte: PTE)\n    requires\n        arch.inv(),\n        layer < arch.layers.len(),\n        entries.len() == arch.num_entries(layer),\n        pte.frame.size == arch.entry_size(layer),\n        pte.frame.base == 3,\n    ensures\n        (Directory { entries: entries.update(0, NodeEntry::Page(pte)), layer, base_vaddr: 0, arch }).inv(),\n{\n}",
+    "reason": "The commented-out `self.frames_aligned()` means `inv()` accepts page frames with arbitrary unaligned physical base addresses like 3",
+    "entailed": false,
+    "verus_output": "aligned(arch: Arch, entries: Seq<NodeEntry>, layer: nat, pte: PTE)\n    |       ----------------------------------------------------------------------------------------- at the end of the function body\n...\n288 |         (Directory { entries: entries.update(0, NodeEntry::Page(pte)), layer, base_vaddr: 0, arch }).inv(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "empty_interp_aux_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_empty_interp_aux_external_body(d: Directory, i: nat)\n    requires\n        d.inv(),\n        d.empty(),\n    ensures\n        d.interp_aux(i) === Map::empty(),\n{\n    d.lemma_empty_implies_interp_aux_empty(i);\n}",
+    "reason": "`lemma_empty_implies_interp_aux_empty` is `external_body` \u2014 the key structural induction that empty directories have empty interpretations is trusted without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "empty_interp_dom_external_body",
+    "type": "logical",
+    "code": "proof fn phi_2_empty_interp_dom_external_body(d: Directory)\n    requires\n        d.inv(),\n        d.empty(),\n    ensures\n        d.interp().dom() === Set::empty(),\n{\n    d.lemma_empty_implies_interp_empty();\n}",
+    "reason": "`interp().dom()` emptiness depends on the external_body lemma \u2014 if that axiom were wrong, non-empty domains could leak from empty directories",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "empty_interp_aux_any_start",
+    "type": "boundary",
+    "code": "proof fn phi_3_empty_interp_aux_any_start(d: Directory, i: nat)\n    requires\n        d.inv(),\n        d.empty(),\n        i > d.entries.len(),\n    ensures\n        d.interp_aux(i) === Map::empty(),\n{\n    d.lemma_empty_implies_interp_aux_empty(i);\n}",
+    "reason": "The external_body claims emptiness for ANY `i`, including out-of-bounds \u2014 the open spec base case handles `i >= len` but the external_body is not bounded",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_frame_size_matches_entry",
+    "type": "behavioral",
+    "code": "proof fn phi_4_page_frame_size_matches_entry(d: Directory, i: nat)\n    requires\n        d.inv(),\n        i < d.entries.len(),\n        d.entries[i as int] is Page,\n    ensures\n        d.entries[i as int]->Page_0.frame.size == d.entry_size(),\n{\n}",
+    "reason": "Page frame sizes must match entry size \u2014 tests the `pages_match_entry_size` invariant",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "no_frame_alignment_constraint",
+    "type": "behavioral",
+    "code": "proof fn phi_5_no_frame_alignment_constraint(d: Directory, i: nat, arbitrary_base: nat)\n    requires\n        d.inv(),\n        i < d.entries.len(),\n        d.entries[i as int] is Page,\n        d.entries[i as int]->Page_0.frame.base == arbitrary_base,\n    ensures\n        d.entries[i as int]->Page_0.frame.base == arbitrary_base,\n{\n}",
+    "reason": "`inv()` has `frames_aligned` commented out \u2014 page frame base addresses have no alignment constraint whatsoever",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

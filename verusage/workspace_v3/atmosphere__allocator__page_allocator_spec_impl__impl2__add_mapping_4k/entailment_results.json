@@ -1,0 +1,52 @@
+[
+  {
+    "name": "target_loses_mapped_status",
+    "target_fn": "add_mapping_4k",
+    "type": "behavioral",
+    "reason": "Adding a mapping must not cause the target page to lose its mapped status",
+    "entailed": false,
+    "verified": 8,
+    "errors": 1,
+    "output_tail": " | |     target_ptr: PagePtr, pcid: Pcid, va: VAddr,\n1053 | | )\n     | |_- at the end of the function body\n...\n1063 |           !post.page_is_mapped(target_ptr),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  },
+  {
+    "name": "prior_mapping_lost_after_insert",
+    "target_fn": "add_mapping_4k",
+    "type": "logical",
+    "reason": "Inserting a new mapping must not silently discard a pre-existing mapping on the same page",
+    "entailed": false,
+    "verified": 8,
+    "errors": 1,
+    "output_tail": ": VAddr,\n1054 | | )\n     | |_- at the end of the function body\n...\n1064 |           !post.page_mappings(target_ptr).contains((pcid2, va2)),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  },
+  {
+    "name": "mapping_leaks_to_io_mappings",
+    "target_fn": "add_mapping_4k",
+    "type": "behavioral",
+    "reason": "A regular mapping addition must not pollute the io_mappings of the target page",
+    "entailed": false,
+    "verified": 8,
+    "errors": 1,
+    "output_tail": ": VAddr,\n1053 | | )\n     | |_- at the end of the function body\n...\n1062 |           post.page_io_mappings(target_ptr).contains((pcid, va)),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  },
+  {
+    "name": "target_becomes_allocated",
+    "target_fn": "add_mapping_4k",
+    "type": "boundary",
+    "reason": "Adding a mapping must not cause the page to appear in the allocated set (wrong state transition)",
+    "entailed": false,
+    "verified": 8,
+    "errors": 1,
+    "output_tail": ", pcid: Pcid, va: VAddr,\n1053 | | )\n     | |_- at the end of the function body\n...\n1062 |           post.allocated_pages_4k().contains(target_ptr),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  },
+  {
+    "name": "other_page_mapping_lost",
+    "target_fn": "add_mapping_4k",
+    "type": "logical",
+    "reason": "Adding a mapping to one page must not cause another mapped page to lose any of its mappings",
+    "entailed": false,
+    "verified": 8,
+    "errors": 1,
+    "output_tail": "a3: VAddr,\n1054 | | )\n     | |_- at the end of the function body\n...\n1069 |           !post.page_mappings(other_ptr).contains((pcid3, va3)),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  }
+]

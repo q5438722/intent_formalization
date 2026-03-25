@@ -1,0 +1,47 @@
+[
+  {
+    "name": "parse_zero_always_succeeds",
+    "type": "boundary",
+    "code": "proof fn phi_1_parse_zero_always_succeeds<C: SecureSpecCombinator>(c: &RepeatN<C>, s: Seq<u8>)\n    requires\n        c.1 == 0usize,\n    ensures\n        c.spec_parse(s) == Some((0int, seq![])),\n{\n}",
+    "reason": "Parsing 0 repetitions succeeds for ANY input including malformed data \u2014 the parser produces a valid result without examining the input at all",
+    "entailed": false,
+    "verus_output": "n at this point\n   |                            |\n   |                            cannot infer type of the type parameter `T` declared on the enum `Option`\n   |\nhelp: consider specifying the generic argument\n   |\n82 |         c.spec_parse(s) == Some::<(vstd::prelude::int, vstd::seq::Seq<_>)>((0int, seq![])),\n   |                                +++++++++++++++++++++++++++++++++++++++++++\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0282`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "parse_zero_ignores_input_content",
+    "type": "behavioral",
+    "code": "proof fn phi_2_parse_zero_ignores_input_content<C: SecureSpecCombinator>(c: &RepeatN<C>, s1: Seq<u8>, s2: Seq<u8>)\n    requires\n        c.1 == 0usize,\n    ensures\n        c.spec_parse(s1) == c.spec_parse(s2),\n{\n}",
+    "reason": "With n=0, the parse result is identical for any two inputs \u2014 the repetition combinator is completely input-agnostic at count zero, which could mask corruption in a prefix",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "error_propagates_upward",
+    "type": "logical",
+    "code": "proof fn phi_3_error_propagates_upward<C: SecureSpecCombinator>(c: &RepeatN<C>, s: Seq<u8>, n1: usize, n2: usize)\n    requires\n        n1 <= n2,\n        RepeatN(c.0, n1).spec_parse(s).is_none(),\n    ensures\n        RepeatN(c.0, n2).spec_parse(s).is_none(),\n{\n    let c1 = RepeatN(c.0, n1);\n    let c2 = RepeatN(c.0, n2);\n    c1.lemma_spec_parse_err_unrecoverable(s, n1, n2);\n}",
+    "reason": "If parsing fails at repetition count n1, it fails for all larger counts \u2014 this monotonicity is proven but depends on the closed spec; if the sequential parsing order had a bug, the lemma would still hold vacuously",
+    "entailed": false,
+    "verus_output": "rable/phi_3_error_propagates_upward.rs:83:9\n   |\n78 | proof fn phi_3_error_propagates_upward<C: SecureSpecCombinator>(c: &RepeatN<C>, s: Seq<u8>, n1: usize, n2: usize)\n   |       ----------------------------------------------------------------------------------------------------------- at the end of the function body\n...\n83 |         RepeatN(c.0, n2).spec_parse(s).is_none(),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "parse_one_delegates_to_inner",
+    "type": "behavioral",
+    "code": "proof fn phi_4_parse_one_delegates_to_inner<C: SecureSpecCombinator>(c: &RepeatN<C>, s: Seq<u8>, k: int, v: C::Type)\n    requires\n        c.1 == 1usize,\n        c.0.spec_parse(s) == Some((k, v)),\n    ensures\n        c.spec_parse(s) == Some((k, seq![v])),\n{\n}",
+    "reason": "Parsing a single repetition should directly wrap the inner parser's result \u2014 if the sequential helper introduced extra offset or reordering, single-element parsing would disagree with the inner combinator",
+    "entailed": false,
+    "verus_output": "/phi_4_parse_one_delegates_to_inner.rs:83:9\n   |\n78 | proof fn phi_4_parse_one_delegates_to_inner<C: SecureSpecCombinator>(c: &RepeatN<C>, s: Seq<u8>, k: int, v: C::Type)\n   |       -------------------------------------------------------------------------------------------------------------- at the end of the function body\n...\n83 |         c.spec_parse(s) == Some((k, seq![v])),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "parse_none_on_empty_input_nonzero_count",
+    "type": "boundary",
+    "code": "proof fn phi_5_parse_none_on_empty_input_nonzero_count<C: SecureSpecCombinator>(c: &RepeatN<C>, n: usize)\n    requires\n        c.1 == n,\n        n > 0,\n        c.0.spec_parse(seq![]).is_none(),\n    ensures\n        c.spec_parse(seq![]).is_none(),\n{\n}",
+    "reason": "If the inner combinator rejects empty input, then RepeatN with count > 0 should also reject empty input \u2014 if it somehow succeeded, the repetition parser would produce elements from nothing",
+    "entailed": false,
+    "verus_output": "c_parse_err_unrecoverable/phi_5_parse_none_on_empty_input_nonzero_count.rs:84:9\n   |\n78 | proof fn phi_5_parse_none_on_empty_input_nonzero_count<C: SecureSpecCombinator>(c: &RepeatN<C>, n: usize)\n   |       --------------------------------------------------------------------------------------------------- at the end of the function body\n...\n84 |         c.spec_parse(seq![]).is_none(),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

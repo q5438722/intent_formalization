@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: page_is_mapped_no_subset_allocated
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures clause is literally the definition of `page_is_mapped` — it's a tautology. The PHI restates the open spec definition without demonstrating any actual gap. The observation about mapped-not-subset-of-allocated may be valid but this property doesn't prove it.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: is_empty_allows_nonempty_page_closure
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is expected design. The L4 table (containing the cr3 root page) is always present — it's the top-level page directory that must exist for any address space. An "empty" page table means no user-space mappings exist, not that the page table infrastructure itself is deallocated. The cr3 page is a structural requirement, not a mapping resource.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: container_map_4k_unconstrained_ghost
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures clause is a trivial tautology (`!x || x` is always true). It proves nothing about whether two containers can share pages. The observation about missing disjointness constraints on `container_map_4k` may be valid, but this PHI doesn't demonstrate it — it would verify regardless of any constraints.
+===VERDICT_END===
+
+===SUMMARY===
+All three candidates are false positives. Two (`page_is_mapped_no_subset_allocated` and `container_map_4k_unconstrained_ghost`) have trivially true ensures clauses — one restates the definition of `page_is_mapped` and the other is a logical tautology (`!x || x`). The third (`is_empty_allows_nonempty_page_closure`) correctly shows the cr3 page remains in page_closure when is_empty holds, but this is intentional: the L4 root page directory is structural infrastructure that persists regardless of whether user-space mappings exist. While some of the underlying observations (mapped-not-subset-allocated, unconstrained Ghost fields) may point to real spec gaps, the PHI candidates as written fail to meaningfully demonstrate them.
+===END_SUMMARY===

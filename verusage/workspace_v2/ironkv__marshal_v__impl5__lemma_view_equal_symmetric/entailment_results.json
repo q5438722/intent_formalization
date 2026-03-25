@@ -1,0 +1,47 @@
+[
+  {
+    "name": "view_equal_reflexive_tuple",
+    "type": "logical",
+    "code": "proof fn phi_1_view_equal_reflexive_tuple(a: (u64, u64))\n    ensures\n        a.view_equal(&a),\n{\n}",
+    "reason": "Reflexivity is not axiomatized at the trait level \u2014 if an impl's `view_equal` were not reflexive, the symmetry lemma would still hold but self-comparison would fail, making the relation unusable as an equivalence",
+    "entailed": false,
+    "verus_output": " from traits can only be used if the trait is implemented and in scope\nnote: `Marshalable` defines an item `view_equal`, perhaps you need to implement it\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__marshal_v__impl5__lemma_view_equal_symmetric/phi_1_view_equal_reflexive_tuple.rs:9:1\n   |\n 9 | pub trait Marshalable : Sized {\n   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0599`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "view_equal_transitive_tuple",
+    "type": "logical",
+    "code": "proof fn phi_2_view_equal_transitive_tuple(a: (u64, u64), b: (u64, u64), c: (u64, u64))\n    requires\n        a.view_equal(&b),\n        b.view_equal(&c),\n    ensures\n        a.view_equal(&c),\n{\n}",
+    "reason": "Transitivity is not stated as a trait axiom \u2014 if `view_equal` is used as an equivalence relation but transitivity doesn't hold, equality reasoning chains would be unsound",
+    "entailed": false,
+    "verus_output": "rom traits can only be used if the trait is implemented and in scope\nnote: `Marshalable` defines an item `view_equal`, perhaps you need to implement it\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__marshal_v__impl5__lemma_view_equal_symmetric/phi_2_view_equal_transitive_tuple.rs:9:1\n   |\n 9 | pub trait Marshalable : Sized {\n   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 3 previous errors\n\nFor more information about this error, try `rustc --explain E0599`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "symmetry_holds_without_precondition",
+    "type": "logical",
+    "code": "proof fn phi_3_symmetry_holds_without_precondition(a: (u64, u64), b: (u64, u64))\n    ensures\n        a.view_equal(&b) == b.view_equal(&a),\n{\n    a.lemma_view_equal_symmetric(&b);\n}",
+    "reason": "The trait-level `lemma_view_equal_symmetric` is external_body with zero preconditions \u2014 it asserts symmetry unconditionally for any type implementing the trait, including types where view_equal might not be well-defined",
+    "entailed": false,
+    "verus_output": "sed if the trait is implemented and in scope\nnote: `Marshalable` defines an item `lemma_view_equal_symmetric`, perhaps you need to implement it\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__marshal_v__impl5__lemma_view_equal_symmetric/phi_3_symmetry_holds_without_precondition.rs:9:1\n   |\n 9 | pub trait Marshalable : Sized {\n   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 3 previous errors\n\nFor more information about this error, try `rustc --explain E0599`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "view_equal_implies_actual_equality_u64",
+    "type": "logical",
+    "code": "proof fn phi_4_view_equal_implies_actual_equality_u64(a: u64, b: u64)\n    requires\n        a.view_equal(&b),\n    ensures\n        a == b,\n{\n}",
+    "reason": "Without a u64 impl visible in this file, `view_equal` for u64 is uninterpreted at the trait level \u2014 if the SMT solver can derive actual equality from view_equal alone, the trait's external_body symmetry lemma may be over-constraining the uninterpreted function",
+    "entailed": false,
+    "verus_output": " can only be used if the trait is implemented and in scope\nnote: `Marshalable` defines an item `view_equal`, perhaps you need to implement it\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__marshal_v__impl5__lemma_view_equal_symmetric/phi_4_view_equal_implies_actual_equality_u64.rs:9:1\n   |\n 9 | pub trait Marshalable : Sized {\n   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0599`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "tuple_view_equal_component_independent",
+    "type": "logical",
+    "code": "proof fn phi_5_tuple_view_equal_component_independent(a0: u64, a1: u64, b0: u64, b1: u64)\n    requires\n        a0.view_equal(&b0),\n        !a1.view_equal(&b1),\n    ensures\n        !(a0, a1).view_equal(&(b0, b1)),\n{\n}",
+    "reason": "The tuple's `view_equal` is a conjunction, so if the second component differs the tuple should not be view-equal \u2014 but if the external_body symmetry lemma introduces inconsistent constraints on the uninterpreted u64 `view_equal`, this could be violated",
+    "entailed": false,
+    "verus_output": "can only be used if the trait is implemented and in scope\nnote: `Marshalable` defines an item `view_equal`, perhaps you need to implement it\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__marshal_v__impl5__lemma_view_equal_symmetric/phi_5_tuple_view_equal_component_independent.rs:9:1\n   |\n 9 | pub trait Marshalable : Sized {\n   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 3 previous errors\n\nFor more information about this error, try `rustc --explain E0599`.\n",
+    "timed_out": false
+  }
+]

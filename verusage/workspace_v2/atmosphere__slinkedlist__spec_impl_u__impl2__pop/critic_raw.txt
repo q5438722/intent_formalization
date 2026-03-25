@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: pop_preserves_node_refs_for_remaining
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures clause restates what is already in the requires (`old_sll.get_node_ref(v) == new_sll.get_node_ref(v)`), making this trivially true. The property itself is desirable — pop's spec guarantees node ref stability for remaining elements, which is needed by callers holding external references.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: pop_ret_index_is_old_head
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `get_node_ref(ret.0)` expands to `value_list@[spec_seq@.index_of(ret.0)]`. Since `ret.0 == old_sll@[0]` and `wf()` implies `spec_seq_wf()` + `value_list_wf()`, `index_of(old_sll@[0]) == 0`, so `get_node_ref` returns `value_list@[0] == value_list_head`. This is a correct structural consequence of the spec, not an information leak — `get_node_ref` is `closed spec` so callers cannot observe the internal coupling.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: pop_single_element_result_empty
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: All three ensures follow directly from the preconditions: `len() == 1` and `skip(1)` gives empty seq (len 0), `wf()` gives `free_list_len + value_list_len == N` so `free_list_len == N`. This is the expected conservation invariant — a fixed-capacity list with no values has all nodes free.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: unique_quantifies_over_value_list_len
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `unique()` is defined using `self.len()` which unconditionally returns `self.value_list_len` (from the external_body ensures). Without `wf()`, `value_list_len` can be smaller than `spec_seq@.len()`, causing `unique()` to quantify over fewer elements than actually exist. Here the requires sets both to 3 so it works, but the underlying spec gap is real — `unique()` can be trivially satisfied for a non-wf list by setting `value_list_len = 0`.
+===VERDICT_END===
+
+===SUMMARY===
+Three of four candidates are false positives: node ref preservation is trivially entailed by the requires, the head-index coupling is a correct internal consequence hidden behind a closed spec, and the single-element boundary case follows directly from the conservation invariant. The one true positive (`unique_quantifies_over_value_list_len`) highlights that `unique()` uses `self.len()` which equals `value_list_len` unconditionally — without `wf()`, this range can diverge from `spec_seq@.len()`, making uniqueness trivially satisfiable for malformed lists. While the specific PHI instance works (both lengths are 3), it exposes a real spec weakness where `unique()` provides no guarantees for non-wf states.
+===END_SUMMARY===

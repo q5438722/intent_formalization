@@ -1,0 +1,37 @@
+[
+  {
+    "name": "size_zero_vacuously_true",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "code": "proof fn phi_1_size_zero_vacuously_true(addr: nat)\n    ensures\n        aligned(addr, 0),\n{\n}",
+    "reason": "If aligned(addr, 0) holds for any addr, the spec is unsound on degenerate size=0 input (division by zero)"
+  },
+  {
+    "name": "trivially_true_for_all",
+    "target_fn": "aligned",
+    "type": "behavioral",
+    "code": "proof fn phi_2_trivially_true_for_all(addr: nat, size: nat)\n    ensures\n        aligned(addr, size),\n{\n}",
+    "reason": "If aligned is true for all addr and size, the spec is vacuous and provides no alignment guarantees"
+  },
+  {
+    "name": "successor_preserves_page_alignment",
+    "target_fn": "aligned",
+    "type": "logical",
+    "code": "proof fn phi_3_successor_preserves_page_alignment(addr: nat)\n    requires\n        aligned(addr, PAGE_SIZE as nat),\n    ensures\n        aligned((addr + 1) as nat, PAGE_SIZE as nat),\n{\n}",
+    "reason": "Adding 1 to a page-aligned address must NOT remain page-aligned; if it does the spec conflates all addresses"
+  },
+  {
+    "name": "odd_is_even_aligned",
+    "target_fn": "aligned",
+    "type": "behavioral",
+    "code": "proof fn phi_4_odd_is_even_aligned()\n    ensures\n        aligned(1, 2),\n{\n}",
+    "reason": "1 is not a multiple of 2; if aligned(1,2) holds the modular arithmetic in the spec is broken"
+  },
+  {
+    "name": "double_size_always_entailed",
+    "target_fn": "aligned",
+    "type": "logical",
+    "code": "proof fn phi_5_double_size_always_entailed(addr: nat, s: nat)\n    requires\n        s > 0,\n        aligned(addr, s),\n    ensures\n        aligned(addr, s * 2),\n{\n}",
+    "reason": "Alignment to s does not imply alignment to 2*s (e.g. 4096 is 4096-aligned but not 8192-aligned); provability would mean the spec over-generalizes"
+  }
+]

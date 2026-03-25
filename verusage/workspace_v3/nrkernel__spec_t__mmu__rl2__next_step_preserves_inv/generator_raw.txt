@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: align_exceeds_input
+TARGET_FN: align_to_usize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_align_exceeds_input(a: usize, b: usize)
+    requires
+        b > 0,
+    ensures
+        align_to_usize(a, b) > a,
+{
+}
+```
+REASON: Aligning down should never produce a value greater than the original input
+===PHI_END===
+
+===PHI_START===
+NAME: align_result_not_aligned
+TARGET_FN: align_to_usize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_align_result_not_aligned(a: usize, b: usize)
+    requires
+        b > 0,
+    ensures
+        !aligned(align_to_usize(a, b) as nat, b as nat),
+{
+}
+```
+REASON: The result of align_to_usize should always be aligned to b; failing this means the function is wrong
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_contradicts_modulus
+TARGET_FN: aligned
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_aligned_contradicts_modulus(addr: nat, size: nat)
+    requires
+        size > 0,
+        aligned(addr, size),
+    ensures
+        addr % size != 0,
+{
+}
+```
+REASON: If aligned returns true, the modulus must be zero; entailment here means the spec is self-contradictory
+===PHI_END===
+
+===PHI_START===
+NAME: align_gap_exceeds_block
+TARGET_FN: align_to_usize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_align_gap_exceeds_block(a: usize, b: usize)
+    requires
+        b > 0,
+        a >= b,
+    ensures
+        a - align_to_usize(a, b) >= b,
+{
+}
+```
+REASON: The difference a - align_to_usize(a,b) equals a%b which must be strictly less than b; a gap >= b means over-alignment
+===PHI_END===
+
+===PHI_START===
+NAME: align_not_idempotent
+TARGET_FN: align_to_usize
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_align_not_idempotent(a: usize, b: usize)
+    requires
+        b > 0,
+    ensures
+        align_to_usize(align_to_usize(a, b), b) != align_to_usize(a, b),
+{
+}
+```
+REASON: Aligning an already-aligned value should be a no-op; failure of idempotence would indicate a broken alignment function
+===PHI_END===

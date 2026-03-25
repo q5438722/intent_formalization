@@ -1,0 +1,83 @@
+===PHI_START===
+NAME: tla_forall_always_equality_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_tla_forall_always_equality_intensional_bridge(a_to_p: spec_fn(int) -> TempPred<int>)
+    ensures
+        tla_forall(|a: int| always(a_to_p(a))) == always(tla_forall(a_to_p)),
+{
+    let a_to_always = |a: int| always(a_to_p(a));
+    tla_forall_always_equality_variant::<int, int>(a_to_always, a_to_p);
+}
+```
+REASON: tla_forall_always_equality_variant is external_body forcing intensional equality between tla_forall(always∘p) and always(tla_forall(p)) — structurally distinct nested TempPred::new closures collapsed to equal without proof
+===PHI_END===
+
+===PHI_START===
+NAME: spec_entails_tla_forall_closure_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_spec_entails_tla_forall_closure_bridge(spec: TempPred<int>, a_to_p: spec_fn(int) -> TempPred<int>)
+    requires
+        forall |a: int| spec.entails(#[trigger] a_to_p(a)),
+    ensures
+        spec.entails(tla_forall(a_to_p)),
+{
+    spec_entails_tla_forall::<int, int>(spec, a_to_p);
+}
+```
+REASON: spec_entails_tla_forall is external_body combining pointwise entailments into entailment of tla_forall — requires resolving that tla_forall's TempPred::new closure-wrapped forall evaluates consistently with individual a_to_p(a) results
+===PHI_END===
+
+===PHI_START===
+NAME: spec_entails_always_tla_forall_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_spec_entails_always_tla_forall_bridge(spec: TempPred<int>, a_to_p: spec_fn(int) -> TempPred<int>)
+    requires
+        forall |a: int| spec.entails(always(#[trigger] a_to_p(a))),
+    ensures
+        spec.entails(always(tla_forall(a_to_p))),
+{
+    spec_entails_always_tla_forall::<int, int>(spec, a_to_p);
+}
+```
+REASON: spec_entails_always_tla_forall chains both external_body axioms — commuting always inside tla_forall relies on intensional equality of tla_forall(always∘p) with always(tla_forall(p)) plus closure bridge for forall introduction
+===PHI_END===
+
+===PHI_START===
+NAME: tla_forall_always_swap_any_pred
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_tla_forall_always_swap_any_pred(p: spec_fn(int) -> TempPred<int>, ex: Execution<int>)
+    requires
+        tla_forall(|a: int| always(p(a))).satisfied_by(ex),
+    ensures
+        always(tla_forall(p)).satisfied_by(ex),
+{
+    tla_forall_always_equality_variant::<int, int>(|a: int| always(p(a)), p);
+}
+```
+REASON: the always/tla_forall commutation swaps ∀a.□p(a) with □∀a.p(a) at the execution level — the semantic equivalence is correct but the intensional closure equality enabling direct substitution is unverified
+===PHI_END===
+
+===PHI_START===
+NAME: false_spec_entails_always_tla_forall
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_false_spec_entails_always_tla_forall(a_to_p: spec_fn(int) -> TempPred<int>)
+    requires
+        forall |a: int| TempPred::<int>::new(|ex: Execution<int>| false).entails(always(#[trigger] a_to_p(a))),
+    ensures
+        TempPred::<int>::new(|ex: Execution<int>| false).entails(always(tla_forall(a_to_p))),
+{
+    spec_entails_always_tla_forall::<int, int>(TempPred::new(|ex: Execution<int>| false), a_to_p);
+}
+```
+REASON: an unsatisfiable spec vacuously entails all always-tla_forall combinations — propagates vacuous truth through the axiom chain without detecting spec inconsistency
+===PHI_END===

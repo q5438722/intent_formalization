@@ -1,0 +1,47 @@
+[
+  {
+    "name": "temp_pred_equality_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_1_temp_pred_equality_intensional_bridge(p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.entails(q),\n        q.entails(p),\n    ensures\n        p == q,\n{\n    temp_pred_equality::<int>(p, q);\n}",
+    "reason": "temp_pred_equality is external_body forcing intensional equality from mutual entailment \u2014 structurally distinct closures collapsed to equal without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "a_to_temp_pred_equality_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_2_a_to_temp_pred_equality_intensional_bridge(p: spec_fn(int) -> TempPred<int>, q: spec_fn(int) -> TempPred<int>)\n    requires\n        forall |a: int| #[trigger] p(a).entails(q(a)) && q(a).entails(p(a)),\n    ensures\n        p == q,\n{\n    a_to_temp_pred_equality::<int, int>(p, q);\n}",
+    "reason": "a_to_temp_pred_equality is external_body forcing intensional equality of spec_fn(A)->TempPred from pointwise mutual entailment \u2014 collapses structurally distinct function families without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "tla_forall_or_equality_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_3_tla_forall_or_equality_intensional_bridge(a_to_p: spec_fn(int) -> TempPred<int>, q: TempPred<int>)\n    ensures\n        tla_forall(|a: int| a_to_p(a).or(q)) == tla_forall(a_to_p).or(q),\n{\n    tla_forall_or_equality::<int, int>(a_to_p, q);\n}",
+    "reason": "tla_forall_or_equality is external_body forcing unconditional intensional equality between tla_forall(|a| p(a).or(q)) and tla_forall(p).or(q) \u2014 structurally distinct nested closures collapsed without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "mutual_entailment_derives_false_if_distinct",
+    "type": "logical",
+    "code": "proof fn phi_4_mutual_entailment_derives_false_if_distinct(p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.entails(q),\n        q.entails(p),\n        p !== q,\n    ensures\n        false,\n{\n    temp_pred_equality::<int>(p, q);\n}",
+    "reason": "temp_pred_equality forces p == q from mutual entailment \u2014 if two preds are intensionally distinct but semantically equivalent this derives false",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "tla_forall_implies_equality2_bridge",
+    "type": "logical",
+    "code": "proof fn phi_5_tla_forall_implies_equality2_bridge(p: TempPred<int>, a_to_q: spec_fn(int) -> TempPred<int>)\n    ensures\n        tla_forall(|a: int| p.implies(a_to_q(a))) == p.implies(tla_forall(a_to_q)),\n{\n    tla_forall_implies_equality2::<int, int>(p, a_to_q);\n}",
+    "reason": "chains all three external_body axioms to force intensional equality between tla_forall(|a| p=>q(a)) and p=>tla_forall(q) \u2014 propagates intensional collapse through implies/or/not/forall nesting",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

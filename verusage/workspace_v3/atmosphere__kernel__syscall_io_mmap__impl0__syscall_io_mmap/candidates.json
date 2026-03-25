@@ -1,0 +1,37 @@
+[
+  {
+    "name": "zero_len_io_mmap_allowed",
+    "target_fn": "syscall_io_mmap",
+    "type": "boundary",
+    "code": "proof fn phi_1_zero_len_io_mmap_allowed(va_range: VaRange4K)\n    requires\n        va_range.wf(),\n        va_range.len == 0,\n    ensures\n        va_range.len * 4 < usize::MAX,\n{\n}",
+    "reason": "Zero-length VA ranges satisfy all preconditions, allowing syscall_io_mmap to perform vacuous no-op allocations"
+  },
+  {
+    "name": "null_paddr_mem_valid",
+    "target_fn": "syscall_io_mmap",
+    "type": "behavioral",
+    "code": "proof fn phi_2_null_paddr_mem_valid()\n    ensures\n        MEM_valid(0usize),\n{\n}",
+    "reason": "If null physical address 0 passes MEM_valid, IO mmap could create page mappings to the null address without detection"
+  },
+  {
+    "name": "zero_raw_entry_is_empty",
+    "target_fn": "syscall_io_mmap",
+    "type": "logical",
+    "code": "proof fn phi_3_zero_raw_entry_is_empty()\n    ensures\n        spec_usize2page_entry(0usize).is_empty(),\n{\n}",
+    "reason": "If zero-valued raw entries are always empty, uninitialized page table memory silently passes as valid empty entries during IO mapping"
+  },
+  {
+    "name": "zero_quota_bypasses_check",
+    "target_fn": "syscall_io_mmap",
+    "type": "boundary",
+    "code": "proof fn phi_4_zero_quota_bypasses_check(quota: usize, va_range: VaRange4K)\n    requires\n        va_range.wf(),\n        va_range.len == 0,\n        quota == 0,\n    ensures\n        !(quota < va_range.len * 4),\n{\n}",
+    "reason": "A container with zero remaining quota can pass the quota check via a zero-length range, bypassing resource accounting in syscall_io_mmap"
+  },
+  {
+    "name": "usize2pa_always_valid",
+    "target_fn": "syscall_io_mmap",
+    "type": "behavioral",
+    "code": "proof fn phi_5_usize2pa_always_valid(v: usize)\n    ensures\n        MEM_valid(spec_usize2pa(v)),\n{\n}",
+    "reason": "If usize2pa produces a MEM_valid address for ANY input, garbage or attacker-controlled values fed through the IO mmap path are silently masked to valid addresses"
+  }
+]

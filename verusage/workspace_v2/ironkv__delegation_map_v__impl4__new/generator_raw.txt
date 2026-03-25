@@ -1,0 +1,88 @@
+===PHI_START===
+NAME: new_map_all_keys_same_endpoint
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_new_map_all_keys_same_endpoint<K: KeyTrait + VerusClone>(k1: K, k2: K, k_zero: K, id_zero: ID)
+    requires
+        k_zero == K::zero_spec(),
+        id_zero@.valid_physical_address(),
+    ensures
+        ({
+            let s = DelegationMap::<K>::new(k_zero, id_zero);
+            s@[k1] == s@[k2]
+        }),
+{
+}
+```
+REASON: After construction, every key maps to the same endpoint — the delegation map has no ability to distinguish keys at creation, meaning the initial state is maximally degenerate and callers cannot set per-key delegations at construction time
+===PHI_END===
+
+===PHI_START===
+NAME: set_external_body_gap_false_oracle
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_set_external_body_gap_false_oracle<K: KeyTrait + VerusClone>(som: StrictlyOrderedMap<K>, k: K, v: ID, lo: KeyIterator<K>, hi: KeyIterator<K>)
+    requires
+        som.valid(),
+        lo.lt_spec(KeyIterator::new_spec(k)),
+        KeyIterator::new_spec(k).lt_spec(hi),
+    ensures
+        ({
+            let mut som2 = som;
+            som2.set(k, v);
+            !som2.gap(lo, hi)
+        }),
+{
+}
+```
+REASON: `StrictlyOrderedMap::set` is external_body and its gap postcondition claims inserting key `k` breaks any gap containing `k` — but since this is unverified, a buggy implementation could claim gaps exist where they don't
+===PHI_END===
+
+===PHI_START===
+NAME: valid_physical_address_large_bound
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_valid_physical_address_large_bound()
+    ensures
+        (AbstractEndPoint { id: Seq::new(0xFFFFF - 1, |i: int| 0u8) }).valid_physical_address(),
+{
+}
+```
+REASON: An endpoint with nearly 1MB of ID data (0xFFFFF - 1 = 1048574 bytes) is considered a valid physical address — the 0x100000 bound is very large and may not correspond to actual network address constraints
+===PHI_END===
+
+===PHI_START===
+NAME: delegation_map_valid_no_key_trait_constraints
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_delegation_map_valid_no_key_trait_constraints<K: KeyTrait + VerusClone>(dm: DelegationMap<K>, k: K)
+    requires
+        dm.valid(),
+    ensures
+        dm@.dom().contains(k),
+{
+}
+```
+REASON: `valid()` requires `self@.dom().is_full()` meaning every possible key is in the domain — there is no way to have a valid delegation map that doesn't map every key, which means the spec cannot express partial delegation
+===PHI_END===
+
+===PHI_START===
+NAME: new_external_body_empty_map_trusted
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_new_external_body_empty_map_trusted<K: KeyTrait + VerusClone>()
+    ensures
+        ({
+            let s = StrictlyOrderedMap::<K>::new();
+            s@ == Map::<K, ID>::empty()
+        }),
+{
+}
+```
+REASON: `StrictlyOrderedMap::new` is external_body and asserts the ghost map is empty — if the implementation returns a non-empty map, the ghost state would be desynchronized from actual state, silently introducing unsoundness in all downstream gap and containment reasoning
+===PHI_END===

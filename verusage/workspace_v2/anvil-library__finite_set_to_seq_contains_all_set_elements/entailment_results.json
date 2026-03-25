@@ -1,0 +1,47 @@
+[
+  {
+    "name": "external_body_set_to_seq_forward",
+    "type": "logical",
+    "code": "proof fn phi_1_external_body_set_to_seq_forward(s: Set<int>, e: int)\n    requires\n        s.finite(),\n        s.contains(e),\n    ensures\n        s.to_seq().contains(e),\n{\n    element_in_finite_set_exists_in_set_to_seq(s, e);\n}",
+    "reason": "element_in_finite_set_exists_in_set_to_seq is external_body \u2014 unverified axiom asserting set containment implies to_seq containment",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "external_body_seq_to_set_reverse",
+    "type": "logical",
+    "code": "proof fn phi_2_external_body_seq_to_set_reverse(s: Set<int>, e: int)\n    requires\n        s.finite(),\n        s.to_seq().contains(e),\n    ensures\n        s.contains(e),\n{\n    element_in_seq_exists_in_original_finite_set(s, e);\n}",
+    "reason": "element_in_seq_exists_in_original_finite_set is external_body \u2014 unverified axiom asserting to_seq containment implies set containment",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "not_in_set_not_in_to_seq",
+    "type": "behavioral",
+    "code": "proof fn phi_3_not_in_set_not_in_to_seq(s: Set<int>, e: int)\n    requires\n        s.finite(),\n        !s.contains(e),\n    ensures\n        !s.to_seq().contains(e),\n{\n    if s.to_seq().contains(e) {\n        element_in_seq_exists_in_original_finite_set(s, e);\n    }\n}",
+    "reason": "contrapositive of the reverse direction \u2014 depends on external_body axiom soundness",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "empty_set_to_seq_empty",
+    "type": "boundary",
+    "code": "proof fn phi_4_empty_set_to_seq_empty()\n    ensures\n        Set::<int>::empty().to_seq().len() == 0,\n{\n}",
+    "reason": "empty set should convert to empty sequence \u2014 tests base case consistency with the external_body axioms",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "singleton_to_seq_contains_element",
+    "type": "boundary",
+    "code": "proof fn phi_5_singleton_to_seq_contains_element(e: int)\n    ensures\n        Set::empty().insert(e).to_seq().contains(e),\n{\n    element_in_finite_set_exists_in_set_to_seq(Set::empty().insert(e), e);\n}",
+    "reason": "singleton set's to_seq should contain the element \u2014 tests minimal nontrivial case of the external_body forward axiom",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

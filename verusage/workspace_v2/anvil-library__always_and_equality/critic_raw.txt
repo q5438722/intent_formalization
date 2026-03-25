@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: temp_pred_equality_collapses_extensional
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The external_body axiom forces `p == q` (and hence `p.pred == q.pred`) from mutual entailment alone. This asserts intensional equality of `spec_fn` from extensional equivalence — a genuinely unverified assumption that could be unsound if Verus's SMT encoding ever distinguishes closures that agree on all inputs.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: always_unfold_suffix_equivalence
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The `always` definition wraps a `forall` inside a new closure via `TempPred::new`, producing a different `spec_fn` than a bare quantifier over `p.satisfied_by(ex.suffix(i))`. The external_body `always_unfold` bridges this intensional gap without proof. While semantically correct, it is an unverified trust assumption.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: always_and_commutativity_propagates
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is a straightforward consequence of the already-proven `always_and_equality` plus commutativity of `and`. Given the axioms in the file, this is an expected and desirable derived property — it adds no new trust surface beyond what φ1 already identifies.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: valid_false_from_external_body_chain
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: This is the sharpest finding. The precondition `p != q` is satisfiable for extensionally equivalent but intensionally distinct TempPreds (e.g., two `TempPred::new` calls with different but logically equivalent closures). Combined with `temp_pred_equality` forcing `p == q`, this derives `false` — a direct soundness hole. The axiom implicitly asserts that no two distinct closures can be extensionally equivalent, which is false in general.
+===VERDICT_END===
+
+===SUMMARY===
+Two significant true positives were found. The most critical is φ5 (`valid_false_from_external_body_chain`), which shows that `temp_pred_equality` can derive `false` when given two intensionally distinct but extensionally equivalent TempPreds — a direct soundness gap. φ1 identifies the root cause: the external_body axiom conflates extensional and intensional equality of `spec_fn`. φ2 flags a similar but lower-severity trust assumption in `always_unfold`. φ3 is a benign derived consequence that adds no new risk beyond the axioms it depends on.
+===END_SUMMARY===

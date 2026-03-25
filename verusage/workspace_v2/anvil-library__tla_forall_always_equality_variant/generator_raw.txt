@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: temp_pred_equality_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_temp_pred_equality_intensional_bridge(p: TempPred<int>, q: TempPred<int>)
+    requires
+        p.entails(q),
+        q.entails(p),
+    ensures
+        p == q,
+{
+    temp_pred_equality::<int>(p, q);
+}
+```
+REASON: temp_pred_equality is external_body forcing intensional equality from mutual entailment — structurally distinct closures collapsed to equal without proof
+===PHI_END===
+
+===PHI_START===
+NAME: a_to_temp_pred_equality_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_a_to_temp_pred_equality_intensional_bridge(p: spec_fn(int) -> TempPred<int>, q: spec_fn(int) -> TempPred<int>)
+    requires
+        forall |a: int| #[trigger] p(a).entails(q(a)) && q(a).entails(p(a)),
+    ensures
+        p == q,
+{
+    a_to_temp_pred_equality::<int, int>(p, q);
+}
+```
+REASON: a_to_temp_pred_equality is external_body forcing intensional equality of spec_fn(A)->TempPred from pointwise mutual entailment — collapses structurally distinct function-returning-closure families without proof
+===PHI_END===
+
+===PHI_START===
+NAME: tla_forall_always_equality_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_tla_forall_always_equality_intensional_bridge(a_to_p: spec_fn(int) -> TempPred<int>)
+    ensures
+        tla_forall(|a: int| always(a_to_p(a))) == always(tla_forall(a_to_p)),
+{
+    tla_forall_always_equality::<int, int>(a_to_p);
+}
+```
+REASON: tla_forall_always_equality is external_body forcing unconditional intensional equality between tla_forall(|a| always(p(a))) and always(tla_forall(p)) — structurally distinct nested closures collapsed without proof
+===PHI_END===
+
+===PHI_START===
+NAME: mutual_entailment_derives_false_if_distinct
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_mutual_entailment_derives_false_if_distinct(p: TempPred<int>, q: TempPred<int>)
+    requires
+        p.entails(q),
+        q.entails(p),
+        p !== q,
+    ensures
+        false,
+{
+    temp_pred_equality::<int>(p, q);
+}
+```
+REASON: temp_pred_equality forces p == q from mutual entailment — if two preds are intensionally distinct but semantically equivalent this derives false
+===PHI_END===
+
+===PHI_START===
+NAME: function_equality_from_pointwise_entailment
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_function_equality_from_pointwise_entailment(f: spec_fn(int) -> TempPred<int>, g: spec_fn(int) -> TempPred<int>)
+    requires
+        forall |a: int| #[trigger] f(a).entails(g(a)) && g(a).entails(f(a)),
+        f !== g,
+    ensures
+        false,
+{
+    a_to_temp_pred_equality::<int, int>(f, g);
+}
+```
+REASON: a_to_temp_pred_equality forces f == g from pointwise mutual entailment — derives false if two functions produce semantically equivalent but intensionally distinct TempPreds
+===PHI_END===

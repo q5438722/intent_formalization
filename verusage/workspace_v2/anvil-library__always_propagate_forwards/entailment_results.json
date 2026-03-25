@@ -1,0 +1,47 @@
+[
+  {
+    "name": "execution_equality_forces_fn_equality",
+    "type": "logical",
+    "code": "proof fn phi_1_execution_equality_forces_fn_equality(f: spec_fn(nat) -> int, g: spec_fn(nat) -> int)\n    requires\n        forall |i: nat| #[trigger] f(i) == g(i),\n    ensures\n        f == g,\n{\n    let ex1 = Execution { nat_to_state: f };\n    let ex2 = Execution { nat_to_state: g };\n    execution_equality::<int>(ex1, ex2);\n}",
+    "reason": "execution_equality is external_body forcing intensional equality of spec_fn from pointwise extensional equivalence \u2014 two structurally distinct closures are collapsed to equal",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "always_unfold_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_2_always_unfold_intensional_bridge(ex: Execution<int>, p: TempPred<int>, i: nat)\n    requires\n        always(p).satisfied_by(ex),\n    ensures\n        p.satisfied_by(ex.suffix(i)),\n{\n    always_unfold::<int>(ex, p);\n}",
+    "reason": "always_unfold is external_body bridging the forall inside always's TempPred::new closure and a bare forall in the ensures \u2014 intensionally distinct formulations equated without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "always_propagate_chains_arbitrarily",
+    "type": "logical",
+    "code": "proof fn phi_3_always_propagate_chains_arbitrarily(ex: Execution<int>, p: TempPred<int>, i: nat, j: nat)\n    requires\n        always(p).satisfied_by(ex),\n    ensures\n        always(p).satisfied_by(ex.suffix(i).suffix(j)),\n{\n    always_propagate_forwards::<int>(ex, p, i);\n    always_propagate_forwards::<int>(ex.suffix(i), p, j);\n}",
+    "reason": "chaining always_propagate_forwards yields always(p) on doubly-nested suffixes \u2014 the two external_body axioms compose to resolve arbitrary suffix nesting without explicit composition lemmas",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "suffix_composition_equals_addition",
+    "type": "logical",
+    "code": "proof fn phi_4_suffix_composition_equals_addition(ex: Execution<int>, i: nat, j: nat)\n    ensures\n        ex.suffix(i).suffix(j) == ex.suffix(i + j),\n{\n    execution_equality::<int>(ex.suffix(i).suffix(j), ex.suffix(i + j));\n}",
+    "reason": "doubly-nested suffix creates a closure intensionally distinct from single-offset suffix \u2014 execution_equality collapses them without proof, and always_propagate_forwards depends on this",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "always_double_nesting",
+    "type": "logical",
+    "code": "proof fn phi_5_always_double_nesting(ex: Execution<int>, p: TempPred<int>)\n    requires\n        always(p).satisfied_by(ex),\n    ensures\n        always(always(p)).satisfied_by(ex),\n{\n    assert forall |i: nat| always(p).satisfied_by(#[trigger] ex.suffix(i)) by {\n        always_propagate_forwards::<int>(ex, p, i);\n    };\n}",
+    "reason": "always(p) implies always(always(p)) \u2014 the framework collapses the temporal nesting via always_propagate_forwards without an independent always-idempotence axiom, which could mask issues where inner always should have different semantics than outer",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

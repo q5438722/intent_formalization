@@ -1,0 +1,95 @@
+===PHI_START===
+NAME: none_serialize_empty
+TARGET_FN: serialize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_none_serialize_empty(pre_data: Seq<u8>, post_data: Seq<u8>)
+    requires
+        Option::<u64>::None.is_marshalable(),
+        post_data.len() >= pre_data.len(),
+        post_data.subrange(0, pre_data.len() as int) == pre_data,
+        post_data.subrange(pre_data.len() as int, post_data.len() as int) == Option::<u64>::None.ghost_serialize(),
+    ensures
+        post_data.len() == pre_data.len(),
+{
+}
+```
+REASON: Serializing None should append a tag byte, so output length must grow — being equal would mean nothing was written.
+===PHI_END===
+
+===PHI_START===
+NAME: some_none_same_serialization
+TARGET_FN: serialize
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_some_none_same_serialization(v: u64)
+    requires
+        v.is_marshalable(),
+        Option::Some(v).is_marshalable(),
+        Option::<u64>::None.is_marshalable(),
+    ensures
+        Option::Some(v).ghost_serialize() == Option::<u64>::None.ghost_serialize(),
+{
+}
+```
+REASON: Some(v) and None must serialize differently to be distinguishable; equal serialization would break round-trip decoding.
+===PHI_END===
+
+===PHI_START===
+NAME: some_tag_byte_is_zero
+TARGET_FN: serialize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_some_tag_byte_is_zero(v: u64)
+    requires
+        v.is_marshalable(),
+        Option::Some(v).is_marshalable(),
+    ensures
+        Option::Some(v).ghost_serialize().first() == 0u8,
+{
+}
+```
+REASON: The Some variant should use tag byte 1, not 0; tag 0 is reserved for None and would make them indistinguishable.
+===PHI_END===
+
+===PHI_START===
+NAME: serialize_length_at_most_one
+TARGET_FN: serialize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_serialize_length_at_most_one(v: u64)
+    requires
+        v.is_marshalable(),
+        Option::Some(v).is_marshalable(),
+    ensures
+        Option::Some(v).ghost_serialize().len() <= 1,
+{
+}
+```
+REASON: Some(v) serialization must include both the tag byte and v's payload; length ≤ 1 would mean the inner value is lost.
+===PHI_END===
+
+===PHI_START===
+NAME: data_prefix_corrupted
+TARGET_FN: serialize
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_data_prefix_corrupted(pre_data: Seq<u8>, post_data: Seq<u8>, v: u64)
+    requires
+        pre_data.len() > 0,
+        Option::Some(v).is_marshalable(),
+        post_data.len() >= pre_data.len(),
+        post_data.subrange(0, pre_data.len() as int) == pre_data,
+        post_data.subrange(pre_data.len() as int, post_data.len() as int) == Option::Some(v).ghost_serialize(),
+    ensures
+        post_data.first() != pre_data.first(),
+{
+}
+```
+REASON: The spec guarantees the original data prefix is preserved; if the first byte differs, serialize has corrupted pre-existing data.
+===PHI_END===

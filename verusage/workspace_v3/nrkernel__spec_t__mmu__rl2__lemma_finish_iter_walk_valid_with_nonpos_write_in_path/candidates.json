@@ -1,0 +1,37 @@
+[
+  {
+    "name": "result_exceeds_input",
+    "target_fn": "align_to_usize",
+    "type": "behavioral",
+    "code": "proof fn phi_1_result_exceeds_input(a: usize, b: usize)\n    requires\n        b > 0,\n    ensures\n        align_to_usize(a, b) > a,\n{\n}",
+    "reason": "Aligning down should never produce a value strictly greater than the original input"
+  },
+  {
+    "name": "zero_aligns_to_nonzero",
+    "target_fn": "align_to_usize",
+    "type": "boundary",
+    "code": "proof fn phi_2_zero_aligns_to_nonzero(b: usize)\n    requires\n        b > 0,\n    ensures\n        align_to_usize(0usize, b) != 0usize,\n{\n}",
+    "reason": "Zero is a multiple of every positive integer so aligning zero must yield zero"
+  },
+  {
+    "name": "result_not_multiple_of_alignment",
+    "target_fn": "align_to_usize",
+    "type": "logical",
+    "code": "proof fn phi_3_result_not_multiple_of_alignment(a: usize, b: usize)\n    requires\n        b > 0,\n        a <= usize::MAX,\n    ensures\n        align_to_usize(a, b) % b != 0,\n{\n}",
+    "reason": "The whole purpose of alignment is to produce a multiple of b; failing that means the spec is wrong"
+  },
+  {
+    "name": "not_idempotent",
+    "target_fn": "align_to_usize",
+    "type": "behavioral",
+    "code": "proof fn phi_4_not_idempotent(a: usize, b: usize)\n    requires\n        b > 0,\n        a % b == 0,\n    ensures\n        align_to_usize(a, b) != a,\n{\n}",
+    "reason": "Aligning a value that is already a multiple of b should be a no-op; changing it indicates a broken spec"
+  },
+  {
+    "name": "offset_within_block_differs",
+    "target_fn": "align_to_usize",
+    "type": "logical",
+    "code": "proof fn phi_5_offset_within_block_differs(a: usize, b: usize, offset: usize)\n    requires\n        b > 0,\n        a % b == 0,\n        0 < offset < b,\n        a as int + offset as int <= usize::MAX as int,\n    ensures\n        align_to_usize((a + offset) as usize, b) != a,\n{\n}",
+    "reason": "Any address within the same aligned block should round down to the block base; disagreement reveals a spec error"
+  }
+]

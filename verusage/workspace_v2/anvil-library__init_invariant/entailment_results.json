@@ -1,0 +1,47 @@
+[
+  {
+    "name": "init_invariant_rec_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_1_init_invariant_rec_intensional_bridge(ex: Execution<int>, init: StatePred<int>, next: ActionPred<int>, inv: StatePred<int>, i: nat)\n    requires\n        init(ex.head()),\n        forall |idx: nat| next(#[trigger] ex.suffix(idx).head(), ex.suffix(idx).head_next()),\n        forall |s: int| #[trigger] init(s) ==> inv(s),\n        forall |s: int, s_prime: int| inv(s) && #[trigger] next(s, s_prime) ==> inv(s_prime),\n    ensures\n        inv(ex.suffix(i).head()),\n{\n    init_invariant_rec::<int>(ex, init, next, inv, i);\n}",
+    "reason": "init_invariant_rec is external_body performing induction over suffix positions \u2014 it bridges the intensional gap between suffix-indexed state predicates and the inductive hypothesis without verified decreases reasoning",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "always_unfold_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_2_always_unfold_intensional_bridge(ex: Execution<int>, p: TempPred<int>, i: nat)\n    requires\n        always(p).satisfied_by(ex),\n    ensures\n        p.satisfied_by(ex.suffix(i)),\n{\n    always_unfold::<int>(ex, p);\n}",
+    "reason": "always_unfold is external_body bridging the forall inside always's TempPred::new closure to a bare forall in the ensures \u2014 intensionally distinct formulations equated without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "implies_apply_closure_bridge",
+    "type": "logical",
+    "code": "proof fn phi_3_implies_apply_closure_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.satisfied_by(ex),\n        (p.pred)(ex) ==> (q.pred)(ex),\n    ensures\n        q.satisfied_by(ex),\n{\n    implies_apply::<int>(ex, p, q);\n}",
+    "reason": "implies_apply is external_body bridging p.implies(q).satisfied_by(ex) through TempPred::new closure wrapping and direct implication \u2014 silently resolves closure identity mismatch",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "invariant_from_false_init",
+    "type": "boundary",
+    "code": "proof fn phi_4_invariant_from_false_init(spec: TempPred<int>, next: ActionPred<int>, inv: StatePred<int>)\n    requires\n        spec.entails(lift_state(|s: int| false)),\n        spec.entails(always(lift_action(next))),\n    ensures\n        spec.entails(always(lift_state(inv))),\n{\n    init_invariant::<int>(spec, |s: int| false, next, inv);\n}",
+    "reason": "an unsatisfiable init predicate makes init_invariant prove any invariant for any spec \u2014 the vacuously-true premises propagate through without checking satisfiability of init",
+    "entailed": false,
+    "verus_output": "tent_formalization/verusage/workspace_v2/anvil-library__init_invariant/phi_4_invariant_from_false_init.rs:143:5\n    |\n116 |         forall |s, s_prime: T| inv(s) && #[trigger] next(s, s_prime) ==> inv(s_prime),\n    |         ----------------------------------------------------------------------------- failed precondition\n...\n143 |     init_invariant::<int>(spec, |s: int| false, next, inv);\n    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "invariant_ignores_next_action",
+    "type": "behavioral",
+    "code": "proof fn phi_5_invariant_ignores_next_action(spec: TempPred<int>, init: StatePred<int>, next: ActionPred<int>)\n    requires\n        forall |s: int| #[trigger] init(s) ==> false,\n        spec.entails(lift_state(init)),\n        spec.entails(always(lift_action(next))),\n    ensures\n        spec.entails(always(lift_state(|s: int| false))),\n{\n    init_invariant::<int>(spec, init, next, |s: int| false);\n}",
+    "reason": "if init implies false (no valid initial state), then init_invariant derives always(false) for any spec claiming to start from init \u2014 the spec is vacuously inconsistent but this is never flagged",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

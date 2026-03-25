@@ -1,0 +1,119 @@
+===PHI_START===
+NAME: new_proc_no_owned_threads_constraint
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_new_proc_no_owned_threads_constraint(
+    root_proc: ProcPtr,
+    proc_tree_dom: Set<ProcPtr>,
+    old_proc_perms: Map<ProcPtr, PointsTo<Process>>,
+    new_proc_perms: Map<ProcPtr, PointsTo<Process>>,
+    proc_ptr: ProcPtr,
+    new_proc_ptr: ProcPtr,
+    t: ThreadPtr,
+)
+    requires
+        new_proc_ensures(root_proc, proc_tree_dom, old_proc_perms, new_proc_perms, proc_ptr, new_proc_ptr),
+    ensures
+        new_proc_perms[new_proc_ptr].value().owned_threads@ == Set::<ThreadPtr>::empty(),
+{
+}
+```
+REASON: `new_proc_ensures` constrains tree-structural fields (parent, children, depth, subtree, uppertree) but may not constrain `owned_threads` of the new process, allowing it to start with arbitrary thread ownership
+===PHI_END===
+
+===PHI_START===
+NAME: new_proc_subtree_only_contains_self
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_new_proc_subtree_only_contains_self(
+    root_proc: ProcPtr,
+    proc_tree_dom: Set<ProcPtr>,
+    old_proc_perms: Map<ProcPtr, PointsTo<Process>>,
+    new_proc_perms: Map<ProcPtr, PointsTo<Process>>,
+    proc_ptr: ProcPtr,
+    new_proc_ptr: ProcPtr,
+)
+    requires
+        new_proc_ensures(root_proc, proc_tree_dom, old_proc_perms, new_proc_perms, proc_ptr, new_proc_ptr),
+    ensures
+        new_proc_perms[new_proc_ptr].value().subtree_set@ =~= Set::<ProcPtr>::empty(),
+{
+}
+```
+REASON: A newly created leaf process should have an empty subtree set (or only itself) — if `new_proc_ensures` doesn't constrain this, the new process could claim arbitrary processes in its subtree
+===PHI_END===
+
+===PHI_START===
+NAME: new_proc_children_empty
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_new_proc_children_empty(
+    root_proc: ProcPtr,
+    proc_tree_dom: Set<ProcPtr>,
+    old_proc_perms: Map<ProcPtr, PointsTo<Process>>,
+    new_proc_perms: Map<ProcPtr, PointsTo<Process>>,
+    proc_ptr: ProcPtr,
+    new_proc_ptr: ProcPtr,
+)
+    requires
+        new_proc_ensures(root_proc, proc_tree_dom, old_proc_perms, new_proc_perms, proc_ptr, new_proc_ptr),
+    ensures
+        new_proc_perms[new_proc_ptr].value().children@.len() == 0,
+{
+}
+```
+REASON: A freshly created process should have no children — if `new_proc_ensures` doesn't enforce empty children, the new process could be born with phantom child references to existing nodes, breaking tree structure
+===PHI_END===
+
+===PHI_START===
+NAME: new_proc_preserve_inv_1_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_new_proc_preserve_inv_1_external_body(
+    root_proc: ProcPtr,
+    proc_tree_dom: Set<ProcPtr>,
+    old_proc_perms: Map<ProcPtr, PointsTo<Process>>,
+    new_proc_perms: Map<ProcPtr, PointsTo<Process>>,
+    proc_ptr: ProcPtr,
+    new_proc_ptr: ProcPtr,
+)
+    requires
+        new_proc_ensures(root_proc, proc_tree_dom, old_proc_perms, new_proc_perms, proc_ptr, new_proc_ptr),
+    ensures
+        proc_tree_wf(root_proc, proc_tree_dom.insert(new_proc_ptr), new_proc_perms),
+{
+    new_proc_preserve_tree_inv_1(root_proc, proc_tree_dom, old_proc_perms, new_proc_perms, proc_ptr, new_proc_ptr);
+}
+```
+REASON: `new_proc_preserve_tree_inv_1` is external_body — it asserts tree invariant preservation without verified proof; if `new_proc_ensures` is too weak (missing constraints), this trusted lemma could mask a real invariant violation
+===PHI_END===
+
+===PHI_START===
+NAME: new_proc_parent_subtree_unchanged_others
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_new_proc_parent_subtree_unchanged_others(
+    root_proc: ProcPtr,
+    proc_tree_dom: Set<ProcPtr>,
+    old_proc_perms: Map<ProcPtr, PointsTo<Process>>,
+    new_proc_perms: Map<ProcPtr, PointsTo<Process>>,
+    proc_ptr: ProcPtr,
+    new_proc_ptr: ProcPtr,
+    other: ProcPtr,
+)
+    requires
+        new_proc_ensures(root_proc, proc_tree_dom, old_proc_perms, new_proc_perms, proc_ptr, new_proc_ptr),
+        proc_tree_dom.contains(other),
+        other != proc_ptr,
+    ensures
+        new_proc_perms[other].value().subtree_set@ =~= old_proc_perms[other].value().subtree_set@,
+{
+}
+```
+REASON: When adding a new process under `proc_ptr`, only `proc_ptr` and its ancestors should gain the new process in their subtree sets — if `new_proc_ensures` doesn't update ancestor subtree sets, non-parent nodes correctly stay unchanged, but ancestors like `root_proc` would be missing the new process from their subtree
+===PHI_END===

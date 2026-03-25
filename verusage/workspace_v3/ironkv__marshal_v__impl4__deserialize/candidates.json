@@ -1,0 +1,37 @@
+[
+  {
+    "name": "success_implies_empty_vec",
+    "target_fn": "deserialize (Vec<T>)",
+    "type": "behavioral",
+    "code": "proof fn phi_1_success_implies_empty_vec<T: Marshalable>(data: Seq<u8>, start: int, result: Vec<T>, end: int)\n    requires\n        result.is_marshalable(),\n        start <= end <= data.len(),\n        data.subrange(start, end) == result.ghost_serialize(),\n    ensures\n        result@.len() == 0,\n{\n}",
+    "reason": "If entailed, deserialization could never produce a non-empty Vec, making the implementation trivially useless"
+  },
+  {
+    "name": "no_bytes_consumed_on_success",
+    "target_fn": "deserialize (Vec<T>)",
+    "type": "boundary",
+    "code": "proof fn phi_2_no_bytes_consumed_on_success<T: Marshalable>(data: Seq<u8>, start: int, result: Vec<T>, end: int)\n    requires\n        result.is_marshalable(),\n        start <= end <= data.len(),\n        data.subrange(start, end) == result.ghost_serialize(),\n    ensures\n        end == start,\n{\n}",
+    "reason": "If entailed, ghost_serialize would be empty (zero bytes), contradicting the 8-byte u64 length prefix in Vec serialization"
+  },
+  {
+    "name": "nonempty_result_impossible",
+    "target_fn": "deserialize (Vec<T>)",
+    "type": "logical",
+    "code": "proof fn phi_3_nonempty_result_impossible<T: Marshalable>(data: Seq<u8>, start: int, result: Vec<T>, end: int)\n    requires\n        result.is_marshalable(),\n        start <= end <= data.len(),\n        data.subrange(start, end) == result.ghost_serialize(),\n        result@.len() > 0,\n    ensures\n        false,\n{\n}",
+    "reason": "If entailed, the spec preconditions for a non-empty Vec are self-contradictory, meaning non-empty vectors can never be deserialized"
+  },
+  {
+    "name": "serialize_under_eight_bytes",
+    "target_fn": "deserialize (Vec<T>)",
+    "type": "boundary",
+    "code": "proof fn phi_4_serialize_under_eight_bytes<T: Marshalable>(data: Seq<u8>, start: int, result: Vec<T>, end: int)\n    requires\n        result.is_marshalable(),\n        start <= end <= data.len(),\n        data.subrange(start, end) == result.ghost_serialize(),\n    ensures\n        end - start < 8,\n{\n}",
+    "reason": "If entailed, serialized Vec is shorter than the mandatory 8-byte u64 length prefix, meaning the serialization format is inconsistent"
+  },
+  {
+    "name": "first_element_not_marshalable",
+    "target_fn": "deserialize (Vec<T>)",
+    "type": "logical",
+    "code": "proof fn phi_5_first_element_not_marshalable<T: Marshalable>(data: Seq<u8>, start: int, result: Vec<T>, end: int)\n    requires\n        result.is_marshalable(),\n        start <= end <= data.len(),\n        data.subrange(start, end) == result.ghost_serialize(),\n        result@.len() > 0,\n    ensures\n        !result@[0].is_marshalable(),\n{\n}",
+    "reason": "If entailed, Vec's is_marshalable (which requires all elements marshalable) would contradict the first element not being marshalable, exposing an inconsistency"
+  }
+]

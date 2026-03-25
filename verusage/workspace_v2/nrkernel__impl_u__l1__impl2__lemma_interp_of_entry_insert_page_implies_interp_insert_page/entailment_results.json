@@ -1,0 +1,47 @@
+[
+  {
+    "name": "insert_page_implies_interp_aux_insert_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_insert_page_implies_interp_aux_insert_external_body(d: Directory, j: nat, base: nat, pte: PTE)\n    requires\n        d.inv(),\n        j < d.num_entries(),\n        d.update(j, NodeEntry::Page(pte)).inv(),\n        d.interp_of_entry(j).insert(base, pte) == d.update(j, NodeEntry::Page(pte)).interp_of_entry(j),\n    ensures\n        d.interp_aux(0).insert(base, pte) == d.update(j, NodeEntry::Page(pte)).interp_aux(0),\n{\n    d.lemma_interp_of_entry_insert_implies_interp_aux_insert(0, j, base, NodeEntry::Page(pte), pte);\n}",
+    "reason": "`lemma_interp_of_entry_insert_implies_interp_aux_insert` is `external_body` \u2014 the inductive proof that single-entry insert propagates through `interp_aux` is trusted without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_insert_overwrites_existing_mapping",
+    "type": "behavioral",
+    "code": "proof fn phi_2_page_insert_overwrites_existing_mapping(d: Directory, j: nat, base: nat, pte: PTE)\n    requires\n        d.inv(),\n        j < d.num_entries(),\n        d.update(j, NodeEntry::Page(pte)).inv(),\n        d.interp_of_entry(j).insert(base, pte) == d.update(j, NodeEntry::Page(pte)).interp_of_entry(j),\n        d.interp().contains_key(base),\n    ensures\n        d.update(j, NodeEntry::Page(pte)).interp()[base] == pte,\n{\n    d.lemma_interp_of_entry_insert_page_implies_interp_insert_page(j, base, pte);\n}",
+    "reason": "The commented-out `!self.interp().contains_key(base)` means the axiom allows silently overwriting an existing mapping \u2014 a page insert can clobber a prior mapping at the same VA",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_insert_base_not_entry_base",
+    "type": "boundary",
+    "code": "proof fn phi_3_page_insert_base_not_entry_base(d: Directory, j: nat, pte: PTE)\n    requires\n        d.inv(),\n        j < d.num_entries(),\n        d.entries[j as int] is Invalid,\n        pte.frame.size == d.entry_size(),\n        d.update(j, NodeEntry::Page(pte)).inv(),\n    ensures\n        d.update(j, NodeEntry::Page(pte)).interp_of_entry(j).contains_key(d.entry_base(j)),\n        d.update(j, NodeEntry::Page(pte)).interp_of_entry(j)[d.entry_base(j)] == pte,\n{\n}",
+    "reason": "After inserting a Page at slot j, the new entry's interp maps `entry_base(j)` to the PTE \u2014 but nothing constrains that `base` in the insert precondition must equal `entry_base(j)`, allowing mismatched VA-to-slot mappings",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "inv_no_base_vaddr_alignment",
+    "type": "boundary",
+    "code": "proof fn phi_4_inv_no_base_vaddr_alignment(arch: Arch, entries: Seq<NodeEntry>, layer: nat)\n    requires\n        arch.inv(),\n        layer < arch.layers.len(),\n        entries.len() == arch.num_entries(layer),\n        forall|i: nat| i < entries.len() ==> entries[i as int] is Invalid,\n    ensures\n        (Directory { entries, layer, base_vaddr: 7, arch }).inv(),\n{\n}",
+    "reason": "The commented-out alignment constraint means `inv()` accepts any `base_vaddr` including misaligned values like 7",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_frame_base_unconstrained",
+    "type": "behavioral",
+    "code": "proof fn phi_5_page_frame_base_unconstrained(d: Directory, j: nat, pte: PTE)\n    requires\n        d.inv(),\n        j < d.num_entries(),\n        d.entries[j as int] is Invalid,\n        pte.frame.size == d.entry_size(),\n        pte.frame.base == 0xDEAD,\n    ensures\n        (Directory { entries: d.entries.update(j as int, NodeEntry::Page(pte)), ..d }).inv(),\n{\n}",
+    "reason": "`inv()` constrains page frame *size* but not frame *base* \u2014 any physical address (e.g. 0xDEAD, unaligned) is accepted as a valid page frame base",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

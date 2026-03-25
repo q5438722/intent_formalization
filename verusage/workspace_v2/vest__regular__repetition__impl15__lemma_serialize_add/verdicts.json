@@ -1,0 +1,20 @@
+[
+  {
+    "phi": "serialize_empty_is_empty",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`fold_left(Seq::empty(), f)` on an empty sequence returns `Seq::empty()` by the vstd fold_left base case axiom. Correct by definition."
+  },
+  {
+    "phi": "serialize_length_additive",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This follows directly from the verified `lemma_serialize_add` which proves `serialize(seq![v] + vs) == serialize_inner(v) + serialize(vs)`. Taking `.len()` on both sides gives the additive length property. Correct."
+  },
+  {
+    "phi": "repeatn_ignores_count_field",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`RepeatN::spec_serialize` uses `vs.fold_left(...)` which iterates over the provided sequence `vs` regardless of the `usize` count field `self.1`. The count parameter is completely ignored in serialization, meaning `RepeatN(c, 0).spec_serialize(vec_of_10)` would serialize all 10 elements. This is a spec gap \u2014 the count field should constrain serialization."
+  }
+]

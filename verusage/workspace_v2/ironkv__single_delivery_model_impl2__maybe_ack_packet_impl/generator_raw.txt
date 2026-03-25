@@ -1,0 +1,86 @@
+Now let me see the omitted sections for complete understanding:
+Now I have enough context. This is an SHT (Sharded Hash Table) networking/message types file. Let me generate the 5 candidates.
+
+===PHI_START===
+NAME: valid_ack_redundant_abstractable
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_valid_ack_redundant_abstractable(ack: CPacket, original: CPacket)
+    requires
+        valid_ack(ack, original),
+    ensures
+        outbound_packet_is_valid(&ack),
+        ack.abstractable(),
+{
+}
+```
+REASON: `valid_ack` requires both `ack.abstractable()` and `outbound_packet_is_valid(&ack)` which itself requires `cpacket.abstractable()` — the redundant conjunct suggests the spec author was unsure about the relationship (noted in the comment "how does this relate to abstractable?")
+===PHI_END===
+
+===PHI_START===
+NAME: tombstone_lookup_default_zero
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_tombstone_lookup_default_zero(src: AbstractEndPoint, t: TombstoneTable)
+    requires
+        !t.dom().contains(src),
+    ensures
+        tombstone_table_lookup(src, t) == 0,
+{
+}
+```
+REASON: Defaulting to 0 for unknown sources means any new sender is treated as having no tombstone — if the system relies on tombstones for duplicate suppression, a fresh endpoint could replay old sequence numbers
+===PHI_END===
+
+===PHI_START===
+NAME: ckeyhasmap_view_unconstrained
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_ckeyhasmap_view_unconstrained(m1: CKeyHashMap, m2: CKeyHashMap)
+    requires
+        m1.spec_to_vec() == m2.spec_to_vec(),
+    ensures
+        true,
+{
+}
+```
+REASON: `CKeyHashMap::view` and `spec_to_vec` are both uninterpreted — there is no axiom relating them, so the view of a CKeyHashMap is completely unconstrained relative to its vector representation, allowing inconsistent abstract states
+===PHI_END===
+
+===PHI_START===
+NAME: clone_up_to_view_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_clone_up_to_view_external_body(e: EndPoint)
+    requires
+        e.abstractable(),
+    ensures
+        e.clone_up_to_view()@ == e@,
+{
+}
+```
+REASON: `clone_up_to_view` is `external_body` with `unimplemented!()` — the exec body panics at runtime while its ensures clause is trusted without verification
+===PHI_END===
+
+===PHI_START===
+NAME: cack_state_new_ack_valid
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_cack_state_new_ack_valid(dst: AbstractEndPoint)
+    requires
+        dst.valid_physical_address(),
+    ensures
+        ({
+            let s = CAckState { num_packets_acked: 0, un_acked: Vec::new() };
+            s.valid(dst)
+        }),
+{
+}
+```
+REASON: If a freshly constructed CAckState with empty un_acked list and zero packets_acked is not valid, the initial state construction would be broken — but if it IS valid without checking `max_seqno >= 0`, the validity predicate may be vacuously satisfied for degenerate parameters
+===PHI_END===

@@ -1,0 +1,14 @@
+[
+  {
+    "phi": "get_proc_owned_threads_wf_without_full_wf",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "The `get_proc` external_body ensures `ret.owned_threads.wf()` unconditionally given only `proc_perms_wf()` and `process_fields_wf()`, without requiring `self.wf()`. While `process_fields_wf()` does assert `owned_threads.wf()` for all procs in domain, the issue is that `get_proc`'s ensures clause leaks this independently of the full wf() predicate, allowing callers with weaker preconditions to derive structural invariants that should only hold under full well-formedness."
+  },
+  {
+    "phi": "unique_implies_no_duplicates_external_body",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`unique_implys_no_duplicates` is marked `#[verifier::external_body]`, meaning the bridge from the custom `unique()` predicate (element-wise distinctness over `spec_seq@` indexed by `len`) to vstd's `no_duplicates()` (which operates on `Seq::index`) is trusted without proof. If there's any mismatch between how `spec_seq@` indices relate to the `view()` sequence under non-wf conditions, or if `len` disagrees with `self@.len()`, this axiom could be unsound. The fact that it requires `wf()` mitigates this, but the bridge itself remains unverified."
+  }
+]

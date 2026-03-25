@@ -1,0 +1,47 @@
+[
+  {
+    "name": "parse_length_external_body_trusted",
+    "type": "logical",
+    "code": "proof fn phi_1_parse_length_external_body_trusted(\n    s: Seq<u8>,\n    n: int,\n    v: UInt,\n)\n    requires\n        UnsignedLEB128.spec_parse(s) == Some((n, v)),\n    ensures\n        0 <= n <= s.len(),\n{\n    UnsignedLEB128.lemma_parse_length(s);\n}",
+    "reason": "`lemma_parse_length` is `external_body` with `unimplemented!()` \u2014 the bound that parsed length \u2264 input length is trusted without verification for this recursive parser",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "parse_productive_external_body_trusted",
+    "type": "logical",
+    "code": "proof fn phi_2_parse_productive_external_body_trusted(\n    s: Seq<u8>,\n    n: int,\n    v: UInt,\n)\n    requires\n        UnsignedLEB128.spec_parse(s) == Some((n, v)),\n    ensures\n        n > 0,\n{\n    UnsignedLEB128.lemma_parse_productive(s);\n}",
+    "reason": "`lemma_parse_productive` is `external_body` with `unimplemented!()` \u2014 the productivity guarantee is trusted without proof for UnsignedLEB128 which hardcodes `is_productive() == true`",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "parse_empty_is_none",
+    "type": "boundary",
+    "code": "proof fn phi_3_parse_empty_is_none()\n    ensures\n        UnsignedLEB128.spec_parse(seq![]).is_none(),\n{\n}",
+    "reason": "Parsing an empty sequence should fail \u2014 if it somehow succeeded, the parser would produce values from no input, violating the productivity and length bounds",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "parse_single_byte_no_high_bit",
+    "type": "behavioral",
+    "code": "proof fn phi_4_parse_single_byte_no_high_bit(\n    b: u8,\n)\n    requires\n        b < 0x80,\n    ensures\n        UnsignedLEB128.spec_parse(seq![b]) == Some((1int, (b & 0x7f) as UInt)),\n{\n}",
+    "reason": "A single byte with high bit unset should parse to its low 7 bits in exactly 1 byte \u2014 if this base case were wrong, all multi-byte encodings built on top would produce incorrect values",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "parse_max_value_overflow_check",
+    "type": "boundary",
+    "code": "proof fn phi_5_parse_max_value_overflow_check(\n    s: Seq<u8>,\n    n: int,\n    v: UInt,\n)\n    requires\n        UnsignedLEB128.spec_parse(s) == Some((n, v)),\n    ensures\n        v <= UInt::MAX,\n{\n}",
+    "reason": "The parsed value must fit in u64 \u2014 the overflow check `v2 <= n_bit_max_unsigned!(8*8-7)` combined with `v2 << 7 | low_bits` should never exceed UInt::MAX, but the recursive accumulation depends on the trusted length/productive lemmas for termination reasoning",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

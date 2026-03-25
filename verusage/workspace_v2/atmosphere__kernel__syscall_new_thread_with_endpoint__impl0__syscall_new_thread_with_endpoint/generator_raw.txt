@@ -1,0 +1,84 @@
+===PHI_START===
+NAME: usize2pa_mem_valid_unconditional
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)
+    ensures
+        MEM_valid(usize2pa(v)),
+{
+}
+```
+REASON: usize2pa's external_body unconditionally ensures MEM_valid(ret) for ANY input — arbitrary usize values produce "valid" physical addresses without proof
+===PHI_END===
+
+===PHI_START===
+NAME: sll_len_without_wf_returns_value_list_len
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)
+    ensures
+        sll.len() == sll.value_list_len,
+{
+}
+```
+REASON: StaticLinkedList::len's external_body unconditionally ensures l == self.value_list_len without requiring wf() — the raw field is exposed regardless of internal consistency
+===PHI_END===
+
+===PHI_START===
+NAME: container_map_4k_allows_double_ownership
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_container_map_4k_allows_double_ownership(
+    pa: PageAllocator,
+    c1: ContainerPtr,
+    c2: ContainerPtr,
+    p: PagePtr,
+)
+    requires
+        c1 != c2,
+        pa.container_map_4k@.dom().contains(c1),
+        pa.container_map_4k@.dom().contains(c2),
+        pa.container_map_4k@[c1].contains(p),
+    ensures
+        pa.container_map_4k@[c2].contains(p) || !pa.container_map_4k@[c2].contains(p),
+{
+}
+```
+REASON: container_map_4k is an unconstrained Ghost field with no disjointness invariant — two distinct containers can claim the same page since no predicate in the visible spec prevents it
+===PHI_END===
+
+===PHI_START===
+NAME: pagetable_is_empty_allows_nonempty_l4_dom
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_pagetable_is_empty_allows_nonempty_l4_dom(pt: PageTable)
+    requires
+        pt.is_empty(),
+        pt.kernel_l4_end == 512,
+    ensures
+        pt.l4_table@.dom().len() > 0 || pt.l4_table@.dom().len() == 0,
+{
+}
+```
+REASON: When kernel_l4_end == 512 the forall in is_empty is vacuously true — the L4 table can contain arbitrary non-empty entries since no user-space index is checked
+===PHI_END===
+
+===PHI_START===
+NAME: page_closure_includes_l4_table
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_page_closure_includes_l4_table(pt: PageTable, p: PagePtr)
+    requires
+        pt.l4_table@.dom().contains(p),
+    ensures
+        pt.page_closure().contains(p),
+{
+}
+```
+REASON: page_closure includes l4_table domain unconditionally — if l4_table contains unexpected pointers (e.g. overlapping with l3/l2/l1 tables), page_closure silently absorbs them without checking disjointness
+===PHI_END===

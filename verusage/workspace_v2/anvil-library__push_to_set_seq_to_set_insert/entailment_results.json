@@ -1,0 +1,47 @@
+[
+  {
+    "name": "empty_seq_to_set_empty",
+    "type": "boundary",
+    "code": "proof fn phi_1_empty_seq_to_set_empty()\n    ensures\n        Seq::<int>::empty().to_set() == Set::<int>::empty(),\n{\n}",
+    "reason": "empty sequence should convert to empty set \u2014 tests base case of to_set",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "push_preserves_existing_elements",
+    "type": "behavioral",
+    "code": "proof fn phi_2_push_preserves_existing_elements(s: Seq<int>, e: int, x: int)\n    requires\n        s.to_set().contains(x),\n    ensures\n        s.push(e).to_set().contains(x),\n{\n    push_to_set_eq_to_set_insert(s, e);\n}",
+    "reason": "pushing should not remove existing elements from the set \u2014 tests monotonicity of push w.r.t. to_set",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "push_element_in_result_set",
+    "type": "behavioral",
+    "code": "proof fn phi_3_push_element_in_result_set(s: Seq<int>, e: int)\n    ensures\n        s.push(e).to_set().contains(e),\n{\n    push_to_set_eq_to_set_insert(s, e);\n}",
+    "reason": "pushed element must appear in the resulting set \u2014 tests basic correctness of the lemma's conclusion",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "duplicate_push_to_set_idempotent",
+    "type": "boundary",
+    "code": "proof fn phi_4_duplicate_push_to_set_idempotent(s: Seq<int>, e: int)\n    requires\n        s.contains(e),\n    ensures\n        s.push(e).to_set() == s.to_set(),\n{\n    push_to_set_eq_to_set_insert(s, e);\n}",
+    "reason": "pushing a duplicate should not change the set \u2014 tests idempotence of set insert through the lemma",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "to_set_subset_of_push_to_set",
+    "type": "logical",
+    "code": "proof fn phi_5_to_set_subset_of_push_to_set(s: Seq<int>, e: int)\n    ensures\n        s.to_set().subset_of(s.push(e).to_set()),\n{\n    push_to_set_eq_to_set_insert(s, e);\n}",
+    "reason": "original set should be subset of pushed set \u2014 tests that push+to_set is monotone",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

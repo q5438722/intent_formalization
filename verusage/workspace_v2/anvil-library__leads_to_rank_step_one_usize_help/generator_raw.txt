@@ -1,0 +1,85 @@
+===PHI_START===
+NAME: leads_to_self_temp_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_leads_to_self_temp_intensional_bridge(p: TempPred<int>)
+    ensures
+        valid(p.leads_to(p)),
+{
+    leads_to_self_temp::<int>(p);
+}
+```
+REASON: leads_to_self_temp is external_body deriving valid(p.leads_to(p)) — resolving nested always/implies/eventually closure gaps without proof
+===PHI_END===
+
+===PHI_START===
+NAME: leads_to_trans_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_leads_to_trans_intensional_bridge(spec: TempPred<int>, p: TempPred<int>, q: TempPred<int>, r: TempPred<int>)
+    requires
+        spec.entails(p.leads_to(q)),
+        spec.entails(q.leads_to(r)),
+    ensures
+        spec.entails(p.leads_to(r)),
+{
+    leads_to_trans::<int>(spec, p, q, r);
+}
+```
+REASON: leads_to_trans is external_body composing two leads_to through nested always/implies/eventually closures — bridges intensional gaps without proof
+===PHI_END===
+
+===PHI_START===
+NAME: usize_rank_overflow_at_zero
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_usize_rank_overflow_at_zero(spec: TempPred<int>, p: spec_fn(usize) -> TempPred<int>)
+    requires
+        forall |n: usize| #![trigger p(n)] (n > 0 ==> spec.entails(p(n).leads_to(p((n - 1) as usize)))),
+    ensures
+        spec.entails(p(0usize).leads_to(p(0usize))),
+{
+    leads_to_rank_step_one_usize_help::<int>(spec, p, 0usize);
+}
+```
+REASON: the usize-indexed rank function at n=0 relies on leads_to_self_temp — but using usize instead of nat means the step premise n > 0 with (n-1) as usize could interact with usize overflow semantics in surprising ways at boundary
+===PHI_END===
+
+===PHI_START===
+NAME: usize_max_rank_step
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_usize_max_rank_step(spec: TempPred<int>, p: spec_fn(usize) -> TempPred<int>)
+    requires
+        forall |n: usize| #![trigger p(n)] (n > 0 ==> spec.entails(p(n).leads_to(p((n - 1) as usize)))),
+    ensures
+        spec.entails(p(usize::MAX).leads_to(p(0usize))),
+{
+    leads_to_rank_step_one_usize_help::<int>(spec, p, usize::MAX);
+}
+```
+REASON: chaining usize::MAX steps of leads_to_trans through the inductive helper — the decreases clause on usize must handle the full range, and each step invokes the external_body axiom on a fresh intensional closure
+===PHI_END===
+
+===PHI_START===
+NAME: usize_rank_limited_vs_nat
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_usize_rank_limited_vs_nat(spec: TempPred<int>, p: spec_fn(usize) -> TempPred<int>)
+    requires
+        forall |n: usize| #![trigger p(n)] (n > 0 ==> spec.entails(p(n).leads_to(p((n - 1) as usize)))),
+    ensures
+        forall |n: usize| #[trigger] spec.entails(p(n).leads_to(p(0usize))),
+{
+    assert forall |n: usize| #[trigger] spec.entails(p(n).leads_to(p(0usize))) by {
+        leads_to_rank_step_one_usize_help::<int>(spec, p, n);
+    };
+}
+```
+REASON: quantifying over all usize values produces a leads_to chain limited to usize::MAX steps — unlike the nat-indexed variant, this cannot express rank functions exceeding platform word size, silently bounding the ranking argument
+===PHI_END===

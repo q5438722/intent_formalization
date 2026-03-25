@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: zero_is_empty_external_body_trusted
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `zero_leads_is_empty_page_entry` is `external_body`, axiomatically asserting that decoding zero produces an empty entry. This is provable via bit_vector reasoning (as shown in other files in this codebase), yet left unverified — a real soundness gap since the entire PageMap init path depends on it.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: page_entry2usize_no_roundtrip_guarantee
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The `page_entry2usize` external_body ensures individual field roundtrips and `usize2page_entry_perm(ret) =~= pe.perm`, but notably does NOT ensure `spec_usize2page_entry(ret) =~= pe`. The addr roundtrip (`usize2pa(ret) == pe.addr`) combined with perm roundtrip does give you both fields, but this relies on the SMT solver connecting the dots — the explicit structural roundtrip `spec_usize2page_entry(ret) =~= pe` is missing from the contract, which is a spec weakness.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: set_non_present_forces_empty
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is an intentional design decision. The `set()` precondition forces non-present entries to be fully empty because the implementation writes literal zero for non-present entries (erasing all fields). This is the correct and expected behavior for a page table — non-present entries should be zeroed.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: pagemap_set_present_loses_entry_identity
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures clause `self@ =~= old(self)@.update(index as int, value)` on `set()` directly guarantees the stored entry equals `value`. This PHI just restates that guarantee via Seq::update semantics — it's the expected, correct postcondition.
+===VERDICT_END===
+
+===SUMMARY===
+Two true positives were identified. `zero_is_empty_external_body_trusted` flags a real soundness gap where the foundational property that zero decodes to an empty page entry is axiomatically trusted via external_body rather than verified with bit_vector proofs. `page_entry2usize_no_roundtrip_guarantee` highlights that the encode function's contract lacks an explicit full structural roundtrip guarantee (`spec_usize2page_entry(ret) =~= pe`), though the individual field ensures may be sufficient in practice. The other two candidates are false positives: forcing non-present entries to be empty is intentional design, and the entry identity preservation is directly guaranteed by the set() postcondition.
+===END_SUMMARY===

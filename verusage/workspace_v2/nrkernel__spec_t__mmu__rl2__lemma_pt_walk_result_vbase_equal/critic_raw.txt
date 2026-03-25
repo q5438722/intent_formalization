@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: walk_next_external_body_unconstrained
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `walk_next` is `external_body` with `unimplemented!()` — the core page table walk stepping function is completely opaque. Since `iter_walk` builds on it and `lemma_iter_walk_equals_pt_walk` bridges it to `pt_walk`, this is a foundational unverified trust assumption.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: iter_walk_equals_pt_walk_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `lemma_iter_walk_equals_pt_walk` is `external_body` — the equivalence between the opaque `walk_next`-based `iter_walk` and the fully specified `pt_walk` is asserted without proof. This is a critical bridge lemma; if incorrect, all reasoning that flows through `iter_walk` would be unsound.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: iter_walk_result_vbase_equal_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `lemma_iter_walk_result_vbase_equal` is `external_body` — walk path and vaddr idempotency are entirely unverified. This lemma is directly used by `lemma_pt_walk_result_vbase_equal` to derive key properties about walk stability.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: pt_walk_result_vaddr_leq_original
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The walk result vaddr is produced by `align_to_usize(vaddr, size)` which computes `sub(vaddr, vaddr % size)`, which is always ≤ vaddr. While the proof chain goes through external_body lemmas, the property itself is mathematically correct and desirable — alignment always rounds down.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: pt_walk_result_idempotent
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Walk result idempotency is a correct and desirable property — re-translating from the page-aligned base address of a translation should yield the same translation. This is fundamental to page table semantics: all addresses within a page must map to the same frame.
+===VERDICT_END===
+
+===SUMMARY===
+Three true positives: `walk_next` is an opaque external_body stepping function, `lemma_iter_walk_equals_pt_walk` bridges the opaque walk to the specified walk without proof, and `lemma_iter_walk_result_vbase_equal` asserts walk idempotency without verification. Two false positives: the result vaddr ≤ original and walk idempotency are correct and desirable page table properties, even though their proofs depend on the unverified lemma chain.
+===END_SUMMARY===

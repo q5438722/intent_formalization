@@ -1,0 +1,47 @@
+[
+  {
+    "name": "serialize_parse_roundtrip_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_serialize_parse_roundtrip_external_body<C: SecureSpecCombinator>(\n    c: &C,\n    v: C::Type,\n)\n    requires\n        c.requires(),\n        c.wf(v),\n    ensures\n        c.spec_parse(c.spec_serialize(v)) == Some((c.spec_serialize(v).len() as int, v)),\n{\n    c.theorem_serialize_parse_roundtrip(v);\n}",
+    "reason": "`theorem_serialize_parse_roundtrip` is `external_body` with `unimplemented!()` \u2014 the fundamental correctness property linking serialize and parse is entirely trusted without verification, so any buggy combinator implementation would be accepted as sound",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "serialize_injective_from_external_body",
+    "type": "logical",
+    "code": "proof fn phi_2_serialize_injective_from_external_body<C: SecureSpecCombinator>(\n    c: &C,\n    v1: C::Type,\n    v2: C::Type,\n)\n    requires\n        c.requires(),\n        c.wf(v1),\n        c.wf(v2),\n        c.spec_serialize(v1) == c.spec_serialize(v2),\n    ensures\n        v1 == v2,\n{\n    c.corollary_serialize_injective(v1, v2);\n}",
+    "reason": "Serialize injectivity is derived entirely from the unverified `external_body` roundtrip theorem \u2014 if the roundtrip axiom were wrong for some combinator, injectivity would be unsoundly assumed",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "parse_result_length_unconstrained",
+    "type": "boundary",
+    "code": "proof fn phi_3_parse_result_length_unconstrained<C: SecureSpecCombinator>(\n    c: &C,\n    v: C::Type,\n)\n    requires\n        c.requires(),\n        c.wf(v),\n    ensures\n        c.spec_parse(c.spec_serialize(v)).is_some(),\n        c.spec_parse(c.spec_serialize(v)).unwrap().0 >= 0,\n{\n    c.theorem_serialize_parse_roundtrip(v);\n}",
+    "reason": "The roundtrip theorem guarantees parse returns a non-negative consumed length equal to serialized length, but there is no upper bound constraint on `spec_parse` for arbitrary inputs \u2014 parse could claim to consume more bytes than exist without violating any axiom",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "wf_default_true_vacuous",
+    "type": "logical",
+    "code": "proof fn phi_4_wf_default_true_vacuous<C: SpecCombinator>(\n    c: &C,\n    v: C::Type,\n)\n    ensures\n        c.wf(v),\n{\n}",
+    "reason": "The default `wf` implementation returns `true` for all values \u2014 any combinator that forgets to override `wf` would vacuously satisfy the roundtrip theorem's precondition for ALL values including malformed ones",
+    "entailed": false,
+    "verus_output": " not satisfied\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/vest__properties__SecureSpecBombinator__corollary_serialize_injective/phi_4_wf_default_true_vacuous.rs:64:9\n   |\n59 |   proof fn phi_4_wf_default_true_vacuous<C: SpecCombinator>(\n   |  _______-\n60 | |     c: &C,\n61 | |     v: C::Type,\n62 | | )\n   | |_- at the end of the function body\n63 |       ensures\n64 |           c.wf(v),\n   |           ^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "requires_default_true_vacuous",
+    "type": "logical",
+    "code": "proof fn phi_5_requires_default_true_vacuous<C: SpecCombinator>(\n    c: &C,\n)\n    ensures\n        c.requires(),\n{\n}",
+    "reason": "The default `requires` implementation returns `true` unconditionally \u2014 any combinator that needs initialization constraints but forgets to override `requires` would have all its proof obligations trivially satisfiable",
+    "entailed": false,
+    "verus_output": "n not satisfied\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/vest__properties__SecureSpecBombinator__corollary_serialize_injective/phi_5_requires_default_true_vacuous.rs:63:9\n   |\n59 |   proof fn phi_5_requires_default_true_vacuous<C: SpecCombinator>(\n   |  _______-\n60 | |     c: &C,\n61 | | )\n   | |_- at the end of the function body\n62 |       ensures\n63 |           c.requires(),\n   |           ^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "new_seq_length",
+    "type": "boundary",
+    "code": "proof fn phi_1_new_seq_length(i: nat, e: nat)\n    ensures\n        new_seq(i, e).len() == i,\n{\n    lemma_new_seq(i, e);\n}",
+    "reason": "The sequence length equals `i` exactly \u2014 tests the core length property",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "new_seq_all_same",
+    "type": "behavioral",
+    "code": "proof fn phi_2_new_seq_all_same(i: nat, e: nat, j: nat)\n    requires\n        j < i,\n    ensures\n        new_seq(i, e)[j as int] === e,\n{\n    lemma_new_seq(i, e);\n}",
+    "reason": "Every element equals `e` \u2014 the sequence is a constant function, cannot represent varying initialization",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "new_seq_zero_empty",
+    "type": "boundary",
+    "code": "proof fn phi_3_new_seq_zero_empty()\n    ensures\n        new_seq::<nat>(0, 42) =~= seq![],\n{\n}",
+    "reason": "`new_seq(0, _)` produces an empty sequence \u2014 tests the base case",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "new_seq_one_singleton",
+    "type": "boundary",
+    "code": "proof fn phi_4_new_seq_one_singleton(e: nat)\n    ensures\n        new_seq(1, e) =~= seq![e],\n{\n}",
+    "reason": "`new_seq(1, e)` is a singleton \u2014 tests the minimal non-trivial case",
+    "entailed": false,
+    "verus_output": ": 2 verified, 1 errors\nerror: postcondition not satisfied\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__definitions_u__lemma_new_seq/phi_4_new_seq_one_singleton.rs:38:9\n   |\n36 | proof fn phi_4_new_seq_one_singleton(e: nat)\n   |       -------------------------------------- at the end of the function body\n37 |     ensures\n38 |         new_seq(1, e) =~= seq![e],\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "new_seq_push_extends",
+    "type": "logical",
+    "code": "proof fn phi_5_new_seq_push_extends(i: nat, e: nat)\n    requires\n        i > 0,\n    ensures\n        new_seq(i, e) =~= new_seq((i - 1) as nat, e).push(e),\n{\n}",
+    "reason": "The recursive step is directly exposed \u2014 tests that the open spec definition unfolds as expected",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,6 @@
+[
+  {
+    "name": "values_agree",
+    "code": "fn values_agree(&self, lo: usize, hi: usize, v: &ID) -> (ret:(bool, bool))\n        requires \n            self.valid(),\n            0 <= lo <= hi < self.keys@.len(),\n        ensures \n            ret.0 == forall |i| #![auto] lo <= i <= hi ==> self.vals@[i]@ == v@,\n            !ret.0 ==> (ret.1 == (self.vals@[hi as int]@ != v@ && forall |i| #![auto] lo <= i < hi ==> self.vals@[i]@ == v@)),\n    {\n        let mut i = lo;\n        while i <= hi\n            invariant \n                lo <= i,\n                self.keys@.len() <= usize::MAX,\n                hi < self.keys@.len() as usize == self.vals@.len(),\n                forall |j| #![auto] lo <= j < i ==> self.vals@[j]@ == v@,\n            decreases\n                self.keys@.len() - i\n        {\n            let eq = do_end_points_match(&self.vals[i], v);\n            if  !eq {\n                if i == hi {\n                    return (false, true);\n                } else {\n                    return (false, false);\n                }\n            } else {\n                proof {\n                    //K::cmp_properties();\n                }\n            }\n            i = i + 1;\n        }\n        (true, true)\n    }"
+  }
+]

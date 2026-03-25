@@ -1,0 +1,37 @@
+[
+  {
+    "name": "pa_always_zero",
+    "target_fn": "alloc_and_map_io",
+    "type": "behavioral",
+    "code": "proof fn phi_1_pa_always_zero(v: usize)\n    requires\n        v != 0usize,\n    ensures\n        spec_usize2pa(v) == 0usize,\n{\n}",
+    "reason": "If PA extraction collapses all nonzero values to 0, alloc_and_map_io always returns a null physical address for mapped IO pages."
+  },
+  {
+    "name": "mem_valid_vacuous",
+    "target_fn": "alloc_and_map_io",
+    "type": "boundary",
+    "code": "proof fn phi_2_mem_valid_vacuous(v: PAddr)\n    ensures\n        MEM_valid(v),\n{\n}",
+    "reason": "If MEM_valid is trivially true for every address, usize2pa's postcondition provides no real constraint on physical pages returned by alloc_and_map_io."
+  },
+  {
+    "name": "zero_entry_present",
+    "target_fn": "alloc_and_map_io",
+    "type": "logical",
+    "code": "proof fn phi_3_zero_entry_present()\n    ensures\n        spec_usize2page_entry(0usize).perm.present == true,\n{\n}",
+    "reason": "If zero-valued entries decode as present, uninitialized L2 slots spuriously satisfy alloc_and_map_io's L2-resolution precondition, enabling mapping into garbage page tables."
+  },
+  {
+    "name": "perm_always_user",
+    "target_fn": "alloc_and_map_io",
+    "type": "behavioral",
+    "code": "proof fn phi_4_perm_always_user(v: usize)\n    requires\n        MEM_valid(spec_usize2pa(v)),\n    ensures\n        spec_usize2page_entry_perm(v).user == true,\n{\n}",
+    "reason": "If every page-entry permission has the user bit set, IO pages allocated by alloc_and_map_io are accessible from unprivileged code, breaking device-isolation guarantees."
+  },
+  {
+    "name": "pa_non_injective",
+    "target_fn": "alloc_and_map_io",
+    "type": "logical",
+    "code": "proof fn phi_5_pa_non_injective(a: usize, b: usize)\n    requires\n        a != b,\n        spec_usize2page_entry(a).perm.present,\n        spec_usize2page_entry(b).perm.present,\n    ensures\n        spec_usize2pa(a) == spec_usize2pa(b),\n{\n}",
+    "reason": "If distinct present page-table entries always decode to the same physical address, alloc_and_map_io could alias a new IO mapping onto an already-used physical frame."
+  }
+]

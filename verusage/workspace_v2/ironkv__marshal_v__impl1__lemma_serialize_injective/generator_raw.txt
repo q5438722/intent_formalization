@@ -1,0 +1,87 @@
+===PHI_START===
+NAME: u64_serialize_injective_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_u64_serialize_injective_external_body(a: u64, b: u64)
+    requires
+        a.is_marshalable(),
+        b.is_marshalable(),
+        a.ghost_serialize() == b.ghost_serialize(),
+    ensures
+        a.view_equal(&b),
+{
+    a.lemma_serialize_injective(&b);
+}
+```
+REASON: `u64::lemma_serialize_injective` is `external_body` — injectivity of u64 LE serialization is trusted without proof despite being provable from `lemma_auto_spec_u64_to_from_le_bytes`
+===PHI_END===
+
+===PHI_START===
+NAME: usize_injectivity_chains_to_u64_external
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_usize_injectivity_chains_to_u64_external(a: usize, b: usize)
+    requires
+        a.is_marshalable(),
+        b.is_marshalable(),
+        a.ghost_serialize() == b.ghost_serialize(),
+    ensures
+        a == b,
+{
+    a.lemma_serialize_injective(&b);
+}
+```
+REASON: usize injectivity derives `a == b` (not just `view_equal`) — but this chains through `u64`'s unverified `external_body` lemma, so the full equality guarantee for usize rests on an unproved axiom
+===PHI_END===
+
+===PHI_START===
+NAME: serialize_no_marshalable_guard_trait
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_serialize_no_marshalable_guard_trait(a: u64, b: u64)
+    requires
+        a != b,
+    ensures
+        a.ghost_serialize() != b.ghost_serialize(),
+{
+    if a.ghost_serialize() == b.ghost_serialize() {
+        a.lemma_serialize_injective(&b);
+    }
+}
+```
+REASON: Contrapositive of injectivity gives distinctness of serializations — but relies entirely on the unverified `external_body` u64 injectivity axiom, which if wrong would make distinct u64 values produce identical byte sequences
+===PHI_END===
+
+===PHI_START===
+NAME: ghost_serialize_fixed_length_u64
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_ghost_serialize_fixed_length_u64(a: u64, b: u64)
+    ensures
+        a.ghost_serialize().len() == b.ghost_serialize().len(),
+{
+    lemma_auto_spec_u64_to_from_le_bytes();
+}
+```
+REASON: All u64 serializations have identical length (8 bytes) — this is implicit and never stated as a spec guarantee, so any consumer assuming variable-length encoding would silently break
+===PHI_END===
+
+===PHI_START===
+NAME: view_equal_implies_equal_usize
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_view_equal_implies_equal_usize(a: usize, b: usize)
+    requires
+        a.view_equal(&b),
+    ensures
+        a == b,
+{
+}
+```
+REASON: For usize, `view_equal` (defined as `self@ === other@`) implies full equality — the `view_equal` abstraction barrier provides no additional flexibility over `==` for primitive types, so trait consumers expecting view-equality to be weaker than equality get no separation
+===PHI_END===

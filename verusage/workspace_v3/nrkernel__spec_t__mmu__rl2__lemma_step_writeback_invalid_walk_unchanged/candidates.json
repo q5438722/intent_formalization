@@ -1,0 +1,37 @@
+[
+  {
+    "name": "align_exceeds_input",
+    "target_fn": "align_to_usize",
+    "type": "behavioral",
+    "code": "proof fn phi_1_align_exceeds_input(a: usize, b: usize)\n    requires\n        b > 0,\n        a >= b,\n    ensures\n        align_to_usize(a, b) > a,\n{\n}",
+    "reason": "Alignment rounding down should never produce a value exceeding the original input"
+  },
+  {
+    "name": "align_not_multiple",
+    "target_fn": "align_to_usize",
+    "type": "logical",
+    "code": "proof fn phi_2_align_not_multiple(a: usize, b: usize)\n    requires\n        b > 0,\n        a < 0xFFFF_FFFF_FFFF_FFFFusize,\n    ensures\n        align_to_usize(a, b) % b != 0,\n{\n}",
+    "reason": "The whole purpose of align_to_usize is to produce a multiple of b; failing this means alignment is broken"
+  },
+  {
+    "name": "align_changes_already_aligned",
+    "target_fn": "align_to_usize",
+    "type": "boundary",
+    "code": "proof fn phi_3_align_changes_already_aligned(a: usize, b: usize)\n    requires\n        b > 0,\n        a % b == 0,\n    ensures\n        align_to_usize(a, b) != a,\n{\n}",
+    "reason": "An already-aligned value should be a fixed point; changing it means the function over-rounds"
+  },
+  {
+    "name": "align_not_idempotent",
+    "target_fn": "align_to_usize",
+    "type": "logical",
+    "code": "proof fn phi_4_align_not_idempotent(a: usize, b: usize)\n    requires\n        b > 0,\n        a >= b,\n    ensures\n        align_to_usize(align_to_usize(a, b), b) != align_to_usize(a, b),\n{\n}",
+    "reason": "Alignment must be idempotent; applying it twice should yield the same result as once"
+  },
+  {
+    "name": "align_distance_exceeds_modulus",
+    "target_fn": "align_to_usize",
+    "type": "boundary",
+    "code": "proof fn phi_5_align_distance_exceeds_modulus(a: usize, b: usize)\n    requires\n        b > 0,\n        a >= b,\n    ensures\n        a - align_to_usize(a, b) >= b,\n{\n}",
+    "reason": "The gap between the input and its aligned value must be strictly less than b; a gap >= b means an entire alignment block was skipped"
+  }
+]

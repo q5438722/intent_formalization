@@ -1,0 +1,10 @@
+[
+  {
+    "name": "to_vec",
+    "code": "#[verifier(external_body)]\n    #[verifier(when_used_as_spec(spec_to_vec))]\n    pub fn to_vec(&self) -> (res: Vec<CKeyKV>)\n    {unimplemented!()}"
+  },
+  {
+    "name": "deserialize",
+    "code": "exec fn deserialize(data: &Vec<u8>, start: usize) -> (res: Option<(Self, usize)>)\n        // req, ens from trait\n        {\n            match <Vec<CKeyKV>>::deserialize(data, start) {\n                None => {\n                    None\n                },\n                Some((x, end)) => {\n                    if !sorted_keys(&x) {\n                        None\n                    } else {\n                        let res = CKeyHashMap::from_vec(x);\n                        if end - start > ckeyhashmap_max_serialized_size_exec() {\n                            None\n                        } else {\n                            proof {\n                                CKeyHashMap::lemma_from_vec(x);\n                            }\n                            Some((res, end))\n                        }\n                    }\n                }\n            }\n        }"
+  }
+]

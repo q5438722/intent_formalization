@@ -1,0 +1,78 @@
+===PHI_START===
+NAME: walk_next_external_body_unconstrained
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_walk_next_external_body_unconstrained(mem: PTMem, walk1: Walk, walk2: Walk)
+    requires
+        walk1.vaddr == walk2.vaddr,
+        walk1.path == walk2.path,
+        walk1.complete == walk2.complete,
+    ensures
+        walk_next(mem, walk1) == walk_next(mem, walk2),
+{
+}
+```
+REASON: `walk_next` is `external_body` with `unimplemented!()` — the entire walk stepping function is opaque, so identical walks could produce different results
+===PHI_END===
+
+===PHI_START===
+NAME: iter_walk_equals_pt_walk_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_iter_walk_equals_pt_walk_external_body(mem: PTMem, vaddr: usize)
+    ensures
+        iter_walk(mem, vaddr) == mem.pt_walk(vaddr),
+{
+    lemma_iter_walk_equals_pt_walk(mem, vaddr);
+}
+```
+REASON: `lemma_iter_walk_equals_pt_walk` is `external_body` — the equivalence between iterative and direct walk is trusted without proof, yet `iter_walk` uses the opaque `walk_next`
+===PHI_END===
+
+===PHI_START===
+NAME: iter_walk_result_vbase_equal_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_iter_walk_result_vbase_equal_external_body(mem: PTMem, vaddr: usize)
+    ensures
+        iter_walk(mem, iter_walk(mem, vaddr).result().vaddr()).path == iter_walk(mem, vaddr).path,
+        iter_walk(mem, iter_walk(mem, vaddr).result().vaddr()).result().vaddr() == iter_walk(mem, vaddr).result().vaddr(),
+{
+    lemma_iter_walk_result_vbase_equal(mem, vaddr);
+}
+```
+REASON: `lemma_iter_walk_result_vbase_equal` is `external_body` — walk idempotency (re-walking from the result vaddr produces the same path) is entirely unverified
+===PHI_END===
+
+===PHI_START===
+NAME: pt_walk_result_vaddr_leq_original
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_pt_walk_result_vaddr_leq_original(mem: PTMem, vaddr: usize)
+    ensures
+        mem.pt_walk(vaddr).result().vaddr() <= vaddr,
+{
+    lemma_pt_walk_result_vbase_equal(mem, vaddr);
+}
+```
+REASON: The walk result vaddr is always ≤ the original vaddr (due to alignment rounding down) — but this depends on the chain of external_body lemmas; if alignment doesn't round down, this could be violated
+===PHI_END===
+
+===PHI_START===
+NAME: pt_walk_result_idempotent
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_pt_walk_result_idempotent(mem: PTMem, vaddr: usize)
+    ensures
+        mem.pt_walk(mem.pt_walk(vaddr).result().vaddr()).result() == mem.pt_walk(vaddr).result(),
+{
+    lemma_pt_walk_result_vbase_equal(mem, vaddr);
+}
+```
+REASON: Walk result idempotency (re-walking from the aligned result vaddr gives the same result) depends on external_body lemmas — if false, the page table would give different translations for the same virtual page
+===PHI_END===

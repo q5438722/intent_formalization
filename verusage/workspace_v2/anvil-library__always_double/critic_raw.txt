@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: always_unfold_intensional_bridge
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The external_body `always_unfold` bridges an intensional gap between the `forall` quantifier embedded inside `always`'s `TempPred::new` closure and a bare `forall` in the ensures clause. This is an unverified trust assumption — the two formulations are semantically equivalent but intensionally distinct in Verus's closure encoding.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: always_propagate_suffix_composition
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: Chaining the two external_body axioms yields `p.satisfied_by(ex.suffix(i).suffix(j))` without ever proving that `suffix(i).suffix(j)` is equivalent to `suffix(i+j)`. The axioms implicitly allow reasoning over nested suffixes that are intensionally distinct from single-offset suffixes, expanding the unverified trust surface beyond what either axiom alone provides.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: always_double_unfold_to_bare
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is logically identical to φ2 — it reaches the same conclusion (`p` on double-suffix) via `always_double` + two unfolds instead of `always_propagate_forwards` + one unfold. It identifies no new trust assumption beyond what φ1 and φ2 already cover; `always_double` is a verified lemma that adds no extra unsoundness.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: always_propagate_unbounded
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is the universally quantified version of φ2 — same axiom chain (`always_propagate_forwards` + `always_unfold`) lifted to `forall |i, j|`. It identifies no new trust surface beyond what φ2 already captures; the universal quantification is just a mechanical lifting of the same pattern.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: always_propagate_zero_redundant
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `ex.suffix(0)` creates a new `Execution` with closure `|i| f(i+0)`, which is intensionally distinct from `ex` even though semantically equivalent. The external_body `always_propagate_forwards` silently asserts `always(p)` transfers to this intensionally distinct execution at i=0, a concrete and minimal demonstration of the axiom's unverified intensional assumption.
+===VERDICT_END===
+
+===SUMMARY===
+Three true positives were identified. φ1 and φ5 each isolate the core intensional gap in the two external_body axioms (`always_unfold` and `always_propagate_forwards` respectively), while φ2 shows how composing them amplifies the trust surface to enable reasoning over nested suffixes without a suffix-composition lemma. φ3 and φ4 are false positives that merely restate φ2's finding through alternative proof paths or universal quantification without identifying new trust assumptions.
+===END_SUMMARY===

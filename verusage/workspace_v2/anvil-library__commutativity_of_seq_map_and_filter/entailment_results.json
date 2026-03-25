@@ -1,0 +1,47 @@
+[
+  {
+    "name": "empty_seq_commutativity",
+    "type": "boundary",
+    "code": "proof fn phi_1_empty_seq_commutativity()\n    ensures\n        Seq::<int>::empty().map_values(|x: int| x + 1).filter(|x: int| x > 0) == Seq::<int>::empty().filter(|x: int| x > -1).map_values(|x: int| x + 1),\n{\n    commutativity_of_seq_map_and_filter(Seq::<int>::empty(), |x: int| x > -1, |x: int| x > 0, |x: int| x + 1);\n}",
+    "reason": "tests the empty sequence base case \u2014 if the base case is mishandled, empty sequences could produce unequal results",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "map_filter_len_leq_original",
+    "type": "behavioral",
+    "code": "proof fn phi_2_map_filter_len_leq_original(s: Seq<int>, pred: spec_fn(int) -> bool, map: spec_fn(int) -> int)\n    requires\n        forall |i: int| 0 <= i < s.len() ==> #[trigger] pred(s[i]) == #[trigger] pred(map(s[i])),\n    ensures\n        s.map_values(map).filter(pred).len() <= s.len(),\n{\n    commutativity_of_seq_map_and_filter(s, pred, pred, map);\n}",
+    "reason": "filtered-then-mapped result should never exceed original length \u2014 if filter/map interaction is broken, length could exceed the original",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "filter_all_true_preserves_map",
+    "type": "behavioral",
+    "code": "proof fn phi_3_filter_all_true_preserves_map(s: Seq<int>)\n    ensures\n        s.map_values(|x: int| x + 1).filter(|x: int| true) == s.filter(|x: int| true).map_values(|x: int| x + 1),\n{\n    commutativity_of_seq_map_and_filter(s, |x: int| true, |x: int| true, |x: int| x + 1);\n}",
+    "reason": "always-true filter should be identity on both sides \u2014 tests that trivial predicates don't break the commutativity",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "filter_all_false_both_empty",
+    "type": "boundary",
+    "code": "proof fn phi_4_filter_all_false_both_empty(s: Seq<int>)\n    ensures\n        s.map_values(|x: int| x * 2).filter(|x: int| false).len() == 0,\n{\n    commutativity_of_seq_map_and_filter(s, |x: int| false, |x: int| false, |x: int| x * 2);\n}",
+    "reason": "always-false filter should produce empty on both sides \u2014 tests that the commutativity result is vacuously correct for trivially empty filters",
+    "entailed": false,
+    "verus_output": "kspace_v2/anvil-library__commutativity_of_seq_map_and_filter/phi_4_filter_all_false_both_empty.rs:40:9\n   |\n38 | proof fn phi_4_filter_all_false_both_empty(s: Seq<int>)\n   |       ------------------------------------------------- at the end of the function body\n39 |     ensures\n40 |         s.map_values(|x: int| x * 2).filter(|x: int| false).len() == 0,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "singleton_filter_map_commute",
+    "type": "boundary",
+    "code": "proof fn phi_5_singleton_filter_map_commute(v: int)\n    ensures\n        ({\n            let s = seq![v];\n            let pred = |x: int| x > 0;\n            let map_fn = |x: int| x * 2;\n            s.map_values(map_fn).filter(|x: int| x > 0) == s.filter(|x: int| x > 0).map_values(map_fn)\n        }),\n{\n    let s = seq![v];\n    let pred = |x: int| x > 0;\n    let pred_mapped = |x: int| x > 0;\n    let map_fn = |x: int| x * 2;\n    commutativity_of_seq_map_and_filter(s, pred, pred_mapped, map_fn);\n}",
+    "reason": "singleton sequence is the minimal nontrivial case \u2014 if the recursive step mishandles length-1 sequences, commutativity could silently break",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

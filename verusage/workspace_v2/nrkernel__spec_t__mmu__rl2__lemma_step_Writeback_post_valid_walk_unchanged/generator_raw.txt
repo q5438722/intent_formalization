@@ -1,0 +1,81 @@
+File ends with `step_Writeback` visible. Let me generate candidates targeting the step transitions and state invariants.
+
+===PHI_START===
+NAME: core_mem_empty_sbuf_equals_pt_mem
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_core_mem_empty_sbuf_equals_pt_mem(pre: State, core: Core)
+    requires
+        pre.sbuf[core] =~= seq![],
+    ensures
+        pre.core_mem(core) === pre.pt_mem,
+{
+}
+```
+REASON: When a core's store buffer is empty, its view should equal the global page table memory — tests that `write_seq` of empty seq is identity
+===PHI_END===
+
+===PHI_START===
+NAME: writer_mem_equals_core_mem_writer
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_writer_mem_equals_core_mem_writer(pre: State)
+    ensures
+        pre.writer_mem() === pre.core_mem(pre.writes.core),
+{
+}
+```
+REASON: `writer_mem` is an inline alias for `core_mem(writes.core)` — tests that the alias is consistent
+===PHI_END===
+
+===PHI_START===
+NAME: core_mem_diverges_with_sbuf
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_core_mem_diverges_with_sbuf(pre: State, core: Core, addr: usize, value: usize)
+    requires
+        pre.sbuf[core] =~= seq![(addr, value)],
+        pre.pt_mem.mem.contains_key(addr),
+        pre.pt_mem.read(addr) != value,
+    ensures
+        pre.core_mem(core).read(addr) == value,
+        pre.core_mem(core).read(addr) != pre.pt_mem.read(addr),
+{
+}
+```
+REASON: A single pending store buffer entry makes the core's view diverge from global memory — tests that TSO correctly models store buffer forwarding
+===PHI_END===
+
+===PHI_START===
+NAME: valid_core_external_body_unconstrained
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_valid_core_external_body_unconstrained(c1: Constants, c2: Constants, core: Core)
+    requires
+        c1 === c2,
+    ensures
+        c1.valid_core(core) == c2.valid_core(core),
+{
+}
+```
+REASON: `valid_core` is `external_body` — even structurally equal constants could produce different validity results for the same core
+===PHI_END===
+
+===PHI_START===
+NAME: contains_fst_single_element
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_contains_fst_single_element(addr: usize, value: usize)
+    ensures
+        seq![(addr, value)].contains_fst(addr),
+{
+    assert(seq![(addr, value)][0] == (addr, value));
+}
+```
+REASON: A single-element sequence should contain its first element — tests that `contains_fst` existential witness works for the trivial case
+===PHI_END===

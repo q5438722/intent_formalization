@@ -1,0 +1,52 @@
+[
+  {
+    "name": "packet_msg_always_invalid",
+    "target_fn": "receive_with_demarshal",
+    "type": "behavioral",
+    "reason": "Would mean valid messages can never be received, rendering the network layer useless",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "tEndPoint,\n875 | | )\n    | |_- at the end of the function body\n...\n887 |           rr is Packet ==> rr.arrow_Packet_cpacket()@.msg is InvalidMessage,\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "never_receives_packet",
+    "target_fn": "receive_with_demarshal",
+    "type": "boundary",
+    "reason": "Would mean the function can never successfully deliver a packet, only Fail or Timeout",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "et(\n    |  _______-\n872 | |     rr: ReceiveResult,\n873 | |     net_event: NetEvent,\n874 | |     netc_ok: bool,\n875 | | )\n    | |_- at the end of the function body\n...\n884 |           !(rr is Packet),\n    |           ^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "packet_src_equals_dst",
+    "target_fn": "receive_with_demarshal",
+    "type": "logical",
+    "reason": "Would mean every valid packet's source equals its destination, collapsing sender/receiver identity",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "actEndPoint,\n875 | | )\n    | |_- at the end of the function body\n...\n884 |           rr.arrow_Packet_cpacket()@.src == rr.arrow_Packet_cpacket()@.dst,\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "timeout_implies_not_ok",
+    "target_fn": "receive_with_demarshal",
+    "type": "logical",
+    "reason": "Would mean a timeout kills the connection, conflicting with the spec that only Fail sets ok to false",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "_event: NetEvent,\n874 | |     netc_ok: bool,\n875 | |     old_history: Seq<NetEvent>,\n876 | |     new_history: Seq<NetEvent>,\n877 | | )\n    | |_- at the end of the function body\n...\n884 |           !netc_ok,\n    |           ^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "to_vec_always_empty",
+    "target_fn": "to_vec",
+    "type": "behavioral",
+    "reason": "Would mean converting a hashmap to a vector always loses all entries, breaking serialization roundtrips",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "i_5_to_vec_always_empty(h: CKeyHashMap)\n    |       -------------------------------------------- at the end of the function body\n872 |     ensures\n873 |         h.spec_to_vec()@.len() == 0,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

@@ -1,0 +1,119 @@
+===PHI_START===
+NAME: ret_in_allocated_4k
+TARGET_FN: alloc_and_map_io_4k
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_ret_in_allocated_4k(old_self: PageAllocator, new_self: PageAllocator, ret: PagePtr, c_ptr: ContainerPtr)
+    requires
+        old_self.wf(),
+        old_self.free_pages_4k.len() > 0,
+        old_self.container_map_4k@.dom().contains(c_ptr),
+        new_self.wf(),
+        new_self.allocated_pages_4k() =~= old_self.allocated_pages_4k(),
+        old_self.allocated_pages_4k().contains(ret) == false,
+        new_self.mapped_pages_4k() =~= old_self.mapped_pages_4k().insert(ret),
+        page_ptr_valid(ret),
+    ensures
+        new_self.allocated_pages_4k().contains(ret),
+{
+}
+```
+REASON: If ret ends up in allocated_pages_4k rather than only in mapped_pages_4k, the page bypassed the mapping step or was double-tracked
+===PHI_END===
+
+===PHI_START===
+NAME: ret_still_free_at_boundary
+TARGET_FN: alloc_and_map_io_4k
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_ret_still_free_at_boundary(old_self: PageAllocator, new_self: PageAllocator, ret: PagePtr, c_ptr: ContainerPtr)
+    requires
+        old_self.wf(),
+        old_self.free_pages_4k.len() == 1,
+        old_self.container_map_4k@.dom().contains(c_ptr),
+        new_self.wf(),
+        new_self.free_pages_4k() =~= old_self.free_pages_4k().remove(ret),
+        new_self.free_pages_4k.len() == old_self.free_pages_4k.len() - 1,
+        page_ptr_valid(ret),
+    ensures
+        new_self.free_pages_4k().contains(ret),
+{
+}
+```
+REASON: When the free list has exactly one page, the returned page must not remain in the free set after allocation
+===PHI_END===
+
+===PHI_START===
+NAME: ret_has_pcid_mappings
+TARGET_FN: alloc_and_map_io_4k
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_ret_has_pcid_mappings(new_self: PageAllocator, ret: PagePtr, ioid: IOid, va: VAddr)
+    requires
+        new_self.wf(),
+        new_self.page_is_mapped(ret),
+        page_ptr_valid(ret),
+        new_self.page_mappings(ret) =~= Set::<(Pcid, VAddr)>::empty(),
+        new_self.page_io_mappings(ret) =~= Set::<(IOid, VAddr)>::empty().insert((ioid, va)),
+    ensures
+        new_self.page_mappings(ret).len() > 0,
+{
+}
+```
+REASON: An IO-mapped page should have empty regular (Pcid) mappings; non-empty regular mappings would indicate cross-contamination of mapping types
+===PHI_END===
+
+===PHI_START===
+NAME: io_mapping_leaks_to_other
+TARGET_FN: alloc_and_map_io_4k
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_io_mapping_leaks_to_other(old_self: PageAllocator, new_self: PageAllocator, ret: PagePtr, p: PagePtr, ioid: IOid, va: VAddr)
+    requires
+        old_self.wf(),
+        new_self.wf(),
+        p != ret,
+        old_self.page_is_mapped(p),
+        new_self.page_is_mapped(p),
+        !old_self.page_io_mappings(p).contains((ioid, va)),
+        new_self.page_io_mappings(ret) =~= Set::<(IOid, VAddr)>::empty().insert((ioid, va)),
+        forall|q: PagePtr|
+            #![trigger new_self.page_is_mapped(q)]
+            #![trigger new_self.page_io_mappings(q)]
+            new_self.page_is_mapped(q) && q != ret ==> new_self.page_io_mappings(q) =~= old_self.page_io_mappings(q),
+    ensures
+        new_self.page_io_mappings(p).contains((ioid, va)),
+{
+}
+```
+REASON: The new IO mapping (ioid, va) must not leak to any other already-mapped page; this would violate IO isolation between pages
+===PHI_END===
+
+===PHI_START===
+NAME: ret_not_from_free_list
+TARGET_FN: alloc_and_map_io_4k
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_ret_not_from_free_list(old_self: PageAllocator, new_self: PageAllocator, ret: PagePtr, c_ptr: ContainerPtr)
+    requires
+        old_self.wf(),
+        old_self.free_pages_4k.len() > 0,
+        old_self.container_map_4k@.dom().contains(c_ptr),
+        new_self.wf(),
+        new_self.free_pages_4k() =~= old_self.free_pages_4k().remove(ret),
+        new_self.free_pages_4k.len() == old_self.free_pages_4k.len() - 1,
+        !old_self.page_is_mapped(ret),
+        new_self.page_is_mapped(ret),
+        page_ptr_valid(ret),
+    ensures
+        !old_self.free_pages_4k().contains(ret),
+{
+}
+```
+REASON: The returned page must have originated from the free list; if it did not, the allocator handed out an untracked or already-in-use page
+===PHI_END===

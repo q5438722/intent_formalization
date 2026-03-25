@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: init_invariant_rec_intensional_bridge
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `init_invariant_rec` is external_body performing induction over suffix positions with `decreases i` but no verified proof body. This is an unverified trust assumption — the inductive reasoning over suffix-indexed predicates is assumed correct without SMT verification.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: always_unfold_intensional_bridge
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `always_unfold` is external_body bridging the forall embedded inside `always`'s `TempPred::new` closure to a bare forall in the ensures. This is an unverified trust assumption resolving the intensional closure gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: implies_apply_closure_bridge
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `implies_apply` is external_body bridging `p.implies(q).satisfied_by(ex)` — which evaluates a fresh closure from `TempPred::new` — to the direct modus ponens conclusion. This is an unverified trust assumption resolving the intensional closure gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: invariant_ignores_next_action
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: If init implies false, then `spec.entails(lift_state(init))` means spec is unsatisfiable, so spec vacuously entails anything. This is standard ex falso quodlibet, not a spec gap.
+===VERDICT_END===
+
+===SUMMARY===
+Three true positives: `init_invariant_rec`, `always_unfold`, and `implies_apply` are independent external_body axioms each bridging distinct intensional closure gaps — induction over suffix-indexed predicates, extracting a forall from always's closure wrapper, and modus ponens through TempPred::new wrapping, respectively. The remaining one is a false positive: deriving always(false) from an unsatisfiable init is standard ex falso.
+===END_SUMMARY===

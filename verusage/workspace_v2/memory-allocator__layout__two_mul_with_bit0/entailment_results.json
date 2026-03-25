@@ -1,0 +1,47 @@
+[
+  {
+    "name": "two_mul_bit0_negative_y",
+    "type": "boundary",
+    "code": "proof fn phi_1_two_mul_bit0_negative_y(x1: int)\n    ensures\n        (2 * x1) / (2 * (-1)) == x1 / (-1),\n{\n    two_mul_with_bit0(x1, -1);\n}",
+    "reason": "The lemma accepts negative `y1` \u2014 for `y1 = -1`, Verus Euclidean division `x1 / (-1)` may differ from expected truncation division semantics",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "two_mul_bit0_negative_both",
+    "type": "boundary",
+    "code": "proof fn phi_2_two_mul_bit0_negative_both(x1: int, y1: int)\n    requires\n        y1 < 0,\n        x1 < 0,\n    ensures\n        (2 * x1) / (2 * y1) == x1 / y1,\n{\n    two_mul_with_bit0(x1, y1);\n}",
+    "reason": "Both arguments negative \u2014 Euclidean division for negative divisor is non-trivial and the lemma applies without restriction",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "two_mul_bit0_zero_x",
+    "type": "boundary",
+    "code": "proof fn phi_3_two_mul_bit0_zero_x(y1: int)\n    requires\n        y1 != 0,\n    ensures\n        0 / (2 * y1) == 0 / y1,\n        0 / (2 * y1) == 0,\n{\n    two_mul_with_bit0(0, y1);\n}",
+    "reason": "With `x1 == 0`, both sides are trivially 0 \u2014 degenerate case where the scaling property provides no useful information",
+    "entailed": false,
+    "verus_output": "fer type of the type parameter `hint_please_add_suffix_on_literal_like_100u32_or_100int_or_100nat` declared on the function `spec_literal_integer`\n   |\nhelp: consider specifying the generic argument\n   |\n25 |         0::<hint_please_add_suffix_on_literal_like_100u32_or_100int_or_100nat> / (2 * y1) == 0,\n   |          +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n\nerror: aborting due to 3 previous errors\n\nFor more information about this error, try `rustc --explain E0282`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "two_mul_bit0_chain",
+    "type": "logical",
+    "code": "proof fn phi_4_two_mul_bit0_chain(x1: int, y1: int)\n    requires\n        y1 != 0,\n    ensures\n        (4 * x1) / (4 * y1) == x1 / y1,\n{\n    two_mul_with_bit0(2 * x1, 2 * y1);\n    assert(2 * (2 * x1) == 4 * x1) by(nonlinear_arith);\n    assert(2 * (2 * y1) == 4 * y1) by(nonlinear_arith);\n    two_mul_with_bit0(x1, y1);\n}",
+    "reason": "The lemma can be chained to derive `(2^n * x) / (2^n * y) == x / y` for any power of 2 \u2014 this is correct but shows the lemma's power extends to arbitrary even scaling factors",
+    "entailed": true,
+    "verus_output": "verification results:: 5 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "nonlinear_arith_step_unsound",
+    "type": "logical",
+    "code": "proof fn phi_5_nonlinear_arith_step_unsound(x1: int, y1: int)\n    requires\n        y1 != 0,\n    ensures\n        (2 * x1) / (2 * y1) == ((2 * x1) / 2) / y1,\n{\n    assert((2 * x1) / (2 * y1) == ((2 * x1) / 2) / y1) by(nonlinear_arith)\n        requires y1 != 0;\n}",
+    "reason": "The intermediate step `(2*x)/(2*y) == ((2*x)/2)/y` uses `nonlinear_arith` to assert a division-associativity property \u2014 this relies on Verus's Euclidean division semantics and the Z3 nonlinear arithmetic solver's correctness",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

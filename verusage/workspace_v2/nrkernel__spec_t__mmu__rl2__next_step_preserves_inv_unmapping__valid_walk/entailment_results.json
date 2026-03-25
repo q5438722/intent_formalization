@@ -1,0 +1,47 @@
+[
+  {
+    "name": "view_only_contains_valid_walks",
+    "type": "behavioral",
+    "code": "proof fn phi_1_view_only_contains_valid_walks(mem: PTMem, va: usize)\n    requires\n        mem.is_base_pt_walk(va),\n    ensures\n        mem.pt_walk(va).result() is Valid,\n{\n}",
+    "reason": "`is_base_pt_walk` destructures result as `WalkResult::Valid { vbase, pte }` \u2014 tests that the pattern match implies the result variant; if the match semantics are looser than expected, non-Valid results could sneak into the view domain",
+    "entailed": true,
+    "verus_output": "d to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__next_step_preserves_inv_unmapping__valid_walk/phi_1_view_only_contains_valid_walks.rs:192:9\n    |\n192 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "view_pte_equals_walk_pte",
+    "type": "behavioral",
+    "code": "proof fn phi_2_view_pte_equals_walk_pte(mem: PTMem, va: usize)\n    requires\n        mem.is_base_pt_walk(va),\n    ensures\n        ({ reveal(PTMem::view); mem@[va] }) == mem.pt_walk(va).result()->pte,\n{\n    reveal(PTMem::view);\n}",
+    "reason": "After revealing the opaque `view`, the PTE at `va` should equal the walk result's PTE \u2014 tests that the `Map::new` value function correctly extracts the PTE from the walk result",
+    "entailed": false,
+    "verus_output": "nd_removed_lints)]` on by default\n\nerror: expected pure mathematical expression\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__next_step_preserves_inv_unmapping__valid_walk/phi_2_view_pte_equals_walk_pte.rs:1325:9\n     |\n1325 |         ({ reveal(PTMem::view); mem@[va] }) == mem.pt_walk(va).result()->pte,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "lemma_pt_walk_complete_always_true",
+    "type": "logical",
+    "code": "proof fn phi_3_lemma_pt_walk_complete_always_true(mem: PTMem, va: usize)\n    ensures\n        mem.pt_walk(va).complete,\n{\n    PTMem::lemma_pt_walk(mem, va);\n}",
+    "reason": "`lemma_pt_walk` is `external_body` and asserts `.complete` for all walks \u2014 but `pt_walk` sets `complete: true` in all branches anyway; the external_body is redundant here but still an unverified trust assumption",
+    "entailed": true,
+    "verus_output": " `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__next_step_preserves_inv_unmapping__valid_walk/phi_3_lemma_pt_walk_complete_always_true.rs:192:9\n    |\n192 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "is_base_pt_walk_vaddr_bounded",
+    "type": "boundary",
+    "code": "proof fn phi_4_is_base_pt_walk_vaddr_bounded(mem: PTMem, va: usize)\n    requires\n        mem.is_base_pt_walk(va),\n    ensures\n        va < MAX_BASE,\n{\n}",
+    "reason": "`is_base_pt_walk` includes `vaddr < MAX_BASE` \u2014 tests that the bound is actually enforced; if MAX_BASE were incorrectly large or the check were missing, walks for non-canonical addresses could pollute the view",
+    "entailed": true,
+    "verus_output": "ed to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__next_step_preserves_inv_unmapping__valid_walk/phi_4_is_base_pt_walk_vaddr_bounded.rs:192:9\n    |\n192 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "walk_vaddr_preserved_in_result",
+    "type": "behavioral",
+    "code": "proof fn phi_5_walk_vaddr_preserved_in_result(mem: PTMem, va: usize)\n    ensures\n        mem.pt_walk(va).vaddr == va,\n{\n}",
+    "reason": "`pt_walk` constructs `Walk { vaddr, ... }` in every branch \u2014 tests that the walk records the queried virtual address faithfully; if a different vaddr were stored, `is_base_pt_walk`'s `vbase == vaddr` check would compare against the wrong address",
+    "entailed": true,
+    "verus_output": "d to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__next_step_preserves_inv_unmapping__valid_walk/phi_5_walk_vaddr_preserved_in_result.rs:192:9\n    |\n192 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,95 @@
+===PHI_START===
+NAME: resp_matches_req_is_symmetric
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_resp_matches_req_is_symmetric(m1: Message, m2: Message)
+    requires
+        resp_msg_matches_req_msg(m1, m2),
+    ensures
+        m1.dst == m2.src && m1.src == m2.dst && m1.rpc_id == m2.rpc_id,
+{
+}
+```
+REASON: resp_msg_matches_req_msg swaps src/dst and preserves rpc_id but does not enforce that req and resp are on different hosts — a controller could match its own request as a response if content variants align
+===PHI_END===
+
+===PHI_START===
+NAME: scheduled_deletion_timestamp_redundant
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_scheduled_deletion_timestamp_redundant(vrs: VReplicaSetView, controller_id: int, s: ClusterState)
+    requires
+        s.scheduled_reconciles(controller_id).contains_key(vrs.object_ref()),
+        vrs_in_schedule_does_not_have_deletion_timestamp(vrs, controller_id)(s),
+    ensures
+        ({
+            let obj = s.scheduled_reconciles(controller_id)[vrs.object_ref()];
+            obj.metadata.deletion_timestamp is None
+            && VReplicaSetView::unmarshal(obj).unwrap().metadata().deletion_timestamp is None
+            && (VReplicaSetView::unmarshal(obj) is Ok ==> VReplicaSetView::unmarshal(obj)->Ok_0.metadata().deletion_timestamp == obj.metadata.deletion_timestamp)
+        }),
+{
+}
+```
+REASON: the predicate checks deletion_timestamp on both the raw DynamicObjectView and the unmarshalled VReplicaSetView, but unmarshal copies metadata verbatim — these are always equal, so the second check is redundant and masks the fact that no deeper validation occurs
+===PHI_END===
+
+===PHI_START===
+NAME: pending_req_xor_allows_both_absent
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_pending_req_xor_allows_both_absent(controller_id: int, key: ObjectRef, s: ClusterState)
+    requires
+        s.ongoing_reconciles(controller_id).contains_key(key),
+        s.ongoing_reconciles(controller_id)[key].pending_req_msg is None,
+    ensures
+        Cluster::pending_req_in_flight_xor_resp_in_flight_if_has_pending_req_msg(controller_id, key)(s),
+{
+}
+```
+REASON: the "xor" invariant is vacuously true when pending_req_msg is None — it provides no constraint on reconciles with no pending request, so a controller in a broken state with no pending message silently satisfies the invariant
+===PHI_END===
+
+===PHI_START===
+NAME: reconcile_spec_uid_no_status_check
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_reconcile_spec_uid_no_status_check(controller_id: int, vrs: VReplicaSetView, s: ClusterState)
+    requires
+        s.ongoing_reconciles(controller_id).contains_key(vrs.object_ref()),
+        Cluster::the_object_in_reconcile_has_spec_and_uid_as(controller_id, vrs)(s),
+    ensures
+        ({
+            let cr = s.ongoing_reconciles(controller_id)[vrs.object_ref()].triggering_cr;
+            cr.metadata.uid == vrs.metadata().uid
+            && VReplicaSetView::unmarshal(cr)->Ok_0.spec() == vrs.spec()
+        }),
+{
+}
+```
+REASON: the_object_in_reconcile_has_spec_and_uid_as checks spec and uid match but completely ignores status — a reconciliation could operate on an object whose status has diverged arbitrarily from the expected CR
+===PHI_END===
+
+===PHI_START===
+NAME: object_ref_ignores_uid
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_object_ref_ignores_uid(v1: VReplicaSetView, v2: VReplicaSetView)
+    requires
+        v1.metadata().name is Some,
+        v1.metadata().namespace is Some,
+        v1.metadata().name == v2.metadata().name,
+        v1.metadata().namespace == v2.metadata().namespace,
+        v1.metadata().uid != v2.metadata().uid,
+    ensures
+        v1.object_ref() == v2.object_ref(),
+{
+}
+```
+REASON: object_ref is (kind, name, namespace) and ignores uid — two different incarnations of a resource after delete-recreate share the same ObjectRef, so maps keyed by ObjectRef conflate distinct resource instances
+===PHI_END===

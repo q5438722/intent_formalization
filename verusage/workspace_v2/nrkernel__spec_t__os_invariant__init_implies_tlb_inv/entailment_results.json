@@ -1,0 +1,47 @@
+[
+  {
+    "name": "init_refines_external_body_unconstrained",
+    "type": "logical",
+    "code": "proof fn phi_1_init_refines_external_body_unconstrained(pre: crate::rl3::State, c: crate::Constants)\n    requires\n        crate::rl3::init(pre, c),\n    ensures\n        crate::rl1::init(pre@, c),\n{\n    crate::rl3::refinement::to_rl1::init_refines(pre, c);\n}",
+    "reason": "`init_refines` is `external_body` \u2014 it asserts rl3 init refines to rl1 init without proof; if the refinement is wrong, the entire rl3\u2192rl1 abstraction chain is unsound",
+    "entailed": true,
+    "verus_output": "verification results:: 10 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "rl3_init_external_body_unconstrained",
+    "type": "logical",
+    "code": "proof fn phi_2_rl3_init_external_body_unconstrained(pre: crate::rl3::State, c: crate::Constants)\n    requires\n        crate::rl3::init(pre, c),\n    ensures\n        pre.interp().happy,\n{\n    crate::rl3::refinement::to_rl1::init_refines(pre, c);\n}",
+    "reason": "`rl3::init` is `closed spec` `external_body` \u2014 its precondition is opaque, so `init_refines` can derive any property of the rl1 interpretation without the rl3 init condition being verifiably checked",
+    "entailed": true,
+    "verus_output": "verification results:: 10 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "rl3_interp_external_body_no_constraint",
+    "type": "logical",
+    "code": "proof fn phi_3_rl3_interp_external_body_no_constraint(s1: crate::rl3::State, s2: crate::rl3::State)\n    requires\n        s1.pt_mem === s2.pt_mem,\n        s1.sbuf === s2.sbuf,\n        s1.writes === s2.writes,\n        s1.happy == s2.happy,\n        s1.phys_mem === s2.phys_mem,\n        s1.tlbs === s2.tlbs,\n    ensures\n        s1.interp().happy == s2.interp().happy,\n{\n}",
+    "reason": "`rl3::State::interp` is `external_body` `closed spec` \u2014 structurally equal rl3 states should produce equal rl2 interpretations, but the interp function is completely opaque and unverified",
+    "entailed": false,
+    "verus_output": "ate field\n\nerror[E0616]: field `tlbs` of struct `rl3::State` is private\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__os_invariant__init_implies_tlb_inv/phi_3_rl3_interp_external_body_no_constraint.rs:709:24\n    |\n709 |         s1.tlbs === s2.tlbs,\n    |                        ^^^^ private field\n\nerror: aborting due to 12 previous errors\n\nSome errors have detailed explanations: E0609, E0616.\nFor more information about an error, try `rustc --explain E0609`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "os_init_pml4_region_in_allocated",
+    "type": "behavioral",
+    "code": "proof fn phi_4_os_init_pml4_region_in_allocated(c: crate::os::Constants, s: crate::os::State)\n    requires\n        crate::os::init(c, s),\n    ensures\n        s.os_ext.allocated.contains(crate::defs::MemRegion { base: s.mmu@.pt_mem.pml4 as nat, size: 4096 }),\n{\n}",
+    "reason": "OS init requires the PML4 region is in `allocated` \u2014 tests that the allocated set is correctly initialized; if wrong, the PML4 page could be reallocated for other uses",
+    "entailed": true,
+    "verus_output": "verification results:: 10 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "os_init_empty_pml4_entries",
+    "type": "behavioral",
+    "code": "proof fn phi_5_os_init_empty_pml4_entries(c: crate::os::Constants, s: crate::os::State, i: usize)\n    requires\n        crate::os::init(c, s),\n        0 <= i < 512,\n    ensures\n        s.mmu@.pt_mem.read(add(s.mmu@.pt_mem.pml4, mul(i, 8))) == 0,\n{\n}",
+    "reason": "OS init requires all 512 PML4 entries are zero \u2014 tests that the page table starts empty; non-zero entries at init would create phantom mappings before the OS sets up its address space",
+    "entailed": true,
+    "verus_output": "verification results:: 10 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

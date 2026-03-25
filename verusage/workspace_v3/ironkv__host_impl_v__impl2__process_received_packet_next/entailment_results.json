@@ -1,0 +1,52 @@
+[
+  {
+    "name": "lookup_present_returns_none",
+    "target_fn": "hashtable_lookup",
+    "type": "behavioral",
+    "reason": "If a key is in the hashtable domain, lookup must return Some; returning None would break every read path.",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "y)\n     |       ------------------------------------------------------------------ at the end of the function body\n...\n2132 |         hashtable_lookup(h, k) is None,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 6 warnings emitted\n\n"
+  },
+  {
+    "name": "get_reply_owner_produces_empty_out",
+    "target_fn": "next_get_request_reply",
+    "type": "behavioral",
+    "reason": "When we own the key and should_send is true, a reply packet must be emitted; an empty out set means the client never gets an answer.",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "------------------------------------------------------------------------------------ at the end of the function body\n...\n2135 |         out == Set::<Packet>::empty(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 6 warnings emitted\n\n"
+  },
+  {
+    "name": "set_request_no_hashtable_update",
+    "target_fn": "next_set_request_complete",
+    "type": "behavioral",
+    "reason": "A successful local SetRequest with Some(v) must insert into the hashtable; an unchanged h means writes are silently lost.",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "---------------------------------------------------------------------------------------------------------------- at the end of the function body\n...\n2136 |         post.h == pre.h,\n     |         ^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 6 warnings emitted\n\n"
+  },
+  {
+    "name": "process_message_keeps_received_packet",
+    "target_fn": "process_message",
+    "type": "logical",
+    "reason": "After processing a message, received_packet must be cleared to None; keeping it Some would cause infinite reprocessing of the same packet.",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "-------------------------------------------------------------------------------------- at the end of the function body\n...\n2134 |         post.received_packet is Some,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 6 warnings emitted\n\n"
+  },
+  {
+    "name": "shard_send_no_delegation_update",
+    "target_fn": "next_shard",
+    "type": "boundary",
+    "reason": "When a shard is actually sent (should_send=true), the delegation map must be updated to the recipient; leaving it unchanged means the host still claims ownership of delegated keys.",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "------------------------------------------------------------ at the end of the function body\n...\n2136 |         post.delegation_map == pre.delegation_map,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 6 warnings emitted\n\n"
+  }
+]

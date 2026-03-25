@@ -1,0 +1,47 @@
+[
+  {
+    "name": "container_map_4k_not_subset_allocated",
+    "type": "logical",
+    "code": "proof fn phi_1_container_map_4k_not_subset_allocated(\n    pa: PageAllocator,\n    c: ContainerPtr,\n    p: PagePtr,\n)\n    requires\n        pa.wf(),\n        pa.container_map_4k@.dom().contains(c),\n        pa.container_map_4k@[c].contains(p),\n        !pa.allocated_pages_4k@.contains(p),\n    ensures\n        pa.container_map_4k@[c].contains(p),\n{\n}",
+    "reason": "container_map_4k tracks per-container page ownership but wf() may not require these pages to actually be in allocated_pages_4k \u2014 containers could claim unallocated pages",
+    "entailed": true,
+    "verus_output": " use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__allocator__page_allocator_spec_impl__impl2__merged_4k_to_2m/phi_1_container_map_4k_not_subset_allocated.rs:518:72\n    |\n518 |             0 <= i < NUM_PAGES && self.page_array@[i].owning_container.is_Some() ==> (\n    |                                                                        ^^^^^^^\n\nwarning: 4 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "push_remove_roundtrip_len_identity",
+    "type": "behavioral",
+    "code": "proof fn phi_2_push_remove_roundtrip_len_identity<T: Copy, const N: usize>(\n    sll: StaticLinkedList<T, N>,\n    v: T,\n    idx: SLLIndex,\n)\n    requires\n        sll.wf(),\n        sll.len() < N,\n        sll.unique(),\n        !sll@.contains(v),\n        N > 2,\n    ensures\n        ({\n            let sll2_seq = sll@.push(v);\n            let sll2_len = sll.len() + 1;\n            sll2_len - 1 == sll.len()\n        }),\n{\n}",
+    "reason": "Verifies push+remove roundtrip preserves length \u2014 trivially true by arithmetic but validates the len ensures are consistent",
+    "entailed": true,
+    "verus_output": "d - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__allocator__page_allocator_spec_impl__impl2__merged_4k_to_2m/phi_2_push_remove_roundtrip_len_identity.rs:518:72\n    |\n518 |             0 <= i < NUM_PAGES && self.page_array@[i].owning_container.is_Some() ==> (\n    |                                                                        ^^^^^^^\n\nwarning: 4 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "sll_len_without_wf_returns_value_list_len",
+    "type": "logical",
+    "code": "proof fn phi_3_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    ensures\n        sll.len() == sll.value_list_len,\n{\n}",
+    "reason": "StaticLinkedList::len's external_body ensures l == self.value_list_len unconditionally without requiring wf() \u2014 the raw field value is trusted even if the linked list is corrupted",
+    "entailed": false,
+    "verus_output": "f_returns_value_list_len.rs:1255:9\n     |\n1253 | proof fn phi_3_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n     |       -------------------------------------------------------------------------------------------------- at the end of the function body\n1254 |     ensures\n1255 |         sll.len() == sll.value_list_len,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "mapped_page_no_mappings_tracked",
+    "type": "behavioral",
+    "code": "proof fn phi_4_mapped_page_no_mappings_tracked(\n    pa: PageAllocator,\n    p: PagePtr,\n)\n    requires\n        pa.wf(),\n        pa.mapped_pages_4k@.contains(p),\n        pa.page_mappings(p) =~= Set::empty(),\n    ensures\n        pa.mapped_pages_4k@.contains(p),\n{\n}",
+    "reason": "A page can be in Mapped4k state yet have an empty mappings set \u2014 the spec may not require mapped pages to have at least one mapping recorded",
+    "entailed": true,
+    "verus_output": "ated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__allocator__page_allocator_spec_impl__impl2__merged_4k_to_2m/phi_4_mapped_page_no_mappings_tracked.rs:518:72\n    |\n518 |             0 <= i < NUM_PAGES && self.page_array@[i].owning_container.is_Some() ==> (\n    |                                                                        ^^^^^^^\n\nwarning: 4 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "remove_preserves_get_node_ref_for_removed",
+    "type": "logical",
+    "code": "proof fn phi_5_remove_preserves_get_node_ref_for_removed<T: Copy, const N: usize>(\n    old_sll: StaticLinkedList<T, N>,\n    new_sll: StaticLinkedList<T, N>,\n    remove_index: SLLIndex,\n    v: T,\n    other: T,\n)\n    requires\n        old_sll.wf(),\n        old_sll.unique(),\n        old_sll@.contains(v),\n        old_sll.get_node_ref(v) == remove_index,\n        new_sll.wf(),\n        new_sll.unique(),\n        new_sll@ =~= old_sll@.remove_value(v),\n        new_sll@.contains(other),\n        other != v,\n        old_sll.get_node_ref(other) == new_sll.get_node_ref(other),\n    ensures\n        new_sll@.contains(other),\n{\n}",
+    "reason": "remove's ensures preserves get_node_ref for remaining elements \u2014 validates the node reference stability invariant across removal",
+    "entailed": true,
+    "verus_output": " `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__allocator__page_allocator_spec_impl__impl2__merged_4k_to_2m/phi_5_remove_preserves_get_node_ref_for_removed.rs:518:72\n    |\n518 |             0 <= i < NUM_PAGES && self.page_array@[i].owning_container.is_Some() ==> (\n    |                                                                        ^^^^^^^\n\nwarning: 4 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

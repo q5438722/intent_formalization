@@ -1,0 +1,52 @@
+[
+  {
+    "name": "alloc_always_max",
+    "target_fn": "create_iommu_table_entry",
+    "type": "behavioral",
+    "reason": "If entailed, the function always allocates 3 pages and never reuses existing intermediate page table entries",
+    "entailed": false,
+    "verified": 43,
+    "errors": 1,
+    "output_tail": " old_free: usize, new_free: usize)\n     |       ------------------------------------------------------------------------- at the end of the function body\n...\n3545 |         ret_0 == 3,\n     |         ^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 63 warnings emitted\n\n"
+  },
+  {
+    "name": "alloc_always_zero",
+    "target_fn": "create_iommu_table_entry",
+    "type": "behavioral",
+    "reason": "If entailed, the function never allocates any pages making it a no-op that cannot create new table structure",
+    "entailed": false,
+    "verified": 43,
+    "errors": 1,
+    "output_tail": "old_free: usize, new_free: usize)\n     |       -------------------------------------------------------------------------- at the end of the function body\n...\n3545 |         ret_0 == 0,\n     |         ^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 63 warnings emitted\n\n"
+  },
+  {
+    "name": "no_partial_alloc",
+    "target_fn": "create_iommu_table_entry",
+    "type": "boundary",
+    "reason": "If entailed, partial reuse of existing L4/L3/L2 tables is impossible \u2014 the function either does nothing or allocates all three levels",
+    "entailed": false,
+    "verified": 43,
+    "errors": 1,
+    "output_tail": " fn phi_3_no_partial_alloc(ret_0: usize)\n     |       --------------------------------------- at the end of the function body\n...\n3543 |         ret_0 == 0 || ret_0 == 3,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 63 warnings emitted\n\n"
+  },
+  {
+    "name": "va_indices_all_zero",
+    "target_fn": "create_iommu_table_entry",
+    "type": "logical",
+    "reason": "If entailed, va_4k_valid is so restrictive that all valid VAs decompose to index (0,0,0,_), collapsing the entire IOMMU address space to a single L2 entry",
+    "entailed": false,
+    "verified": 43,
+    "errors": 1,
+    "output_tail": "function body\n...\n3543 |         spec_va2index(va).0 == 0 && spec_va2index(va).1 == 0 && spec_va2index(va).2 == 0,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 63 warnings emitted\n\n"
+  },
+  {
+    "name": "mem_valid_only_zero",
+    "target_fn": "create_iommu_table_entry",
+    "type": "logical",
+    "reason": "If entailed, MEM_valid is vacuously satisfied only by zero, making every page entry address (including the returned L2 ptr ret.1) null",
+    "entailed": false,
+    "verified": 43,
+    "errors": 1,
+    "output_tail": "3543:9\n     |\n3539 | proof fn phi_5_mem_valid_only_zero(addr: PAddr)\n     |       ----------------------------------------- at the end of the function body\n...\n3543 |         addr == 0,\n     |         ^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 63 warnings emitted\n\n"
+  }
+]

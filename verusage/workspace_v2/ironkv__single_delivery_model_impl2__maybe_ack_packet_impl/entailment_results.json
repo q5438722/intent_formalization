@@ -1,0 +1,47 @@
+[
+  {
+    "name": "valid_ack_redundant_abstractable",
+    "type": "logical",
+    "code": "proof fn phi_1_valid_ack_redundant_abstractable(ack: CPacket, original: CPacket)\n    requires\n        valid_ack(ack, original),\n    ensures\n        outbound_packet_is_valid(&ack),\n        ack.abstractable(),\n{\n}",
+    "reason": "`valid_ack` requires both `ack.abstractable()` and `outbound_packet_is_valid(&ack)` which itself requires `cpacket.abstractable()` \u2014 the redundant conjunct suggests the spec author was unsure about the relationship (noted in the comment \"how does this relate to abstractable?\")",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "tombstone_lookup_default_zero",
+    "type": "behavioral",
+    "code": "proof fn phi_2_tombstone_lookup_default_zero(src: AbstractEndPoint, t: TombstoneTable)\n    requires\n        !t.dom().contains(src),\n    ensures\n        tombstone_table_lookup(src, t) == 0,\n{\n}",
+    "reason": "Defaulting to 0 for unknown sources means any new sender is treated as having no tombstone \u2014 if the system relies on tombstones for duplicate suppression, a fresh endpoint could replay old sequence numbers",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "ckeyhasmap_view_unconstrained",
+    "type": "logical",
+    "code": "proof fn phi_3_ckeyhasmap_view_unconstrained(m1: CKeyHashMap, m2: CKeyHashMap)\n    requires\n        m1.spec_to_vec() == m2.spec_to_vec(),\n    ensures\n        true,\n{\n}",
+    "reason": "`CKeyHashMap::view` and `spec_to_vec` are both uninterpreted \u2014 there is no axiom relating them, so the view of a CKeyHashMap is completely unconstrained relative to its vector representation, allowing inconsistent abstract states",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "clone_up_to_view_external_body",
+    "type": "logical",
+    "code": "proof fn phi_4_clone_up_to_view_external_body(e: EndPoint)\n    requires\n        e.abstractable(),\n    ensures\n        e.clone_up_to_view()@ == e@,\n{\n}",
+    "reason": "`clone_up_to_view` is `external_body` with `unimplemented!()` \u2014 the exec body panics at runtime while its ensures clause is trusted without verification",
+    "entailed": false,
+    "verus_output": "error: cannot call function `phi_4_clone_up_to_view_external_body::EndPoint::clone_up_to_view` with mode exec\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__single_delivery_model_impl2__maybe_ack_packet_impl/phi_4_clone_up_to_view_external_body.rs:1020:9\n     |\n1020 |         e.clone_up_to_view()@ == e@,\n     |         ^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "cack_state_new_ack_valid",
+    "type": "behavioral",
+    "code": "proof fn phi_5_cack_state_new_ack_valid(dst: AbstractEndPoint)\n    requires\n        dst.valid_physical_address(),\n    ensures\n        ({\n            let s = CAckState { num_packets_acked: 0, un_acked: Vec::new() };\n            s.valid(dst)\n        }),\n{\n}",
+    "reason": "If a freshly constructed CAckState with empty un_acked list and zero packets_acked is not valid, the initial state construction would be broken \u2014 but if it IS valid without checking `max_seqno >= 0`, the validity predicate may be vacuously satisfied for degenerate parameters",
+    "entailed": false,
+    "verus_output": "error: cannot call function `alloc::vec::impl&%0::new` with mode exec\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__single_delivery_model_impl2__maybe_ack_packet_impl/phi_5_cack_state_new_ack_valid.rs:1021:65\n     |\n1021 |             let s = CAckState { num_packets_acked: 0, un_acked: Vec::new() };\n     |                                                                 ^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

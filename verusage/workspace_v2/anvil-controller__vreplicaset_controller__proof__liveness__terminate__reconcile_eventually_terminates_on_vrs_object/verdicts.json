@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "marshal_preserves_integrity_external_body",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`marshal_preserves_integrity` is `#[verifier::external_body]` with `unimplemented!()` \u2014 the marshal/unmarshal roundtrip is axiomatically assumed without proof. All downstream integrity reasoning is trusted, not verified."
+  },
+  {
+    "phi": "unmarshal_ignores_state_validation",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is standard Kubernetes design. Unmarshalling is pure deserialization; state validation is performed separately at admission time by the API server, not during parsing."
+  },
+  {
+    "phi": "update_request_key_namespace_disagrees_with_obj",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`UpdateRequest::key()` derives namespace from `self.namespace` rather than `self.obj.metadata.namespace`. If these diverge, the object is stored under a key inconsistent with its own metadata."
+  },
+  {
+    "phi": "update_status_request_key_namespace_disagrees_with_obj",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "Same issue as `UpdateRequest` \u2014 `UpdateStatusRequest::key()` uses `self.namespace` instead of `self.obj.metadata.namespace`, allowing the status update to target a different namespace than the object payload claims."
+  },
+  {
+    "phi": "marshal_spec_no_injectivity",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The candidate ensures `true` \u2014 it proves nothing. The precondition assumes two distinct specs map to the same Value, but `marshal_preserves_integrity` already guarantees roundtrip fidelity, which implies the composite marshal is injective. The absence of a standalone injectivity axiom on `marshal_spec` alone is not a spec gap."
+  }
+]

@@ -1,0 +1,81 @@
+===PHI_START===
+NAME: submap_dom_subset
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_submap_dom_subset(m1: Map<int, int>, m2: Map<int, int>)
+    requires
+        m1.submap_of(m2),
+    ensures
+        m1.dom().subset_of(m2.dom()),
+{
+}
+```
+REASON: tests whether submap_of implies domain subset — if this holds trivially via SMT it's expected, but confirms the semantic foundation the lemma relies on
+===PHI_END===
+
+===PHI_START===
+NAME: finite_submap_cardinality_bound
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_finite_submap_cardinality_bound(m1: Map<int, int>, m2: Map<int, int>)
+    requires
+        m1.submap_of(m2),
+        m2.dom().finite(),
+    ensures
+        m1.dom().len() <= m2.dom().len(),
+{
+    a_submap_of_a_finite_map_is_finite(m1, m2);
+}
+```
+REASON: if the spec is too weak, cardinality ordering might not follow from finiteness alone — tests whether submap + finite propagates to cardinality bound
+===PHI_END===
+
+===PHI_START===
+NAME: empty_map_submap_of_any
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_empty_map_submap_of_any(m: Map<int, int>)
+    ensures
+        Map::<int, int>::empty().submap_of(m),
+{
+}
+```
+REASON: tests whether empty map is universally a submap — if submap_of is incorrectly axiomatized this could fail or be vacuously exploitable
+===PHI_END===
+
+===PHI_START===
+NAME: submap_value_agreement
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_submap_value_agreement(m1: Map<int, int>, m2: Map<int, int>, k: int)
+    requires
+        m1.submap_of(m2),
+        m1.contains_key(k),
+    ensures
+        m2[k] == m1[k],
+{
+}
+```
+REASON: submap_of should enforce value agreement on shared keys — if it only constrains domains without value equality, the spec would be too weak
+===PHI_END===
+
+===PHI_START===
+NAME: submap_antisymmetry_implies_equality
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_submap_antisymmetry_implies_equality(m1: Map<int, int>, m2: Map<int, int>)
+    requires
+        m1.submap_of(m2),
+        m2.submap_of(m1),
+    ensures
+        m1 === m2,
+{
+}
+```
+REASON: mutual submap should imply extensional equality — if submap_of is too weak (e.g., only domain containment without value agreement), this would fail
+===PHI_END===

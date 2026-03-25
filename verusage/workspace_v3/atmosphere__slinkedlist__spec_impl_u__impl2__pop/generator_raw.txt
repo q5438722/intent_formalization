@@ -1,0 +1,150 @@
+===PHI_START===
+NAME: pop_returned_still_in_result
+TARGET_FN: pop
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_pop_returned_still_in_result<T: Copy, const N: usize>(
+    old_self: StaticLinkedList<T, N>,
+    new_self: StaticLinkedList<T, N>,
+    ret: (T, SLLIndex),
+)
+    requires
+        old_self.wf(),
+        old_self.len() > 0,
+        old_self.unique(),
+        N > 2,
+        new_self.wf(),
+        new_self.len() == old_self.len() - 1,
+        new_self@ == old_self@.skip(1),
+        ret.0 == old_self@[0],
+        ret.1 == old_self.get_node_ref(ret.0),
+        forall|v:T| #![auto] new_self@.contains(v) ==> old_self.get_node_ref(v) == new_self.get_node_ref(v),
+    ensures
+        new_self@.contains(ret.0),
+{
+}
+```
+REASON: The popped head element should NOT remain in the result sequence when the list has unique elements
+===PHI_END===
+
+===PHI_START===
+NAME: pop_single_leaves_nonempty
+TARGET_FN: pop
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_pop_single_leaves_nonempty<T: Copy, const N: usize>(
+    old_self: StaticLinkedList<T, N>,
+    new_self: StaticLinkedList<T, N>,
+    ret: (T, SLLIndex),
+)
+    requires
+        old_self.wf(),
+        old_self.len() == 1,
+        old_self.unique(),
+        N > 2,
+        new_self.wf(),
+        new_self.len() == old_self.len() - 1,
+        new_self@ == old_self@.skip(1),
+        ret.0 == old_self@[0],
+        ret.1 == old_self.get_node_ref(ret.0),
+    ensures
+        new_self.len() > 0,
+{
+}
+```
+REASON: Popping the only element should yield an empty list, not a non-empty one
+===PHI_END===
+
+===PHI_START===
+NAME: pop_skips_two_elements
+TARGET_FN: pop
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_pop_skips_two_elements<T: Copy, const N: usize>(
+    old_self: StaticLinkedList<T, N>,
+    new_self: StaticLinkedList<T, N>,
+    ret: (T, SLLIndex),
+)
+    requires
+        old_self.wf(),
+        old_self.len() > 2,
+        old_self.unique(),
+        N > 2,
+        new_self.wf(),
+        new_self.len() == old_self.len() - 1,
+        new_self@ == old_self@.skip(1),
+        ret.0 == old_self@[0],
+        ret.1 == old_self.get_node_ref(ret.0),
+        forall|v:T| #![auto] new_self@.contains(v) ==> old_self.get_node_ref(v) == new_self.get_node_ref(v),
+    ensures
+        new_self@ =~= old_self@.skip(2),
+{
+}
+```
+REASON: Pop should remove exactly one element; skipping two would silently lose data
+===PHI_END===
+
+===PHI_START===
+NAME: pop_node_ref_changed_for_remaining
+TARGET_FN: pop
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_pop_node_ref_changed_for_remaining<T: Copy, const N: usize>(
+    old_self: StaticLinkedList<T, N>,
+    new_self: StaticLinkedList<T, N>,
+    ret: (T, SLLIndex),
+    v: T,
+)
+    requires
+        old_self.wf(),
+        old_self.len() > 0,
+        old_self.unique(),
+        N > 2,
+        new_self.wf(),
+        new_self.len() == old_self.len() - 1,
+        new_self@ == old_self@.skip(1),
+        ret.0 == old_self@[0],
+        ret.1 == old_self.get_node_ref(ret.0),
+        forall|v:T| #![auto] new_self@.contains(v) ==> old_self.get_node_ref(v) == new_self.get_node_ref(v),
+        new_self@.contains(v),
+    ensures
+        old_self.get_node_ref(v) != new_self.get_node_ref(v),
+{
+}
+```
+REASON: Node refs for values remaining in the list must be stable across pop; instability would break external index holders
+===PHI_END===
+
+===PHI_START===
+NAME: pop_ret_index_negative
+TARGET_FN: pop
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_pop_ret_index_negative<T: Copy, const N: usize>(
+    old_self: StaticLinkedList<T, N>,
+    new_self: StaticLinkedList<T, N>,
+    ret: (T, SLLIndex),
+)
+    requires
+        old_self.wf(),
+        old_self.len() > 0,
+        old_self.unique(),
+        N > 2,
+        new_self.wf(),
+        new_self.len() == old_self.len() - 1,
+        new_self@ == old_self@.skip(1),
+        ret.0 == old_self@[0],
+        ret.1 == old_self.get_node_ref(ret.0),
+        forall|v:T| #![auto] new_self@.contains(v) ==> old_self.get_node_ref(v) == new_self.get_node_ref(v),
+    ensures
+        ret.1 < 0,
+{
+}
+```
+REASON: The returned node index should be a valid non-negative array position; a negative index would be an invalid reference
+===PHI_END===

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize2pa_mem_valid_unconditional",
+    "type": "logical",
+    "code": "proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body ensures MEM_valid(ret) for ALL inputs unconditionally \u2014 any arbitrary usize is claimed to produce a valid physical address, but the spec definition `v & MEM_MASK` doesn't guarantee this for all v",
+    "entailed": false,
+    "verus_output": "_v2/atmosphere__kernel__syscall_new_proc_with_iommu__impl0__syscall_new_proc_with_endpoint_iommu/phi_1_usize2pa_mem_valid_unconditional.rs:3147:9\n     |\n3145 | proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n     |       --------------------------------------------------- at the end of the function body\n3146 |     ensures\n3147 |         MEM_valid(usize2pa(v)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 32 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "sll_len_without_wf_diverges",
+    "type": "behavioral",
+    "code": "proof fn phi_2_sll_len_without_wf_diverges<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    ensures\n        sll.len() == sll.value_list_len,\n{\n}",
+    "reason": "StaticLinkedList::len's external_body ensures `l == self.value_list_len` unconditionally (without requiring wf), but only guarantees `l == self@.len()` when wf holds \u2014 value_list_len can diverge from the ghost spec_seq length in a non-wf list",
+    "entailed": false,
+    "verus_output": "th_endpoint_iommu/phi_2_sll_len_without_wf_diverges.rs:3147:9\n     |\n3145 | proof fn phi_2_sll_len_without_wf_diverges<T, const N: usize>(sll: StaticLinkedList<T, N>)\n     |       ------------------------------------------------------------------------------------ at the end of the function body\n3146 |     ensures\n3147 |         sll.len() == sll.value_list_len,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 32 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pagetable_is_empty_allows_nonempty_l4_dom",
+    "type": "boundary",
+    "code": "proof fn phi_3_pagetable_is_empty_allows_nonempty_l4_dom(pt: PageTable)\n    requires\n        pt.is_empty(),\n    ensures\n        pt.l4_table@.dom().len() > 0,\n        pt.page_closure().contains(pt.cr3),\n{\n}",
+    "reason": "PageTable::is_empty constrains user-space L4 entries and empties L3/L2/L1 tables and mappings, but never empties l4_table itself \u2014 so page_closure still includes the L4 table page, and an \"empty\" page table still holds allocated page table pages",
+    "entailed": false,
+    "verus_output": "ommu__impl0__syscall_new_proc_with_endpoint_iommu/phi_3_pagetable_is_empty_allows_nonempty_l4_dom.rs:3150:9\n     |\n3145 | proof fn phi_3_pagetable_is_empty_allows_nonempty_l4_dom(pt: PageTable)\n     |       ----------------------------------------------------------------- at the end of the function body\n...\n3150 |         pt.page_closure().contains(pt.cr3),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 2 previous errors; 32 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "is_empty_no_kernel_l4_end_upper_bound",
+    "type": "boundary",
+    "code": "proof fn phi_4_is_empty_no_kernel_l4_end_upper_bound(pt: PageTable)\n    requires\n        pt.kernel_l4_end >= 512,\n        pt.l3_tables@.dom() == Set::<PageMapPtr>::empty(),\n        pt.l2_tables@.dom() == Set::<PageMapPtr>::empty(),\n        pt.l1_tables@.dom() == Set::<PageMapPtr>::empty(),\n        pt.mapping_4k() == Map::<VAddr, MapEntry>::empty(),\n        pt.mapping_2m() == Map::<VAddr, MapEntry>::empty(),\n        pt.mapping_1g() == Map::<VAddr, MapEntry>::empty(),\n    ensures\n        pt.is_empty(),\n{\n}",
+    "reason": "PageTable::is_empty checks `kernel_l4_end <= i < 512` for L4 entries, but if kernel_l4_end >= 512 the forall is vacuously true \u2014 no L4 entries are checked at all, so is_empty holds regardless of L4 content",
+    "entailed": true,
+    "verus_output": "lone,Debug)]\n    |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__kernel__syscall_new_proc_with_iommu__impl0__syscall_new_proc_with_endpoint_iommu/phi_4_is_empty_no_kernel_l4_end_upper_bound.rs:187:10\n    |\n187 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: 32 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "sll_wf_closed_external_body",
+    "type": "logical",
+    "code": "proof fn phi_5_sll_wf_closed_external_body<T, const N: usize>(\n    sll1: StaticLinkedList<T, N>,\n    sll2: StaticLinkedList<T, N>,\n)\n    requires\n        sll1.wf(),\n        sll2.wf(),\n        sll1@ == sll2@,\n    ensures\n        sll1.len() == sll2.len(),\n{\n}",
+    "reason": "StaticLinkedList::wf is closed spec + external_body \u2014 the relationship between wf, the ghost spec_seq, and structural fields (value_list_len, ar, etc.) is entirely unverified, so consistency between two wf lists with equal views is assumed but never proved",
+    "entailed": true,
+    "verus_output": "#[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__kernel__syscall_new_proc_with_iommu__impl0__syscall_new_proc_with_endpoint_iommu/phi_5_sll_wf_closed_external_body.rs:187:10\n    |\n187 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: 32 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

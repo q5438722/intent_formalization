@@ -1,0 +1,89 @@
+===PHI_START===
+NAME: aligned_zero_size
+TARGET_FN: aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_aligned_zero_size()
+    ensures
+        aligned(42, 0),
+{
+}
+```
+REASON: If aligned(addr, 0) is provable, the spec fails to guard against zero-size alignment (division by zero)
+===PHI_END===
+
+===PHI_START===
+NAME: upper_vaddr_equals_base
+TARGET_FN: upper_vaddr
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_upper_vaddr_equals_base(arch: Arch, layer: nat, base: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+    ensures
+        arch.upper_vaddr(layer, base) == base,
+{
+}
+```
+REASON: If upper_vaddr equals base under inv, the mapped address range is zero-sized, meaning no virtual addresses are covered
+===PHI_END===
+
+===PHI_START===
+NAME: entry_base_collision
+TARGET_FN: entry_base
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_entry_base_collision(arch: Arch, layer: nat, base: nat, i: nat, j: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+        i < arch.num_entries(layer),
+        j < arch.num_entries(layer),
+        i != j,
+    ensures
+        arch.entry_base(layer, base, i) == arch.entry_base(layer, base, j),
+{
+}
+```
+REASON: If distinct indices yield the same entry base, page table entries would collide and the translation structure is unsound
+===PHI_END===
+
+===PHI_START===
+NAME: entry_size_hierarchy_inversion
+TARGET_FN: entry_size_is_next_layer_size
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_entry_size_hierarchy_inversion(arch: Arch, i: nat)
+    requires
+        arch.inv(),
+        i + 1 < arch.layers.len(),
+    ensures
+        arch.entry_size((i + 1) as nat) >= arch.entry_size(i),
+{
+}
+```
+REASON: If a child layer's entry size is >= its parent's, the hierarchical page table decomposition is broken
+===PHI_END===
+
+===PHI_START===
+NAME: inv_allows_zero_num_entries
+TARGET_FN: inv
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_inv_allows_zero_num_entries(arch: Arch, i: nat)
+    requires
+        arch.inv(),
+        i < arch.layers.len(),
+    ensures
+        arch.num_entries(i) == 0,
+{
+}
+```
+REASON: If inv permits a layer with zero entries, the architecture admits degenerate empty layers that cannot map any addresses
+===PHI_END===

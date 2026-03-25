@@ -1,0 +1,81 @@
+===PHI_START===
+NAME: ptmem_view_external_body_write_invisible
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_ptmem_view_external_body_write_invisible(pt: PTMem, addr: usize, value: usize)
+    requires
+        true,
+    ensures
+        pt.write(addr, value)@ === pt@,
+{
+}
+```
+REASON: `PTMem::view` is `external_body` with no postconditions — writes to page table memory have no observable effect on the PTE interpretation
+===PHI_END===
+
+===PHI_START===
+NAME: rl3_interp_external_body_collapses
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_rl3_interp_external_body_collapses(s1: crate::rl3::State, s2: crate::rl3::State)
+    requires
+        true,
+    ensures
+        s1.interp() === s2.interp(),
+{
+}
+```
+REASON: `rl3::State::interp` is `external_body` closed spec — completely opaque, so any two rl3 states could map to the same rl2 state
+===PHI_END===
+
+===PHI_START===
+NAME: rl2_init_external_body_vacuous
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_rl2_init_external_body_vacuous(s: crate::rl2::State, c: crate::Constants)
+    requires
+        true,
+    ensures
+        crate::rl2::init(s, c),
+{
+}
+```
+REASON: `rl2::init` is `external_body` closed spec with no postconditions — the initial state predicate could be trivially satisfiable for any state
+===PHI_END===
+
+===PHI_START===
+NAME: max_phyaddr_width_weaker_than_constant
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_max_phyaddr_width_weaker_than_constant()
+    ensures
+        32 <= MAX_PHYADDR_WIDTH,
+        MAX_PHYADDR_WIDTH <= 52,
+        MAX_PHYADDR_WIDTH != 52,
+{
+    axiom_max_phyaddr_width_facts();
+}
+```
+REASON: `MAX_PHYADDR_WIDTH` is `external_body` constant set to 52 but the axiom only constrains it to `[32, 52]` — the axiom is weaker than the actual value, allowing the SMT solver to assume any width in that range
+===PHI_END===
+
+===PHI_START===
+NAME: effective_mappings_remove_inflight_loses_valid
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_effective_mappings_remove_inflight_loses_valid(s: crate::os::State, vaddr: nat, pte: PTE)
+    requires
+        s.interp_pt_mem().contains_pair(vaddr, pte),
+        s.inflight_vaddr().contains(vaddr),
+    ensures
+        !s.effective_mappings().contains_key(vaddr),
+{
+}
+```
+REASON: `effective_mappings` removes all inflight vaddrs from interp_pt_mem — even if the mapping is still valid and the inflight operation hasn't modified it yet, it becomes invisible to the effective mapping view
+===PHI_END===

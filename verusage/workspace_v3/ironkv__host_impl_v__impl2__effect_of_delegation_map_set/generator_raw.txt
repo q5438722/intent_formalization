@@ -1,0 +1,91 @@
+===PHI_START===
+NAME: get_conflates_distinct_keys
+TARGET_FN: get
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_get_conflates_distinct_keys(ki1: KeyIterator<CKey>, ki2: KeyIterator<CKey>)
+    requires
+        !ki1.is_end_spec(),
+        !ki2.is_end_spec(),
+        ki1.lt_spec(ki2),
+    ensures
+        *ki1.get_spec() == *ki2.get_spec(),
+{
+}
+```
+REASON: If get returns the same value for two strictly-ordered iterators, it fails to distinguish distinct keys.
+===PHI_END===
+
+===PHI_START===
+NAME: get_reconstructs_to_end
+TARGET_FN: get
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_get_reconstructs_to_end(ki: KeyIterator<CKey>)
+    requires
+        !ki.is_end_spec(),
+    ensures
+        KeyIterator::new_spec(*ki.get_spec()).is_end_spec(),
+{
+}
+```
+REASON: A key retrieved via get, when wrapped back into an iterator, should never appear ended.
+===PHI_END===
+
+===PHI_START===
+NAME: new_get_not_identity
+TARGET_FN: get
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_new_get_not_identity(k: CKey)
+    requires
+        !KeyIterator::<CKey>::new_spec(k).is_end_spec(),
+    ensures
+        *KeyIterator::<CKey>::new_spec(k).get_spec() != k,
+{
+}
+```
+REASON: get on an iterator freshly built from key k must return k; otherwise the spec breaks the new/get round-trip.
+===PHI_END===
+
+===PHI_START===
+NAME: get_reverses_order
+TARGET_FN: get
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_get_reverses_order(ki1: KeyIterator<CKey>, ki2: KeyIterator<CKey>)
+    requires
+        !ki1.is_end_spec(),
+        !ki2.is_end_spec(),
+        ki1.lt_spec(ki2),
+    ensures
+        (*ki2.get_spec()).cmp_spec(*ki1.get_spec()).lt(),
+{
+}
+```
+REASON: If ki1 < ki2 in iterator ordering, their retrieved keys must preserve that order, not reverse it.
+===PHI_END===
+
+===PHI_START===
+NAME: get_between_always_includes
+TARGET_FN: get
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_get_between_always_includes(lo: KeyIterator<CKey>, hi: KeyIterator<CKey>, ki: KeyIterator<CKey>)
+    requires
+        !ki.is_end_spec(),
+        !lo.is_end_spec(),
+        lo.lt_spec(hi),
+        ki.lt_spec(lo),
+    ensures
+        KeyIterator::between(lo, KeyIterator::new_spec(*ki.get_spec()), hi),
+{
+}
+```
+REASON: A key from an iterator strictly before lo should not land between lo and hi; would mean get ignores ordering.
+===PHI_END===

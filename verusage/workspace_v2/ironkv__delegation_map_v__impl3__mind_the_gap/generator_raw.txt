@@ -1,0 +1,88 @@
+===PHI_START===
+NAME: gap_reflexive_on_end
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_gap_reflexive_on_end<K: KeyTrait + VerusClone>(som: StrictlyOrderedMap<K>)
+    requires
+        som.valid(),
+    ensures
+        som.gap(KeyIterator::end_spec(), KeyIterator::end_spec()),
+{
+    K::cmp_properties();
+    assert forall |ki: KeyIterator<K>| KeyIterator::end_spec().lt_spec(ki) && ki.lt_spec(KeyIterator::end_spec()) implies !(som@.contains_key(*ki.get())) by {
+        // end.lt_spec(ki) requires end.k.is_Some which is false, so vacuously true
+    }
+}
+```
+REASON: `gap(end, end)` is vacuously true since `end.lt_spec(ki)` requires `end.k.is_Some()` which is always false — this means any endpoint-bounded gap trivially holds regardless of map contents
+===PHI_END===
+
+===PHI_START===
+NAME: lt_spec_not_reflexive
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_lt_spec_not_reflexive<K: KeyTrait + VerusClone>(ki: KeyIterator<K>)
+    requires
+        !ki.is_end_spec(),
+    ensures
+        !ki.lt_spec(ki),
+{
+    K::cmp_properties();
+}
+```
+REASON: `lt_spec` should be irreflexive for non-end iterators — if this verifies, it confirms `cmp_spec` irreflexivity, but if it fails, `gap` reasoning would be unsound since a key could be both a lower and upper bound
+===PHI_END===
+
+===PHI_START===
+NAME: mind_the_gap_transitive_vacuous
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_mind_the_gap_transitive_vacuous<K: KeyTrait + VerusClone>(som: StrictlyOrderedMap<K>, w: KeyIterator<K>, z: KeyIterator<K>)
+    requires
+        som.gap(w, KeyIterator::end_spec()),
+        som.gap(KeyIterator::end_spec(), z),
+    ensures
+        som.gap(w, z),
+{
+    som.mind_the_gap();
+    assert(KeyIterator::<K>::end_spec().lt_spec(KeyIterator::<K>::end_spec()) == false);
+}
+```
+REASON: Transitivity of `gap` through `end` iterators — `gap(end, z)` is vacuously true for any `z`, so `gap(w, z)` would follow from `gap(w, end)` alone, making the second premise meaningless and the transitivity rule weaker than expected
+===PHI_END===
+
+===PHI_START===
+NAME: gap_narrowing_allows_trivial
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_gap_narrowing_allows_trivial<K: KeyTrait + VerusClone>(som: StrictlyOrderedMap<K>, w: KeyIterator<K>, x: KeyIterator<K>)
+    requires
+        som.gap(w, x),
+    ensures
+        som.gap(x, x),
+{
+    som.mind_the_gap();
+    assert(x.geq_spec(w) || !w.lt_spec(x));
+}
+```
+REASON: `gap(x, x)` is always vacuously true (no `ki` with `x < ki < x`), so the narrowing property holds trivially — callers using `gap` narrowing might incorrectly believe they've established a meaningful gap when they've only produced a vacuous one
+===PHI_END===
+
+===PHI_START===
+NAME: geq_spec_end_geq_everything
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_geq_spec_end_geq_everything<K: KeyTrait + VerusClone>(ki: KeyIterator<K>)
+    ensures
+        KeyIterator::<K>::end_spec().geq_spec(ki),
+{
+    K::cmp_properties();
+}
+```
+REASON: `end` is `geq` every iterator since `end.lt_spec(ki)` is always false (requires `end.k.is_Some()`) — this means `gap` narrowing with `end` as a bound in `geq_spec` always succeeds, potentially hiding gaps that should not narrow to endpoint boundaries
+===PHI_END===

@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: flags_combine_idempotent
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `combine` computes `is_writable: a && a == a`, `is_supervisor: a || a == a`, `disable_execute: a || a == a`. All three are idempotent operations on booleans, so `f.combine(f) == f` is mathematically correct. This is a desirable lattice property, not a spec gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: flags_out_of_bounds_path_access
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: medium
+REASONING: While `path[1]` is indeed out of bounds when `path.len() == 1`, the `flags()` function returns `flags0` in the `path.len() == 1` branch, so the out-of-bounds computations of `flags1..flags3` are dead code. Verus spec functions are lazily evaluated — the intermediate values are computed but never used in the return path, and SMT can still prove the ensures since only `flags0` matters.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: valid_core_external_body_vacuous
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Equal substitution (`c1 == c2` implies `f(c1) == f(c2)`) holds for any spec function, including `external_body` ones. Spec functions are deterministic by construction in Verus. This tautology proves nothing about the external_body gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: write_read_same_addr
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `write` uses `Map::insert` and `read` uses `Map::index`. `mem.insert(addr, value)[addr] == value` follows from vstd's `Map::insert` axiom. This is correct and expected — basic read-after-write consistency.
+===VERDICT_END===
+
+===SUMMARY===
+All four candidates are false positives. Flag combine idempotency holds because AND and OR are both idempotent on booleans. The out-of-bounds path access is dead code since only `flags0` is returned for length-1 paths. Equal substitution is trivially true for any spec function. Write-read consistency follows from standard vstd Map axioms.
+===END_SUMMARY===

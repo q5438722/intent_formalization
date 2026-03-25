@@ -1,0 +1,90 @@
+===PHI_START===
+NAME: differing_index_bounded
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_differing_index_bounded(s1: Seq<int>, s2: Seq<int>)
+    requires
+        s1 != s2,
+        s1.len() == s2.len(),
+        s1.len() > 0,
+    ensures
+        ({let i = some_differing_index_for_unequal_seqs(s1, s2); i < s1.len() as int}),
+{
+    let _ = some_differing_index_for_unequal_seqs(s1, s2);
+}
+```
+REASON: If the returned index could exceed the sequence length, it would allow out-of-bounds reasoning
+===PHI_END===
+
+===PHI_START===
+NAME: equal_seqs_no_differing_index
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_equal_seqs_no_differing_index(s: Seq<int>)
+    ensures
+        forall |i: int| 0 <= i < s.len() ==> s[i] == s[i],
+{
+}
+```
+REASON: If a sequence could differ from itself at any index, extensional equality would be broken
+===PHI_END===
+
+===PHI_START===
+NAME: swap_produces_different_seq
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_swap_produces_different_seq(s: Seq<int>, i: int, j: int)
+    requires
+        0 <= i < s.len(),
+        0 <= j < s.len(),
+        i != j,
+        s[i] != s[j],
+    ensures
+        s != s.update(i, s[j]).update(j, s[i]) || s[i] == s[j],
+{
+    let s2 = s.update(i, s[j]).update(j, s[i]);
+    if s == s2 {
+        assert(s[i] == s2[i]);
+    }
+}
+```
+REASON: Swapping two distinct elements should produce a different sequence — if it didn't, the function's ability to find the differing index would be undermined
+===PHI_END===
+
+===PHI_START===
+NAME: singleton_diff_at_zero
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_singleton_diff_at_zero(a: int, b: int)
+    requires
+        a != b,
+    ensures
+        some_differing_index_for_unequal_seqs(seq![a], seq![b]) == 0,
+{
+    let i = some_differing_index_for_unequal_seqs(seq![a], seq![b]);
+}
+```
+REASON: For singleton sequences with different elements, the only valid differing index is 0 — any other return value would be out of bounds
+===PHI_END===
+
+===PHI_START===
+NAME: differing_index_witnesses_inequality
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_differing_index_witnesses_inequality(s1: Seq<int>, s2: Seq<int>)
+    requires
+        s1.len() == s2.len(),
+        forall |i: int| 0 <= i < s1.len() ==> s1[i] == s2[i],
+    ensures
+        s1 == s2,
+{
+    assert(s1 =~= s2);
+}
+```
+REASON: If pointwise equality didn't imply sequence equality, the function's precondition `s1 != s2` combined with equal lengths would be satisfiable even when all elements match — breaking extensionality
+===PHI_END===

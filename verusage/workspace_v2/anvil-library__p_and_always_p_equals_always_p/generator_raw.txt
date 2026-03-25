@@ -1,0 +1,85 @@
+===PHI_START===
+NAME: always_to_current_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_always_to_current_intensional_bridge(ex: Execution<int>, p: TempPred<int>)
+    requires
+        always(p).satisfied_by(ex),
+    ensures
+        p.satisfied_by(ex),
+{
+    always_to_current::<int>(ex, p);
+}
+```
+REASON: always_to_current is external_body extracting p at the current state from always(p)'s TempPred::new closure-wrapped forall (instantiated at suffix(0)) — intensional closure gap resolved without proof
+===PHI_END===
+
+===PHI_START===
+NAME: temp_pred_equality_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_temp_pred_equality_intensional_bridge(p: TempPred<int>, q: TempPred<int>)
+    requires
+        p.entails(q),
+        q.entails(p),
+    ensures
+        p == q,
+{
+    temp_pred_equality::<int>(p, q);
+}
+```
+REASON: temp_pred_equality is external_body forcing intensional equality from mutual entailment — structurally distinct closures collapsed to equal without proof
+===PHI_END===
+
+===PHI_START===
+NAME: mutual_entailment_derives_false_if_distinct
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_mutual_entailment_derives_false_if_distinct(p: TempPred<int>, q: TempPred<int>)
+    requires
+        p.entails(q),
+        q.entails(p),
+        p !== q,
+    ensures
+        false,
+{
+    temp_pred_equality::<int>(p, q);
+}
+```
+REASON: temp_pred_equality forces p == q from mutual entailment — if two preds are intensionally distinct but semantically equivalent, this derives false from the contradiction
+===PHI_END===
+
+===PHI_START===
+NAME: and_always_idempotent_equality
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_and_always_idempotent_equality(p: TempPred<int>)
+    ensures
+        p.and(always(p)) == always(p),
+{
+    p_and_always_p_equals_always_p::<int>(p);
+}
+```
+REASON: p.and(always(p)) and always(p) are structurally distinct TempPred closures forced equal via temp_pred_equality — the intensional equality claim depends on both external_body axioms being sound
+===PHI_END===
+
+===PHI_START===
+NAME: always_to_current_at_suffix
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_always_to_current_at_suffix(ex: Execution<int>, p: TempPred<int>, i: nat)
+    requires
+        always(p).satisfied_by(ex.suffix(i)),
+    ensures
+        p.satisfied_by(ex.suffix(i)),
+{
+    always_to_current::<int>(ex.suffix(i), p);
+}
+```
+REASON: always_to_current applied at an arbitrary suffix extracts p at ex.suffix(i) — if the closure bridge between always's forall-over-suffixes and suffix(0) identity is unsound, this extends the unsoundness to any index
+===PHI_END===

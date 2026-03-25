@@ -1,0 +1,52 @@
+[
+  {
+    "name": "exec_disable_on_new_mapping",
+    "target_fn": "alloc_and_map",
+    "type": "behavioral",
+    "reason": "Newly allocated page should not have execution disabled; spec never explicitly constrains ret.execute_disable so this tests for accidental over-constraint",
+    "entailed": false,
+    "verified": 43,
+    "errors": 1,
+    "output_tail": "r_space: Map<VAddr, MapEntry>,\n2985 | |     target_va: VAddr,\n2986 | | )\n     | |_- at the end of the function body\n...\n2992 |           ret.execute_disable == true,\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 34 warnings emitted\n\n"
+  },
+  {
+    "name": "write_perm_missing_on_new_mapping",
+    "target_fn": "alloc_and_map",
+    "type": "behavioral",
+    "reason": "Newly allocated page should be writable; spec never explicitly constrains ret.write so this checks whether the spec accidentally forces read-only pages",
+    "entailed": false,
+    "verified": 43,
+    "errors": 1,
+    "output_tail": "84 | |     new_addr_space: Map<VAddr, MapEntry>,\n2985 | |     target_va: VAddr,\n2986 | | )\n     | |_- at the end of the function body\n...\n2992 |           ret.write == false,\n     |           ^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 34 warnings emitted\n\n"
+  },
+  {
+    "name": "old_mapping_destroyed",
+    "target_fn": "alloc_and_map",
+    "type": "logical",
+    "reason": "Existing address space mappings for other VAs must be preserved; if provable, the insert-based ensures loses pre-existing entries",
+    "entailed": false,
+    "verified": 43,
+    "errors": 1,
+    "output_tail": "2987 | |     other_entry: MapEntry,\n2988 | | )\n     | |_- at the end of the function body\n...\n2997 |           !new_addr_space.dom().contains(other_va),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 34 warnings emitted\n\n"
+  },
+  {
+    "name": "page_shared_across_procs",
+    "target_fn": "alloc_and_map",
+    "type": "logical",
+    "reason": "A freshly allocated page must belong to exactly one process; if provable, the page_mapping singleton set leaks the page to another process",
+    "entailed": false,
+    "verified": 43,
+    "errors": 1,
+    "output_tail": "Addr,\n2987 | | )\n     | |_- at the end of the function body\n...\n2992 |           page_mapping_entry.contains((other_proc_ptr, other_va)),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 34 warnings emitted\n\n"
+  },
+  {
+    "name": "free_pages_not_decreased",
+    "target_fn": "alloc_and_map",
+    "type": "boundary",
+    "reason": "Allocation must consume a free page; if provable, the free page count is non-decreasing which means pages are created from nothing",
+    "entailed": false,
+    "verified": 43,
+    "errors": 1,
+    "output_tail": " | |     old_num_free: int,\n2983 | |     new_num_free: int,\n2984 | | )\n     | |_- at the end of the function body\n...\n2989 |           new_num_free >= old_num_free,\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 34 warnings emitted\n\n"
+  }
+]

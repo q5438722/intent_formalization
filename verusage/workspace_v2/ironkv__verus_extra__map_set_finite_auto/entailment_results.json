@@ -1,0 +1,47 @@
+[
+  {
+    "name": "map_finite_external_body_trusted",
+    "type": "logical",
+    "code": "proof fn phi_1_map_finite_external_body_trusted(s: Set<int>, f: spec_fn(int) -> int)\n    requires\n        s.finite(),\n    ensures\n        s.map(f).finite(),\n{\n    map_finite(s, f);\n}",
+    "reason": "`map_finite` is `external_body` with `unimplemented!()` \u2014 the finiteness preservation of `Set::map` is trusted without proof, creating an unnecessary soundness dependency",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "map_empty_is_empty",
+    "type": "boundary",
+    "code": "proof fn phi_2_map_empty_is_empty(f: spec_fn(int) -> int)\n    ensures\n        Set::<int>::empty().map(f) =~= Set::<int>::empty(),\n{\n}",
+    "reason": "Mapping an empty set should produce an empty set \u2014 if it didn't, the map operation would fabricate elements from nothing",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "map_finite_auto_instantiation",
+    "type": "logical",
+    "code": "proof fn phi_3_map_finite_auto_instantiation(s: Set<int>, f: spec_fn(int) -> int, g: spec_fn(int) -> int)\n    requires\n        s.finite(),\n    ensures\n        s.map(f).finite(),\n        s.map(g).finite(),\n        s.map(f).map(g).finite(),\n{\n    map_set_finite_auto::<int, int>();\n}",
+    "reason": "The auto lemma should allow chaining map operations while preserving finiteness \u2014 if it fails for composed maps, the auto quantifier doesn't propagate correctly",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "map_singleton_is_singleton",
+    "type": "boundary",
+    "code": "proof fn phi_4_map_singleton_is_singleton(x: int, f: spec_fn(int) -> int)\n    ensures\n        set![x].map(f) =~= set![f(x)],\n{\n}",
+    "reason": "Mapping a singleton set should produce a singleton with the mapped element \u2014 any other result means Set::map mishandles the simplest non-empty case",
+    "entailed": false,
+    "verus_output": "ntianyu/intent_formalization/verusage/workspace_v2/ironkv__verus_extra__map_set_finite_auto/phi_4_map_singleton_is_singleton.rs:37:9\n   |\n35 | proof fn phi_4_map_singleton_is_singleton(x: int, f: spec_fn(int) -> int)\n   |       ------------------------------------------------------------------- at the end of the function body\n36 |     ensures\n37 |         set![x].map(f) =~= set![f(x)],\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "map_constant_fn_produces_singleton",
+    "type": "behavioral",
+    "code": "proof fn phi_5_map_constant_fn_produces_singleton(s: Set<int>)\n    requires\n        s.finite(),\n        s.len() > 0,\n    ensures\n        s.map(|_x: int| 42int) =~= set![42int],\n{\n}",
+    "reason": "Mapping with a constant function should collapse all elements to a single value \u2014 if the result contained more than one element, Set::map would be duplicating rather than deduplicating",
+    "entailed": false,
+    "verus_output": "/home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__verus_extra__map_set_finite_auto/phi_5_map_constant_fn_produces_singleton.rs:40:9\n   |\n35 | proof fn phi_5_map_constant_fn_produces_singleton(s: Set<int>)\n   |       -------------------------------------------------------- at the end of the function body\n...\n40 |         s.map(|_x: int| 42int) =~= set![42int],\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

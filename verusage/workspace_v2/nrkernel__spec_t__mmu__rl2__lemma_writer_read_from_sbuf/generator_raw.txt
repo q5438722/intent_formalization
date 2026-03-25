@@ -1,0 +1,88 @@
+===PHI_START===
+NAME: lemma_write_seq_read_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_lemma_write_seq_read_external_body(mem: PTMem, writes: Seq<(usize, usize)>, i: int)
+    requires
+        0 <= i < writes.len(),
+        forall|j| #![auto] 0 <= j < writes.len() && writes[j].0 == writes[i].0 ==> i == j,
+    ensures
+        mem.write_seq(writes).mem[writes[i].0] == writes[i].1,
+{
+    mem.lemma_write_seq_read(writes, i);
+}
+```
+REASON: `lemma_write_seq_read` is `external_body` — the property that writing a unique address into a fold_left sequence produces the expected value is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: wf_ptmem_range_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_wf_ptmem_range_external_body(s1: State, s2: State, c: Constants)
+    requires
+        s1.wf_ptmem_range(c),
+        s1.pt_mem === s2.pt_mem,
+        s1.sbuf === s2.sbuf,
+        s1.writes === s2.writes,
+    ensures
+        s2.wf_ptmem_range(c),
+{
+}
+```
+REASON: `wf_ptmem_range` is `external_body` — the well-formedness predicate for page table memory range is entirely opaque and could depend on any state field
+===PHI_END===
+
+===PHI_START===
+NAME: writer_read_from_sbuf_chains_external
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_writer_read_from_sbuf_chains_external(state: State, c: Constants, i: int)
+    requires
+        state.wf(c),
+        state.inv_sbuf_facts(c),
+        0 <= i < state.writer_sbuf().len(),
+    ensures
+        state.writer_mem().read(state.writer_sbuf()[i].0) == state.writer_sbuf()[i].1,
+{
+    lemma_writer_read_from_sbuf(state, c, i);
+}
+```
+REASON: The writer-reads-from-sbuf lemma depends on `lemma_write_seq_read` (external_body) — the store buffer read consistency guarantee chains through an unverified lemma
+===PHI_END===
+
+===PHI_START===
+NAME: wf_implies_pml4_aligned
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_wf_implies_pml4_aligned(state: State, c: Constants)
+    requires
+        state.wf(c),
+    ensures
+        aligned(state.pt_mem.pml4 as nat, 4096),
+{
+}
+```
+REASON: Well-formedness requires pml4 alignment to 4096 — tests that the alignment constraint is correctly propagated; if too weak, misaligned pml4 could pass wf
+===PHI_END===
+
+===PHI_START===
+NAME: wf_walks_sbuf_domain_match
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_wf_walks_sbuf_domain_match(state: State, c: Constants, core: Core)
+    requires
+        state.wf(c),
+        state.walks.contains_key(core),
+    ensures
+        state.sbuf.contains_key(core),
+{
+}
+```
+REASON: `wf` requires both `walks` and `sbuf` domains equal `valid_core` — tests that walk entries always have corresponding sbuf entries
+===PHI_END===

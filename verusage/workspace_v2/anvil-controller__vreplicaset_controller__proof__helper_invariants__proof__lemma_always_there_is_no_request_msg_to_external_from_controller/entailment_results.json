@@ -1,0 +1,47 @@
+[
+  {
+    "name": "double_marshal_fixpoint",
+    "type": "logical",
+    "code": "proof fn phi_1_double_marshal_fixpoint<T: ResourceView>(o: T)\n    requires\n        true,\n    ensures\n        o.marshal().spec == T::marshal_spec(T::unmarshal_spec(o.marshal().spec)->Ok_0),\n{\n}",
+    "reason": "this assumes unmarshal_spec succeeds on marshal_spec output AND that re-marshalling produces the same Value \u2014 only unmarshal\u2218marshal = id is axiomatized (via external_body), not marshal\u2218unmarshal = id",
+    "entailed": false,
+    "verus_output": "er/phi_1_double_marshal_fixpoint.rs:4297:9\n     |\n4293 | proof fn phi_1_double_marshal_fixpoint<T: ResourceView>(o: T)\n     |       ------------------------------------------------------- at the end of the function body\n...\n4297 |         o.marshal().spec == T::marshal_spec(T::unmarshal_spec(o.marshal().spec)->Ok_0),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "different_objects_different_marshalled_specs",
+    "type": "behavioral",
+    "code": "proof fn phi_2_different_objects_different_marshalled_specs<T: ResourceView>(o1: T, o2: T)\n    requires\n        o1.spec() != o2.spec(),\n    ensures\n        T::marshal_spec(o1.spec()) != T::marshal_spec(o2.spec()),\n{\n}",
+    "reason": "marshal_spec is uninterpreted \u2014 the spec guarantees left-inverse (unmarshal\u2218marshal = id which implies injectivity), but this is only assumed via external_body and not actually proven, so the SMT solver should not be able to derive injectivity",
+    "entailed": false,
+    "verus_output": "t_marshalled_specs.rs:4297:9\n     |\n4293 | proof fn phi_2_different_objects_different_marshalled_specs<T: ResourceView>(o1: T, o2: T)\n     |       ------------------------------------------------------------------------------------ at the end of the function body\n...\n4297 |         T::marshal_spec(o1.spec()) != T::marshal_spec(o2.spec()),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "allocate_counter_unbounded_gap",
+    "type": "boundary",
+    "code": "proof fn phi_3_allocate_counter_unbounded_gap(a: ReconcileIdAllocator, n: nat)\n    requires\n        n > 0,\n    ensures\n        a.allocate().0.reconcile_id_counter == a.reconcile_id_counter + n,\n{\n}",
+    "reason": "allocate increments by exactly 1, so the post-state counter should equal original + 1, not original + arbitrary n",
+    "entailed": false,
+    "verus_output": "te_counter_unbounded_gap.rs:4297:9\n     |\n4293 | proof fn phi_3_allocate_counter_unbounded_gap(a: ReconcileIdAllocator, n: nat)\n     |       ------------------------------------------------------------------------ at the end of the function body\n...\n4297 |         a.allocate().0.reconcile_id_counter == a.reconcile_id_counter + n,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "unmarshal_wrong_kind_succeeds",
+    "type": "boundary",
+    "code": "proof fn phi_4_unmarshal_wrong_kind_succeeds<T: ResourceView>(obj: DynamicObjectView)\n    requires\n        obj.kind != T::kind(),\n        T::unmarshal_spec(obj.spec) is Ok,\n        T::unmarshal_status(obj.status) is Ok,\n    ensures\n        T::unmarshal(obj) is Ok,\n{\n}",
+    "reason": "unmarshal explicitly rejects kind mismatches as its first check \u2014 valid spec and status should NOT override a wrong kind",
+    "entailed": false,
+    "verus_output": "always_there_is_no_request_msg_to_external_from_controller/phi_4_unmarshal_wrong_kind_succeeds.rs:4299:9\n     |\n4293 | proof fn phi_4_unmarshal_wrong_kind_succeeds<T: ResourceView>(obj: DynamicObjectView)\n     |       ------------------------------------------------------------------------------- at the end of the function body\n...\n4299 |         T::unmarshal(obj) is Ok,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "update_key_independent_of_obj",
+    "type": "logical",
+    "code": "proof fn phi_5_update_key_independent_of_obj(r1: UpdateRequest, r2: UpdateRequest)\n    requires\n        r1.namespace == r2.namespace,\n        r1.name == r2.name,\n    ensures\n        r1.key() == r2.key(),\n{\n}",
+    "reason": "key() pulls kind from self.obj.kind \u2014 two requests with same namespace/name but different obj.kind yield different keys, so namespace+name alone should NOT determine key equality",
+    "entailed": false,
+    "verus_output": "roof__lemma_always_there_is_no_request_msg_to_external_from_controller/phi_5_update_key_independent_of_obj.rs:4298:9\n     |\n4293 | proof fn phi_5_update_key_independent_of_obj(r1: UpdateRequest, r2: UpdateRequest)\n     |       ---------------------------------------------------------------------------- at the end of the function body\n...\n4298 |         r1.key() == r2.key(),\n     |         ^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

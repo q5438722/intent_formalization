@@ -1,0 +1,52 @@
+[
+  {
+    "name": "mask_is_zero",
+    "target_fn": "MASK_L1_PG_ADDR",
+    "type": "behavioral",
+    "reason": "The L1 page address mask must be non-zero to select any physical address bits",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "sk_is_zero.rs:40:9\n   |\n38 | proof fn phi_1_mask_is_zero()\n   |       ----------------------- at the end of the function body\n39 |     ensures\n40 |         MASK_L1_PG_ADDR_SPEC == 0usize,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "mask_low_bits_set",
+    "target_fn": "MASK_L1_PG_ADDR",
+    "type": "boundary",
+    "reason": "L1 pages are 1GB-aligned so bits [0,29] must be zero in the mask; non-zero low bits would corrupt page alignment",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": " ---------------------------- at the end of the function body\n39 |     ensures\n40 |         MASK_L1_PG_ADDR_SPEC & bitmask_inc!(0usize, 29usize) != 0usize,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "mask_exceeds_maxphyaddr",
+    "target_fn": "MASK_L1_PG_ADDR",
+    "type": "boundary",
+    "reason": "Bits at or above MAX_PHYADDR_WIDTH must be clear; set bits there would reference non-existent physical address space",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "ddr()\n   |       ---------------------------------- at the end of the function body\n39 |     ensures\n40 |         MASK_L1_PG_ADDR_SPEC >> MAX_PHYADDR_WIDTH != 0usize,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "mask_all_ones",
+    "target_fn": "MASK_L1_PG_ADDR",
+    "type": "logical",
+    "reason": "The mask must select only the L1 page-frame bits, not every bit; equaling all-ones would be an overly broad mask",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "l_ones.rs:40:9\n   |\n38 | proof fn phi_4_mask_all_ones()\n   |       ------------------------ at the end of the function body\n39 |     ensures\n40 |         MASK_L1_PG_ADDR_SPEC == !0usize,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "mask_bit30_unset",
+    "target_fn": "MASK_L1_PG_ADDR",
+    "type": "logical",
+    "reason": "Bit 30 is the lowest bit of a 1GB-aligned page frame address and must be included in the mask; its absence would lose address information",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "_bit30_unset()\n   |       --------------------------- at the end of the function body\n39 |     ensures\n40 |         MASK_L1_PG_ADDR_SPEC & (1usize << 30u64) == 0usize,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

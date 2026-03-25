@@ -1,0 +1,20 @@
+[
+  {
+    "phi": "slice_idx_below_page_idx",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`is_block_ptr1` constrains `0 <= slice_idx <= SLICES_PER_SEGMENT` and checks the block is within the slice's address range, but never requires `slice_idx >= page_id.idx`. A block on page 10 in slice 2 is physically impossible \u2014 a page's slices must start at or after the page's own index. This is a missing constraint."
+  },
+  {
+    "phi": "two_block_ids_same_ptr",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The property just shows `block_start(b1) == block_start(b2)` when both map to the same pointer, which is a trivial arithmetic consequence. Non-uniqueness of `BlockId` for a given pointer is expected \u2014 the spec is a predicate relating pointers to block IDs, not an injective mapping. Uniqueness would be established by higher-level invariants about the allocator state."
+  },
+  {
+    "phi": "page_idx_exceeds_slices_per_segment",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The ensures only states `slice_idx <= SLICES_PER_SEGMENT`, which is directly from `is_block_ptr1`. While `page_id.idx` is indeed unbounded in this predicate, the combination of `ptr == block_start(block_id)` and the segment range constraint `segment_start < ptr <= segment_start + SEGMENT_SIZE` indirectly bounds `page_id.idx` for any satisfiable `is_block_ptr`. The \u03c6 itself is trivially true and doesn't demonstrate a real gap."
+  }
+]

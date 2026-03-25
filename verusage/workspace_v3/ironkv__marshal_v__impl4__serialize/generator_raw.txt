@@ -1,0 +1,92 @@
+===PHI_START===
+NAME: empty_vec_serializes_empty
+TARGET_FN: serialize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_empty_vec_serializes_empty(v: Vec<u64>)
+    requires
+        v@.len() == 0,
+        v.is_marshalable(),
+    ensures
+        v.ghost_serialize().len() == 0,
+{
+}
+```
+REASON: Empty vec should still emit a length prefix, so zero-length output would mean the header is missing
+===PHI_END===
+
+===PHI_START===
+NAME: single_elem_no_length_prefix
+TARGET_FN: serialize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_single_elem_no_length_prefix(v: Vec<u64>)
+    requires
+        v@.len() == 1,
+        v.is_marshalable(),
+    ensures
+        v.ghost_serialize().len() == v@[0].ghost_serialize().len(),
+{
+}
+```
+REASON: Serialized length equalling just the element size would mean the length prefix is absent from the encoding
+===PHI_END===
+
+===PHI_START===
+NAME: different_length_vecs_same_size
+TARGET_FN: serialize
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_different_length_vecs_same_size(v1: Vec<u64>, v2: Vec<u64>)
+    requires
+        v1.is_marshalable(),
+        v2.is_marshalable(),
+        v1@.len() == 0,
+        v2@.len() == 1,
+    ensures
+        v1.ghost_serialize().len() == v2.ghost_serialize().len(),
+{
+}
+```
+REASON: An empty vec and a one-element vec having identical serialization length would mean elements contribute no bytes
+===PHI_END===
+
+===PHI_START===
+NAME: prefix_not_length_encoding
+TARGET_FN: serialize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_prefix_not_length_encoding(v: Vec<u64>)
+    requires
+        v@.len() > 0,
+        v.is_marshalable(),
+    ensures
+        v.ghost_serialize().subrange(0, (v@.len() as usize).ghost_serialize().len() as int)
+          != (v@.len() as usize).ghost_serialize(),
+{
+}
+```
+REASON: The serialization format must start with the encoded length; if the prefix differs the framing is broken
+===PHI_END===
+
+===PHI_START===
+NAME: two_elem_fits_in_header_only
+TARGET_FN: serialize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_two_elem_fits_in_header_only(v: Vec<u64>)
+    requires
+        v@.len() == 2,
+        v.is_marshalable(),
+    ensures
+        v.ghost_serialize().len() <= (v@.len() as usize).ghost_serialize().len(),
+{
+}
+```
+REASON: A two-element vec's serialization fitting within just the length prefix would mean element data is lost
+===PHI_END===

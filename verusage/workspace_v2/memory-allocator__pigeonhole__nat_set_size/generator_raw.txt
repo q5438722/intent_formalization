@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: lemma_nat_range_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_lemma_nat_range_external_body(lo: nat, hi: nat)
+    requires
+        lo <= hi,
+    ensures
+        set_nat_range(lo, hi).finite(),
+        set_nat_range(lo, hi).len() == hi - lo,
+{
+    lemma_nat_range(lo, hi);
+}
+```
+REASON: `lemma_nat_range` is `external_body` — finiteness and length of the nat range set are trusted without proof; if the axiom were wrong, `nat_set_size` would inherit the unsoundness
+===PHI_END===
+
+===PHI_START===
+NAME: nat_set_size_empty
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_nat_set_size_empty()
+    ensures
+        Set::<nat>::empty().finite(),
+        Set::<nat>::empty().len() == 0,
+{
+    nat_set_size(Set::empty(), 0);
+}
+```
+REASON: `nat_set_size` with `bound == 0` proves the empty set has length 0 — relies on the external_body lemma for the vacuous range `[0, 0)`
+===PHI_END===
+
+===PHI_START===
+NAME: nat_set_size_uniqueness
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_nat_set_size_uniqueness(s1: Set<nat>, s2: Set<nat>, bound: nat)
+    requires
+        forall |i: nat| (0 <= i < bound <==> s1.contains(i)),
+        forall |i: nat| (0 <= i < bound <==> s2.contains(i)),
+    ensures
+        s1 =~= s2,
+{
+    nat_set_size(s1, bound);
+    nat_set_size(s2, bound);
+}
+```
+REASON: Any two sets satisfying the same `[0, bound)` membership are extensionally equal — follows from the `=~=` assertion in `nat_set_size`, but the proof is powered by the external_body axiom
+===PHI_END===
+
+===PHI_START===
+NAME: nat_set_size_superset
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_nat_set_size_superset(s: Set<nat>, bound: nat)
+    requires
+        forall |i: nat| (0 <= i < bound <==> s.contains(i)),
+        bound > 0,
+    ensures
+        !s.contains(bound),
+{
+    // s contains exactly [0, bound), so bound is not in s
+}
+```
+REASON: `nat_set_size` constrains membership to exactly `[0, bound)` via biconditional — an element at `bound` is excluded, but the precondition's biconditional is very strong and may over-constrain the set
+===PHI_END===
+
+===PHI_START===
+NAME: lemma_nat_range_singleton
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_lemma_nat_range_singleton(n: nat)
+    ensures
+        set_nat_range(n, (n + 1) as nat).finite(),
+        set_nat_range(n, (n + 1) as nat).len() == 1,
+{
+    lemma_nat_range(n, (n + 1) as nat);
+}
+```
+REASON: A singleton range `[n, n+1)` has length 1 — relies on the external_body axiom; if `lemma_nat_range` were unsound, singleton set finiteness/length would be wrong
+===PHI_END===

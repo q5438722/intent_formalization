@@ -1,0 +1,88 @@
+===PHI_START===
+NAME: align_exceeds_input
+TARGET_FN: align_to_usize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_align_exceeds_input(a: usize, b: usize)
+    requires
+        b > 0,
+        a >= b,
+    ensures
+        align_to_usize(a, b) > a,
+{
+}
+```
+REASON: Floor-alignment should never produce a value greater than the original input.
+===PHI_END===
+
+===PHI_START===
+NAME: align_result_not_divisible
+TARGET_FN: align_to_usize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_align_result_not_divisible(a: usize, b: usize)
+    requires
+        b > 0,
+        a < 0xFFFF_FFFF_FFFF_FFFFusize,
+    ensures
+        align_to_usize(a, b) % b != 0,
+{
+}
+```
+REASON: The result of floor-alignment must always be divisible by the alignment boundary.
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_identity_broken
+TARGET_FN: aligned
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_aligned_identity_broken(a: usize, b: usize)
+    requires
+        b > 0,
+        aligned(a as nat, b as nat),
+    ensures
+        align_to_usize(a, b) != a,
+{
+}
+```
+REASON: If an address is already aligned, align_to_usize should return it unchanged; inconsistency between aligned and align_to_usize would be a spec bug.
+===PHI_END===
+
+===PHI_START===
+NAME: align_not_idempotent
+TARGET_FN: align_to_usize
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_align_not_idempotent(a: usize, b: usize)
+    requires
+        b > 0,
+        a < 0xFFFF_FFFF_FFFF_FFFFusize,
+    ensures
+        align_to_usize(align_to_usize(a, b), b) != align_to_usize(a, b),
+{
+}
+```
+REASON: Floor-alignment must be idempotent; applying it twice should yield the same result as once.
+===PHI_END===
+
+===PHI_START===
+NAME: align_one_not_identity
+TARGET_FN: align_to_usize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_align_one_not_identity(a: usize)
+    requires
+        a < 0xFFFF_FFFF_FFFF_FFFFusize,
+    ensures
+        align_to_usize(a, 1usize) != a,
+{
+}
+```
+REASON: Every integer is 1-aligned, so aligning to 1 must always return the input unchanged.
+===PHI_END===

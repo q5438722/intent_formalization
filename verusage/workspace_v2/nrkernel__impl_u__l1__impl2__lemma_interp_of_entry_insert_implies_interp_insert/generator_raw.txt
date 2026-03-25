@@ -1,0 +1,99 @@
+===PHI_START===
+NAME: insert_implies_interp_aux_insert_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_insert_implies_interp_aux_insert_external_body(d: Directory, j: nat, base: nat, n: NodeEntry, pte: PTE)
+    requires
+        d.inv(),
+        j < d.num_entries(),
+        d.update(j, n).inv(),
+        d.interp_of_entry(j).insert(base, pte) == d.update(j, n).interp_of_entry(j),
+    ensures
+        d.interp_aux(0).insert(base, pte) == d.update(j, n).interp_aux(0),
+{
+    d.lemma_interp_of_entry_insert_implies_interp_aux_insert(0, j, base, n, pte);
+}
+```
+REASON: `lemma_interp_of_entry_insert_implies_interp_aux_insert` is `external_body` — the inductive proof that single-entry map insert propagates through `interp_aux` is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: insert_overwrites_existing_key
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_insert_overwrites_existing_key(d: Directory, j: nat, base: nat, n: NodeEntry, pte: PTE)
+    requires
+        d.inv(),
+        j < d.num_entries(),
+        d.update(j, n).inv(),
+        d.interp_of_entry(j).insert(base, pte) == d.update(j, n).interp_of_entry(j),
+        d.interp_aux(0).contains_key(base),
+    ensures
+        d.update(j, n).interp_aux(0).contains_key(base),
+        d.update(j, n).interp_aux(0)[base] == pte,
+{
+    d.lemma_interp_of_entry_insert_implies_interp_aux_insert(0, j, base, n, pte);
+}
+```
+REASON: The commented-out `!self.interp_aux(i).contains_key(base)` precondition means the external_body axiom allows silently overwriting an existing mapping at `base` — insert propagation holds even when `base` is already mapped
+===PHI_END===
+
+===PHI_START===
+NAME: update_preserves_other_entries
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_update_preserves_other_entries(d: Directory, j: nat, k: nat, n: NodeEntry)
+    requires
+        d.inv(),
+        j < d.num_entries(),
+        k < d.num_entries(),
+        j != k,
+    ensures
+        d.update(j, n).interp_of_entry(k) == d.interp_of_entry(k),
+{
+}
+```
+REASON: `update` only modifies index j but `interp_of_entry(k)` uses `entry_base(k)` which depends on `base_vaddr` — tests that non-target entries are truly unaffected
+===PHI_END===
+
+===PHI_START===
+NAME: insert_interp_implies_insert_interp_public
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_insert_interp_implies_insert_interp_public(d: Directory, j: nat, base: nat, n: NodeEntry, pte: PTE)
+    requires
+        d.inv(),
+        j < d.num_entries(),
+        d.update(j, n).inv(),
+        d.interp_of_entry(j).insert(base, pte) == d.update(j, n).interp_of_entry(j),
+    ensures
+        d.interp().insert(base, pte) == d.update(j, n).interp(),
+{
+    d.lemma_interp_of_entry_insert_implies_interp_insert(j, base, n, pte);
+}
+```
+REASON: The public `lemma_interp_of_entry_insert_implies_interp_insert` directly wraps the external_body axiom — tests that the full interp-level consequence is derivable
+===PHI_END===
+
+===PHI_START===
+NAME: inv_no_base_vaddr_alignment
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_inv_no_base_vaddr_alignment(arch: Arch, entries: Seq<NodeEntry>, layer: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+        entries.len() == arch.num_entries(layer),
+        forall|i: nat| i < entries.len() ==> entries[i as int] is Invalid,
+    ensures
+        (Directory { entries, layer, base_vaddr: 7, arch }).inv(),
+{
+}
+```
+REASON: The commented-out alignment constraint `aligned(self.base_vaddr, self.entry_size() * self.num_entries())` means `inv()` accepts arbitrary `base_vaddr` like 7 — misaligned base addresses are allowed
+===PHI_END===

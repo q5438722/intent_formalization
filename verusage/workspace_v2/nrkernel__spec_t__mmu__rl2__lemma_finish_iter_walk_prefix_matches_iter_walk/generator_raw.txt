@@ -1,0 +1,82 @@
+===PHI_START===
+NAME: all_mb0_bits_are_zero_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_all_mb0_bits_are_zero_external_body(pde1: PDE, pde2: PDE)
+    requires
+        pde1.entry == pde2.entry,
+        pde1.layer == pde2.layer,
+    ensures
+        pde1.all_mb0_bits_are_zero() == pde2.all_mb0_bits_are_zero(),
+{
+}
+```
+REASON: `all_mb0_bits_are_zero` is `external_body` — completely opaque, so its return value could be inconsistent for identical inputs
+===PHI_END===
+
+===PHI_START===
+NAME: pde_view_invalid_when_p_bit_zero
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_pde_view_invalid_when_p_bit_zero(entry: usize)
+    requires
+        entry & 1 == 0,
+    ensures
+        (PDE { entry, layer: Ghost(0) })@ === GPDE::Invalid,
+{
+}
+```
+REASON: When the P (present) bit is 0, PDE view should return Invalid — tests that non-present entries are correctly classified regardless of other bits
+===PHI_END===
+
+===PHI_START===
+NAME: mask_l3_pg_addr_equals_mask_addr
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_mask_l3_pg_addr_equals_mask_addr()
+    ensures
+        MASK_L3_PG_ADDR_SPEC == MASK_ADDR_SPEC,
+{
+}
+```
+REASON: `MASK_L3_PG_ADDR` and `MASK_ADDR` are both `bitmask_inc!(12, MAX_PHYADDR_WIDTH - 1)` — if they should differ (L3 pages vs directory addresses), their equality could mask a missing distinction
+===PHI_END===
+
+===PHI_START===
+NAME: walk_next_path_length_exceeds_4
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_walk_next_path_length_exceeds_4(mem: PTMem, walk: Walk)
+    requires
+        walk.path.len() >= 4,
+        !walk.complete,
+    ensures
+        ({
+            reveal(walk_next);
+            walk_next(mem, walk).path.len() == walk.path.len() + 1
+        }),
+{
+    reveal(walk_next);
+}
+```
+REASON: `walk_next` on a walk with path.len() >= 4 uses `arbitrary()` for the address — the walk continues with an unspecified address, producing a 5+ length path that exceeds the 4-layer page table
+===PHI_END===
+
+===PHI_START===
+NAME: iter_walk_max_4_steps
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_iter_walk_max_4_steps(mem: PTMem, vaddr: usize)
+    ensures
+        iter_walk(mem, vaddr).path.len() <= 4,
+{
+    reveal(walk_next);
+}
+```
+REASON: `iter_walk` applies `walk_next` at most 4 times — the result should have at most 4 path entries matching the 4-level x86 page table
+===PHI_END===

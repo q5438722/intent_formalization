@@ -1,0 +1,107 @@
+===PHI_START===
+NAME: compute_nrstate_version_zero_is_init
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_compute_nrstate_version_zero_is_init<DT: Dispatch>(
+    log: Map<LogIdx, LogEntry<DT>>,
+)
+    ensures
+        compute_nrstate_at_version::<DT>(log, 0) == DT::init_spec(),
+{
+}
+```
+REASON: Version 0 always returns `init_spec()` regardless of log contents — tests the base case where the log is completely ignored
+===PHI_END===
+
+===PHI_START===
+NAME: dispatch_mut_spec_trusted_no_constraints
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_dispatch_mut_spec_trusted_no_constraints<DT: Dispatch>(
+    log: Map<LogIdx, LogEntry<DT>>,
+    entry: LogEntry<DT>,
+)
+    requires
+        log.contains_key(0),
+        log[0] == entry,
+    ensures
+        compute_nrstate_at_version::<DT>(log, 1) == DT::dispatch_mut_spec(DT::init_spec(), entry.op).0,
+{
+}
+```
+REASON: `dispatch_mut_spec` is a trusted trait method with no constraints — any implementation could define arbitrary state transitions, and the spec blindly trusts it
+===PHI_END===
+
+===PHI_START===
+NAME: preserves_allows_extra_keys
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_preserves_allows_extra_keys<DT: Dispatch>(
+    a: Map<LogIdx, LogEntry<DT>>,
+    b: Map<LogIdx, LogEntry<DT>>,
+    extra_entry: LogEntry<DT>,
+    version: LogIdx,
+)
+    requires
+        forall |i| 0 <= i < version ==> a.contains_key(i),
+        forall |i| 0 <= i < version ==> a[i] == b[i],
+        !a.contains_key(version),
+        b == a.insert(version, extra_entry),
+    ensures
+        compute_nrstate_at_version::<DT>(a, version) == compute_nrstate_at_version::<DT>(b, version),
+{
+    compute_nrstate_at_version_preserves(a, b, version);
+}
+```
+REASON: Maps that agree on `[0, version)` produce the same state even if `b` has extra entries beyond `version` — the preservation lemma ignores entries at or above the version
+===PHI_END===
+
+===PHI_START===
+NAME: compute_nrstate_deterministic_same_ops
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_compute_nrstate_deterministic_same_ops<DT: Dispatch>(
+    log1: Map<LogIdx, LogEntry<DT>>,
+    log2: Map<LogIdx, LogEntry<DT>>,
+    version: LogIdx,
+)
+    requires
+        forall |i| 0 <= i < version ==> log1.contains_key(i),
+        forall |i| 0 <= i < version ==> log2.contains_key(i),
+        forall |i: nat| i < version ==> log1[i].op === log2[i].op && log1[i].node_id == log2[i].node_id,
+    ensures
+        compute_nrstate_at_version::<DT>(log1, version) == compute_nrstate_at_version::<DT>(log2, version),
+{
+    compute_nrstate_at_version_preserves(log1, log2, version);
+}
+```
+REASON: State computation depends only on the op sequence, not the log map identity — two different maps with identical entries produce the same state, meaning `node_id` is never used in state computation
+===PHI_END===
+
+===PHI_START===
+NAME: node_id_irrelevant_to_state
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_node_id_irrelevant_to_state<DT: Dispatch>(
+    log: Map<LogIdx, LogEntry<DT>>,
+    op: DT::WriteOperation,
+    nid1: NodeId,
+    nid2: NodeId,
+)
+    requires
+        nid1 != nid2,
+    ensures ({
+        let log1 = Map::empty().insert(0nat, LogEntry::<DT> { op, node_id: nid1 });
+        let log2 = Map::empty().insert(0nat, LogEntry::<DT> { op, node_id: nid2 });
+        compute_nrstate_at_version::<DT>(log1, 1) == compute_nrstate_at_version::<DT>(log2, 1)
+    }),
+{
+}
+```
+REASON: The `node_id` field of `LogEntry` is completely ignored by `compute_nrstate_at_version` — different nodes submitting the same op produce identical states, meaning the state computation cannot distinguish which node performed an operation
+===PHI_END===

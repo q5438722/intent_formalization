@@ -1,0 +1,37 @@
+[
+  {
+    "name": "aligned_zero_size",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "code": "proof fn phi_1_aligned_zero_size()\n    ensures\n        aligned(5, 0),\n{\n}",
+    "reason": "If alignment with size 0 is satisfiable, it masks division-by-zero in any spec that relies on aligned without guarding size > 0"
+  },
+  {
+    "name": "inv_empty_arch",
+    "target_fn": "inv",
+    "type": "behavioral",
+    "code": "proof fn phi_2_inv_empty_arch()\n    ensures\n        (Arch { layers: seq![] }).inv(),\n{\n}",
+    "reason": "An architecture with zero layers is vacuously valid under inv, which would allow meaningless architectures to satisfy all downstream specs"
+  },
+  {
+    "name": "upper_vaddr_no_progress",
+    "target_fn": "upper_vaddr",
+    "type": "logical",
+    "code": "proof fn phi_3_upper_vaddr_no_progress(arch: Arch, layer: nat, base: nat)\n    requires\n        arch.inv(),\n        layer < arch.layers.len(),\n    ensures\n        arch.upper_vaddr(layer, base) <= base,\n{\n}",
+    "reason": "If upper_vaddr never exceeds base, the layer covers zero address space, making all entry-size and mapping reasoning unsound"
+  },
+  {
+    "name": "entry_base_collision",
+    "target_fn": "entry_base",
+    "type": "logical",
+    "code": "proof fn phi_4_entry_base_collision(arch: Arch, layer: nat, base: nat, i: nat, j: nat)\n    requires\n        arch.inv(),\n        layer < arch.layers.len(),\n        i < arch.num_entries(layer),\n        j < arch.num_entries(layer),\n        i != j,\n    ensures\n        arch.entry_base(layer, base, i) == arch.entry_base(layer, base, j),\n{\n}",
+    "reason": "Distinct entry indices mapping to the same base address would collapse the entire page table structure, making separate pages indistinguishable"
+  },
+  {
+    "name": "aligned_implies_double_aligned",
+    "target_fn": "aligned",
+    "type": "behavioral",
+    "code": "proof fn phi_5_aligned_implies_double_aligned(addr: nat, size: nat)\n    requires\n        size > 0,\n        aligned(addr, size),\n    ensures\n        aligned(addr, 2 * size),\n{\n}",
+    "reason": "Alignment to size does not imply alignment to 2*size; if provable it would mean every 4K-aligned address is also 8K-aligned, breaking page-size distinctions"
+  }
+]

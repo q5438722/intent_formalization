@@ -1,0 +1,77 @@
+===PHI_START===
+NAME: sorted_keys_empty_trivially_true
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_sorted_keys_empty_trivially_true()
+    ensures
+        spec_sorted_keys(Vec::<CKeyKV> { inner: Ghost(Seq::empty()) }),
+{
+}
+```
+REASON: An empty vector is vacuously sorted — callers expecting a non-empty sorted collection get no guarantee of any elements
+===PHI_END===
+
+===PHI_START===
+NAME: sorted_keys_no_duplicate_exclusion
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_sorted_keys_no_duplicate_exclusion(k: CKey, v1: Vec<u8>, v2: Vec<u8>)
+    requires
+        v1@ != v2@,
+    ensures
+        !spec_sorted_keys(Vec::<CKeyKV> { inner: Ghost(seq![CKeyKV { k: k, v: v1 }, CKeyKV { k: k, v: v2 }]) }),
+{
+}
+```
+REASON: Two entries with the same key but different values cannot be sorted (strict `<` prevents equal keys) — but the spec implicitly forbids duplicate keys through `ckeykvlt`'s strict ordering rather than an explicit uniqueness constraint, which is fragile
+===PHI_END===
+
+===PHI_START===
+NAME: ckeykvlt_ignores_value
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_ckeykvlt_ignores_value(k1: CKey, k2: CKey, v1: Vec<u8>, v2: Vec<u8>, v3: Vec<u8>)
+    requires
+        k1.ukey < k2.ukey,
+    ensures
+        ckeykvlt(CKeyKV { k: k1, v: v1 }, CKeyKV { k: k2, v: v2 })
+            == ckeykvlt(CKeyKV { k: k1, v: v3 }, CKeyKV { k: k2, v: v2 }),
+{
+}
+```
+REASON: `ckeykvlt` compares only keys and completely ignores values — two entries with the same key but different values are considered equal by the ordering, so a sorted key-value list could silently drop value distinctions
+===PHI_END===
+
+===PHI_START===
+NAME: sorted_singleton_any_key
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_sorted_singleton_any_key(kv: CKeyKV)
+    ensures
+        spec_sorted_keys(Vec::<CKeyKV> { inner: Ghost(seq![kv]) }),
+{
+}
+```
+REASON: Any single-element vector is vacuously sorted regardless of the key value — there is no well-formedness check on individual keys (e.g., no range constraint on `ukey`)
+===PHI_END===
+
+===PHI_START===
+NAME: view_loses_key_identity
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_view_loses_key_identity(k: CKey, v: Vec<u8>)
+    ensures
+        ({
+            let kv = CKeyKV { k: k, v: v };
+            kv@.0 == k && kv@.1 == v@
+        }),
+{
+}
+```
+REASON: `CKeyKV::view` returns the key by value (not wrapped) and the value as `Seq<u8>` — the view always preserves exact key identity, meaning the abstract model conflates `CKey` with `AbstractKey` with no abstraction barrier, so any internal key representation change would break all downstream specs
+===PHI_END===

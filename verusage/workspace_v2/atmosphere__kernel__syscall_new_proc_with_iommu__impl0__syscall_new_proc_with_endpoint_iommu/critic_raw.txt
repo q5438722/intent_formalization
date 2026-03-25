@@ -1,0 +1,17 @@
+===VERDICT_START===
+PHI: is_empty_no_kernel_l4_end_upper_bound
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: In practice, `kernel_l4_end` is constrained to `KERNEL_MEM_END_L4INDEX` (= 1) by `pagetables_wf` and `iommutables_wf` in the `MemoryManager`. The `is_empty` spec is only used on page tables that satisfy `wf()`, which bounds `kernel_l4_end`. The vacuous truth with `kernel_l4_end >= 512` is unreachable in any well-formed context.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: sll_wf_closed_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `StaticLinkedList::wf` is `closed spec fn` with `#[verifier::external_body]` — its relationship to the ghost `spec_seq` and `value_list_len` is entirely unverified. The `len()` external_body ensures `self.wf() ==> l == self@.len()`, so the property follows from that trusted postcondition, but the entire chain is axiomatically assumed without proof.
+===VERDICT_END===
+
+===SUMMARY===
+Of the 2 candidates, 1 is a true positive: `sll_wf_closed_external_body` highlights that `StaticLinkedList::wf` being a closed external_body spec means the consistency between `wf()`, `spec_seq`, and `value_list_len` is entirely trusted without verification. The other (`is_empty_no_kernel_l4_end_upper_bound`) is a false positive — while the vacuous-truth pattern is real in isolation, `kernel_l4_end` is constrained to valid values by the `MemoryManager::pagetables_wf`/`iommutables_wf` invariants, making the scenario unreachable in well-formed systems.
+===END_SUMMARY===

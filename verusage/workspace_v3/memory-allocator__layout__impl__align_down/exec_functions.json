@@ -1,0 +1,6 @@
+[
+  {
+    "name": "align_down",
+    "code": "#[inline]\npub fn align_down(x: usize, y: usize) -> (res: usize)\n    requires y != 0,\n    ensures\n        res == (x as int / y as int) * y,\n        res <= x < res + y,\n        res % y == 0,\n        (res / y * y) == res,\n{\n    let mask = y - 1;\n\n    proof {\n        assert(0 <= (x / y) * y <= x) by(nonlinear_arith)\n            requires y > 0, x >= 0;\n\n        //assert((y & mask) == 0usize ==> (x & !mask) == sub(x, x % y)) by(bit_vector)\n        //    requires mask == sub(y, 1), y >= 1usize;\n        if y & mask == 0usize {\n            bitand_with_mask_gives_rounding(x, y);\n            assert((x & !mask) == (x / y) * y);\n            assert((x & !mask) == (x as int / y as int) * y);\n        }\n\n        assert((x as int / y as int) == (x / y) as int);\n\n        assert(x / y * y + x % y == x) by(nonlinear_arith) requires y != 0;\n        assert(0 <= x % y < y);\n        let t = x / y;\n        mul_mod_right(t as int, y as int);\n        assert(y != 0 ==> (t * y) / y as int * y == t * y) by(nonlinear_arith);\n    }\n\n    if ((y & mask) == 0) { // power of two?\n        x & !mask\n    } else {\n        (x / y) * y\n    }\n}"
+  }
+]

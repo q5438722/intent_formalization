@@ -1,0 +1,37 @@
+[
+  {
+    "name": "align_exceeds_input",
+    "target_fn": "align_to_usize",
+    "type": "behavioral",
+    "code": "proof fn phi_1_align_exceeds_input(a: usize, b: usize)\n    requires\n        b > 0,\n        a >= b,\n    ensures\n        align_to_usize(a, b) > a,\n{\n}",
+    "reason": "Floor-alignment should never produce a value greater than the original input."
+  },
+  {
+    "name": "align_result_not_divisible",
+    "target_fn": "align_to_usize",
+    "type": "behavioral",
+    "code": "proof fn phi_2_align_result_not_divisible(a: usize, b: usize)\n    requires\n        b > 0,\n        a < 0xFFFF_FFFF_FFFF_FFFFusize,\n    ensures\n        align_to_usize(a, b) % b != 0,\n{\n}",
+    "reason": "The result of floor-alignment must always be divisible by the alignment boundary."
+  },
+  {
+    "name": "aligned_identity_broken",
+    "target_fn": "aligned",
+    "type": "logical",
+    "code": "proof fn phi_3_aligned_identity_broken(a: usize, b: usize)\n    requires\n        b > 0,\n        aligned(a as nat, b as nat),\n    ensures\n        align_to_usize(a, b) != a,\n{\n}",
+    "reason": "If an address is already aligned, align_to_usize should return it unchanged; inconsistency between aligned and align_to_usize would be a spec bug."
+  },
+  {
+    "name": "align_not_idempotent",
+    "target_fn": "align_to_usize",
+    "type": "logical",
+    "code": "proof fn phi_4_align_not_idempotent(a: usize, b: usize)\n    requires\n        b > 0,\n        a < 0xFFFF_FFFF_FFFF_FFFFusize,\n    ensures\n        align_to_usize(align_to_usize(a, b), b) != align_to_usize(a, b),\n{\n}",
+    "reason": "Floor-alignment must be idempotent; applying it twice should yield the same result as once."
+  },
+  {
+    "name": "align_one_not_identity",
+    "target_fn": "align_to_usize",
+    "type": "boundary",
+    "code": "proof fn phi_5_align_one_not_identity(a: usize)\n    requires\n        a < 0xFFFF_FFFF_FFFF_FFFFusize,\n    ensures\n        align_to_usize(a, 1usize) != a,\n{\n}",
+    "reason": "Every integer is 1-aligned, so aligning to 1 must always return the input unchanged."
+  }
+]

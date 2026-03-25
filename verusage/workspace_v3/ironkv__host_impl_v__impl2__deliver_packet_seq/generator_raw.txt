@@ -1,0 +1,84 @@
+===PHI_START===
+NAME: ios_length_mismatch
+TARGET_FN: deliver_packet_seq
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_ios_length_mismatch(packets: Seq<CPacket>)
+    requires
+        packets.len() > 0,
+    ensures
+        map_sent_packet_seq_to_ios(packets).len() != packets.len(),
+{
+}
+```
+REASON: If ios length differs from packets length, deliver_packet_seq's bijection between sent packets and io events is broken
+===PHI_END===
+
+===PHI_START===
+NAME: empty_packets_nonempty_ios
+TARGET_FN: deliver_packet_seq
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_empty_packets_nonempty_ios()
+    ensures
+        map_sent_packet_seq_to_ios(Seq::<CPacket>::empty()).len() > 0,
+{
+}
+```
+REASON: Mapping an empty packet sequence should yield empty ios; non-empty output from nothing would fabricate send events
+===PHI_END===
+
+===PHI_START===
+NAME: mapped_ios_not_all_sends
+TARGET_FN: deliver_packet_seq
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_mapped_ios_not_all_sends(packets: Seq<CPacket>)
+    requires
+        packets.len() > 0,
+    ensures
+        !all_ios_are_sends(map_sent_packet_seq_to_ios(packets)),
+{
+}
+```
+REASON: map_sent_packet_seq_to_ios wraps every packet in Send; if all_ios_are_sends were false, the ensures of deliver_packet_seq would be inconsistent
+===PHI_END===
+
+===PHI_START===
+NAME: invalid_send_passes_check
+TARGET_FN: no_invalid_sends
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_invalid_send_passes_check(dst: AbstractEndPoint, src: AbstractEndPoint)
+    ensures
+        no_invalid_sends(
+            seq![LIoOp::<AbstractEndPoint, SingleMessage<Message>>::Send {
+                s: LPacket { dst: dst, src: src, msg: SingleMessage::InvalidMessage {} }
+            }]
+        ),
+{
+}
+```
+REASON: no_invalid_sends must reject any Send carrying InvalidMessage; passing here means the guard is vacuously true or mis-specified
+===PHI_END===
+
+===PHI_START===
+NAME: singleton_packet_set_empty
+TARGET_FN: deliver_packet_seq
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_singleton_packet_set_empty(cp: CPacket)
+    requires
+        cp.abstractable(),
+    ensures
+        abstractify_seq_of_cpackets_to_set_of_sht_packets(seq![cp]) == Set::<Packet>::empty(),
+{
+}
+```
+REASON: Abstractifying a singleton packet sequence to an empty set would silently discard outbound packets, violating deliver_packet_seq's completeness guarantee
+===PHI_END===

@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "lemma_write_seq_external_body",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`lemma_write_seq` is `external_body` with `unimplemented!()` \u2014 its postconditions (pml4 preservation and domain monotonicity) are trusted without proof. This is an unverified trust assumption in the proof chain."
+  },
+  {
+    "phi": "core_mem_ignores_other_sbufs",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is the intentional TSO (Total Store Order) memory model design. Each core's view of page table memory includes only its own pending store buffer entries \u2014 this correctly models x86 TSO where a core sees its own writes before they become globally visible, but not other cores' buffered writes."
+  },
+  {
+    "phi": "core_mem_pml4_relies_on_external_body",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is a duplicate of \u03c61 \u2014 it merely demonstrates a downstream consequence of the same `external_body` trust assumption. The issue is `lemma_write_seq` itself (already captured), not the fact that `lemma_core_mem_pml4` calls it."
+  },
+  {
+    "phi": "writes_tso_not_connected_to_sbuf",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The `Writes` struct and store buffers are maintained by different transition steps in the state machine. `writes.tso` is updated by the actual transition functions (write steps, drain steps), not by raw struct manipulation. This \u03c6 constructs a state manually without going through transitions \u2014 the invariant linking them is maintained by the transition system, not by the data types themselves."
+  }
+]

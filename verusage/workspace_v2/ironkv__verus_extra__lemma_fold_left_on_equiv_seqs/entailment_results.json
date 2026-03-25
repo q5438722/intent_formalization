@@ -1,0 +1,47 @@
+[
+  {
+    "name": "equiv_reflexive_fold_equal",
+    "type": "boundary",
+    "code": "proof fn phi_1_equiv_reflexive_fold_equal<A, B>(s: Seq<A>, eq: spec_fn(A, A) -> bool, init: B, f: spec_fn(B, A) -> B)\n    requires\n        forall |a1: A, a2: A| eq(a1, a2) ==> f(init, a1) == f(init, a2),\n        forall |b: B, a1: A, a2: A| eq(a1, a2) ==> #[trigger] f(b, a1) == #[trigger] f(b, a2),\n        forall |i: int| 0 <= i < s.len() ==> eq(s[i], s[i]),\n    ensures\n        s.fold_left(init, f) == s.fold_left(init, f),\n{\n    lemma_fold_left_on_equiv_seqs(s, s, eq, init, f);\n}",
+    "reason": "Trivial reflexivity \u2014 fold of a sequence with itself is always equal regardless of eq, so the lemma provides no useful constraint in this case",
+    "entailed": false,
+    "verus_output": "error: Could not automatically infer triggers for this quantifier.  Use #[trigger] annotations to manually mark trigger terms instead.\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__verus_extra__lemma_fold_left_on_equiv_seqs/phi_1_equiv_reflexive_fold_equal.rs:31:9\n   |\n31 |         forall |a1: A, a2: A| eq(a1, a2) ==> f(init, a1) == f(init, a2),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "empty_seqs_any_eq",
+    "type": "boundary",
+    "code": "proof fn phi_2_empty_seqs_any_eq<A, B>(init: B, f: spec_fn(B, A) -> B, eq: spec_fn(A, A) -> bool)\n    requires\n        forall |b: B, a1: A, a2: A| eq(a1, a2) ==> #[trigger] f(b, a1) == #[trigger] f(b, a2),\n    ensures\n        Seq::<A>::empty().fold_left(init, f) == Seq::<A>::empty().fold_left(init, f),\n{\n    lemma_fold_left_on_equiv_seqs(Seq::<A>::empty(), Seq::<A>::empty(), eq, init, f);\n}",
+    "reason": "Empty sequences vacuously satisfy the element-wise eq precondition, so the lemma holds for any eq relation \u2014 even one that is never true",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "eq_not_equivalence_still_works",
+    "type": "logical",
+    "code": "proof fn phi_3_eq_not_equivalence_still_works<B>(s1: Seq<int>, s2: Seq<int>, init: B, f: spec_fn(B, int) -> B)\n    requires\n        s1.len() == 1,\n        s2.len() == 1,\n        s1[0] == 0,\n        s2[0] == 1,\n        forall |b: B, a1: int, a2: int| a1 == a2 ==> #[trigger] f(b, a1) == #[trigger] f(b, a2),\n    ensures\n        s1.fold_left(init, f) != s2.fold_left(init, f) || s1.fold_left(init, f) == s2.fold_left(init, f),\n{\n}",
+    "reason": "The lemma requires a custom eq but doesn't require it to be an equivalence relation \u2014 a non-reflexive, non-transitive eq could make the precondition satisfiable in surprising ways",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "congruence_only_on_eq_not_f_output",
+    "type": "logical",
+    "code": "proof fn phi_4_congruence_only_on_eq_not_f_output<A>(s1: Seq<A>, s2: Seq<A>, eq: spec_fn(A, A) -> bool, init: int, f: spec_fn(int, A) -> int)\n    requires\n        s1.len() == s2.len(),\n        forall |i: int| 0 <= i < s1.len() ==> eq(s1[i], s2[i]),\n        forall |b: int, a1: A, a2: A| eq(a1, a2) ==> #[trigger] f(b, a1) == #[trigger] f(b, a2),\n    ensures\n        s1.fold_left(init, f) == s2.fold_left(init, f),\n{\n    lemma_fold_left_on_equiv_seqs(s1, s2, eq, init, f);\n}",
+    "reason": "The congruence condition `eq(a1,a2) ==> f(b,a1)==f(b,a2)` quantifies over ALL b but doesn't require eq to relate to actual equality \u2014 if eq is always true, it forces f to be constant in its second argument",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "constant_f_any_seqs_equal_fold",
+    "type": "behavioral",
+    "code": "proof fn phi_5_constant_f_any_seqs_equal_fold(s1: Seq<int>, s2: Seq<int>, init: int)\n    requires\n        s1.len() == s2.len(),\n    ensures\n        s1.fold_left(init, |b: int, _a: int| b) == s2.fold_left(init, |b: int, _a: int| b),\n{\n    let eq = |_a1: int, _a2: int| true;\n    let f = |b: int, _a: int| b;\n    lemma_fold_left_on_equiv_seqs(s1, s2, eq, init, f);\n}",
+    "reason": "With a trivially-true eq and a constant-in-second-arg f, the lemma proves any same-length sequences have equal folds \u2014 this is correct but shows how a vacuous eq exploits the congruence precondition",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

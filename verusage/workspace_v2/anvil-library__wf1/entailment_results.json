@@ -1,0 +1,29 @@
+[
+  {
+    "name": "implies_apply_closure_bridge",
+    "type": "logical",
+    "code": "proof fn phi_1_implies_apply_closure_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.implies(q).satisfied_by(ex),\n        p.satisfied_by(ex),\n    ensures\n        q.satisfied_by(ex),\n{\n    implies_apply::<int>(ex, p, q);\n}",
+    "reason": "implies_apply is external_body bridging p.implies(q)'s TempPred::new closure-wrapped implication to modus ponens \u2014 resolves closure identity gap without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "implies_apply_with_always_closure_bridge",
+    "type": "logical",
+    "code": "proof fn phi_2_implies_apply_with_always_closure_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>)\n    requires\n        always(p.implies(q)).satisfied_by(ex),\n        always(p).satisfied_by(ex),\n    ensures\n        always(q).satisfied_by(ex),\n{\n    implies_apply_with_always::<int>(ex, p, q);\n}",
+    "reason": "implies_apply_with_always is external_body bridging always(p=>q) \u2227 always(p) to always(q) \u2014 resolves nested always/implies closure layers without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "execution_equality_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_3_execution_equality_intensional_bridge(ex1: Execution<int>, ex2: Execution<int>)\n    requires\n        forall |i: nat| #[trigger] (ex1.nat_to_state)(i) == (ex2.nat_to_state)(i),\n    ensures\n        ex1 == ex2,\n{\n    execution_equality::<int>(ex1, ex2);\n}",
+    "reason": "execution_equality is external_body forcing intensional equality of Execution from pointwise state equality \u2014 collapses structurally distinct spec_fn(nat)->T without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

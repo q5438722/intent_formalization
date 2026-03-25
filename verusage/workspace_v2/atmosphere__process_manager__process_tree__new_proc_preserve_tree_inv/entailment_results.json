@@ -1,0 +1,47 @@
+[
+  {
+    "name": "new_proc_no_owned_threads_constraint",
+    "type": "logical",
+    "code": "proof fn phi_1_new_proc_no_owned_threads_constraint(\n    root_proc: ProcPtr,\n    proc_tree_dom: Set<ProcPtr>,\n    old_proc_perms: Map<ProcPtr, PointsTo<Process>>,\n    new_proc_perms: Map<ProcPtr, PointsTo<Process>>,\n    proc_ptr: ProcPtr,\n    new_proc_ptr: ProcPtr,\n    t: ThreadPtr,\n)\n    requires\n        new_proc_ensures(root_proc, proc_tree_dom, old_proc_perms, new_proc_perms, proc_ptr, new_proc_ptr),\n    ensures\n        new_proc_perms[new_proc_ptr].value().owned_threads@ == Set::<ThreadPtr>::empty(),\n{\n}",
+    "reason": "`new_proc_ensures` constrains tree-structural fields (parent, children, depth, subtree, uppertree) but may not constrain `owned_threads` of the new process, allowing it to start with arbitrary thread ownership",
+    "entailed": false,
+    "verus_output": "readPtr>::empty(),\n    |         ---------------------------------------------------^^^^-------------------------\n    |         |                                                      |\n    |         |                                                      this is `vstd::set::Set<usize>`\n    |         this is `vstd::seq::Seq<usize>`\n    |\n    = help: decorations (like &,Ghost,Tracked,Box,Rc,...) are transparent for == or != in spec code\n\nerror: aborting due to 1 previous error; 6 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "new_proc_subtree_only_contains_self",
+    "type": "logical",
+    "code": "proof fn phi_2_new_proc_subtree_only_contains_self(\n    root_proc: ProcPtr,\n    proc_tree_dom: Set<ProcPtr>,\n    old_proc_perms: Map<ProcPtr, PointsTo<Process>>,\n    new_proc_perms: Map<ProcPtr, PointsTo<Process>>,\n    proc_ptr: ProcPtr,\n    new_proc_ptr: ProcPtr,\n)\n    requires\n        new_proc_ensures(root_proc, proc_tree_dom, old_proc_perms, new_proc_perms, proc_ptr, new_proc_ptr),\n    ensures\n        new_proc_perms[new_proc_ptr].value().subtree_set@ =~= Set::<ProcPtr>::empty(),\n{\n}",
+    "reason": "A newly created leaf process should have an empty subtree set (or only itself) \u2014 if `new_proc_ensures` doesn't constrain this, the new process could claim arbitrary processes in its subtree",
+    "entailed": true,
+    "verus_output": "me`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__process_tree__new_proc_preserve_tree_inv/phi_2_new_proc_subtree_only_contains_self.rs:448:61\n    |\n448 |         new_proc_perms[new_proc_ptr].value().parent_rev_ptr.is_Some(),\n    |                                                             ^^^^^^^\n\nwarning: 6 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "new_proc_children_empty",
+    "type": "logical",
+    "code": "proof fn phi_3_new_proc_children_empty(\n    root_proc: ProcPtr,\n    proc_tree_dom: Set<ProcPtr>,\n    old_proc_perms: Map<ProcPtr, PointsTo<Process>>,\n    new_proc_perms: Map<ProcPtr, PointsTo<Process>>,\n    proc_ptr: ProcPtr,\n    new_proc_ptr: ProcPtr,\n)\n    requires\n        new_proc_ensures(root_proc, proc_tree_dom, old_proc_perms, new_proc_perms, proc_ptr, new_proc_ptr),\n    ensures\n        new_proc_perms[new_proc_ptr].value().children@.len() == 0,\n{\n}",
+    "reason": "A freshly created process should have no children \u2014 if `new_proc_ensures` doesn't enforce empty children, the new process could be born with phantom child references to existing nodes, breaking tree structure",
+    "entailed": true,
+    "verus_output": "alFns::is_Some`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__process_tree__new_proc_preserve_tree_inv/phi_3_new_proc_children_empty.rs:448:61\n    |\n448 |         new_proc_perms[new_proc_ptr].value().parent_rev_ptr.is_Some(),\n    |                                                             ^^^^^^^\n\nwarning: 6 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "new_proc_preserve_inv_1_external_body",
+    "type": "logical",
+    "code": "proof fn phi_4_new_proc_preserve_inv_1_external_body(\n    root_proc: ProcPtr,\n    proc_tree_dom: Set<ProcPtr>,\n    old_proc_perms: Map<ProcPtr, PointsTo<Process>>,\n    new_proc_perms: Map<ProcPtr, PointsTo<Process>>,\n    proc_ptr: ProcPtr,\n    new_proc_ptr: ProcPtr,\n)\n    requires\n        new_proc_ensures(root_proc, proc_tree_dom, old_proc_perms, new_proc_perms, proc_ptr, new_proc_ptr),\n    ensures\n        proc_tree_wf(root_proc, proc_tree_dom.insert(new_proc_ptr), new_proc_perms),\n{\n    new_proc_preserve_tree_inv_1(root_proc, proc_tree_dom, old_proc_perms, new_proc_perms, proc_ptr, new_proc_ptr);\n}",
+    "reason": "`new_proc_preserve_tree_inv_1` is external_body \u2014 it asserts tree invariant preservation without verified proof; if `new_proc_ensures` is too weak (missing constraints), this trusted lemma could mask a real invariant violation",
+    "entailed": false,
+    "verus_output": "|     root_proc: ProcPtr,\n758 | |     proc_tree_dom: Set<ProcPtr>,\n759 | |     old_proc_perms: Map<ProcPtr, PointsTo<Process>>,\n...   |\n762 | |     new_proc_ptr: ProcPtr,\n763 | | )\n    | |_- at the end of the function body\n...\n767 |           proc_tree_wf(root_proc, proc_tree_dom.insert(new_proc_ptr), new_proc_perms),\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 6 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "new_proc_parent_subtree_unchanged_others",
+    "type": "logical",
+    "code": "proof fn phi_5_new_proc_parent_subtree_unchanged_others(\n    root_proc: ProcPtr,\n    proc_tree_dom: Set<ProcPtr>,\n    old_proc_perms: Map<ProcPtr, PointsTo<Process>>,\n    new_proc_perms: Map<ProcPtr, PointsTo<Process>>,\n    proc_ptr: ProcPtr,\n    new_proc_ptr: ProcPtr,\n    other: ProcPtr,\n)\n    requires\n        new_proc_ensures(root_proc, proc_tree_dom, old_proc_perms, new_proc_perms, proc_ptr, new_proc_ptr),\n        proc_tree_dom.contains(other),\n        other != proc_ptr,\n    ensures\n        new_proc_perms[other].value().subtree_set@ =~= old_proc_perms[other].value().subtree_set@,\n{\n}",
+    "reason": "When adding a new process under `proc_ptr`, only `proc_ptr` and its ancestors should gain the new process in their subtree sets \u2014 if `new_proc_ensures` doesn't update ancestor subtree sets, non-parent nodes correctly stay unchanged, but ancestors like `root_proc` would be missing the new process from their subtree",
+    "entailed": false,
+    "verus_output": "Ptr,\n758 | |     proc_tree_dom: Set<ProcPtr>,\n759 | |     old_proc_perms: Map<ProcPtr, PointsTo<Process>>,\n...   |\n763 | |     other: ProcPtr,\n764 | | )\n    | |_- at the end of the function body\n...\n770 |           new_proc_perms[other].value().subtree_set@ =~= old_proc_perms[other].value().subtree_set@,\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 6 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

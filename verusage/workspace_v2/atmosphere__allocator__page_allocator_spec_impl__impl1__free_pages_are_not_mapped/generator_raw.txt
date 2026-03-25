@@ -1,0 +1,81 @@
+Let me see the omitted sections first.
+Let me read the full source file to see all the omitted parts.
+===PHI_START===
+NAME: usize_u64_roundtrip_unconstrained
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_usize_u64_roundtrip_unconstrained(x: u64)
+    ensures
+        x as usize as u64 == x,
+{
+    lemma_usize_u64(x);
+}
+```
+REASON: lemma_usize_u64 is external_body with no requires — claims ALL u64 values roundtrip through usize, which is unsound on 32-bit platforms where usize is 32 bits
+===PHI_END===
+
+===PHI_START===
+NAME: large_u64_roundtrip
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_large_u64_roundtrip()
+    ensures
+        u64::MAX as usize as u64 == u64::MAX,
+{
+    lemma_usize_u64(u64::MAX);
+}
+```
+REASON: u64::MAX (2^64-1) cannot roundtrip through usize on 32-bit — the unconstrained external_body axiom enables this unsound claim
+===PHI_END===
+
+===PHI_START===
+NAME: wf_external_body_opaque
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_wf_external_body_opaque(sll: StaticLinkedList<usize, 10>)
+    requires
+        sll.wf(),
+    ensures
+        sll.len() == sll@.len(),
+{
+    let _ = sll.len();
+}
+```
+REASON: StaticLinkedList::wf() is external_body closed spec — completely opaque, any property could be vacuously true if wf() is never satisfiable
+===PHI_END===
+
+===PHI_START===
+NAME: len_external_body_consistency
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_len_external_body_consistency(sll: StaticLinkedList<usize, 10>)
+    requires
+        sll.wf(),
+    ensures
+        sll.len() == sll.value_list_len,
+        sll.value_list_len == sll@.len(),
+{
+    let l = sll.len();
+}
+```
+REASON: StaticLinkedList::len() is external_body — unverified that value_list_len matches the ghost spec_seq length
+===PHI_END===
+
+===PHI_START===
+NAME: usize_u64_enables_overflow
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_usize_u64_enables_overflow()
+    ensures
+        (MAX_USIZE + 1) as usize as u64 == MAX_USIZE + 1,
+{
+    lemma_usize_u64(MAX_USIZE + 1);
+}
+```
+REASON: MAX_USIZE+1 (~31GB+1) roundtrip claimed without proof — the external_body lemma applies to values beyond the system's intended address range
+===PHI_END===

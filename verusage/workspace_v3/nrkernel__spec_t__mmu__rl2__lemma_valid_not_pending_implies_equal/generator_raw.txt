@@ -1,0 +1,89 @@
+===PHI_START===
+NAME: align_exceeds_input
+TARGET_FN: align_to_usize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_align_exceeds_input(a: usize, b: usize)
+    requires
+        b > 0,
+    ensures
+        align_to_usize(a, b) > a,
+{
+}
+```
+REASON: Aligning down should never produce a value larger than the original input
+===PHI_END===
+
+===PHI_START===
+NAME: align_result_not_aligned
+TARGET_FN: align_to_usize
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_align_result_not_aligned(a: usize, b: usize)
+    requires
+        b > 0,
+    ensures
+        !aligned(align_to_usize(a, b) as nat, b as nat),
+{
+}
+```
+REASON: The result of align_to_usize must itself be aligned to the given size
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_value_changes
+TARGET_FN: align_to_usize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_aligned_value_changes(a: usize, b: usize)
+    requires
+        b > 0,
+        a % b == 0,
+    ensures
+        align_to_usize(a, b) != a,
+{
+}
+```
+REASON: An already-aligned value must be a fixed point of align_to_usize
+===PHI_END===
+
+===PHI_START===
+NAME: consecutive_both_aligned
+TARGET_FN: aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_consecutive_both_aligned(a: nat, s: nat)
+    requires
+        s >= 2,
+        aligned(a, s),
+    ensures
+        aligned(a + 1, s),
+{
+}
+```
+REASON: Two consecutive addresses cannot both be aligned to a stride of 2 or more
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_sum_nonaligned
+TARGET_FN: aligned
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_aligned_sum_nonaligned(a: nat, b: nat, s: nat)
+    requires
+        s > 1,
+        aligned(a, s),
+        b > 0,
+        b < s,
+    ensures
+        aligned(a + b, s),
+{
+}
+```
+REASON: Adding a sub-stride positive offset to an aligned address must break alignment
+===PHI_END===

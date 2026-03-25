@@ -1,0 +1,17 @@
+===VERDICT_START===
+PHI: page_closure_l4_l3_can_overlap
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The spec allows `cr3` to appear in both `l4_table@.dom()` (constrained to `{cr3}` by `wf_l4`) and `l3_tables@.dom()` simultaneously, with no cross-level disjointness predicate. This means the same physical page could be interpreted as both an L4 and L3 page table — a real structural soundness gap that could mask aliasing bugs in page table management.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: page_closure_l3_l2_can_overlap
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: Similarly, no predicate prevents the same `PageMapPtr` from appearing in both `l3_tables@.dom()` and `l2_tables@.dom()`. The `wf_l3` and `wf_l2` predicates independently constrain their respective domains but never assert mutual exclusion. Hardware would interpret the same physical page as two different levels of page table entries simultaneously, which is a real spec gap.
+===VERDICT_END===
+
+===SUMMARY===
+Both candidates are true positives identifying the same class of spec gap: missing cross-level disjointness constraints between page table level domains. The spec defines `wf_l4`, `wf_l3`, `wf_l2`, and `wf_l1` independently, and while within-level disjointness is partially addressed (via `disjoint_l4`, `disjoint_l3`, `disjoint_l2`), no predicate prevents the same physical page pointer from appearing in multiple level domains simultaneously. This extends to all level pairs (L4/L3, L3/L2, L2/L1), though only L4/L3 and L3/L2 were tested here.
+===END_SUMMARY===

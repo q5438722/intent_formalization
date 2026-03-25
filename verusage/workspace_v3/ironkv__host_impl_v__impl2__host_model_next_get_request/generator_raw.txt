@@ -1,0 +1,109 @@
+===PHI_START===
+NAME: get_reply_empty_output_when_should_send
+TARGET_FN: next_get_request_reply
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_get_reply_empty_output_when_should_send(
+    pre: AbstractHostState, post: AbstractHostState,
+    src: AbstractEndPoint, seqno: nat, k: AbstractKey,
+    sm: SingleMessage<Message>, m: Message, out: Set<Packet>,
+)
+    requires
+        pre.delegation_map.is_complete(),
+        next_get_request_reply(pre, post, src, seqno, k, sm, m, out, true),
+        valid_key(k),
+    ensures
+        out == Set::<Packet>::empty(),
+{
+}
+```
+REASON: A successful get-request reply (should_send=true) must emit exactly one packet; an empty output set would mean the response is silently dropped
+===PHI_END===
+
+===PHI_START===
+NAME: send_exceeds_max_seqno_still_sends
+TARGET_FN: send_single_message
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_send_exceeds_max_seqno_still_sends(
+    pre: SingleDelivery<Message>, post: SingleDelivery<Message>,
+    m: Message, dst: AbstractEndPoint,
+    sm: Option<SingleMessage<Message>>,
+    params: AbstractParameters,
+)
+    requires
+        SingleDelivery::send_single_message(pre, post, m, dst, sm, params),
+        ack_state_lookup(dst, pre.send_state).num_packets_acked
+          + ack_state_lookup(dst, pre.send_state).un_acked.len() + 1 > params.max_seqno,
+    ensures
+        sm is Some,
+{
+}
+```
+REASON: When the sequence number exceeds max_seqno the protocol must suppress sending; allowing Some(sm) would violate the flow-control bound
+===PHI_END===
+
+===PHI_START===
+NAME: redirect_modifies_received_requests
+TARGET_FN: next_get_request_reply
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_redirect_modifies_received_requests(
+    pre: AbstractHostState, post: AbstractHostState,
+    src: AbstractEndPoint, seqno: nat, k: AbstractKey,
+    sm: SingleMessage<Message>, m: Message, out: Set<Packet>,
+)
+    requires
+        pre.delegation_map.is_complete(),
+        next_get_request_reply(pre, post, src, seqno, k, sm, m, out, true),
+        valid_key(k),
+        pre.delegation_map[k] != pre.constants.me,
+    ensures
+        post.received_requests != pre.received_requests,
+{
+}
+```
+REASON: A redirected request is not served locally, so received_requests must stay unchanged; mutation here would miscount application-level requests
+===PHI_END===
+
+===PHI_START===
+NAME: lookup_none_despite_key_present
+TARGET_FN: hashtable_lookup
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_lookup_none_despite_key_present(h: Hashtable, k: AbstractKey)
+    requires
+        h.dom().contains(k),
+    ensures
+        hashtable_lookup(h, k) is None,
+{
+}
+```
+REASON: Looking up a key known to be in the hashtable must return Some; returning None would lose stored data and break get-request correctness
+===PHI_END===
+
+===PHI_START===
+NAME: get_request_changes_hashtable
+TARGET_FN: next_get_request
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_get_request_changes_hashtable(
+    pre: AbstractHostState, post: AbstractHostState,
+    pkt: Packet, out: Set<Packet>,
+)
+    requires
+        pkt.msg is Message,
+        pre.delegation_map.is_complete(),
+        next_get_request(pre, post, pkt, out),
+    ensures
+        post.h != pre.h,
+{
+}
+```
+REASON: A read-only GetRequest must never mutate the hashtable; allowing h to change would turn a get into an implicit write
+===PHI_END===

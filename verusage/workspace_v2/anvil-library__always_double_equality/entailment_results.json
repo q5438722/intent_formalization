@@ -1,0 +1,47 @@
+[
+  {
+    "name": "execution_equality_collapses_distinct_fns",
+    "type": "logical",
+    "code": "proof fn phi_1_execution_equality_collapses_distinct_fns(f: spec_fn(nat) -> int, g: spec_fn(nat) -> int)\n    requires\n        forall |i: nat| #[trigger] f(i) == g(i),\n    ensures\n        f == g,\n{\n    let ex1 = Execution { nat_to_state: f };\n    let ex2 = Execution { nat_to_state: g };\n    execution_equality(ex1, ex2);\n}",
+    "reason": "execution_equality is external_body and forces intensional equality of spec_fn from mere extensional equivalence \u2014 two distinct closures that agree pointwise are collapsed to structurally equal",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "temp_pred_equality_forces_pred_equality",
+    "type": "logical",
+    "code": "proof fn phi_2_temp_pred_equality_forces_pred_equality(p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.entails(q),\n        q.entails(p),\n    ensures\n        p.pred == q.pred,\n{\n    temp_pred_equality::<int>(p, q);\n}",
+    "reason": "temp_pred_equality is external_body forcing intensional equality of the underlying spec_fn pred fields from mutual entailment \u2014 conflating logical equivalence with structural identity",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "suffix_zero_equals_self",
+    "type": "logical",
+    "code": "proof fn phi_3_suffix_zero_equals_self(ex: Execution<int>)\n    ensures\n        ex.suffix(0) == ex,\n{\n    execution_equality(ex.suffix(0), ex);\n}",
+    "reason": "ex.suffix(0) creates a new closure |i| f(i+0) which is intensionally distinct from ex \u2014 execution_equality silently equates these without proof, and always_double_equality depends on this at the suffix(0) step",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "suffix_composition_equals_addition",
+    "type": "logical",
+    "code": "proof fn phi_4_suffix_composition_equals_addition(ex: Execution<int>, i: nat, j: nat)\n    ensures\n        ex.suffix(i).suffix(j) == ex.suffix(i + j),\n{\n    execution_equality(ex.suffix(i).suffix(j), ex.suffix(i + j));\n}",
+    "reason": "ex.suffix(i).suffix(j) produces a doubly-nested closure intensionally distinct from ex.suffix(i+j) \u2014 execution_equality collapses this without proof, and this composition is the key step enabling always_double_equality",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "mutual_entailment_derives_false_if_distinct",
+    "type": "boundary",
+    "code": "proof fn phi_5_mutual_entailment_derives_false_if_distinct(p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.entails(q),\n        q.entails(p),\n        p != q,\n    ensures\n        false,\n{\n    temp_pred_equality::<int>(p, q);\n}",
+    "reason": "if any two mutually-entailing TempPreds are intensionally distinct (p != q), temp_pred_equality forces p == q creating a contradiction \u2014 the axiom implicitly asserts no two distinct closures can be extensionally equivalent",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

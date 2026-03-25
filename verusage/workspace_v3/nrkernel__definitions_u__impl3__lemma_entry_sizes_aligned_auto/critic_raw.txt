@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: empty_arch_satisfies_inv
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The invariant uses a vacuously-true universal quantifier when `layers.len() == 0`, so an empty Arch trivially satisfies `inv()`. An empty architecture represents no address translation and is almost certainly not a valid configuration the spec should admit. The `inv` should require `self.layers.len() > 0`.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: zero_aligned_to_everything
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `0 % size == 0` for any nonzero size is a basic mathematical fact. The `aligned` function is a pure spec function, and address 0 being aligned is standard — callers that need to exclude zero addresses should do so in their own preconditions, not in the alignment definition.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: inv_allows_unit_entry_size
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The invariant only requires `0 < entry_size <= X86_MAX_ENTRY_SIZE`, so an entry size of 1 byte is permitted. For x86 page tables the minimum meaningful granularity is 4096 bytes; allowing sub-page entry sizes means the spec is weaker than the hardware reality it models. The invariant should enforce a minimum entry size (e.g., 4096).
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: inv_allows_single_entry_layer
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: medium
+REASONING: While a single-entry layer is degenerate, the spec is designed to be generic over architectures, and `num_entries >= 1` is a reasonable lower bound. A layer with 1 entry is not inherently unsound — it just maps a single contiguous region, which could be a valid (if unusual) architectural choice. This is a design decision, not a spec gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: entry_size_next_layer_vacuous_single
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The `entry_size_is_next_layer_size` constraint is an implication that is vacuously true when there is no next layer. For a single-layer architecture, this means `entry_size` and `num_entries` are completely unconstrained relative to each other (e.g., entry_size=3, num_entries=2 is valid). This undermines the structural consistency the invariant is supposed to enforce — a single-layer arch should still have a meaningful relationship between its parameters.
+===VERDICT_END===
+
+===SUMMARY===
+Three true positives were identified. The `inv` predicate is too permissive in three ways: (1) it admits empty architectures with zero layers via vacuous quantification, (2) it allows physically meaningless entry sizes as small as 1 byte when the modeled x86 hardware has a 4096-byte minimum page granularity, and (3) for single-layer architectures the inter-layer size constraint is vacuously satisfied, allowing completely arbitrary entry_size/num_entries combinations. Two properties were false positives: zero being aligned to everything is mathematically correct and not a spec issue, and allowing single-entry layers is a reasonable generic design choice.
+===END_SUMMARY===

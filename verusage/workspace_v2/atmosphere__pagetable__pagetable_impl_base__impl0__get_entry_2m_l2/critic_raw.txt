@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: va_1g_valid_uses_2m_spec
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The `va_1g_valid` function has `#[verifier(when_used_as_spec(spec_va_2m_valid))]` — it should be `spec_va_1g_valid`. This is a clear copy-paste bug: when `va_1g_valid` is used in spec context, it resolves to the 2M validity check instead of the 1G one, silently accepting 2M-aligned addresses as 1G-valid. The `ensures` clause (`ret == spec_va_1g_valid(va)`) is correct but irrelevant in spec contexts where the `when_used_as_spec` annotation takes precedence.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: pagemap_get_external_body_no_ar_sync
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The property proven is a tautology — it says if `ar@[i] == 0` then `usize2page_entry(0).is_empty()`, which follows directly from `usize2page_entry`'s ensures clause (`v == 0 ==> ...`). The candidate doesn't actually demonstrate a desync between `ar` and `spec_seq`; PageMap::wf already enforces `usize2page_entry(ar@[i]) =~= spec_seq@[i]` for all indices, which maintains the synchronization. The commented-out invariant is redundant convenience, not a missing property.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: reveal_wf_external_body_chain
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: All five reveal lemmas are `external_body`, axiomatically asserting biconditionals between opaque closed specs (`wf`, `levels_wf`, `disjoint_wf`, `mappings_wf`, `additonal_wf`) and their open definitions. While this is a common Verus pattern for managing SMT performance, the correctness of these decompositions is entirely unverified — any mismatch between the closed predicates and their stated expansions would go undetected, making this a real soundness gap in the trusted computing base.
+===VERDICT_END===
+
+===SUMMARY===
+Two of three candidates are true positives. The `va_1g_valid` copy-paste bug (`when_used_as_spec(spec_va_2m_valid)` instead of `spec_va_1g_valid`) is a high-confidence spec defect that silently weakens 1G virtual address validation in all spec contexts, including `wf_mapping_1g`. The external_body reveal chain represents a medium-confidence soundness gap — five axiomatically trusted lemmas decompose wf() without verification, a deliberate engineering trade-off but a real trust assumption. The PageMap ar/spec_seq sync candidate is a false positive: the property proven is a tautology that doesn't expose any actual invariant gap.
+===END_SUMMARY===

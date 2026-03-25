@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "create_key_namespace_diverges",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`CreateRequest::key()` derives namespace from `self.namespace` rather than `self.obj.metadata.namespace`. If these diverge, the object is stored under a key that doesn't match its own metadata, which could lead to inconsistent lookups."
+  },
+  {
+    "phi": "update_key_ignores_obj_namespace",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`UpdateRequest::key()` uses `self.namespace` instead of `self.obj.metadata.namespace`. Same pattern as CreateRequest \u2014 the request's routing key can diverge from the object payload's namespace, allowing an update to target a different namespace than the object describes."
+  },
+  {
+    "phi": "update_key_ignores_obj_name",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`UpdateRequest::key()` uses `self.name` instead of `self.obj.metadata.name`. This means an update request can target resource \"A\" while carrying the payload of resource \"B\", silently overwriting with mismatched data."
+  },
+  {
+    "phi": "reconcile_id_allocator_no_uniqueness",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is an expected consequence of value semantics \u2014 two allocators with identical state naturally produce identical outputs. Global uniqueness is ensured by having a single allocator instance in the cluster state, not by the allocator's spec itself."
+  }
+]

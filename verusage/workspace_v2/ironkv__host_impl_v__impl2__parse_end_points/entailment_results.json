@@ -1,0 +1,47 @@
+[
+  {
+    "name": "parse_args_none_implies_invalid_endpoint",
+    "type": "behavioral",
+    "code": "proof fn phi_1_parse_args_none_implies_invalid_endpoint(args: AbstractArgs)\n    requires\n        parse_args(args).is_None(),\n    ensures\n        exists |i: int| 0 <= i < args.len() && !parse_arg_as_end_point(args[i]).valid_physical_address(),\n{\n}",
+    "reason": "If `parse_args` returns None, there must exist at least one invalid endpoint \u2014 but since `parse_arg_as_end_point` just wraps the arg bytes as an id, this means some arg has length >= 0x100000, which leaks the validity threshold to callers",
+    "entailed": true,
+    "verus_output": "matches the\n      pattern specified by one of the quantifier's triggers.)\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__host_impl_v__impl2__parse_end_points/phi_1_parse_args_none_implies_invalid_endpoint.rs:298:9\n    |\n298 |         exists |i: int| 0 <= i < args.len() && !parse_arg_as_end_point(args[i]).valid_physical_address(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "parse_arg_identity_no_validation",
+    "type": "behavioral",
+    "code": "proof fn phi_2_parse_arg_identity_no_validation(arg: AbstractArg)\n    ensures\n        parse_arg_as_end_point(arg).id == arg,\n{\n}",
+    "reason": "`parse_arg_as_end_point` performs zero validation \u2014 it directly copies raw bytes into an endpoint id, meaning any byte sequence (including empty, malformed, or adversarial) becomes a valid-looking endpoint identity",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "abstractify_end_points_empty",
+    "type": "boundary",
+    "code": "proof fn phi_3_abstractify_end_points_empty()\n    ensures\n        abstractify_end_points(Vec::empty()) =~= Seq::<AbstractEndPoint>::empty(),\n{\n}",
+    "reason": "An empty vector of endpoints abstractifies to an empty sequence \u2014 if this verifies, `parse_end_points` with an empty args list returns `Some(empty)` which means an SHT host can be initialized with zero peers, potentially leaving the system with no reachable nodes",
+    "entailed": false,
+    "verus_output": "\n...\n642 |     pub unsafe fn from_raw_parts(ptr: *mut T, length: usize, capacity: usize) -> Self {\n    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nhelp: there is a method `is_empty` with a similar name\n    |\n296 |         abstractify_end_points(Vec::is_empty()) =~= Seq::<AbstractEndPoint>::empty(),\n    |                                     +++\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0599`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "parse_args_empty_is_some",
+    "type": "boundary",
+    "code": "proof fn phi_4_parse_args_empty_is_some()\n    ensures\n        parse_args(Seq::<AbstractArg>::empty()).is_Some(),\n        parse_args(Seq::<AbstractArg>::empty()).unwrap().len() == 0,\n{\n}",
+    "reason": "`parse_args` on empty input succeeds with an empty endpoint list because the `forall` over an empty domain is vacuously true \u2014 a caller could accidentally initialize the system with no hosts and no error",
+    "entailed": true,
+    "verus_output": "::is_Some`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__host_impl_v__impl2__parse_end_points/phi_4_parse_args_empty_is_some.rs:296:49\n    |\n296 |         parse_args(Seq::<AbstractArg>::empty()).is_Some(),\n    |                                                 ^^^^^^^\n    |\n    = note: `#[warn(deprecated)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "parse_end_point_external_body_unchecked",
+    "type": "logical",
+    "code": "proof fn phi_5_parse_end_point_external_body_unchecked(arg: AbstractArg)\n    ensures\n        parse_arg_as_end_point(arg) == AbstractEndPoint { id: arg },\n{\n}",
+    "reason": "`HostState::parse_end_point` is external_body ensuring `out@ == parse_arg_as_end_point(arg@)` \u2014 but the spec `parse_arg_as_end_point` trivially wraps bytes without checking structure, so the external_body implementation could return any EndPoint with matching view bytes, including one whose runtime representation diverges from the logical spec",
+    "entailed": false,
+    "verus_output": "error: struct literals are not allowed here; try surrounding the struct literal with parentheses\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__host_impl_v__impl2__parse_end_points/phi_5_parse_end_point_external_body_unchecked.rs:296:40\n    |\n296 |         parse_arg_as_end_point(arg) == AbstractEndPoint { id: arg },\n    |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

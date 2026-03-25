@@ -1,0 +1,79 @@
+===PHI_START===
+NAME: delegate_abstractable_unchecked_hashmap
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_delegate_abstractable_unchecked_hashmap(kr: KeyRange<CKey>, h: CKeyHashMap)
+    ensures
+        CMessage::Delegate { range: kr, h: h }.abstractable(),
+{
+}
+```
+REASON: `Delegate` falls through to `_ => true` in `abstractable()` without validating the CKeyHashMap, so any hash map — including corrupted or inconsistent ones — is considered abstractable
+===PHI_END===
+
+===PHI_START===
+NAME: get_set_reply_abstractable_trivially
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_get_set_reply_abstractable_trivially(k: CKey, v: Option<Vec<u8>>)
+    ensures
+        CMessage::GetRequest { k }.abstractable(),
+        CMessage::SetRequest { k, v }.abstractable(),
+        CMessage::Reply { k, v }.abstractable(),
+{
+}
+```
+REASON: GetRequest, SetRequest, and Reply are unconditionally abstractable — no validation on the key `k` or optional value `v`, so malformed keys or values silently enter the abstract model
+===PHI_END===
+
+===PHI_START===
+NAME: between_empty_at_equal_bounds
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_between_empty_at_equal_bounds<K: KeyTrait + VerusClone>(ki: KeyIterator<K>)
+    ensures
+        !KeyIterator::<K>::between(ki, ki, ki),
+{
+}
+```
+REASON: `between(x, x, x)` is false because `x.lt_spec(x)` is false for strict ordering — a degenerate range `[x, x)` is empty, so point queries using `between` silently match nothing
+===PHI_END===
+
+===PHI_START===
+NAME: invalid_message_abstractable_and_viewable
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_invalid_message_abstractable_and_viewable()
+    ensures
+        CSingleMessage::InvalidMessage{}.abstractable(),
+        CSingleMessage::InvalidMessage{}@ == SingleMessage::InvalidMessage{},
+{
+}
+```
+REASON: `InvalidMessage` is unconditionally abstractable and maps directly to `SingleMessage::InvalidMessage` — corrupted/malformed network messages pass the abstraction barrier with no validation, entering verified protocol logic
+===PHI_END===
+
+===PHI_START===
+NAME: vec_t_serialize_element_order_dependent
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_vec_t_serialize_element_order_dependent(a: u64, b: u64)
+    requires
+        a != b,
+    ensures
+        ({
+            let v1: Vec<u64> = vec_new2(a, b);
+            let v2: Vec<u64> = vec_new2(b, a);
+            v1.is_marshalable() && v2.is_marshalable() ==>
+                v1.ghost_serialize() != v2.ghost_serialize()
+        }),
+{
+}
+```
+REASON: `Vec<T>::ghost_serialize` serializes elements in sequence order via `fold_left`, so reordering elements produces different byte sequences — but there is no spec-level guarantee that `ghost_serialize` is injective (no `lemma_serialize_injective` for `Vec<T>`), meaning two semantically-different vectors could theoretically be treated as equal by downstream code relying on serialization identity
+===PHI_END===

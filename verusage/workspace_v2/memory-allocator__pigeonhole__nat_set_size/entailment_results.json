@@ -1,0 +1,47 @@
+[
+  {
+    "name": "lemma_nat_range_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_lemma_nat_range_external_body(lo: nat, hi: nat)\n    requires\n        lo <= hi,\n    ensures\n        set_nat_range(lo, hi).finite(),\n        set_nat_range(lo, hi).len() == hi - lo,\n{\n    lemma_nat_range(lo, hi);\n}",
+    "reason": "`lemma_nat_range` is `external_body` \u2014 finiteness and length of the nat range set are trusted without proof; if the axiom were wrong, `nat_set_size` would inherit the unsoundness",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "nat_set_size_empty",
+    "type": "boundary",
+    "code": "proof fn phi_2_nat_set_size_empty()\n    ensures\n        Set::<nat>::empty().finite(),\n        Set::<nat>::empty().len() == 0,\n{\n    nat_set_size(Set::empty(), 0);\n}",
+    "reason": "`nat_set_size` with `bound == 0` proves the empty set has length 0 \u2014 relies on the external_body lemma for the vacuous range `[0, 0)`",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "nat_set_size_uniqueness",
+    "type": "logical",
+    "code": "proof fn phi_3_nat_set_size_uniqueness(s1: Set<nat>, s2: Set<nat>, bound: nat)\n    requires\n        forall |i: nat| (0 <= i < bound <==> s1.contains(i)),\n        forall |i: nat| (0 <= i < bound <==> s2.contains(i)),\n    ensures\n        s1 =~= s2,\n{\n    nat_set_size(s1, bound);\n    nat_set_size(s2, bound);\n}",
+    "reason": "Any two sets satisfying the same `[0, bound)` membership are extensionally equal \u2014 follows from the `=~=` assertion in `nat_set_size`, but the proof is powered by the external_body axiom",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "nat_set_size_superset",
+    "type": "behavioral",
+    "code": "proof fn phi_4_nat_set_size_superset(s: Set<nat>, bound: nat)\n    requires\n        forall |i: nat| (0 <= i < bound <==> s.contains(i)),\n        bound > 0,\n    ensures\n        !s.contains(bound),\n{\n    // s contains exactly [0, bound), so bound is not in s\n}",
+    "reason": "`nat_set_size` constrains membership to exactly `[0, bound)` via biconditional \u2014 an element at `bound` is excluded, but the precondition's biconditional is very strong and may over-constrain the set",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "lemma_nat_range_singleton",
+    "type": "boundary",
+    "code": "proof fn phi_5_lemma_nat_range_singleton(n: nat)\n    ensures\n        set_nat_range(n, (n + 1) as nat).finite(),\n        set_nat_range(n, (n + 1) as nat).len() == 1,\n{\n    lemma_nat_range(n, (n + 1) as nat);\n}",
+    "reason": "A singleton range `[n, n+1)` has length 1 \u2014 relies on the external_body axiom; if `lemma_nat_range` were unsound, singleton set finiteness/length would be wrong",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

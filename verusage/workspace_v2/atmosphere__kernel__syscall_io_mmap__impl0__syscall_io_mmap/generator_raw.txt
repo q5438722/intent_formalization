@@ -1,0 +1,85 @@
+===PHI_START===
+NAME: usize2pa_mem_valid_unconditional
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)
+    ensures
+        MEM_valid(usize2pa(v)),
+{
+}
+```
+REASON: usize2pa's external_body unconditionally ensures MEM_valid(ret) for ANY input — arbitrary usize values produce "valid" physical addresses without proof
+===PHI_END===
+
+===PHI_START===
+NAME: sll_len_without_wf_returns_value_list_len
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)
+    ensures
+        sll.len() == sll.value_list_len,
+{
+}
+```
+REASON: StaticLinkedList::len's external_body ensures l == self.value_list_len unconditionally without requiring wf() — corrupted linked list returns raw field value as trusted length
+===PHI_END===
+
+===PHI_START===
+NAME: container_map_2m_allows_double_ownership
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_container_map_2m_allows_double_ownership(pa: PageAllocator, c1: ContainerPtr, c2: ContainerPtr, p: PagePtr)
+    requires
+        c1 != c2,
+        pa.container_map_2m@.dom().contains(c1),
+        pa.container_map_2m@.dom().contains(c2),
+        pa.container_map_2m@[c1].contains(p),
+        pa.container_map_2m@[c2].contains(p),
+    ensures
+        pa.container_map_2m@[c1].contains(p) && pa.container_map_2m@[c2].contains(p),
+{
+}
+```
+REASON: container_map_2m is a Ghost field with no disjointness constraint — two distinct containers can simultaneously claim the same 2M physical page
+===PHI_END===
+
+===PHI_START===
+NAME: container_map_1g_allows_double_ownership
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_container_map_1g_allows_double_ownership(pa: PageAllocator, c1: ContainerPtr, c2: ContainerPtr, p: PagePtr)
+    requires
+        c1 != c2,
+        pa.container_map_1g@.dom().contains(c1),
+        pa.container_map_1g@.dom().contains(c2),
+        pa.container_map_1g@[c1].contains(p),
+        pa.container_map_1g@[c2].contains(p),
+    ensures
+        pa.container_map_1g@[c1].contains(p) && pa.container_map_1g@[c2].contains(p),
+{
+}
+```
+REASON: container_map_1g is a Ghost field with no disjointness constraint — two distinct containers can simultaneously claim the same 1G physical page
+===PHI_END===
+
+===PHI_START===
+NAME: page_entry_to_map_entry_drops_present_and_user
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_page_entry_to_map_entry_drops_present_and_user(pe: PageEntry)
+    requires
+        pe.perm.present == false,
+        pe.perm.user == true,
+        pe.addr != 0,
+    ensures
+        spec_page_entry_to_map_entry(&pe).addr == pe.addr,
+{
+}
+```
+REASON: spec_page_entry_to_map_entry copies addr regardless of present/user bits — a non-present user-accessible entry with stale address produces a MapEntry indistinguishable from a valid kernel mapping
+===PHI_END===

@@ -1,0 +1,88 @@
+===PHI_START===
+NAME: page_aligned_implies_mask_identity_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_page_aligned_implies_mask_identity_external_body(addr: usize)
+    requires
+        addr <= MAX_PHYADDR,
+        aligned(addr as nat, PAGE_SIZE as nat),
+    ensures
+        addr & MASK_DIR_ADDR == addr,
+{
+    lemma_page_aligned_implies_mask_dir_addr_is_identity();
+}
+```
+REASON: `lemma_page_aligned_implies_mask_dir_addr_is_identity` is `external_body` — the bitwise identity for page-aligned addresses masked with MASK_DIR_ADDR is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_transitive_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_aligned_transitive_external_body(a: nat, b: nat, c: nat)
+    requires
+        0 < b,
+        0 < c,
+        aligned(a, b),
+        aligned(b, c),
+    ensures
+        aligned(a, c),
+{
+    aligned_transitive(a, b, c);
+}
+```
+REASON: `aligned_transitive` is `external_body` — alignment transitivity is a correct arithmetic fact but trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: mask_l3_pg_addr_equals_mask_addr
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_mask_l3_pg_addr_equals_mask_addr(addr: usize)
+    requires
+        true,
+    ensures
+        addr & MASK_L3_PG_ADDR == addr & MASK_ADDR,
+{
+    lemma_aligned_addr_mask_facts(addr);
+}
+```
+REASON: MASK_L3_PG_ADDR and MASK_ADDR are both `bitmask_inc!(12, MAX_PHYADDR_WIDTH - 1)` — they are identical by definition, making this tautological rather than a meaningful spec property
+===PHI_END===
+
+===PHI_START===
+NAME: max_phyaddr_width_external_body_const
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_max_phyaddr_width_external_body_const()
+    ensures
+        32 <= MAX_PHYADDR_WIDTH,
+        MAX_PHYADDR_WIDTH <= 52,
+{
+    axiom_max_phyaddr_width_facts();
+}
+```
+REASON: `MAX_PHYADDR_WIDTH` is `external_body` const with value 52 but the axiom only guarantees 32..=52 — the spec is weaker than the implementation, leaving room for inconsistency if the actual value differs
+===PHI_END===
+
+===PHI_START===
+NAME: l1_aligned_mask_addr_identity
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_l1_aligned_mask_addr_identity(addr: usize)
+    requires
+        addr <= MAX_PHYADDR,
+        aligned(addr as nat, L1_ENTRY_SIZE as nat),
+    ensures
+        addr & MASK_ADDR == addr,
+{
+    lemma_aligned_addr_mask_facts(addr);
+}
+```
+REASON: L1-aligned addresses within MAX_PHYADDR are identity under MASK_ADDR — depends on both `aligned_transitive` and `lemma_page_aligned_implies_mask_dir_addr_is_identity` external_body axioms
+===PHI_END===

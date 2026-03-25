@@ -1,0 +1,10 @@
+===VERDICT_START===
+PHI: redirect_modifies_received_requests
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: In a sharded key-value store, when a host receives a `SetRequest` for a key it doesn't own (`delegation_map[k] != me`), the correct behavior is to redirect the request without recording it locally. The verified property proves that `next_set_request` mutates `received_requests` even in the redirect case, meaning the spec fails to distinguish between locally-processed requests and redirected ones—logging phantom requests the host never actually handled. This is a genuine spec weakness that could cause incorrect accounting in refinement proofs against the abstract distributed protocol.
+===VERDICT_END===
+
+===SUMMARY===
+The single candidate property exposes a real spec issue in `next_set_request`. The function's specification unconditionally allows (or requires) modification of `received_requests` regardless of whether the host owns the key, which conflates two semantically distinct paths: local processing and redirection. In a correctly specified sharded key-value protocol, a host redirecting a request to another host should not record that request as "received," since it was never processed locally. This is a meaningful soundness concern for any refinement proof that relies on `received_requests` accurately reflecting the set of requests a host has actually serviced.
+===END_SUMMARY===

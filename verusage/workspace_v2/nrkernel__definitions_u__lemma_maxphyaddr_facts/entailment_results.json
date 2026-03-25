@@ -1,0 +1,47 @@
+[
+  {
+    "name": "max_phyaddr_width_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_max_phyaddr_width_external_body()\n    ensures\n        32 <= MAX_PHYADDR_WIDTH <= 52,\n{\n    axiom_max_phyaddr_width_facts();\n}",
+    "reason": "`MAX_PHYADDR_WIDTH` is `external_body` and its bounds are asserted by an axiom function \u2014 the actual value is opaque and trusted",
+    "entailed": true,
+    "verus_output": "verification results:: 6 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "max_phyaddr_lower_bound",
+    "type": "boundary",
+    "code": "proof fn phi_2_max_phyaddr_lower_bound()\n    ensures\n        MAX_PHYADDR >= 0xFFFFFFFF,\n{\n    lemma_maxphyaddr_facts();\n}",
+    "reason": "MAX_PHYADDR is at least 4GB-1 \u2014 derived from the axiom that `MAX_PHYADDR_WIDTH >= 32`, meaning the spec assumes at least 32-bit physical addressing",
+    "entailed": true,
+    "verus_output": "verification results:: 6 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "max_phyaddr_upper_bound",
+    "type": "boundary",
+    "code": "proof fn phi_3_max_phyaddr_upper_bound()\n    ensures\n        MAX_PHYADDR <= 0xFFFFFFFFFFFFF,\n{\n    lemma_maxphyaddr_facts();\n}",
+    "reason": "MAX_PHYADDR is at most 52-bit \u2014 the axiom trusts that hardware never exceeds 52-bit physical addressing, but future x86 extensions could widen this",
+    "entailed": true,
+    "verus_output": "verification results:: 6 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "max_phyaddr_fits_usize",
+    "type": "boundary",
+    "code": "proof fn phi_4_max_phyaddr_fits_usize()\n    ensures\n        MAX_PHYADDR < 0x10000000000000000,\n{\n    lemma_maxphyaddr_facts();\n}",
+    "reason": "MAX_PHYADDR fits in a u64/usize \u2014 follows from the 52-bit upper bound, but the entire chain depends on the unverified `external_body` constant and axiom",
+    "entailed": true,
+    "verus_output": "verification results:: 6 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "max_phyaddr_spec_equals_exec",
+    "type": "logical",
+    "code": "proof fn phi_5_max_phyaddr_spec_equals_exec()\n    ensures\n        MAX_PHYADDR == MAX_PHYADDR_SPEC,\n        MAX_PHYADDR_SPEC == ((1usize << MAX_PHYADDR_WIDTH) - 1usize) as usize,\n{\n    axiom_max_phyaddr_width_facts();\n}",
+    "reason": "The exec and spec constants are linked via `when_used_as_spec` \u2014 the spec definition `(1 << WIDTH) - 1` produces a bitmask, but the correspondence depends on the external_body axiom for overflow safety",
+    "entailed": true,
+    "verus_output": "verification results:: 6 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

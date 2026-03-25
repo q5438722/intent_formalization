@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: empty_set_to_seq_empty
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_empty_set_to_seq_empty()
+    ensures
+        Set::<int>::empty().to_seq().len() == 0,
+{
+}
+```
+REASON: empty set should convert to empty sequence — tests base case of to_seq
+===PHI_END===
+
+===PHI_START===
+NAME: to_seq_contains_implies_set_contains
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_to_seq_contains_implies_set_contains(s: Set<int>, e: int)
+    requires
+        s.finite(),
+        s.to_seq().contains(e),
+    ensures
+        s.contains(e),
+{
+    element_in_seq_exists_in_original_finite_set(s, e);
+}
+```
+REASON: direct restatement of the lemma — tests that to_seq doesn't introduce spurious elements
+===PHI_END===
+
+===PHI_START===
+NAME: singleton_to_seq_no_extra
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_singleton_to_seq_no_extra(v: int, e: int)
+    requires
+        v != e,
+    ensures
+        !Set::empty().insert(v).to_seq().contains(e),
+{
+    if Set::empty().insert(v).to_seq().contains(e) {
+        element_in_seq_exists_in_original_finite_set(Set::empty().insert(v), e);
+    }
+}
+```
+REASON: singleton set's to_seq should not contain elements not in the set
+===PHI_END===
+
+===PHI_START===
+NAME: to_seq_len_equals_set_len
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_to_seq_len_equals_set_len(s: Set<int>)
+    requires
+        s.finite(),
+    ensures
+        s.to_seq().len() == s.len(),
+{
+}
+```
+REASON: to_seq should preserve cardinality — if lengths disagree the bijection is broken
+===PHI_END===
+
+===PHI_START===
+NAME: not_in_set_not_in_to_seq
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_not_in_set_not_in_to_seq(s: Set<int>, e: int)
+    requires
+        s.finite(),
+        !s.contains(e),
+    ensures
+        !s.to_seq().contains(e),
+{
+    if s.to_seq().contains(e) {
+        element_in_seq_exists_in_original_finite_set(s, e);
+    }
+}
+```
+REASON: contrapositive of the lemma — elements not in set should not appear in to_seq
+===PHI_END===

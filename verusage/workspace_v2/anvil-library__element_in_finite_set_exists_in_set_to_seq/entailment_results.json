@@ -1,0 +1,47 @@
+[
+  {
+    "name": "empty_set_to_seq_empty",
+    "type": "boundary",
+    "code": "proof fn phi_1_empty_set_to_seq_empty()\n    ensures\n        Set::<int>::empty().to_seq().len() == 0,\n{\n}",
+    "reason": "empty set should convert to empty sequence \u2014 tests base case of to_seq",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "to_seq_len_equals_set_len",
+    "type": "behavioral",
+    "code": "proof fn phi_2_to_seq_len_equals_set_len(s: Set<int>)\n    requires\n        s.finite(),\n    ensures\n        s.to_seq().len() == s.len(),\n{\n}",
+    "reason": "to_seq should preserve cardinality \u2014 if lengths disagree, the bijection between set and sequence is broken",
+    "entailed": false,
+    "verus_output": "stcondition not satisfied\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-library__element_in_finite_set_exists_in_set_to_seq/phi_2_to_seq_len_equals_set_len.rs:35:9\n   |\n31 | proof fn phi_2_to_seq_len_equals_set_len(s: Set<int>)\n   |       ----------------------------------------------- at the end of the function body\n...\n35 |         s.to_seq().len() == s.len(),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "singleton_to_seq_contains",
+    "type": "boundary",
+    "code": "proof fn phi_3_singleton_to_seq_contains(e: int)\n    ensures\n        Set::empty().insert(e).to_seq().contains(e),\n{\n    element_in_finite_set_exists_in_set_to_seq(Set::empty().insert(e), e);\n}",
+    "reason": "singleton set's to_seq should contain the single element \u2014 minimal nontrivial test",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "to_seq_no_extra_elements",
+    "type": "behavioral",
+    "code": "proof fn phi_4_to_seq_no_extra_elements(s: Set<int>, e: int)\n    requires\n        s.finite(),\n        s.to_seq().contains(e),\n    ensures\n        s.contains(e),\n{\n}",
+    "reason": "to_seq should not introduce elements not in the original set \u2014 tests the reverse direction not proven by the lemma",
+    "entailed": false,
+    "verus_output": "rrors\nerror: postcondition not satisfied\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-library__element_in_finite_set_exists_in_set_to_seq/phi_4_to_seq_no_extra_elements.rs:36:9\n   |\n31 | proof fn phi_4_to_seq_no_extra_elements(s: Set<int>, e: int)\n   |       ------------------------------------------------------ at the end of the function body\n...\n36 |         s.contains(e),\n   |         ^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "to_seq_no_duplicates",
+    "type": "behavioral",
+    "code": "proof fn phi_5_to_seq_no_duplicates(s: Set<int>)\n    requires\n        s.finite(),\n    ensures\n        s.to_seq().no_duplicates(),\n{\n}",
+    "reason": "set elements are unique so to_seq should have no duplicates \u2014 if it does, cardinality and containment reasoning breaks",
+    "entailed": false,
+    "verus_output": " errors\nerror: postcondition not satisfied\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-library__element_in_finite_set_exists_in_set_to_seq/phi_5_to_seq_no_duplicates.rs:35:9\n   |\n31 | proof fn phi_5_to_seq_no_duplicates(s: Set<int>)\n   |       ------------------------------------------ at the end of the function body\n...\n35 |         s.to_seq().no_duplicates(),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

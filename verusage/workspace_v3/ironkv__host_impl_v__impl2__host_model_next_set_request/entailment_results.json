@@ -1,0 +1,52 @@
+[
+  {
+    "name": "local_set_no_hashmap_update",
+    "target_fn": "next_set_request_complete",
+    "type": "behavioral",
+    "reason": "If the hashmap is unchanged after a local SetRequest with Some(v), the key-value store silently drops writes",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "HostState,\n1655 | |     src: AbstractEndPoint,\n...    |\n1661 | |     out: Set<Packet>,\n1662 | | )\n     | |_- at the end of the function body\n...\n1671 |           post.h == pre.h,\n     |           ^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 6 warnings emitted\n\n"
+  },
+  {
+    "name": "none_value_no_remove",
+    "target_fn": "next_set_request_complete",
+    "type": "boundary",
+    "reason": "If the key persists after a SetRequest with None value, delete operations are broken and stale data remains",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "5 | |     src: AbstractEndPoint,\n...    |\n1660 | |     out: Set<Packet>,\n1661 | | )\n     | |_- at the end of the function body\n...\n1670 |           post.h.contains_key(k),\n     |           ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 6 warnings emitted\n\n"
+  },
+  {
+    "name": "send_success_no_state_change",
+    "target_fn": "send_single_message",
+    "type": "logical",
+    "reason": "If state is unchanged after a successful send, the un_acked queue never grows and retransmission is impossible",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "eDelivery<Message>,\n1655 | |     m: Message,\n...    |\n1658 | |     params: AbstractParameters,\n1659 | | )\n     | |_- at the end of the function body\n...\n1664 |           pre == post,\n     |           ^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 6 warnings emitted\n\n"
+  },
+  {
+    "name": "ack_lookup_ignores_stored",
+    "target_fn": "ack_state_lookup",
+    "type": "boundary",
+    "reason": "If lookup always returns zero acked packets for a known endpoint, acknowledgements are lost and delivery breaks",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "ge>,\n1656 | | )\n     | |_- at the end of the function body\n...\n1662 |           ack_state_lookup(src, send_state).num_packets_acked == 0,\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 6 warnings emitted\n\n"
+  },
+  {
+    "name": "redirect_modifies_received_requests",
+    "target_fn": "next_set_request",
+    "type": "behavioral",
+    "reason": "If received_requests changes on a redirect (non-local key), the host logs phantom requests it never processed",
+    "entailed": false,
+    "verified": 0,
+    "errors": 0,
+    "output_tail": "2__host_model_next_set_request/phi_5_redirect_modifies_received_requests.rs:1662:38\n     |\n1662 |         pkt.msg.arrow_Message_m() == Message::SetRequest{key: k, value: ov},\n     |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

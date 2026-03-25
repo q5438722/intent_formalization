@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "owned_threads_shared_across_containers",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "Neither `container_perms_wf` nor `container_tree_wf` constrains `owned_threads` at all. The preconditions are simultaneously satisfiable, confirming two distinct containers can own the same thread \u2014 violating the unique ownership intent described in code comments."
+  },
+  {
+    "phi": "new_container_owned_threads_unconstrained",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`new_container_ensures` constrains `children`, `subtree_set`, `uppertree_seq`, `depth`, and `parent` of the new container but never requires `owned_threads@ =~= Set::empty()`. A freshly created container should logically start with no threads, yet the spec permits arbitrary thread sets."
+  },
+  {
+    "phi": "scheduler_contains_non_owned_thread",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "The spec never relates `scheduler` contents to `owned_threads`. A container can schedule threads it doesn't own, breaking the containment model where only owned (or subtree) threads should be schedulable."
+  },
+  {
+    "phi": "seq_push_lemma_external_body_trusted",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The ensures clauses of `seq_push_lemma` state standard, mathematically correct properties of sequence push (element preservation, new element containment, no spurious elements). These are provable from vstd's sequence axioms and are trusted as a convenience \u2014 not a soundness gap."
+  },
+  {
+    "phi": "owned_procs_shared_across_containers",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "Neither `container_perms_wf` nor `container_tree_wf` constrains `owned_procs` beyond requiring `children.wf()` and `children.unique()`. The same process can appear in two distinct containers' `owned_procs` lists, violating the single-parent ownership model for processes."
+  }
+]

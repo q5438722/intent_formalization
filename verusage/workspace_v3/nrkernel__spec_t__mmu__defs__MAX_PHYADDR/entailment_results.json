@@ -1,0 +1,52 @@
+[
+  {
+    "name": "ret_is_zero",
+    "target_fn": "MAX_PHYADDR",
+    "type": "behavioral",
+    "reason": "If the return value is zero, there is no usable physical address space, indicating a degenerate spec.",
+    "entailed": false,
+    "verified": 3,
+    "errors": 1,
+    "output_tail": "mu__defs__MAX_PHYADDR/phi_1_ret_is_zero.rs:41:9\n   |\n37 | proof fn phi_1_ret_is_zero(ret: usize)\n   |       -------------------------------- at the end of the function body\n...\n41 |         ret == 0usize,\n   |         ^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "ret_below_32bit_mask",
+    "target_fn": "MAX_PHYADDR",
+    "type": "boundary",
+    "reason": "If the max physical address is strictly below a 32-bit mask, the width axiom lower bound of 32 is violated.",
+    "entailed": false,
+    "verified": 3,
+    "errors": 1,
+    "output_tail": "ask.rs:41:9\n   |\n37 | proof fn phi_2_ret_below_32bit_mask(ret: usize)\n   |       ----------------------------------------- at the end of the function body\n...\n41 |         ret < 0xFFFF_FFFFusize,\n   |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "ret_exceeds_52bit_range",
+    "target_fn": "MAX_PHYADDR",
+    "type": "boundary",
+    "reason": "If the mask reaches or exceeds 2^52, it contradicts the upper bound on MAX_PHYADDR_WIDTH and could allow out-of-range physical addresses.",
+    "entailed": false,
+    "verified": 3,
+    "errors": 1,
+    "output_tail": " |\n37 | proof fn phi_3_ret_exceeds_52bit_range(ret: usize)\n   |       -------------------------------------------- at the end of the function body\n...\n41 |         ret >= (1usize << 52usize),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "ret_is_usize_max",
+    "target_fn": "MAX_PHYADDR",
+    "type": "logical",
+    "reason": "If the max physical address equals usize::MAX, the mask imposes no effective upper bound, defeating address-space isolation.",
+    "entailed": false,
+    "verified": 3,
+    "errors": 1,
+    "output_tail": " |\n37 | proof fn phi_4_ret_is_usize_max(ret: usize)\n   |       ------------------------------------- at the end of the function body\n...\n41 |         ret == 0xFFFF_FFFF_FFFF_FFFFusize,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "ret_is_even",
+    "target_fn": "MAX_PHYADDR",
+    "type": "logical",
+    "reason": "A bitmask of the form (1<<w)-1 with w>=1 is always odd; an even result would indicate an off-by-one or shift error in the spec.",
+    "entailed": false,
+    "verified": 3,
+    "errors": 1,
+    "output_tail": "DDR/phi_5_ret_is_even.rs:41:9\n   |\n37 | proof fn phi_5_ret_is_even(ret: usize)\n   |       -------------------------------- at the end of the function body\n...\n41 |         ret % 2usize == 0usize,\n   |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

@@ -1,0 +1,37 @@
+[
+  {
+    "name": "always_returns_none",
+    "target_fn": "resolve_pagetable_mapping",
+    "type": "behavioral",
+    "code": "proof fn phi_1_always_returns_none(mm: &MemoryManager, pcid: Pcid, va: VAddr, ret: Option<PageEntry>)\n    requires\n        mm.wf(),\n        mm.pcid_active(pcid),\n        va_4k_valid(va),\n        mm.get_pagetable_by_pcid(pcid).unwrap().mapping_4k().dom().contains(va) == ret.is_Some(),\n        ret.is_Some() ==> mm.get_pagetable_by_pcid(pcid).unwrap().mapping_4k().dom().contains(va)\n            && mm.get_pagetable_by_pcid(pcid).unwrap().mapping_4k()[va]\n                == spec_page_entry_to_map_entry(&ret.unwrap()),\n    ensures\n        ret.is_None(),\n{\n}",
+    "reason": "Would mean no valid VA ever resolves to a mapping, making the page table useless"
+  },
+  {
+    "name": "always_returns_some",
+    "target_fn": "resolve_pagetable_mapping",
+    "type": "behavioral",
+    "code": "proof fn phi_2_always_returns_some(mm: &MemoryManager, pcid: Pcid, va: VAddr, ret: Option<PageEntry>)\n    requires\n        mm.wf(),\n        mm.pcid_active(pcid),\n        va_4k_valid(va),\n        mm.get_pagetable_by_pcid(pcid).unwrap().mapping_4k().dom().contains(va) == ret.is_Some(),\n        ret.is_Some() ==> mm.get_pagetable_by_pcid(pcid).unwrap().mapping_4k().dom().contains(va)\n            && mm.get_pagetable_by_pcid(pcid).unwrap().mapping_4k()[va]\n                == spec_page_entry_to_map_entry(&ret.unwrap()),\n    ensures\n        ret.is_Some(),\n{\n}",
+    "reason": "Would mean every valid VA is always mapped, indicating the spec cannot distinguish mapped from unmapped addresses"
+  },
+  {
+    "name": "mapped_addr_always_zero",
+    "target_fn": "resolve_pagetable_mapping",
+    "type": "boundary",
+    "code": "proof fn phi_3_mapped_addr_always_zero(mm: &MemoryManager, pcid: Pcid, va: VAddr, ret: Option<PageEntry>)\n    requires\n        mm.wf(),\n        mm.pcid_active(pcid),\n        va_4k_valid(va),\n        mm.get_pagetable_by_pcid(pcid).unwrap().mapping_4k().dom().contains(va) == ret.is_Some(),\n        ret.is_Some() ==> mm.get_pagetable_by_pcid(pcid).unwrap().mapping_4k().dom().contains(va)\n            && mm.get_pagetable_by_pcid(pcid).unwrap().mapping_4k()[va]\n                == spec_page_entry_to_map_entry(&ret.unwrap()),\n    ensures\n        ret.is_Some() ==> ret.unwrap().addr == 0,\n{\n}",
+    "reason": "Would mean all resolved mappings point to physical address zero, collapsing all virtual memory to a single frame"
+  },
+  {
+    "name": "write_perm_always_false",
+    "target_fn": "resolve_pagetable_mapping",
+    "type": "logical",
+    "code": "proof fn phi_4_write_perm_always_false(mm: &MemoryManager, pcid: Pcid, va: VAddr, ret: Option<PageEntry>)\n    requires\n        mm.wf(),\n        mm.pcid_active(pcid),\n        va_4k_valid(va),\n        mm.get_pagetable_by_pcid(pcid).unwrap().mapping_4k().dom().contains(va) == ret.is_Some(),\n        ret.is_Some() ==> mm.get_pagetable_by_pcid(pcid).unwrap().mapping_4k().dom().contains(va)\n            && mm.get_pagetable_by_pcid(pcid).unwrap().mapping_4k()[va]\n                == spec_page_entry_to_map_entry(&ret.unwrap()),\n    ensures\n        ret.is_Some() ==> ret.unwrap().perm.write == false,\n{\n}",
+    "reason": "Would mean no mapping is ever writable, so the spec cannot express writable memory regions"
+  },
+  {
+    "name": "result_ignores_pcid",
+    "target_fn": "resolve_pagetable_mapping",
+    "type": "logical",
+    "code": "proof fn phi_5_result_ignores_pcid(mm: &MemoryManager, pcid1: Pcid, pcid2: Pcid, va: VAddr, ret1: Option<PageEntry>, ret2: Option<PageEntry>)\n    requires\n        mm.wf(),\n        mm.pcid_active(pcid1),\n        mm.pcid_active(pcid2),\n        pcid1 != pcid2,\n        va_4k_valid(va),\n        mm.get_pagetable_by_pcid(pcid1).unwrap().mapping_4k().dom().contains(va) == ret1.is_Some(),\n        ret1.is_Some() ==> mm.get_pagetable_by_pcid(pcid1).unwrap().mapping_4k()[va]\n                == spec_page_entry_to_map_entry(&ret1.unwrap()),\n        mm.get_pagetable_by_pcid(pcid2).unwrap().mapping_4k().dom().contains(va) == ret2.is_Some(),\n        ret2.is_Some() ==> mm.get_pagetable_by_pcid(pcid2).unwrap().mapping_4k()[va]\n                == spec_page_entry_to_map_entry(&ret2.unwrap()),\n    ensures\n        ret1 =~= ret2,\n{\n}",
+    "reason": "Would mean different PCIDs always resolve the same VA identically, destroying address-space isolation between processes"
+  }
+]

@@ -1,0 +1,88 @@
+===PHI_START===
+NAME: cpacket_set_loses_duplicate_packets
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_cpacket_set_loses_duplicate_packets(p: CPacket)
+    requires
+        p.abstractable(),
+    ensures
+        abstractify_seq_of_cpackets_to_set_of_sht_packets(seq![p, p]).len() == 1,
+{
+}
+```
+REASON: `abstractify_seq_of_cpackets_to_set_of_sht_packets` converts to Set, silently collapsing duplicate packets — a sequence of 2 identical retransmissions becomes 1 packet in the abstract model, potentially hiding liveness or delivery-count bugs
+===PHI_END===
+
+===PHI_START===
+NAME: lsht_seq_vs_sht_set_disagree
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_lsht_seq_vs_sht_set_disagree(p: CPacket)
+    requires
+        p.abstractable(),
+    ensures
+        abstractify_outbound_packets_to_seq_of_lsht_packets(seq![p, p]).len() == 2,
+        abstractify_seq_of_cpackets_to_set_of_sht_packets(seq![p, p]).len() == 1,
+{
+}
+```
+REASON: Two abstraction functions on the same packet sequence give contradictory cardinalities (2 vs 1) — the Seq-based and Set-based abstractions silently disagree on how many packets exist, so invariants proved with one don't transfer to the other
+===PHI_END===
+
+===PHI_START===
+NAME: invalid_message_always_abstractable
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_invalid_message_always_abstractable()
+    ensures
+        ({
+            let msg = CSingleMessage::InvalidMessage {};
+            msg.abstractable()
+        }),
+{
+}
+```
+REASON: `InvalidMessage` is unconditionally abstractable and maps to `SingleMessage::InvalidMessage` in the abstract model — a malformed/corrupted network message silently passes the abstractability check and enters the verified protocol logic rather than being rejected
+===PHI_END===
+
+===PHI_START===
+NAME: usize_always_marshalable_on_64bit
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_usize_always_marshalable_on_64bit(x: usize)
+    ensures
+        x.is_marshalable(),
+{
+}
+```
+REASON: `usize::is_marshalable` requires `*self as int <= u64::MAX`, but on a 64-bit platform every usize satisfies this — the guard is vacuous, making the marshalability check a no-op that provides false confidence about portability to 32-bit targets
+===PHI_END===
+
+===PHI_START===
+NAME: option_tag_collides_with_data
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_option_tag_collides_with_data(v: Vec<u8>)
+    requires
+        v.is_marshalable(),
+        v@.len() > 0,
+        v@[0] == 0u8,
+    ensures
+        ({
+            let some_v: Option<Vec<u8>> = Some(v);
+            some_v.ghost_serialize()[0] == 1u8
+        }),
+        ({
+            let none_v: Option<Vec<u8>> = None;
+            none_v.ghost_serialize()[0] == 0u8
+        }),
+{
+}
+```
+REASON: Option serialization uses a single tag byte (0 for None, 1 for Some) with no framing — while the tag itself distinguishes None/Some, there is no length field after the tag, so a deserializer seeing `[1, 0, ...]` cannot distinguish `Some(v)` where `v` serializes starting with 0 from a corruption scenario without knowing the inner type's exact deserialized length
+===PHI_END===

@@ -1,0 +1,82 @@
+===PHI_START===
+NAME: unmarshal_status_total
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_unmarshal_status_total<T: ResourceView>(v: Value)
+    requires
+        true,
+    ensures
+        T::unmarshal_status(v) is Ok,
+{
+}
+```
+REASON: unmarshal_status is uninterpreted — no axiom makes it total, so it should be possible for arbitrary Values to fail unmarshalling
+===PHI_END===
+
+===PHI_START===
+NAME: marshal_spec_constant
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_marshal_spec_constant<T: ResourceView>(s1: T::Spec, s2: T::Spec)
+    requires
+        true,
+    ensures
+        T::marshal_spec(s1) == T::marshal_spec(s2),
+{
+}
+```
+REASON: marshal_spec is uninterpreted — if it were provably constant, all specs would marshal to the same Value, destroying information and contradicting the roundtrip property
+===PHI_END===
+
+===PHI_START===
+NAME: create_request_key_ignores_obj_kind
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_create_request_key_ignores_obj_kind(r1: CreateRequest, r2: CreateRequest)
+    requires
+        r1.obj.metadata.name == r2.obj.metadata.name,
+        r1.namespace == r2.namespace,
+        r1.obj.kind != r2.obj.kind,
+    ensures
+        r1.key() == r2.key(),
+{
+}
+```
+REASON: CreateRequest::key includes obj.kind — requests with same name/namespace but different kinds should produce different ObjectRefs
+===PHI_END===
+
+===PHI_START===
+NAME: allocate_returns_zero_initially
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_allocate_returns_zero_initially(a: ReconcileIdAllocator)
+    requires
+        a.reconcile_id_counter > 0,
+    ensures
+        a.allocate().1 == 0nat,
+{
+}
+```
+REASON: allocate returns the current counter — if the counter is already positive, the returned ID must equal that positive value, not zero
+===PHI_END===
+
+===PHI_START===
+NAME: create_update_keys_agree_on_same_obj
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_create_update_keys_agree_on_same_obj(cr: CreateRequest, ur: UpdateRequest)
+    requires
+        cr.obj == ur.obj,
+        cr.namespace == ur.namespace,
+    ensures
+        cr.key() == ur.key(),
+{
+}
+```
+REASON: CreateRequest::key uses obj.metadata.name while UpdateRequest::key uses self.name — even with the same obj and namespace, name fields are sourced differently and need not agree
+===PHI_END===

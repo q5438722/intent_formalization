@@ -1,0 +1,20 @@
+[
+  {
+    "phi": "is_empty_ignores_l4_below_kernel_end",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is by design. `is_empty` means \"no user-space mappings\" \u2014 kernel entries below `kernel_l4_end` are shared across all page tables and are supposed to persist even when a table is \"empty.\" The invariant `kernel_entries@ =~= self.kernel_entries_ghost@` ensures kernel entries are consistent, not absent."
+  },
+  {
+    "phi": "alloc_iommu_preserves_all_pcid_mappings",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The precondition explicitly requires `new_mm.page_tables =~= old_mm.page_tables`, so identical PCID mappings follow trivially from structural equality. This is a tautological consequence of the preconditions, not a spec gap."
+  },
+  {
+    "phi": "alloc_iommu_new_mapping_empty",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The preconditions state `!old_mm.ioid_active(ret)` (ret was free) and `new_mm.iommu_tables =~= old_mm.iommu_tables` (tables unchanged). Since `iommutables_wf` requires free IOIDs to have `is_empty()` tables (which includes empty mappings), and `new_mm.wf()` holds, the empty mapping follows correctly from the free-implies-empty invariant."
+  }
+]

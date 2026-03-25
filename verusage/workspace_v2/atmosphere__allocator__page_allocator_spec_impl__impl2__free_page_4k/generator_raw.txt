@@ -1,0 +1,93 @@
+===PHI_START===
+NAME: container_map_2m_subset_allocated_4k
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_container_map_2m_subset_allocated_4k(alloc: PageAllocator)
+    requires
+        alloc.wf(),
+    ensures
+        alloc.container_map_2m@.dom().subset_of(alloc.allocated_pages_4k@),
+{
+}
+```
+REASON: container_wf checks container_map_2m domain against allocated_pages_4k instead of allocated_pages_2m — likely copy-paste bug
+===PHI_END===
+
+===PHI_START===
+NAME: container_map_1g_subset_allocated_4k
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_container_map_1g_subset_allocated_4k(alloc: PageAllocator)
+    requires
+        alloc.wf(),
+    ensures
+        alloc.container_map_1g@.dom().subset_of(alloc.allocated_pages_4k@),
+{
+}
+```
+REASON: container_wf checks container_map_1g domain against allocated_pages_4k instead of allocated_pages_1g — likely copy-paste bug
+===PHI_END===
+
+===PHI_START===
+NAME: wf_to_no_duplicates_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_wf_to_no_duplicates_external_body(sll: StaticLinkedList<usize, 10>)
+    requires
+        sll.wf(),
+    ensures
+        sll.spec_seq@.no_duplicates(),
+{
+    sll.wf_to_no_duplicates();
+}
+```
+REASON: wf_to_no_duplicates is external_body — unverified claim that wf() implies no_duplicates
+===PHI_END===
+
+===PHI_START===
+NAME: push_preserves_old_node_refs
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_push_preserves_old_node_refs(sll: StaticLinkedList<usize, 10>, new_val: usize, old_val: usize)
+    requires
+        sll.wf(),
+        sll.len() < 10,
+        sll.unique(),
+        sll@.contains(new_val) == false,
+        sll@.contains(old_val),
+    ensures
+        ({
+            let old_ref = sll.get_node_ref(old_val);
+            old_ref == old_ref // trivially true — real test is whether push spec allows node_ref collision
+        }),
+{
+}
+```
+REASON: push ensures old node refs are preserved but get_node_ref is external_body/closed — no way to verify the claimed ref stability
+===PHI_END===
+
+===PHI_START===
+NAME: alloc_new_container_inserts_into_all_maps
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_alloc_new_container_inserts_into_all_maps(alloc: PageAllocator, ret_ptr: PagePtr)
+    requires
+        alloc.wf(),
+        alloc.free_pages_4k.len() > 0,
+        alloc.allocated_pages_4k@.contains(ret_ptr) == false,
+        alloc.free_pages_4k@.to_set().contains(ret_ptr),
+        page_ptr_valid(ret_ptr),
+    ensures
+        // After alloc_page_4k_for_new_container, container_map_2m gets ret_ptr as key
+        // but ret_ptr is a 4k page pointer — inserting it as container key in 2m/1g maps is suspicious
+        alloc.container_map_2m@.insert(ret_ptr, Set::empty()).dom().contains(ret_ptr),
+{
+}
+```
+REASON: alloc_page_4k_for_new_container inserts a 4k page_ptr as container key into container_map_2m and container_map_1g — using a 4k page pointer as a container identifier across all size classes is suspicious
+===PHI_END===

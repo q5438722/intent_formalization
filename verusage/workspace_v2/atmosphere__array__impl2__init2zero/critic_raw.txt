@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: set_no_length_preservation_check
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Length preservation after `Seq::update` is a fundamental axiom of vstd's sequence library — `update` is defined to return a sequence of the same length. This is expected behavior, not a spec gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: set_frame_only_from_extensional_eq
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The frame condition follows directly from vstd's `Seq::update` axioms: updating index `i` preserves all other indices. The ensures clause `self.seq@ =~= old(self).seq@.update(i as int, out)` is the strongest possible specification — extensional equality IS the frame guarantee.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: set_external_body_ar_ghost_desync
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The `set` external_body ensures only constrain `self.seq@` (the Ghost field) and `self.wf()` (which only checks `seq@.len() == N`). The concrete runtime field `ar: [A;N]` is never mentioned in any ensures clause, so the spec provides no guarantee that `ar[i]` actually changes. This is a real ghost-runtime desync gap — all verified properties hold over the ghost state only.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: init2zero_accepts_empty_array
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: An empty array trivially satisfies "all elements are zero" via vacuous truth. The `N <= usize::MAX` precondition is redundant but harmless. This is standard behavior for empty collections, not a spec issue.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: set_arbitrary_value_no_bounds_on_A
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Rust arrays can store any value of type `A` — there is no domain restriction needed. For `u8`, all 256 values (0–255) are valid. The spec correctly reflects that any value of the element type can be written.
+===VERDICT_END===
+
+===SUMMARY===
+Four of the five candidates are false positives reflecting standard properties of vstd sequences, Rust type semantics, and vacuous truth over empty collections. The one true positive (`set_external_body_ar_ghost_desync`) identifies a real architectural gap: the `Array::set` external_body ensures only constrain the `Ghost<Seq<A>>` field, with no specification linking the concrete `ar: [A;N]` field to the ghost state. This means all verified properties hold over ghost state only, and there is no formal guarantee that the runtime array is actually updated correctly.
+===END_SUMMARY===

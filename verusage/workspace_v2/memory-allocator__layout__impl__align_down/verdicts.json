@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "bitand_rounding_external_body",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`bitand_with_mask_gives_rounding` is `external_body` trusting the bitwise-arithmetic equivalence `x & !sub(y,1) == (x/y)*y` for power-of-two `y` without proof. This is the key lemma enabling the fast power-of-two path in `align_down`, and any error would make the bitwise branch unsound."
+  },
+  {
+    "phi": "mul_mod_right_external_body",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`mul_mod_right` is `external_body` trusting `(a * b) % b == 0` without proof. While mathematically correct, this is a fundamental arithmetic property that should be provable via nonlinear_arith, and `align_down` depends on it to establish the `res % y == 0` postcondition."
+  },
+  {
+    "phi": "align_down_y_equals_1",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Aligning down to 1 returning `x` unchanged is correct and expected \u2014 every integer is a multiple of 1. This is a valid boundary case, not a spec gap."
+  },
+  {
+    "phi": "mul_mod_right_negative_divisor",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`mul_mod_right` only requires `b != 0`, allowing negative divisors. While `align_down` only calls it with positive `y`, the axiom's over-broad precondition trusts the property for all negative `b` without verification \u2014 for Verus Euclidean division this happens to be correct, but it's an unnecessarily broad trust assumption."
+  }
+]

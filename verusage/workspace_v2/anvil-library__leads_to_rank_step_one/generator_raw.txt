@@ -1,0 +1,82 @@
+===PHI_START===
+NAME: leads_to_rank_step_one_help_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_leads_to_rank_step_one_help_intensional_bridge(spec: TempPred<int>, p: spec_fn(nat) -> TempPred<int>, n: nat)
+    requires
+        forall |n: nat| #![trigger p(n)] (n > 0 ==> spec.entails(p(n).leads_to(p((n - 1) as nat)))),
+    ensures
+        spec.entails(p(n).leads_to(p(0))),
+{
+    leads_to_rank_step_one_help::<int>(spec, p, n);
+}
+```
+REASON: leads_to_rank_step_one_help is external_body performing induction over n to chain leads_to steps — the transitive composition of leads_to through nested always/implies/eventually closures bridges multiple intensional gaps without proof
+===PHI_END===
+
+===PHI_START===
+NAME: rank_zero_leads_to_self
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_rank_zero_leads_to_self(spec: TempPred<int>, p: spec_fn(nat) -> TempPred<int>)
+    requires
+        forall |n: nat| #![trigger p(n)] (n > 0 ==> spec.entails(p(n).leads_to(p((n - 1) as nat)))),
+    ensures
+        spec.entails(p(0).leads_to(p(0))),
+{
+    leads_to_rank_step_one_help::<int>(spec, p, 0);
+}
+```
+REASON: at n=0 the base case derives p(0).leads_to(p(0)) without any premise — the external_body axiom must handle this reflexive case internally, requiring leads_to reflexivity through unverified closure resolution
+===PHI_END===
+
+===PHI_START===
+NAME: vacuous_premise_any_leads_to
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_vacuous_premise_any_leads_to(spec: TempPred<int>, q: TempPred<int>, n: nat)
+    requires
+        forall |n: nat| #![trigger (|k: nat| q)(n)] (n > 0 ==> spec.entails((|k: nat| q)(n).leads_to((|k: nat| q)((n - 1) as nat)))),
+    ensures
+        spec.entails(q.leads_to(q)),
+{
+    leads_to_rank_step_one_help::<int>(spec, |k: nat| q, n);
+}
+```
+REASON: instantiating p as a constant function makes all step premises trivially q.leads_to(q) — the external_body axiom derives this for any spec without verifying leads_to reflexivity
+===PHI_END===
+
+===PHI_START===
+NAME: false_spec_any_rank_leads_to
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_false_spec_any_rank_leads_to(p: spec_fn(nat) -> TempPred<int>, n: nat)
+    ensures
+        TempPred::<int>::new(|ex: Execution<int>| false).entails(p(n).leads_to(p(0))),
+{
+    leads_to_rank_step_one_help::<int>(TempPred::new(|ex: Execution<int>| false), p, n);
+}
+```
+REASON: an unsatisfiable spec vacuously satisfies all step premises and thus entails any ranked leads_to chain — the external_body axiom propagates vacuous truth without detecting spec inconsistency
+===PHI_END===
+
+===PHI_START===
+NAME: single_step_amplified_to_full_chain
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_single_step_amplified_to_full_chain(spec: TempPred<int>, p: spec_fn(nat) -> TempPred<int>)
+    requires
+        forall |n: nat| #![trigger p(n)] (n > 0 ==> spec.entails(p(n).leads_to(p((n - 1) as nat)))),
+    ensures
+        forall |n: nat| #[trigger] spec.entails(p(n).leads_to(p(0))),
+{
+    leads_to_rank_step_one::<int>(spec, p);
+}
+```
+REASON: leads_to_rank_step_one composes unboundedly many leads_to steps through the external_body helper — each composition trusts the axiom to resolve fresh intensional closure gaps in the transitive leads_to chain
+===PHI_END===

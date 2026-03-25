@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: sbin_bounds_negative_size_unchecked
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `P || !P` is a tautology that holds for any proposition. This proves nothing about the spec — it doesn't expose any issue with the boundary behavior of `property_sbin_bounds` at size=0.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: pow2_negative_is_one
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `pow2` returning 1 for all negative exponents is mathematically non-standard (2^(-n) should be fractional). While `pow2` is only used with non-negative arguments in this file's core logic, the definition silently masks errors if ever called with negative values.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: check_sbin_bounds_vacuous_empty_range
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Vacuous truth for empty ranges (`size_start >= size_end`) is standard and correct for range-checking predicates — the universal quantification `forall |size| start <= size < end` is also vacuously true for empty ranges. This is consistent, expected base-case behavior for the recursive checker.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: `pow2` returning 1 for negative exponents is a non-standard design choice that could mask bugs if called with unexpected arguments. The other two are false positives — one is a trivial tautology that proves nothing about the spec, and the other is standard vacuous truth for empty ranges in a recursive range-checker.
+===END_SUMMARY===

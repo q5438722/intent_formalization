@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "walk_next_external_body_unconstrained",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`walk_next` is `external_body` with `unimplemented!()` \u2014 the core page table walk stepping function is completely opaque. Since `iter_walk` builds on it and `lemma_iter_walk_equals_pt_walk` bridges it to `pt_walk`, this is a foundational unverified trust assumption."
+  },
+  {
+    "phi": "iter_walk_equals_pt_walk_external_body",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`lemma_iter_walk_equals_pt_walk` is `external_body` \u2014 the equivalence between the opaque `walk_next`-based `iter_walk` and the fully specified `pt_walk` is asserted without proof. This is a critical bridge lemma; if incorrect, all reasoning that flows through `iter_walk` would be unsound."
+  },
+  {
+    "phi": "iter_walk_result_vbase_equal_external_body",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`lemma_iter_walk_result_vbase_equal` is `external_body` \u2014 walk path and vaddr idempotency are entirely unverified. This lemma is directly used by `lemma_pt_walk_result_vbase_equal` to derive key properties about walk stability."
+  },
+  {
+    "phi": "pt_walk_result_vaddr_leq_original",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The walk result vaddr is produced by `align_to_usize(vaddr, size)` which computes `sub(vaddr, vaddr % size)`, which is always \u2264 vaddr. While the proof chain goes through external_body lemmas, the property itself is mathematically correct and desirable \u2014 alignment always rounds down."
+  },
+  {
+    "phi": "pt_walk_result_idempotent",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Walk result idempotency is a correct and desirable property \u2014 re-translating from the page-aligned base address of a translation should yield the same translation. This is fundamental to page table semantics: all addresses within a page must map to the same frame."
+  }
+]

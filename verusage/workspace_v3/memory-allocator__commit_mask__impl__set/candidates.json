@@ -1,0 +1,37 @@
+[
+  {
+    "name": "union_always_empty",
+    "target_fn": "set",
+    "type": "behavioral",
+    "code": "proof fn phi_1_union_always_empty(pre_self: CommitMask, other: CommitMask, post_self: CommitMask)\n    requires\n        post_self@ == pre_self@.union(other@),\n    ensures\n        post_self@ =~= Set::<int>::empty(),\n{\n}",
+    "reason": "Union should not always produce an empty set; this would mean set() discards all information."
+  },
+  {
+    "name": "loses_original_elements",
+    "target_fn": "set",
+    "type": "logical",
+    "code": "proof fn phi_2_loses_original_elements(pre_self: CommitMask, other: CommitMask, post_self: CommitMask, i: int)\n    requires\n        post_self@ == pre_self@.union(other@),\n        pre_self@.contains(i),\n        !other@.contains(i),\n    ensures\n        !post_self@.contains(i),\n{\n}",
+    "reason": "An element present in old(self) but not in other must still be in the result; losing it means set() is not a true union."
+  },
+  {
+    "name": "result_equals_only_other",
+    "target_fn": "set",
+    "type": "behavioral",
+    "code": "proof fn phi_3_result_equals_only_other(pre_self: CommitMask, other: CommitMask, post_self: CommitMask)\n    requires\n        post_self@ == pre_self@.union(other@),\n    ensures\n        post_self@ =~= other@,\n{\n}",
+    "reason": "The result equalling only `other@` would mean set() overwrites rather than unions, dropping all pre-existing bits."
+  },
+  {
+    "name": "union_not_idempotent",
+    "target_fn": "set",
+    "type": "boundary",
+    "code": "proof fn phi_4_union_not_idempotent(m: CommitMask, post: CommitMask)\n    requires\n        post@ == m@.union(m@),\n    ensures\n        !(post@ =~= m@),\n{\n}",
+    "reason": "Union of a mask with itself must equal itself (idempotence); failure indicates the spec allows set() to corrupt data in the self-union case."
+  },
+  {
+    "name": "spurious_element_added",
+    "target_fn": "set",
+    "type": "logical",
+    "code": "proof fn phi_5_spurious_element_added(pre_self: CommitMask, other: CommitMask, post_self: CommitMask, i: int)\n    requires\n        post_self@ == pre_self@.union(other@),\n        !pre_self@.contains(i),\n        !other@.contains(i),\n    ensures\n        post_self@.contains(i),\n{\n}",
+    "reason": "An element absent from both operands must not appear in the result; its presence would mean set() introduces phantom bits."
+  }
+]

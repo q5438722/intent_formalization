@@ -1,0 +1,20 @@
+[
+  {
+    "phi": "arch_inv_empty_layers",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`Arch::inv()` uses a universal quantifier over layers \u2014 when `layers.len() == 0`, the quantifier is vacuously true and `0 <= X86_NUM_LAYERS` holds, so the empty arch satisfies `inv()`. This is a real spec weakness: an architecture with no layers is meaningless for address translation and should be excluded (e.g., by requiring `self.layers.len() > 0`)."
+  },
+  {
+    "phi": "nonstandard_entry_size_last_layer",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`entry_size_is_next_layer_size` is an implication `i + 1 < self.layers.len() ==> ...`, which is vacuously true for the last layer. The invariant only constrains entry sizes to be in `(0, X86_MAX_ENTRY_SIZE]` \u2014 it deliberately does not require power-of-two sizes. The last layer's entry size being unconstrained beyond the range bound is by design; the real x86 constraint (4K pages) is enforced elsewhere at instantiation, not in this generic `Arch` spec."
+  },
+  {
+    "phi": "wellformed_unaligned_base",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The alignment check `aligned(self.base_vaddr, self.entry_size() * self.num_entries())` is explicitly commented out in `well_formed()`. This allows directories with unaligned base addresses (like `base_vaddr == 1`) to satisfy `well_formed()` and `inv()`. This is a real spec gap \u2014 unaligned base addresses break the arithmetic properties that the page table interpretation relies on (e.g., disjointness of mapped regions depends on alignment assumptions hidden in `external_body` lemmas)."
+  }
+]

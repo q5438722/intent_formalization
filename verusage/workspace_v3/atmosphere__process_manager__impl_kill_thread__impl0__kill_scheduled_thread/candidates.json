@@ -1,0 +1,37 @@
+[
+  {
+    "name": "returned_page_in_proc_dom",
+    "target_fn": "kill_scheduled_thread",
+    "type": "behavioral",
+    "code": "proof fn phi_1_returned_page_in_proc_dom(\n    pm_old: ProcessManager,\n    pm_new: ProcessManager,\n    thread_ptr: ThreadPtr,\n    ret_page: PagePtr,\n)\n    requires\n        pm_old.wf(),\n        pm_old.thread_dom().contains(thread_ptr),\n        pm_old.get_thread(thread_ptr).state == ThreadState::SCHEDULED,\n        pm_new.wf(),\n        pm_new.proc_dom() == pm_old.proc_dom(),\n        pm_new.thread_dom() == pm_old.thread_dom().remove(thread_ptr),\n        pm_new.page_closure() =~= pm_old.page_closure().remove(ret_page),\n        pm_old.page_closure().contains(ret_page),\n        pm_old.container_dom().contains(ret_page) == false,\n    ensures\n        pm_new.proc_dom().contains(ret_page),\n{\n}",
+    "reason": "The freed thread page being simultaneously in the process domain would violate the memory_disjoint invariant between thread and process regions."
+  },
+  {
+    "name": "extra_thread_removed",
+    "target_fn": "kill_scheduled_thread",
+    "type": "behavioral",
+    "code": "proof fn phi_2_extra_thread_removed(\n    pm_old: ProcessManager,\n    pm_new: ProcessManager,\n    thread_ptr: ThreadPtr,\n    other_thread: ThreadPtr,\n)\n    requires\n        pm_old.wf(),\n        pm_old.thread_dom().contains(thread_ptr),\n        pm_old.get_thread(thread_ptr).state == ThreadState::SCHEDULED,\n        pm_new.wf(),\n        pm_new.thread_dom() == pm_old.thread_dom().remove(thread_ptr),\n        pm_old.thread_dom().contains(other_thread),\n        other_thread != thread_ptr,\n    ensures\n        !pm_new.thread_dom().contains(other_thread),\n{\n}",
+    "reason": "Killing one scheduled thread should not cause a different, unrelated thread to also disappear from the thread domain."
+  },
+  {
+    "name": "proc_threads_always_empty",
+    "target_fn": "kill_scheduled_thread",
+    "type": "boundary",
+    "code": "proof fn phi_3_proc_threads_always_empty(\n    pm_old: ProcessManager,\n    pm_new: ProcessManager,\n    thread_ptr: ThreadPtr,\n)\n    requires\n        pm_old.wf(),\n        pm_old.thread_dom().contains(thread_ptr),\n        pm_old.get_thread(thread_ptr).state == ThreadState::SCHEDULED,\n        pm_new.wf(),\n        pm_new.proc_dom() == pm_old.proc_dom(),\n        pm_old.get_proc(pm_old.get_thread(thread_ptr).owning_proc).owned_threads.len() > 1,\n        pm_new.get_proc(pm_old.get_thread(thread_ptr).owning_proc).owned_threads@ ==\n            pm_old.get_proc(pm_old.get_thread(thread_ptr).owning_proc).owned_threads@.remove_value(thread_ptr),\n        pm_new.get_proc(pm_old.get_thread(thread_ptr).owning_proc).owned_threads.len() ==\n            pm_old.get_proc(pm_old.get_thread(thread_ptr).owning_proc).owned_threads.len() - 1,\n    ensures\n        pm_new.get_proc(pm_old.get_thread(thread_ptr).owning_proc).owned_threads@.len() == 0,\n{\n}",
+    "reason": "When a process owns multiple threads, killing one should leave the remaining threads intact rather than emptying the entire thread list."
+  },
+  {
+    "name": "page_closure_extra_removal",
+    "target_fn": "kill_scheduled_thread",
+    "type": "logical",
+    "code": "proof fn phi_4_page_closure_extra_removal(\n    pm_old: ProcessManager,\n    pm_new: ProcessManager,\n    thread_ptr: ThreadPtr,\n    ret_page: PagePtr,\n    other_page: PagePtr,\n)\n    requires\n        pm_old.wf(),\n        pm_old.thread_dom().contains(thread_ptr),\n        pm_old.get_thread(thread_ptr).state == ThreadState::SCHEDULED,\n        pm_new.wf(),\n        pm_new.page_closure() =~= pm_old.page_closure().remove(ret_page),\n        pm_old.page_closure().contains(ret_page),\n        pm_old.page_closure().contains(other_page),\n        other_page != ret_page,\n    ensures\n        !pm_new.page_closure().contains(other_page),\n{\n}",
+    "reason": "The page closure should shrink by exactly one element (the freed thread page); any additional page disappearing indicates a resource leak or corruption."
+  },
+  {
+    "name": "kill_spec_inconsistency",
+    "target_fn": "kill_scheduled_thread",
+    "type": "logical",
+    "code": "proof fn phi_5_kill_spec_inconsistency(\n    pm_old: ProcessManager,\n    pm_new: ProcessManager,\n    thread_ptr: ThreadPtr,\n    ret_page: PagePtr,\n)\n    requires\n        pm_old.wf(),\n        pm_old.thread_dom().contains(thread_ptr),\n        pm_old.get_thread(thread_ptr).state == ThreadState::SCHEDULED,\n        forall|edp_idx: EndpointIdx|\n            #![auto]\n            0 <= edp_idx < MAX_NUM_ENDPOINT_DESCRIPTORS\n            ==>\n            pm_old.get_thread(thread_ptr).endpoint_descriptors@[edp_idx as int].is_None(),\n        pm_new.wf(),\n        pm_new.thread_dom() == pm_old.thread_dom().remove(thread_ptr),\n        pm_new.proc_dom() == pm_old.proc_dom(),\n        pm_new.container_dom() == pm_old.container_dom(),\n        pm_new.page_closure() =~= pm_old.page_closure().remove(ret_page),\n        pm_old.page_closure().contains(ret_page),\n        pm_old.container_dom().contains(ret_page) == false,\n    ensures\n        false,\n{\n}",
+    "reason": "If the combined preconditions and postconditions of kill_scheduled_thread entail false, the entire specification is vacuously inconsistent and proves anything."
+  }
+]

@@ -1,0 +1,78 @@
+===PHI_START===
+NAME: map_new_rec_contains_zero
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_map_new_rec_contains_zero<V>(dom: nat, val: V)
+    ensures
+        map_new_rec(dom, val).contains_key(0),
+{
+    map_new_rec_dom_finite(dom, val);
+}
+```
+REASON: The map always contains key 0 regardless of `dom` — the base case inserts `0 => val` so the domain is `[0, dom]` not `[1, dom]` or empty
+===PHI_END===
+
+===PHI_START===
+NAME: map_new_rec_all_same_value
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_map_new_rec_all_same_value<V>(dom: nat, val: V, n: nat)
+    requires
+        n <= dom,
+    ensures
+        map_new_rec(dom, val)[n] == val,
+{
+    map_new_rec_dom_finite(dom, val);
+}
+```
+REASON: Every key in the map maps to the same value — the map is a constant function, so it cannot represent heterogeneous initialization
+===PHI_END===
+
+===PHI_START===
+NAME: map_new_rec_dom_size
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_map_new_rec_dom_size<V>(dom: nat, val: V)
+    ensures
+        map_new_rec(dom, val).dom().len() == dom + 1,
+{
+    map_new_rec_dom_finite(dom, val);
+    assert(map_new_rec(dom, val).dom() =~= Set::new(|n: nat| n <= dom));
+}
+```
+REASON: The domain has `dom + 1` elements (0 through dom inclusive) — callers might expect `dom` elements if they think `dom` is a count rather than an upper bound
+===PHI_END===
+
+===PHI_START===
+NAME: map_new_rec_dom_is_closed_interval
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_map_new_rec_dom_is_closed_interval<V>(dom: nat, val: V, n: nat)
+    requires
+        n > dom,
+    ensures
+        !map_new_rec(dom, val).contains_key(n),
+{
+    map_new_rec_dom_finite(dom, val);
+}
+```
+REASON: Keys beyond `dom` are absent — the domain is exactly `[0, dom]` with no stray keys, tests the upper bound exclusion
+===PHI_END===
+
+===PHI_START===
+NAME: map_new_rec_zero_is_singleton
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_map_new_rec_zero_is_singleton<V>(val: V)
+    ensures
+        map_new_rec(0, val) =~= map![0nat => val],
+{
+}
+```
+REASON: `map_new_rec(0, val)` is a singleton map `{0 => val}` — the base case creates a non-empty map, so there is no way to construct an empty map with this function
+===PHI_END===

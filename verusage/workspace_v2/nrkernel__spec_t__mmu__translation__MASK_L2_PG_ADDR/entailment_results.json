@@ -1,0 +1,47 @@
+[
+  {
+    "name": "mask_l2_pg_addr_low_21_bits_zero",
+    "type": "boundary",
+    "code": "proof fn phi_1_mask_l2_pg_addr_low_21_bits_zero()\n    ensures\n        MASK_L2_PG_ADDR_SPEC & 0x1F_FFFF == 0,\n{\n    axiom_max_phyaddr_width_facts();\n    assert(forall|low: usize, high: usize| low <= high && high < 64 ==> bitmask_inc!(low, high) & (!0usize >> (64 - low)) == 0) by (bit_vector);\n}",
+    "reason": "Bits 0-20 should be clear in the 2MB page mask \u2014 if any leak through, physical address extraction for 2MB pages would include sub-page offset bits",
+    "entailed": false,
+    "verus_output": "erms instead.\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__translation__MASK_L2_PG_ADDR/phi_1_mask_l2_pg_addr_low_21_bits_zero.rs:44:12\n   |\n44 |     assert(forall|low: usize, high: usize| low <= high && high < 64 ==> bitmask_inc!(low, high) & (!0usize >> (64 - low)) == 0) by (...\n   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "mask_l2_pg_addr_bit_21_set",
+    "type": "boundary",
+    "code": "proof fn phi_2_mask_l2_pg_addr_bit_21_set()\n    ensures\n        MASK_L2_PG_ADDR_SPEC & (1usize << 21) != 0,\n{\n    axiom_max_phyaddr_width_facts();\n}",
+    "reason": "Bit 21 should be the lowest set bit \u2014 if clear, the mask starts at bit 22+ and loses one bit of 2MB page physical address resolution",
+    "entailed": false,
+    "verus_output": "tisfied\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__translation__MASK_L2_PG_ADDR/phi_2_mask_l2_pg_addr_bit_21_set.rs:41:9\n   |\n39 | proof fn phi_2_mask_l2_pg_addr_bit_21_set()\n   |       ------------------------------------- at the end of the function body\n40 |     ensures\n41 |         MASK_L2_PG_ADDR_SPEC & (1usize << 21) != 0,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "mask_l2_pg_addr_high_bits_clear",
+    "type": "boundary",
+    "code": "proof fn phi_3_mask_l2_pg_addr_high_bits_clear()\n    ensures\n        MASK_L2_PG_ADDR_SPEC & !((1usize << 52) - 1) == 0,\n{\n    axiom_max_phyaddr_width_facts();\n    assert(1usize << 52 == 0x10000000000000) by (compute);\n}",
+    "reason": "No bits at or above position 52 should be set \u2014 if the mask extends beyond max physical address width, extracted addresses would include invalid high bits",
+    "entailed": false,
+    "verus_output": "_addr_high_bits_clear.rs:41:32\n   |\n41 |         MASK_L2_PG_ADDR_SPEC & !((1usize << 52) - 1) == 0,\n   |                                ^^^^^^^^^^^^^^^^^^^^^ cannot apply unary operator `!`\n   |\nnote: `vstd::prelude::int` does not implement `std::ops::Not`\n  --> /home/runner/work/verus/verus/source/builtin/src/lib.rs:635:0\n   |\n   = note: `vstd::prelude::int` is defined in another crate\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0600`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "mask_l2_excludes_bits_12_to_20",
+    "type": "logical",
+    "code": "proof fn phi_4_mask_l2_excludes_bits_12_to_20()\n    ensures\n        MASK_L2_PG_ADDR_SPEC & bitmask_inc!(12usize, 20usize) == 0,\n{\n    axiom_max_phyaddr_width_facts();\n    assert(bitmask_inc!(12usize, 20usize) == 0x1FF000) by (compute);\n}",
+    "reason": "Bits 12-20 are in MASK_ADDR (4KB) but should not be in MASK_L2_PG_ADDR (2MB) \u2014 if present, 2MB page addresses would extract sub-2MB offset bits as part of the physical base",
+    "entailed": false,
+    "verus_output": "   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: assertion failed\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__translation__MASK_L2_PG_ADDR/phi_4_mask_l2_excludes_bits_12_to_20.rs:44:12\n   |\n44 |     assert(bitmask_inc!(12usize, 20usize) == 0x1FF000) by (compute);\n   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ simplified to !(!0 << 9) << 12 == 2093056\n\nerror: aborting due to 2 previous errors\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "mask_l2_pg_addr_nonzero",
+    "type": "boundary",
+    "code": "proof fn phi_5_mask_l2_pg_addr_nonzero()\n    ensures\n        MASK_L2_PG_ADDR_SPEC != 0,\n{\n    axiom_max_phyaddr_width_facts();\n}",
+    "reason": "For any MAX_PHYADDR_WIDTH in [32, 52], the L2 mask must be nonzero \u2014 a zero mask would make 2MB page translation impossible",
+    "entailed": false,
+    "verus_output": "ified, 1 errors\nerror: postcondition not satisfied\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__translation__MASK_L2_PG_ADDR/phi_5_mask_l2_pg_addr_nonzero.rs:41:9\n   |\n39 | proof fn phi_5_mask_l2_pg_addr_nonzero()\n   |       ---------------------------------- at the end of the function body\n40 |     ensures\n41 |         MASK_L2_PG_ADDR_SPEC != 0,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

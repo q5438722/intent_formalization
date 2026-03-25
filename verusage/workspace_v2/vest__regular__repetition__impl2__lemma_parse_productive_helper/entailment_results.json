@@ -1,0 +1,47 @@
+[
+  {
+    "name": "repeatn_productive_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_repeatn_productive_external_body<C: SecureSpecCombinator>(c: &RepeatN<C>, s: Seq<u8>, n: int, vs: Seq<C::Type>)\n    requires\n        c.requires(),\n        c.is_productive(),\n        c.spec_parse(s) == Some((n, vs)),\n    ensures\n        n > 0,\n{\n    c.lemma_parse_productive(s);\n}",
+    "reason": "`RepeatN::lemma_parse_productive` is `external_body` with `unimplemented!()` \u2014 the productivity property for the composed repetition combinator is trusted without proof, even though `lemma_parse_productive_helper` exists as a verified helper that could have been used",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "inner_productive_external_body",
+    "type": "logical",
+    "code": "proof fn phi_2_inner_productive_external_body<C: SecureSpecCombinator>(c: &C, s: Seq<u8>, n: int, v: C::Type)\n    requires\n        c.requires(),\n        c.is_productive(),\n        c.spec_parse(s) == Some((n, v)),\n    ensures\n        n > 0,\n{\n    c.lemma_parse_productive(s);\n}",
+    "reason": "`SecureSpecCombinator::lemma_parse_productive` is `external_body` on the trait \u2014 the base productivity guarantee for any combinator is an unverified trust assumption",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "parse_zero_always_succeeds",
+    "type": "boundary",
+    "code": "proof fn phi_3_parse_zero_always_succeeds<C: SecureSpecCombinator>(c: &RepeatN<C>, s: Seq<u8>)\n    requires\n        c.1 == 0usize,\n    ensures\n        c.spec_parse(s) == Some((0int, seq![])),\n{\n}",
+    "reason": "Parsing zero repetitions always succeeds regardless of input \u2014 the combinator produces a result without examining any bytes, which could mask malformed input",
+    "entailed": false,
+    "verus_output": "his point\n    |                            |\n    |                            cannot infer type of the type parameter `T` declared on the enum `Option`\n    |\nhelp: consider specifying the generic argument\n    |\n138 |         c.spec_parse(s) == Some::<(vstd::prelude::int, vstd::seq::Seq<_>)>((0int, seq![])),\n    |                                +++++++++++++++++++++++++++++++++++++++++++\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0282`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "parse_helper_monotone_consumed",
+    "type": "logical",
+    "code": "proof fn phi_4_parse_helper_monotone_consumed<C: SecureSpecCombinator>(c: &RepeatN<C>, s: Seq<u8>, n1: usize, n2: usize, m1: int, m2: int, vs1: Seq<C::Type>, vs2: Seq<C::Type>)\n    requires\n        c.requires(),\n        c.0.is_productive(),\n        n1 < n2,\n        c.spec_parse_helper(s, n1) == Some((m1, vs1)),\n        c.spec_parse_helper(s, n2) == Some((m2, vs2)),\n    ensures\n        m2 > m1,\n    decreases n2,\n{\n    c.lemma_parse_productive_helper(s, n2);\n    if n2 == n1 + 1 {\n        c.0.lemma_parse_productive(s.skip(m1 as int));\n    } else {\n        if let Some((m_prev, vs_prev)) = c.spec_parse_helper(s, (n2 - 1) as usize) {\n            phi_4_parse_helper_monotone_consumed(c, s, n1, (n2 - 1) as usize, m1, m_prev, vs1, vs_prev);\n            c.0.lemma_parse_productive(s.skip(m_prev as int));\n        }\n    }\n}",
+    "reason": "With a productive inner combinator, each additional repetition must consume strictly more bytes \u2014 if this weren't true, the parser could loop without advancing through the input",
+    "entailed": false,
+    "verus_output": "verification results:: 2 verified, 1 errors\nerror: precondition not satisfied\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/vest__regular__repetition__impl2__lemma_parse_productive_helper/phi_4_parse_helper_monotone_consumed.rs:145:5\n    |\n111 |             self.1 > 0,\n    |             ---------- failed precondition\n...\n145 |     c.lemma_parse_productive_helper(s, n2);\n    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "parse_result_length_equals_count",
+    "type": "behavioral",
+    "code": "proof fn phi_5_parse_result_length_equals_count<C: SecureSpecCombinator>(c: &RepeatN<C>, s: Seq<u8>, n: usize, m: int, vs: Seq<C::Type>)\n    requires\n        c.spec_parse_helper(s, n) == Some((m, vs)),\n    ensures\n        vs.len() == n,\n    decreases n,\n{\n    if n == 0 {\n    } else {\n        if let Some((m_prev, vs_prev)) = c.spec_parse_helper(s, (n - 1) as usize) {\n            phi_5_parse_result_length_equals_count(c, s, (n - 1) as usize, m_prev, vs_prev);\n        }\n    }\n}",
+    "reason": "The parsed sequence length should always equal the requested repetition count \u2014 if the result contained fewer or more elements than requested, the combinator would violate its contract",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

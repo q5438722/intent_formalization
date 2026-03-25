@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: ptmem_view_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `PTMem::view` is `external_body` with `unimplemented!()` — the function that interprets raw page table memory as a `Map<usize, PTE>` is completely opaque. This is a critical trust assumption since the PTE view is used in step_WriteNonneg/step_WriteNonpos postconditions to reason about mapping changes.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: lemma_write_seq_push_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `lemma_write_seq_push` is `external_body` with `unimplemented!()` — the inductive decomposition of `write_seq` over a pushed element is trusted without proof. This lemma is directly used in `lemma_mem_view_after_step_write` to reason about writer memory after store buffer operations, making it a key unverified link in the proof chain.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: can_flip_polarity_commented_out_conditions
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The commented-out conditions `self.hist.pending_maps === map![]` and `self.hist.pending_unmaps === map![]` mean polarity can flip while pending maps/unmaps are still outstanding. This allows a transition from Mapping to Unmapping (or vice versa) with incomplete operations, potentially permitting unsafe interleaving where a new mapping starts before a previous unmap completes its TLB shootdown.
+===VERDICT_END===
+
+===SUMMARY===
+Three true positives: `PTMem::view` is an external_body function critical for reasoning about PTE mappings, `lemma_write_seq_push` is an unverified inductive step used in the core write correctness proof, and `can_flip_polarity` has commented-out pending map/unmap conditions that allow unsafe polarity transitions with outstanding operations.
+===END_SUMMARY===

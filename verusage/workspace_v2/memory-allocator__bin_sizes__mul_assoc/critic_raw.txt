@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: pow2_negative_is_one
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `pow2` returns 1 for all negative exponents, which is mathematically incorrect (2^(-n) = 1/2^n). While this is a deliberate design choice for a nat-returning function, callers passing negative exponents by mistake get `1` instead of any signal that the input is out of the intended domain — a precondition or different base case would be safer.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: pow2_zero_equals_pow2_minus1
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: This is a direct consequence of `pow2_negative_is_one` — the function is non-injective for e ≤ 0, collapsing all non-positive inputs to 1. This could mask off-by-one errors where a caller accidentally computes `pow2(e-1)` instead of `pow2(e)` when `e` is near 0.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: shift_zero_by_63
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Zero right-shifted by any amount is zero — this is a basic mathematical fact (0 / 2^n = 0). This confirms `shift_is_div` behaves correctly on boundary inputs.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: mul_assoc_commutativity_hidden
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `mul_assoc` proves `(x*y)*z == y*(x*z)`, which by `nonlinear_arith` also implicitly uses commutativity of natural number multiplication. Commutativity of multiplication is a correct mathematical fact, not a soundness gap — the lemma's name is slightly misleading but the property is valid.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: div2_loses_remainder
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Integer division truncating remainders is the standard, correct semantics. The property `x/2*2 != x` when `x` is odd is a basic mathematical fact, not a spec gap. The `shift_is_div` proof correctly accounts for this truncation at each inductive step.
+===VERDICT_END===
+
+===SUMMARY===
+Two true positives identify the same underlying issue: `pow2` silently returns 1 for all non-positive inputs, making the function non-injective below 1 and potentially masking off-by-one errors near e=0. Three false positives confirm correct mathematical properties: zero shifted by any amount is zero, natural number multiplication is commutative (correctly used by `mul_assoc`), and integer division correctly truncates remainders.
+===END_SUMMARY===

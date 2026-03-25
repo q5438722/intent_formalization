@@ -1,0 +1,37 @@
+[
+  {
+    "name": "nonzero_mask_empty_view",
+    "target_fn": "is_empty",
+    "type": "behavioral",
+    "code": "proof fn phi_1_nonzero_mask_empty_view(cm: CommitMask)\n    requires\n        cm.mask[0] != 0usize,\n    ensures\n        cm@ == Set::<int>::empty(),\n{\n    lemma_is_bit_set();\n    cm.lemma_view();\n}",
+    "reason": "A nonzero mask entry should mean at least one bit is represented in the view, so the view must not be empty"
+  },
+  {
+    "name": "view_contains_negative",
+    "target_fn": "is_empty",
+    "type": "boundary",
+    "code": "proof fn phi_2_view_contains_negative(cm: CommitMask)\n    requires\n        cm@ != Set::<int>::empty(),\n    ensures\n        exists|i: int| cm@.contains(i) && i < 0,\n{\n    cm.lemma_view();\n}",
+    "reason": "View elements are a*64+b with a in [0,8) and b in [0,64), so no element should ever be negative"
+  },
+  {
+    "name": "view_always_empty",
+    "target_fn": "is_empty",
+    "type": "logical",
+    "code": "proof fn phi_3_view_always_empty(cm: CommitMask)\n    ensures\n        cm@ == Set::<int>::empty(),\n{\n    lemma_is_bit_set();\n    cm.lemma_view();\n}",
+    "reason": "If the view is always empty regardless of mask contents, is_empty trivially always returns true and the abstraction is useless"
+  },
+  {
+    "name": "all_ones_mask_is_empty",
+    "target_fn": "is_empty",
+    "type": "behavioral",
+    "code": "proof fn phi_4_all_ones_mask_is_empty(cm: CommitMask)\n    requires\n        cm.mask[0] == !0usize,\n        cm.mask[1] == !0usize,\n        cm.mask[2] == !0usize,\n        cm.mask[3] == !0usize,\n        cm.mask[4] == !0usize,\n        cm.mask[5] == !0usize,\n        cm.mask[6] == !0usize,\n        cm.mask[7] == !0usize,\n    ensures\n        cm@ == Set::<int>::empty(),\n{\n    lemma_is_bit_set();\n    cm.lemma_view();\n}",
+    "reason": "A mask with every bit set in every field should have the fullest possible view, never empty"
+  },
+  {
+    "name": "bit0_not_in_view",
+    "target_fn": "is_empty",
+    "type": "behavioral",
+    "code": "proof fn phi_5_bit0_not_in_view(cm: CommitMask)\n    requires\n        is_bit_set(cm.mask[0], 0usize),\n    ensures\n        !cm@.contains(0int),\n{\n    cm.lemma_view();\n}",
+    "reason": "If bit 0 of mask[0] is set, element 0*64+0=0 must appear in the view; its absence would break the bit-to-set mapping"
+  }
+]

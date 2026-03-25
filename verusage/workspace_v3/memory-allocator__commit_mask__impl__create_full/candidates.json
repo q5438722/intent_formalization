@@ -1,0 +1,37 @@
+[
+  {
+    "name": "contains_out_of_upper_bound",
+    "target_fn": "create_full",
+    "type": "boundary",
+    "code": "proof fn phi_1_contains_out_of_upper_bound(mask: CommitMask)\n    requires\n        mask@ == Set::new(|i: int| 0 <= i < COMMIT_MASK_BITS),\n    ensures\n        mask@.contains(512int),\n{\n}",
+    "reason": "After create_full the set should be {0..511}; containing 512 would mean the upper bound is wrong"
+  },
+  {
+    "name": "contains_negative_index",
+    "target_fn": "create_full",
+    "type": "boundary",
+    "code": "proof fn phi_2_contains_negative_index(mask: CommitMask)\n    requires\n        mask@ == Set::new(|i: int| 0 <= i < COMMIT_MASK_BITS),\n    ensures\n        mask@.contains(-1int),\n{\n}",
+    "reason": "After create_full the set should have no negative elements; containing -1 would indicate a lower-bound error"
+  },
+  {
+    "name": "result_set_is_empty",
+    "target_fn": "create_full",
+    "type": "behavioral",
+    "code": "proof fn phi_3_result_set_is_empty(mask: CommitMask)\n    requires\n        mask@ == Set::new(|i: int| 0 <= i < COMMIT_MASK_BITS),\n    ensures\n        mask@ =~= Set::empty(),\n{\n}",
+    "reason": "create_full should produce a full mask; being empty would mean the spec is trivially unsound or vacuous"
+  },
+  {
+    "name": "result_equals_half_range",
+    "target_fn": "create_full",
+    "type": "logical",
+    "code": "proof fn phi_4_result_equals_half_range(mask: CommitMask)\n    requires\n        mask@ == Set::new(|i: int| 0 <= i < COMMIT_MASK_BITS),\n    ensures\n        mask@ =~= Set::new(|i: int| 0 <= i < 256),\n{\n}",
+    "reason": "The full mask covers 512 bits; equalling only the first 256 would indicate COMMIT_MASK_BITS is misused or halved"
+  },
+  {
+    "name": "missing_last_element",
+    "target_fn": "create_full",
+    "type": "boundary",
+    "code": "proof fn phi_5_missing_last_element(mask: CommitMask)\n    requires\n        mask@ == Set::new(|i: int| 0 <= i < COMMIT_MASK_BITS),\n    ensures\n        !mask@.contains(511int),\n{\n}",
+    "reason": "511 is the last valid index in a 512-bit mask; its absence would indicate an off-by-one in the spec"
+  }
+]

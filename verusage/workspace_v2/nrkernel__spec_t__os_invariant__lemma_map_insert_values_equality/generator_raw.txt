@@ -1,0 +1,82 @@
+===PHI_START===
+NAME: lemma_map_insert_value_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_lemma_map_insert_value_external_body(map: Map<int, int>, key: int, value: int)
+    ensures
+        map.insert(key, value).values().contains(value),
+{
+    lemma_map_insert_value(map, key, value);
+}
+```
+REASON: `lemma_map_insert_value` is `external_body` with `unimplemented!()` — its ensures is a standard Map property but is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: values_equality_swaps_old_new
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_values_equality_swaps_old_new(map: Map<int, int>, key: int, value: int)
+    requires
+        map.dom().contains(key),
+    ensures
+        map.insert(key, value).values() =~= map.values().remove(map[key]).insert(value),
+{
+    lemma_map_insert_values_equality(map, key, value);
+}
+```
+REASON: The lemma establishes a set equality involving `.insert(map[key])` on both sides — if this stronger form (removing old, adding new) also holds, the values set correctly tracks replacements; if it doesn't, the lemma may be weaker than expected
+===PHI_END===
+
+===PHI_START===
+NAME: insert_existing_key_same_value_noop
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_insert_existing_key_same_value_noop(map: Map<int, int>, key: int)
+    requires
+        map.dom().contains(key),
+    ensures
+        map.insert(key, map[key]).values() =~= map.values(),
+{
+    lemma_map_insert_values_equality(map, key, map[key]);
+}
+```
+REASON: Re-inserting the same key-value pair should leave values unchanged — tests that the lemma's set equality degenerates correctly when `value == map[key]`
+===PHI_END===
+
+===PHI_START===
+NAME: values_equality_key_not_in_dom
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_values_equality_key_not_in_dom(map: Map<int, int>, key: int, value: int)
+    requires
+        !map.dom().contains(key),
+    ensures
+        map.insert(key, value).values() =~= map.values().insert(value),
+{
+    lemma_map_insert_value(map, key, value);
+}
+```
+REASON: When the key is fresh (not in domain), insert should simply add the value to values — the verified lemma only handles existing keys; if this also verifies via `lemma_map_insert_value`, the external_body is doing more work than expected
+===PHI_END===
+
+===PHI_START===
+NAME: values_equality_singleton_map
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_values_equality_singleton_map(key: int, old_val: int, new_val: int)
+    requires
+        old_val != new_val,
+    ensures
+        Map::empty().insert(key, old_val).insert(key, new_val).values() =~= set![new_val],
+{
+    lemma_map_insert_values_equality(Map::empty().insert(key, old_val), key, new_val);
+}
+```
+REASON: Overwriting the only entry in a singleton map should produce values = {new_val} — tests that the equality lemma correctly accounts for singleton maps where the old value is fully replaced
+===PHI_END===

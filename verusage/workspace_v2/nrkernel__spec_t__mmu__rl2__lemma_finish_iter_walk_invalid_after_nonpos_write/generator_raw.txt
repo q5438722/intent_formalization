@@ -1,0 +1,84 @@
+===PHI_START===
+NAME: all_mb0_bits_are_zero_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_all_mb0_bits_are_zero_external_body(pde: PDE)
+    requires
+        pde.entry & 1 == 1,
+    ensures
+        pde.all_mb0_bits_are_zero() || !pde.all_mb0_bits_are_zero(),
+{
+}
+```
+REASON: `all_mb0_bits_are_zero` is `external_body` — completely opaque predicate used in `PDE::view` to determine validity, yet has no specification
+===PHI_END===
+
+===PHI_START===
+NAME: flags_combine_not_commutative_supervisor
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_flags_combine_not_commutative_supervisor(f1: Flags, f2: Flags)
+    requires
+        f1.is_supervisor != f2.is_supervisor,
+    ensures
+        f1.combine(f2) === f2.combine(f1),
+{
+}
+```
+REASON: `combine` uses OR for `is_supervisor` and `disable_execute` — commutativity holds but the asymmetric AND for `is_writable` vs OR for supervisor could mask a precedence error
+===PHI_END===
+
+===PHI_START===
+NAME: walk_result_path_len_1_arbitrary
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_walk_result_path_len_1_arbitrary(walk: Walk)
+    requires
+        walk.path.len() == 1,
+        walk.path[0].1 is Page,
+        walk.complete,
+    ensures
+        walk.result() is Valid,
+{
+}
+```
+REASON: `Walk::result` handles path lengths 2, 3, 4 for Page entries but falls through to `arbitrary()` for path.len() == 1 — a 1-entry Page walk (L0 huge page) is undefined
+===PHI_END===
+
+===PHI_START===
+NAME: finish_iter_walk_nonpos_write_preserves_invalid
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_finish_iter_walk_nonpos_write_preserves_invalid(mem: PTMem, walk: Walk, wraddr: usize, value: usize)
+    requires
+        mem.read(wraddr) & 1 == 1,
+        value & 1 == 0,
+        finish_iter_walk(mem, walk).result() is Invalid,
+    ensures
+        finish_iter_walk(mem.write(wraddr, value), walk).result() is Invalid,
+{
+    assert(bit!(0usize) == 1) by (bit_vector);
+    reveal(walk_next);
+}
+```
+REASON: Clearing the P bit of any present entry preserves walk invalidity — but this assumes walks that were invalid before can't become valid by changing entries along the path, which depends on walk_next not creating new valid paths
+===PHI_END===
+
+===PHI_START===
+NAME: flags_from_bits_supervisor_inverted
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_flags_from_bits_supervisor_inverted()
+    ensures
+        Flags::from_bits(true, true, false).is_supervisor == false,
+        Flags::from_bits(true, false, false).is_supervisor == true,
+{
+}
+```
+REASON: `is_supervisor` is `!flag_US` — the inversion means US=1 (user allowed) maps to is_supervisor=false, which is correct but could confuse callers expecting US=1 to mean supervisor access
+===PHI_END===

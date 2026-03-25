@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: aligned_zero_size
+TARGET_FN: aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_aligned_zero_size(addr: nat)
+    ensures
+        aligned(addr, 0),
+{
+}
+```
+REASON: Alignment to size 0 is meaningless; if entailed, any address is trivially "aligned" to nothing, breaking alignment guarantees downstream.
+===PHI_END===
+
+===PHI_START===
+NAME: inv_empty_arch
+TARGET_FN: inv
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_inv_empty_arch()
+    ensures
+        (Arch { layers: seq![] }).inv(),
+{
+}
+```
+REASON: A degenerate architecture with zero layers should not satisfy the invariant, as it cannot describe any valid address translation.
+===PHI_END===
+
+===PHI_START===
+NAME: upper_vaddr_equals_base
+TARGET_FN: upper_vaddr
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_upper_vaddr_equals_base(arch: Arch, layer: nat, base: nat)
+    requires
+        arch.inv(),
+        arch.layers.len() > 0,
+        layer < arch.layers.len(),
+    ensures
+        arch.upper_vaddr(layer, base) == base,
+{
+}
+```
+REASON: If the upper virtual address equals the base for a valid architecture layer, the mapped region has zero size, meaning no addresses can be translated.
+===PHI_END===
+
+===PHI_START===
+NAME: entry_base_non_monotone
+TARGET_FN: entry_base
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_entry_base_non_monotone(arch: Arch, layer: nat, base: nat, i: nat, j: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+        i < j,
+        j <= arch.num_entries(layer),
+    ensures
+        arch.entry_base(layer, base, j) <= arch.entry_base(layer, base, i),
+{
+}
+```
+REASON: Entry base addresses must be strictly increasing with index; if a later index maps to a lower-or-equal address, entries overlap or go backwards.
+===PHI_END===
+
+===PHI_START===
+NAME: entry_size_is_next_layer_unconstrained
+TARGET_FN: entry_size_is_next_layer_size
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_entry_size_is_next_layer_unconstrained(arch: Arch)
+    requires
+        arch.inv(),
+        arch.layers.len() == 1,
+    ensures
+        arch.entry_size(0) == 1,
+{
+}
+```
+REASON: A single-layer valid architecture having entry_size of 1 byte would be far too small for any real page size, suggesting the invariant fails to lower-bound leaf entry sizes.
+===PHI_END===

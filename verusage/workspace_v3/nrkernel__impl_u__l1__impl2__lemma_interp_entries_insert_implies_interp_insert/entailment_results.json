@@ -1,0 +1,52 @@
+[
+  {
+    "name": "zero_layer_arch_satisfies_inv",
+    "target_fn": "Arch::inv",
+    "type": "boundary",
+    "reason": "A zero-layer architecture is degenerate (no translation at all) but would satisfy the invariant since all forall-quantifiers are vacuously true",
+    "entailed": true,
+    "verified": 11,
+    "errors": 0,
+    "output_tail": "verification results:: 11 verified, 0 errors\n\n"
+  },
+  {
+    "name": "adjacent_entry_bases_collide",
+    "target_fn": "Arch::entry_base",
+    "type": "logical",
+    "reason": "Two adjacent entries at the same layer sharing the same base address would mean distinct page table slots map the same virtual address region",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": "------ at the end of the function body\n...\n281 |         arch.entry_base(layer, base, i) == arch.entry_base(layer, base, (i + 1) as nat),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "page_frame_size_zero_under_inv",
+    "target_fn": "Directory::pages_match_entry_size",
+    "type": "boundary",
+    "reason": "A page with a zero-size frame in a valid directory would represent a nonsensical mapping to no physical memory",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": "nat)\n    |       ------------------------------------------------------------- at the end of the function body\n...\n281 |         d.entries[i as int]->Page_0.frame.size == 0,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "update_invalid_keeps_mapping",
+    "target_fn": "Directory::update",
+    "type": "behavioral",
+    "reason": "Replacing a Page entry with Invalid should erase the mapping at that slot; a non-empty interp would mean unmapping fails to remove the translation",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": "------ at the end of the function body\n...\n281 |         d.update(j, NodeEntry::Invalid).interp_of_entry(j) !== Map::<nat, PTE>::empty(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "nonzero_subdir_base_equals_parent",
+    "target_fn": "Directory::directories_are_in_next_layer",
+    "type": "logical",
+    "reason": "A non-first subdirectory sharing the parent's base_vaddr would mean distinct directory entries govern the same virtual address range, breaking isolation",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": "---------------------------------------------- at the end of the function body\n...\n282 |         d.entries[i as int]->Directory_0.base_vaddr == d.base_vaddr,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

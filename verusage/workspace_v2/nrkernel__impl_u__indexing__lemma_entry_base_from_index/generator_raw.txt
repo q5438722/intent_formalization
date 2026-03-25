@@ -1,0 +1,93 @@
+===PHI_START===
+NAME: mod_add_zero_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_mod_add_zero_external_body(a: nat, b: nat, c: nat)
+    requires
+        aligned(a, c),
+        aligned(b, c),
+        c > 0,
+    ensures
+        aligned(a + b, c),
+{
+    mod_add_zero(a, b, c);
+}
+```
+REASON: `mod_add_zero` is `external_body` — closure of alignment under addition is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_transitive_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_aligned_transitive_external_body(a: nat, b: nat, c: nat)
+    requires
+        0 < b,
+        0 < c,
+        aligned(a, b),
+        aligned(b, c),
+    ensures
+        aligned(a, c),
+{
+    aligned_transitive(a, b, c);
+}
+```
+REASON: `aligned_transitive` is `external_body` — divisibility transitivity is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: mult_less_mono_both1_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_mult_less_mono_both1_external_body(a: nat, b: nat, c: nat, d: nat)
+    requires
+        a < c,
+        b <= d,
+        0 < c,
+        0 < d,
+    ensures
+        a * b < c * d,
+{
+    mult_less_mono_both1(a, b, c, d);
+}
+```
+REASON: `mult_less_mono_both1` is `external_body` — multiplication monotonicity with mixed strict/non-strict inequalities is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: entry_base_aligned_from_base_aligned
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_entry_base_aligned_from_base_aligned(base: nat, idx: nat, entry_size: nat)
+    requires
+        0 < entry_size,
+        aligned(base, entry_size),
+    ensures
+        aligned(entry_base_from_index(base, idx, entry_size), entry_size),
+{
+    lemma_entry_base_from_index(base, idx, entry_size);
+}
+```
+REASON: Entry base alignment to `entry_size` follows from base alignment — the proof chain uses both `aligned_transitive` and `mod_add_zero` external_body axioms
+===PHI_END===
+
+===PHI_START===
+NAME: next_entry_base_no_gap
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_next_entry_base_no_gap(base: nat, idx: nat, entry_size: nat)
+    requires
+        0 < entry_size,
+    ensures
+        next_entry_base_from_index(base, idx, entry_size) == entry_base_from_index(base, idx, entry_size) + entry_size,
+{
+    lemma_entry_base_from_index(base, idx, entry_size);
+}
+```
+REASON: The gap between consecutive entries is exactly `entry_size` — tests that entries are contiguous with no dead space
+===PHI_END===

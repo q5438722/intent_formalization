@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "disjoint_mappings_external_body_unsound",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`lemma_interp_of_entry_disjoint_mappings` is `external_body` claiming disjoint keys for distinct entries. While `arch.inv()` ensures `entry_size > 0` which makes `entry_base(i) != entry_base(j)` for Page entries at different indices, the lemma is entirely trusted \u2014 and for Directory entries, the subdirectory mappings' containment within their entry's range is also unverified (backed only by the other external_body lemma `lemma_interp_of_entry_between`)."
+  },
+  {
+    "phi": "interp_of_entry_between_no_alignment_guard",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`lemma_interp_of_entry_between` is `external_body` claiming `va + pte.frame.size <= next_entry_base(i)`. For Page entries this follows from `pages_match_entry_size`, but for Directory entries this requires proving subdirectory mappings are contained within the parent's entry range \u2014 which depends on the commented-out alignment constraint and recursive containment that is never verified."
+  },
+  {
+    "phi": "inv_allows_unaligned_base_vaddr",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The alignment check on `base_vaddr` is explicitly commented out in `well_formed()`. A directory with `base_vaddr = 1` passes `inv()`, which undermines the assumptions of both external_body lemmas that implicitly depend on alignment for their entry-range containment and disjointness guarantees."
+  },
+  {
+    "phi": "entry_containment_allows_cross_entry_mapping",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The ensures `entry_base(i) < va + pte.frame.size` is a correct and desirable property \u2014 it states that the mapping is non-empty (has positive size). Since `arch.inv()` guarantees `entry_size > 0` and `pages_match_entry_size` ensures `frame.size == entry_size`, this strict inequality holds. The concern about needing `entry_size > 0` is addressed by the invariant."
+  }
+]

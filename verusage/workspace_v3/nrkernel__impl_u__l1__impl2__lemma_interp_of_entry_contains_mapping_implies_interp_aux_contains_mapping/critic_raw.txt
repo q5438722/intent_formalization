@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: empty_arch_satisfies_inv
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `Arch::inv()` uses a universally quantified formula over layers — when `layers.len() == 0`, the quantifier is vacuously true and `0 <= X86_NUM_LAYERS` holds, so `inv()` is satisfied. A zero-layer architecture is physically meaningless (can't map anything) and likely should be excluded by requiring `self.layers.len() > 0`.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: aligned_trivial_size_one
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `aligned(addr, 1)` reducing to `addr % 1 == 0` is a basic mathematical tautology, not a spec weakness. The `aligned` function is a general-purpose predicate; it's expected and correct that alignment to 1 holds for all addresses. No executable function's specification is implicated.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: byte_granularity_arch_valid
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: An architecture with a single layer mapping a 1-byte entry is accepted by `Arch::inv()`, but x86 page tables never operate at byte granularity — the minimum page size is 4 KiB. The invariant lacks a lower bound on entry sizes (e.g., `entry_size(last_layer) >= 4096`), allowing nonsensical architectures. This is the same class of weakness as the empty-arch case: the spec is too permissive.
+===VERDICT_END===
+
+===SUMMARY===
+Two of three candidates are true positives revealing that `Arch::inv()` is overly permissive. First, it admits zero-layer architectures (vacuously true quantifier), which cannot represent any valid page table. Second, it admits architectures with arbitrarily small entry sizes (down to 1 byte), violating the x86 invariant that the smallest page is 4 KiB. Both suggest `inv()` should add `self.layers.len() > 0` and a minimum entry-size bound at the leaf layer. The `aligned(addr, 1)` property is a false positive — it's a mathematical tautology unrelated to any spec gap.
+===END_SUMMARY===

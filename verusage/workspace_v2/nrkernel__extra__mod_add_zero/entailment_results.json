@@ -1,0 +1,47 @@
+[
+  {
+    "name": "aligned_zero_any_size",
+    "type": "boundary",
+    "code": "proof fn phi_1_aligned_zero_any_size(c: nat)\n    requires\n        c > 0,\n    ensures\n        aligned(0, c),\n{\n}",
+    "reason": "Zero is trivially aligned to any size, which may allow bypassing non-null address requirements if alignment is used as the sole guard",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "mod_add_self_aligned",
+    "type": "logical",
+    "code": "proof fn phi_2_mod_add_self_aligned(a: nat, c: nat)\n    requires\n        aligned(a, c),\n        c > 0,\n    ensures\n        aligned(a + c, c),\n{\n    mod_add_zero(a, c, c);\n}",
+    "reason": "Adding the alignment size itself always preserves alignment \u2014 combined with `aligned(0, c)`, this allows constructing alignment for any multiple `k*c` by induction, meaning alignment provides no restriction beyond divisibility",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "aligned_sum_commutes",
+    "type": "behavioral",
+    "code": "proof fn phi_3_aligned_sum_commutes(a: nat, b: nat, c: nat)\n    requires\n        aligned(a, c),\n        aligned(b, c),\n        c > 0,\n    ensures\n        aligned(a + b, c) && aligned(b + a, c),\n{\n    mod_add_zero(a, b, c);\n    mod_add_zero(b, a, c);\n}",
+    "reason": "The addition commutativity means `mod_add_zero` can be applied in either order, potentially allowing alignment proofs to silently swap address operands that have distinct semantic meaning (base vs offset)",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "aligned_double",
+    "type": "logical",
+    "code": "proof fn phi_4_aligned_double(a: nat, c: nat)\n    requires\n        aligned(a, c),\n        c > 0,\n    ensures\n        aligned(a + a, c),\n{\n    mod_add_zero(a, a, c);\n}",
+    "reason": "Any aligned address doubled is still aligned \u2014 this means there is no upper bound enforcement, so an aligned address can be doubled arbitrarily many times and remain \"aligned\" even when far exceeding any reasonable address space",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "aligned_add_no_overflow_check",
+    "type": "boundary",
+    "code": "proof fn phi_5_aligned_add_no_overflow_check(a: nat, b: nat, c: nat)\n    requires\n        aligned(a, c),\n        aligned(b, c),\n        c > 0,\n        a + b > usize::MAX,\n    ensures\n        aligned(a + b, c),\n{\n    mod_add_zero(a, b, c);\n}",
+    "reason": "`mod_add_zero` proves alignment of `a + b` over unbounded `nat` without any check that the sum fits in machine word size \u2014 the result is \"aligned\" in spec but would overflow at runtime, and the spec provides no guard against this",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

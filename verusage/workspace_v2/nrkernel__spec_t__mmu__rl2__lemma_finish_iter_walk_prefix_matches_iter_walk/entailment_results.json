@@ -1,0 +1,47 @@
+[
+  {
+    "name": "all_mb0_bits_are_zero_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_all_mb0_bits_are_zero_external_body(pde1: PDE, pde2: PDE)\n    requires\n        pde1.entry == pde2.entry,\n        pde1.layer == pde2.layer,\n    ensures\n        pde1.all_mb0_bits_are_zero() == pde2.all_mb0_bits_are_zero(),\n{\n}",
+    "reason": "`all_mb0_bits_are_zero` is `external_body` \u2014 completely opaque, so its return value could be inconsistent for identical inputs",
+    "entailed": true,
+    "verus_output": "epr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_finish_iter_walk_prefix_matches_iter_walk/phi_1_all_mb0_bits_are_zero_external_body.rs:197:9\n    |\n197 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pde_view_invalid_when_p_bit_zero",
+    "type": "behavioral",
+    "code": "proof fn phi_2_pde_view_invalid_when_p_bit_zero(entry: usize)\n    requires\n        entry & 1 == 0,\n    ensures\n        (PDE { entry, layer: Ghost(0) })@ === GPDE::Invalid,\n{\n}",
+    "reason": "When the P (present) bit is 0, PDE view should return Invalid \u2014 tests that non-present entries are correctly classified regardless of other bits",
+    "entailed": false,
+    "verus_output": "_rl2__lemma_finish_iter_walk_prefix_matches_iter_walk/phi_2_pde_view_invalid_when_p_bit_zero.rs:470:9\n    |\n466 | proof fn phi_2_pde_view_invalid_when_p_bit_zero(entry: usize)\n    |       ------------------------------------------------------- at the end of the function body\n...\n470 |         (PDE { entry, layer: Ghost(0) })@ === GPDE::Invalid,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "mask_l3_pg_addr_equals_mask_addr",
+    "type": "logical",
+    "code": "proof fn phi_3_mask_l3_pg_addr_equals_mask_addr()\n    ensures\n        MASK_L3_PG_ADDR_SPEC == MASK_ADDR_SPEC,\n{\n}",
+    "reason": "`MASK_L3_PG_ADDR` and `MASK_ADDR` are both `bitmask_inc!(12, MAX_PHYADDR_WIDTH - 1)` \u2014 if they should differ (L3 pages vs directory addresses), their equality could mask a missing distinction",
+    "entailed": true,
+    "verus_output": " `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_finish_iter_walk_prefix_matches_iter_walk/phi_3_mask_l3_pg_addr_equals_mask_addr.rs:197:9\n    |\n197 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "walk_next_path_length_exceeds_4",
+    "type": "boundary",
+    "code": "proof fn phi_4_walk_next_path_length_exceeds_4(mem: PTMem, walk: Walk)\n    requires\n        walk.path.len() >= 4,\n        !walk.complete,\n    ensures\n        ({\n            reveal(walk_next);\n            walk_next(mem, walk).path.len() == walk.path.len() + 1\n        }),\n{\n    reveal(walk_next);\n}",
+    "reason": "`walk_next` on a walk with path.len() >= 4 uses `arbitrary()` for the address \u2014 the walk continues with an unspecified address, producing a 5+ length path that exceeds the 4-layer page table",
+    "entailed": false,
+    "verus_output": "d_lints)]` on by default\n\nerror: expected pure mathematical expression\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_finish_iter_walk_prefix_matches_iter_walk/phi_4_walk_next_path_length_exceeds_4.rs:471:9\n    |\n471 | /         ({\n472 | |             reveal(walk_next);\n473 | |             walk_next(mem, walk).path.len() == walk.path.len() + 1\n474 | |         }),\n    | |__________^\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "iter_walk_max_4_steps",
+    "type": "behavioral",
+    "code": "proof fn phi_5_iter_walk_max_4_steps(mem: PTMem, vaddr: usize)\n    ensures\n        iter_walk(mem, vaddr).path.len() <= 4,\n{\n    reveal(walk_next);\n}",
+    "reason": "`iter_walk` applies `walk_next` at most 4 times \u2014 the result should have at most 4 path entries matching the 4-level x86 page table",
+    "entailed": true,
+    "verus_output": " renamed to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_finish_iter_walk_prefix_matches_iter_walk/phi_5_iter_walk_max_4_steps.rs:197:9\n    |\n197 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "hashmap_view_unconstrained_empty",
+    "type": "logical",
+    "code": "proof fn phi_1_hashmap_view_unconstrained_empty()\n    ensures\n        HashMap::<u64>::view(HashMap { m: collections::HashMap::new() }).dom().len() >= 0,\n{\n}",
+    "reason": "`HashMap::view` is an uninterpreted spec function \u2014 there are no axioms constraining what `view` returns for a newly constructed HashMap, so it could map to a non-empty abstract map even when the concrete map is empty",
+    "entailed": false,
+    "verus_output": "ate_v__impl1__insert/phi_1_hashmap_view_unconstrained_empty.rs:89:30\n   |\n39 | / pub struct HashMap<V> {\n40 | |   m: collections::HashMap<EndPoint, V>,\n41 | | }\n   | |_- Verus treats this datatype as 'opaque' because it is marked 'external_body'\n...\n89 |           HashMap::<u64>::view(HashMap { m: collections::HashMap::new() }).dom().len() >= 0,\n   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this constructor is disallowed\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "insert_allows_overwrite_tombstone",
+    "type": "behavioral",
+    "code": "proof fn phi_2_insert_allows_overwrite_tombstone(ct: CTombstoneTable, src: EndPoint, old_seqno: u64, new_seqno: u64)\n    requires\n        ct.abstractable(),\n        src@.valid_physical_address(),\n        ct@.contains_key(src@),\n        ct@[src@] == old_seqno as nat,\n        new_seqno < old_seqno,\n    ensures\n        ({\n            let new_ct_view = ct@.insert(src@, new_seqno as nat);\n            new_ct_view[src@] == new_seqno as nat\n        }),\n{\n}",
+    "reason": "`CTombstoneTable::insert` allows overwriting an existing tombstone entry with a lower sequence number \u2014 a tombstone table should only monotonically increase to prevent replay attacks",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "abstractable_no_value_constraint",
+    "type": "logical",
+    "code": "proof fn phi_3_abstractable_no_value_constraint(ct: CTombstoneTable, ep: AbstractEndPoint)\n    requires\n        ct.abstractable(),\n        ct@.contains_key(ep),\n    ensures\n        ct@[ep] >= 0,\n{\n}",
+    "reason": "`abstractable` only checks key validity (`valid_physical_address`) but places no constraint on values \u2014 tombstone sequence numbers could be any nat, with no upper bound check against protocol parameters like `max_seqno`",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "insert_preserves_stale_entries",
+    "type": "behavioral",
+    "code": "proof fn phi_4_insert_preserves_stale_entries(ct: CTombstoneTable, src: &EndPoint, last_seqno: u64, other_ep: AbstractEndPoint)\n    requires\n        ct.abstractable(),\n        src@.valid_physical_address(),\n        ct@.contains_key(other_ep),\n        other_ep != src@,\n        !other_ep.valid_physical_address(),\n    ensures\n        false,\n{\n}",
+    "reason": "If `abstractable` holds on old state and `insert` preserves abstractability, then no existing key can have an invalid physical address \u2014 this is consistent but means there's no mechanism to ever clean up entries that became invalid",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "hashmap_insert_view_no_remove_guarantee",
+    "type": "logical",
+    "code": "proof fn phi_5_hashmap_insert_view_no_remove_guarantee(h: HashMap<u64>, ep1: &EndPoint, ep2: &EndPoint, v: u64)\n    requires\n        ep1@ != ep2@,\n        h@.contains_key(ep1@),\n    ensures\n        ({\n            let new_h = h@.insert(ep2@, v);\n            new_h.contains_key(ep1@)\n        }),\n{\n}",
+    "reason": "`HashMap::insert` ensures `self@ == old(self)@.insert(key@, value)` \u2014 but since `HashMap::view` is uninterpreted, the relationship between concrete HashMap operations and abstract Map operations is entirely trusted via external_body, with no axiom ensuring that the abstract view faithfully represents the concrete state",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

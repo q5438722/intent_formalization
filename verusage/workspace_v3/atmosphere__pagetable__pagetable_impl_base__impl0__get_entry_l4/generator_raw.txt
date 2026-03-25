@@ -1,0 +1,97 @@
+===PHI_START===
+NAME: present_entry_yields_none
+TARGET_FN: get_entry_l4
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_present_entry_yields_none(pt: &PageTable, target_l4i: L4Index)
+    requires
+        pt.wf(),
+        pt.kernel_l4_end <= target_l4i < 512,
+        pt.l4_table@[pt.cr3].value()[target_l4i].perm.present,
+    ensures
+        pt.spec_resolve_mapping_l4(target_l4i).is_None(),
+{
+}
+```
+REASON: A present L4 entry resolving to None would silently discard valid page table mappings
+===PHI_END===
+
+===PHI_START===
+NAME: absent_entry_yields_some
+TARGET_FN: get_entry_l4
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_absent_entry_yields_some(pt: &PageTable, target_l4i: L4Index)
+    requires
+        pt.wf(),
+        pt.kernel_l4_end <= target_l4i < 512,
+        !pt.l4_table@[pt.cr3].value()[target_l4i].perm.present,
+    ensures
+        pt.spec_resolve_mapping_l4(target_l4i).is_Some(),
+{
+}
+```
+REASON: A non-present L4 entry resolving to Some would fabricate phantom mappings from empty slots
+===PHI_END===
+
+===PHI_START===
+NAME: some_entry_is_empty
+TARGET_FN: get_entry_l4
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_some_entry_is_empty(pt: &PageTable, target_l4i: L4Index)
+    requires
+        pt.wf(),
+        pt.kernel_l4_end <= target_l4i < 512,
+        pt.spec_resolve_mapping_l4(target_l4i).is_Some(),
+    ensures
+        pt.spec_resolve_mapping_l4(target_l4i).unwrap().is_empty(),
+{
+}
+```
+REASON: A resolved Some entry being empty (addr=0, all perms false) contradicts it being present and meaningful
+===PHI_END===
+
+===PHI_START===
+NAME: some_addr_always_zero
+TARGET_FN: get_entry_l4
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_some_addr_always_zero(pt: &PageTable, target_l4i: L4Index)
+    requires
+        pt.wf(),
+        pt.kernel_l4_end <= target_l4i < 512,
+        pt.spec_resolve_mapping_l4(target_l4i).is_Some(),
+    ensures
+        pt.spec_resolve_mapping_l4(target_l4i).unwrap().addr == 0,
+{
+}
+```
+REASON: All L4 entries resolving to physical address 0 would collapse the entire address space to a single frame
+===PHI_END===
+
+===PHI_START===
+NAME: none_still_has_4k_mapping
+TARGET_FN: get_entry_l4
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_none_still_has_4k_mapping(pt: &PageTable, target_l4i: L4Index, l3i: L3Index, l2i: L2Index, l1i: L1Index)
+    requires
+        pt.wf(),
+        pt.kernel_l4_end <= target_l4i < 512,
+        0 <= l3i < 512,
+        0 <= l2i < 512,
+        0 <= l1i < 512,
+        pt.spec_resolve_mapping_l4(target_l4i).is_None(),
+    ensures
+        pt.mapping_4k().dom().contains(spec_index2va((target_l4i, l3i, l2i, l1i))),
+{
+}
+```
+REASON: A 4k mapping existing under a None L4 entry would mean memory is accessible without valid page table traversal
+===PHI_END===

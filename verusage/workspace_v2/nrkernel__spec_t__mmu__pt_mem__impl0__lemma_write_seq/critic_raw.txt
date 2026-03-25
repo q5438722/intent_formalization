@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: write_preserves_pml4
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is correct by design. `PTMem` is a spec-level abstraction where `pml4` is a fixed base address field, not a memory location. Writes modify the page table memory contents (`mem`), not the root pointer. The PML4 base address is set at initialization and should not change.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: write_overwrites_silently
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is standard map semantics — `Map::insert` overwrites existing keys. Concurrency concerns are handled at higher abstraction layers (rl1/rl2/rl3 with store buffers and TLBs), not at the PTMem level which models a single logical memory state.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: write_seq_empty_identity
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is the correct base case for `fold_left` over an empty sequence. An empty write sequence should produce no changes — this is expected and desirable behavior.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: write_expands_domain
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `PTMem.mem` is a `Map<usize, usize>` — writing to a new key naturally adds it to the domain. Bounds checking on which addresses are valid page table locations is enforced at higher layers (directory invariants, allocated regions), not at this low-level memory abstraction.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: write_seq_order_matters
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Order-dependent writes are correct and expected — `write_seq` models sequential application of writes via `fold_left`. In page table operations, write order matters (e.g., directory entries must be written before leaf entries). This is the intended semantics.
+===VERDICT_END===
+
+===SUMMARY===
+All five candidates are false positives. `PTMem` is a low-level spec abstraction modeling page table memory as a map with a fixed root pointer. All flagged properties — PML4 preservation, silent overwrites, empty identity, domain expansion, and order dependence — are correct by design. Invariants on valid addresses, concurrency, and structural constraints are enforced at higher abstraction layers in the refinement stack.
+===END_SUMMARY===

@@ -1,0 +1,85 @@
+===PHI_START===
+NAME: temp_pred_equality_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_temp_pred_equality_intensional_bridge(p: TempPred<int>, q: TempPred<int>)
+    requires
+        p.entails(q),
+        q.entails(p),
+    ensures
+        p == q,
+{
+    temp_pred_equality::<int>(p, q);
+}
+```
+REASON: temp_pred_equality is external_body forcing intensional equality from mutual entailment — structurally distinct closures collapsed to equal without proof
+===PHI_END===
+
+===PHI_START===
+NAME: mutual_entailment_derives_false_if_distinct
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_mutual_entailment_derives_false_if_distinct(p: TempPred<int>, q: TempPred<int>)
+    requires
+        p.entails(q),
+        q.entails(p),
+        p !== q,
+    ensures
+        false,
+{
+    temp_pred_equality::<int>(p, q);
+}
+```
+REASON: temp_pred_equality forces p == q from mutual entailment — if two preds are intensionally distinct but semantically equivalent this derives false
+===PHI_END===
+
+===PHI_START===
+NAME: tla_exists_equality_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_tla_exists_equality_bridge(f: spec_fn(int, int) -> bool)
+    ensures
+        lift_state(|t: int| exists |a: int| #[trigger] f(a, t)) == tla_exists(|a: int| lift_state(|t: int| f(a, t))),
+{
+    tla_exists_equality::<int, int>(f);
+}
+```
+REASON: tla_exists_equality forces intensional equality between lift_state(∃a.f(a,t)) and tla_exists(a => lift_state(f(a,·))) — structurally distinct nested closures collapsed via temp_pred_equality
+===PHI_END===
+
+===PHI_START===
+NAME: lift_state_closure_identity
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_lift_state_closure_identity(p: StatePred<int>, q: StatePred<int>)
+    requires
+        forall |t: int| p(t) == q(t),
+    ensures
+        lift_state(p) == lift_state(q),
+{
+    temp_pred_equality::<int>(lift_state(p), lift_state(q));
+}
+```
+REASON: temp_pred_equality collapses lift_state(p) == lift_state(q) from pointwise equivalence — forces intensional equality of spec_fn(T)->bool through the Execution wrapper without proof
+===PHI_END===
+
+===PHI_START===
+NAME: tla_exists_vacuous
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_tla_exists_vacuous(f: spec_fn(int, int) -> bool)
+    requires
+        forall |a: int, t: int| !f(a, t),
+    ensures
+        lift_state(|t: int| exists |a: int| #[trigger] f(a, t)) == tla_exists(|a: int| lift_state(|t: int| f(a, t))),
+{
+    tla_exists_equality::<int, int>(f);
+}
+```
+REASON: even when f is universally false, tla_exists_equality forces structural equality between two TempPreds built from distinct empty-existential closures — the equality holds vacuously but the intensional collapse is still unverified
+===PHI_END===

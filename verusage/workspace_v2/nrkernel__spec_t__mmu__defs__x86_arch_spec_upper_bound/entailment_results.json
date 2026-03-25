@@ -1,0 +1,47 @@
+[
+  {
+    "name": "arch_inv_allows_single_layer",
+    "type": "boundary",
+    "code": "proof fn phi_1_arch_inv_allows_single_layer()\n    ensures\n        (Arch { layers: seq![ArchLayer { entry_size: 4096, num_entries: 512 }] }).inv(),\n{\n}",
+    "reason": "`Arch::inv` allows architectures with only 1 layer \u2014 `entry_size_is_next_layer_size` is vacuously true when there's no next layer, permitting degenerate single-level page tables",
+    "entailed": true,
+    "verus_output": "verification results:: 12 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "arch_inv_allows_empty_layers",
+    "type": "boundary",
+    "code": "proof fn phi_2_arch_inv_allows_empty_layers()\n    ensures\n        (Arch { layers: seq![] }).inv(),\n{\n}",
+    "reason": "`Arch::inv` allows an architecture with zero layers \u2014 the forall over an empty domain is vacuously true, resulting in a page table with no levels",
+    "entailed": true,
+    "verus_output": "verification results:: 12 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "upper_vaddr_not_canonical",
+    "type": "behavioral",
+    "code": "proof fn phi_3_upper_vaddr_not_canonical()\n    ensures\n        x86_arch_spec.upper_vaddr(0, 0) > (1usize << 48) as nat,\n{\n    x86_arch_spec_upper_bound();\n}",
+    "reason": "`upper_vaddr` computes to 256TB (512^2 * 1G = 2^48) which equals the 48-bit canonical address boundary \u2014 addresses at or above this are non-canonical on x86-64 without LA57",
+    "entailed": false,
+    "verus_output": "tent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__defs__x86_arch_spec_upper_bound/phi_3_upper_vaddr_not_canonical.rs:126:9\n    |\n124 | proof fn phi_3_upper_vaddr_not_canonical()\n    |       ------------------------------------ at the end of the function body\n125 |     ensures\n126 |         x86_arch_spec.upper_vaddr(0, 0) > (1usize << 48) as nat,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "entry_size_is_next_layer_vacuous_at_last",
+    "type": "logical",
+    "code": "proof fn phi_4_entry_size_is_next_layer_vacuous_at_last()\n    ensures\n        x86_arch_spec.entry_size_is_next_layer_size(3),\n{\n}",
+    "reason": "`entry_size_is_next_layer_size` at the last layer (i=3) is vacuously true \u2014 no constraint on the leaf layer's entry size relationship, allowing arbitrary leaf sizes",
+    "entailed": true,
+    "verus_output": "verification results:: 12 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "max_base_equals_upper_vaddr",
+    "type": "behavioral",
+    "code": "proof fn phi_5_max_base_equals_upper_vaddr()\n    ensures\n        MAX_BASE == x86_arch_spec.upper_vaddr(0, 0),\n{\n    x86_arch_spec_upper_bound();\n}",
+    "reason": "`MAX_BASE` is defined as `X86_MAX_ENTRY_SIZE * 512` which equals `upper_vaddr(0, 0)` \u2014 if these should represent different bounds (e.g., physical vs virtual), their equality could mask a missing distinction",
+    "entailed": true,
+    "verus_output": "verification results:: 12 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

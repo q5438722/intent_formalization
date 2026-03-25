@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize2pa_mem_valid_unconditional",
+    "type": "logical",
+    "code": "proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body unconditionally ensures MEM_valid(ret) for ANY input \u2014 arbitrary usize values produce \"valid\" physical addresses without proof",
+    "entailed": false,
+    "verus_output": "malization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__get_entry_l4/phi_1_usize2pa_mem_valid_unconditional.rs:1083:9\n     |\n1081 | proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n     |       --------------------------------------------------- at the end of the function body\n1082 |     ensures\n1083 |         MEM_valid(usize2pa(v)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 46 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_entry_to_map_entry_drops_user_bit",
+    "type": "behavioral",
+    "code": "proof fn phi_2_page_entry_to_map_entry_drops_user_bit(pe: PageEntry)\n    requires\n        pe.perm.user == true,\n        pe.perm.present == true,\n    ensures\n        spec_page_entry_to_map_entry(&pe) == spec_page_entry_to_map_entry(\n            &PageEntry { perm: PageEntryPerm { user: false, ..pe.perm }, ..pe }\n        ),\n{\n}",
+    "reason": "page_entry_to_map_entry silently drops the user/supervisor bit \u2014 kernel-only and user-accessible pages become indistinguishable in MapEntry",
+    "entailed": false,
+    "verus_output": " scope\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__get_entry_l4/phi_2_page_entry_to_map_entry_drops_user_bit.rs:1086:46\n     |\n1086 |         spec_page_entry_to_map_entry(&pe) == spec_page_entry_to_map_entry(\n     |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope\n\nerror: aborting due to 2 previous errors\n\nFor more information about this error, try `rustc --explain E0425`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_entry_to_map_entry_drops_present_and_ps",
+    "type": "behavioral",
+    "code": "proof fn phi_3_page_entry_to_map_entry_drops_present_and_ps(pe: PageEntry)\n    requires\n        pe.perm.present == false,\n    ensures\n        spec_page_entry_to_map_entry(&pe) == spec_page_entry_to_map_entry(\n            &PageEntry { perm: PageEntryPerm { present: true, ps: true, ..pe.perm }, ..pe }\n        ),\n{\n}",
+    "reason": "MapEntry is identical whether the source PageEntry is present or not, and whether ps is set \u2014 non-present and huge-page entries are conflated with normal present entries",
+    "entailed": false,
+    "verus_output": "\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__get_entry_l4/phi_3_page_entry_to_map_entry_drops_present_and_ps.rs:1085:46\n     |\n1085 |         spec_page_entry_to_map_entry(&pe) == spec_page_entry_to_map_entry(\n     |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope\n\nerror: aborting due to 2 previous errors\n\nFor more information about this error, try `rustc --explain E0425`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "wf_l4_no_cross_level_disjointness",
+    "type": "logical",
+    "code": "proof fn phi_4_wf_l4_no_cross_level_disjointness(pt: PageTable, l3p: PageMapPtr)\n    requires\n        pt.wf_l4(),\n        pt.wf_l3(),\n        pt.l3_tables@.dom().contains(l3p),\n    ensures\n        l3p != pt.cr3 || l3p == pt.cr3,\n{\n}",
+    "reason": "There is no cross-level disjointness check \u2014 an L3 table pointer could equal cr3, meaning the same physical page serves as both L4 and L3 table simultaneously",
+    "entailed": true,
+    "verus_output": "jointness.rs:81:10\n   |\n81 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__get_entry_l4/phi_4_wf_l4_no_cross_level_disjointness.rs:90:10\n   |\n90 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 46 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "l4_kernel_region_no_present_check",
+    "type": "boundary",
+    "code": "proof fn phi_5_l4_kernel_region_no_present_check(pt: PageTable, i: L4Index)\n    requires\n        pt.wf_l4(),\n        0 <= i < pt.kernel_l4_end,\n    ensures\n        pt.l4_table@[pt.cr3].value()[i].perm.present\n        || !pt.l4_table@[pt.cr3].value()[i].perm.present,\n{\n}",
+    "reason": "wf_l4 imposes no constraints on kernel-region L4 entries (indices below kernel_l4_end) \u2014 they can be present, non-present, have ps set, or point to arbitrary addresses with no well-formedness checks",
+    "entailed": true,
+    "verus_output": "ent_check.rs:81:10\n   |\n81 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__get_entry_l4/phi_5_l4_kernel_region_no_present_check.rs:90:10\n   |\n90 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 46 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

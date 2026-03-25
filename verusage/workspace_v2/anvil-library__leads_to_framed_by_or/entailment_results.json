@@ -1,0 +1,47 @@
+[
+  {
+    "name": "leads_to_unfold_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_1_leads_to_unfold_intensional_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>, i: nat)\n    requires\n        p.leads_to(q).satisfied_by(ex),\n    ensures\n        p.implies(eventually(q)).satisfied_by(ex.suffix(i)),\n{\n    leads_to_unfold::<int>(ex, p, q);\n}",
+    "reason": "leads_to_unfold is external_body bridging the forall inside always's TempPred::new closure to a bare forall in the ensures \u2014 intensionally distinct formulations equated without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "implies_apply_closure_bridge",
+    "type": "logical",
+    "code": "proof fn phi_2_implies_apply_closure_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.satisfied_by(ex),\n        (p.pred)(ex) ==> (q.pred)(ex),\n    ensures\n        q.satisfied_by(ex),\n{\n    implies_apply::<int>(ex, p, q);\n}",
+    "reason": "implies_apply is external_body bridging p.implies(q).satisfied_by(ex) through TempPred::new closure wrapping and direct implication \u2014 silently resolves closure identity mismatch",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "execution_equality_forces_fn_equality",
+    "type": "logical",
+    "code": "proof fn phi_3_execution_equality_forces_fn_equality(f: spec_fn(nat) -> int, g: spec_fn(nat) -> int)\n    requires\n        forall |i: nat| #[trigger] f(i) == g(i),\n    ensures\n        f == g,\n{\n    let ex1 = Execution { nat_to_state: f };\n    let ex2 = Execution { nat_to_state: g };\n    execution_equality::<int>(ex1, ex2);\n}",
+    "reason": "execution_equality forces intensional equality of spec_fn from pointwise extensional equivalence \u2014 structurally distinct closures collapsed to equal without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "eventually_proved_by_witness_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_4_eventually_proved_by_witness_intensional_bridge(ex: Execution<int>, p: TempPred<int>, witness_idx: nat)\n    requires\n        p.satisfied_by(ex.suffix(witness_idx)),\n    ensures\n        eventually(p).satisfied_by(ex),\n{\n    eventually_proved_by_witness::<int>(ex, p, witness_idx);\n}",
+    "reason": "eventually_proved_by_witness is external_body introducing a witness into eventually's TempPred::new existential closure \u2014 bridges the intensional gap between a concrete witness and the closure-wrapped exists",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "or_framing_false_spec",
+    "type": "boundary",
+    "code": "proof fn phi_5_or_framing_false_spec(p: TempPred<int>, q: TempPred<int>, r: TempPred<int>)\n    requires\n        TempPred::<int>::new(|ex: Execution<int>| false).entails(p.leads_to(q)),\n    ensures\n        TempPred::<int>::new(|ex: Execution<int>| false).entails(p.or(r).leads_to(q.or(r))),\n{\n    leads_to_framed_by_or::<int>(TempPred::new(|ex: Execution<int>| false), p, q, r);\n}",
+    "reason": "an unsatisfiable spec vacuously entails any leads_to including the or-framed version \u2014 vacuous truth propagates through the framing lemma without detecting spec inconsistency",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

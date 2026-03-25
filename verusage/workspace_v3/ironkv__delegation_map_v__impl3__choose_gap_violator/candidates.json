@@ -1,0 +1,37 @@
+[
+  {
+    "name": "is_end_always_true",
+    "target_fn": "is_end",
+    "type": "behavioral",
+    "code": "proof fn phi_1_is_end_always_true<K: KeyTrait + VerusClone>(iter: &KeyIterator<K>)\n    ensures\n        iter.is_end_spec(),\n{\n}",
+    "reason": "If entailed, every KeyIterator would be considered at-end, making get() unreachable and the iterator useless."
+  },
+  {
+    "name": "some_reported_as_end",
+    "target_fn": "is_end",
+    "type": "boundary",
+    "code": "proof fn phi_2_some_reported_as_end<K: KeyTrait + VerusClone>(iter: &KeyIterator<K>, v: K)\n    requires\n        iter.k == Some(v),\n    ensures\n        iter.is_end_spec(),\n{\n}",
+    "reason": "If entailed, a KeyIterator holding a valid key would be classified as at-end, contradicting the Some/None semantics."
+  },
+  {
+    "name": "get_mismatches_key",
+    "target_fn": "get",
+    "type": "behavioral",
+    "code": "proof fn phi_3_get_mismatches_key<K: KeyTrait + VerusClone>(iter: &KeyIterator<K>, v: K)\n    requires\n        iter.k == Some(v),\n    ensures\n        *iter.get_spec() != v,\n{\n}",
+    "reason": "If entailed, get() would return a value different from the stored key, breaking the fundamental accessor contract."
+  },
+  {
+    "name": "non_end_implies_end",
+    "target_fn": "is_end",
+    "type": "logical",
+    "code": "proof fn phi_4_non_end_implies_end<K: KeyTrait + VerusClone>(iter: &KeyIterator<K>)\n    requires\n        !iter.is_end_spec(),\n    ensures\n        iter.is_end_spec(),\n{\n}",
+    "reason": "If entailed, the is_end spec would be self-contradictory, meaning the KeyIterator type is uninhabitable in non-end states."
+  },
+  {
+    "name": "get_conflates_distinct_keys",
+    "target_fn": "get",
+    "type": "logical",
+    "code": "proof fn phi_5_get_conflates_distinct_keys<K: KeyTrait + VerusClone>(\n    iter1: &KeyIterator<K>,\n    iter2: &KeyIterator<K>,\n    v1: K,\n    v2: K,\n)\n    requires\n        iter1.k == Some(v1),\n        iter2.k == Some(v2),\n        v1 != v2,\n    ensures\n        *iter1.get_spec() == *iter2.get_spec(),\n{\n}",
+    "reason": "If entailed, get() could not distinguish different keys, meaning the spec collapses all key values to a single equivalence class."
+  }
+]

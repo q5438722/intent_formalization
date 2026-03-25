@@ -1,0 +1,17 @@
+===VERDICT_START===
+PHI: overlap_zero_size_reflexive
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The `overlap` function returns true for two zero-size regions at the same base via `region1.base == region2.base`. Mathematically, two empty intervals do not overlap. However, this is a minor boundary issue since zero-size regions don't arise in practice for page table entries.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: overlap_not_symmetric
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `overlap` is asymmetric when one region has zero size. With `a < b < a+1` (impossible for nats — this requires `b` between two consecutive naturals), this specific instance is vacuously true. However, the general asymmetry is real: `overlap({a, 1}, {a+1, 0})` is true (via `region2.base < region1.base + region1.size`) but `overlap({a+1, 0}, {a, 1})` is false (via `region1.base < region2.base + region2.size` failing since `a+1 < a+1` is false). This is a genuine spec defect in the overlap definition.
+===VERDICT_END===
+
+===SUMMARY===
+Both candidates are true positives exposing defects in the `overlap` function's handling of zero-size regions. The zero-size reflexivity issue (φ1) shows empty intervals are incorrectly considered overlapping. The asymmetry issue (φ2) is more severe — `overlap` violates the expected symmetry property when one region has zero size, which could lead to inconsistent overlap detection depending on argument order.
+===END_SUMMARY===

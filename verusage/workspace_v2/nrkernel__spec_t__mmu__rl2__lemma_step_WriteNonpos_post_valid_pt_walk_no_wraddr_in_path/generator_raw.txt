@@ -1,0 +1,79 @@
+The file appears truncated. Let me work with the visible content — this is the rl2/rl3 combined file with `State`, `Writes`, TSO, store buffers, `step_MemOp`, etc.
+
+===PHI_START===
+NAME: ptmem_view_external_body_write_invariance
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_ptmem_view_external_body_write_invariance(mem: PTMem, addr: usize, value: usize)
+    requires
+        mem.read(addr) & 1 == 0,
+        value & 1 == 0,
+    ensures
+        mem.write(addr, value)@ === mem@,
+{
+}
+```
+REASON: `PTMem::view` is `external_body` — writing a non-present value over a non-present entry should not change the PTE view, but this is unverified and could be incorrect if the view function considers non-present entries
+===PHI_END===
+
+===PHI_START===
+NAME: ptmem_view_external_body_functional
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_ptmem_view_external_body_functional(mem1: PTMem, mem2: PTMem)
+    requires
+        mem1.mem === mem2.mem,
+        mem1.pml4 == mem2.pml4,
+    ensures
+        mem1@ === mem2@,
+{
+}
+```
+REASON: `PTMem::view` is `external_body` — identical memories should produce identical PTE views, but this is completely unverified
+===PHI_END===
+
+===PHI_START===
+NAME: write_seq_empty_identity
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_write_seq_empty_identity(mem: PTMem)
+    ensures
+        mem.write_seq(seq![]) === mem,
+{
+}
+```
+REASON: `write_seq` of an empty sequence via `fold_left` should be identity — if fold_left's base case is wrong, this could alter the memory
+===PHI_END===
+
+===PHI_START===
+NAME: all_mb0_bits_are_zero_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_all_mb0_bits_are_zero_external_body(entry: usize, layer: nat)
+    ensures
+        (PDE { entry, layer: Ghost(layer) }).all_mb0_bits_are_zero()
+        || !(PDE { entry, layer: Ghost(layer) }).all_mb0_bits_are_zero(),
+{
+}
+```
+REASON: `all_mb0_bits_are_zero` is `external_body` — the PDE validity predicate is entirely opaque
+===PHI_END===
+
+===PHI_START===
+NAME: is_nonneg_and_nonpos_mutually_exclusive
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_is_nonneg_and_nonpos_mutually_exclusive(mem: PTMem, addr: usize, value: usize)
+    ensures
+        !(mem.is_nonneg_write(addr, value) && mem.is_nonpos_write(addr, value)),
+{
+    assert((mem.read(addr) & 1 == 0 && mem.read(addr) & 1 == 1) ==> false) by (bit_vector);
+}
+```
+REASON: A write cannot be both nonneg (P: 0→1) and nonpos (P: 1→0) simultaneously — tests mutual exclusion of the two write classifications
+===PHI_END===

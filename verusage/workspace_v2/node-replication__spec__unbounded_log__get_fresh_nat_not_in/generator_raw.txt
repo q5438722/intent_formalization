@@ -1,0 +1,105 @@
+===PHI_START===
+NAME: combiner_request_ids_not_contains_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_combiner_request_ids_not_contains_external_body(
+    combiners: Map<NodeId, CombinerState>,
+    rid: ReqId,
+)
+    requires
+        combiners.dom().finite(),
+        combiner_request_id_fresh(combiners, rid),
+    ensures
+        !combiner_request_ids(combiners).contains(rid),
+{
+    combiner_request_ids_not_contains(combiners, rid);
+}
+```
+REASON: `combiner_request_ids_not_contains` is `external_body` — the biconditional between pointwise freshness and set non-containment is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: combiner_request_ids_finite_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_combiner_request_ids_finite_external_body(
+    combiners: Map<NodeId, CombinerState>,
+)
+    requires
+        combiners.dom().finite(),
+    ensures
+        combiner_request_ids(combiners).finite(),
+{
+    combiner_request_ids_finite(combiners);
+}
+```
+REASON: `combiner_request_ids_finite` is `external_body` — finiteness of the fold-over-choose result is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: element_outside_set_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_element_outside_set_external_body(s: Set<nat>)
+    requires
+        s.finite(),
+    ensures ({
+        let r = element_outside_set(s);
+        !s.contains(r)
+    }),
+{
+    let _ = element_outside_set(s);
+}
+```
+REASON: `element_outside_set` is `external_body` — the existence of a nat outside any finite set is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: get_fresh_nat_always_exists
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_get_fresh_nat_always_exists(
+    reqs: Set<ReqId>,
+    combiner: Map<NodeId, CombinerState>,
+)
+    requires
+        reqs.finite(),
+        combiner.dom().finite(),
+    ensures
+        !reqs.contains(get_fresh_nat(reqs, combiner)),
+        combiner_request_id_fresh(combiner, get_fresh_nat(reqs, combiner)),
+{
+    get_fresh_nat_not_in(reqs, combiner);
+}
+```
+REASON: Fresh nat generation always succeeds — depends on three chained `external_body` axioms (`element_outside_set`, `combiner_request_ids_not_contains`, `combiner_request_ids_finite`)
+===PHI_END===
+
+===PHI_START===
+NAME: get_fresh_nat_closed_spec_choose
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_get_fresh_nat_closed_spec_choose(
+    reqs: Set<ReqId>,
+    combiner: Map<NodeId, CombinerState>,
+    reqs2: Set<ReqId>,
+)
+    requires
+        reqs.finite(),
+        reqs2.finite(),
+        combiner.dom().finite(),
+        reqs.subset_of(reqs2),
+    ensures
+        !reqs2.contains(get_fresh_nat(reqs, combiner)) || !reqs.contains(get_fresh_nat(reqs2, combiner)),
+{
+    get_fresh_nat_not_in(reqs, combiner);
+    get_fresh_nat_not_in(reqs2, combiner);
+}
+```
+REASON: `get_fresh_nat` uses `closed spec` with `choose` — the chosen value for a smaller set may or may not avoid a larger set, but the second disjunct always holds; tests whether `get_fresh_nat` is monotonic w.r.t. set inclusion
+===PHI_END===

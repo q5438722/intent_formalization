@@ -1,0 +1,47 @@
+[
+  {
+    "name": "from_vec_to_vec_not_roundtrip",
+    "type": "logical",
+    "code": "proof fn phi_1_from_vec_to_vec_not_roundtrip(v1: Vec<CKeyKV>, v2: Vec<CKeyKV>)\n    requires\n        spec_sorted_keys(v1),\n        spec_sorted_keys(v2),\n        v1@ != v2@,\n    ensures\n        CKeyHashMap::spec_from_vec(v1) != CKeyHashMap::spec_from_vec(v2),\n{\n    CKeyHashMap::lemma_from_vec(v1);\n    CKeyHashMap::lemma_from_vec(v2);\n}",
+    "reason": "`lemma_from_vec` only guarantees `from_vec(v).to_vec() == v` for sorted inputs but never states injectivity \u2014 two distinct sorted vectors could map to the same CKeyHashMap, or equivalently the roundtrip axiom could be vacuously true if `spec_from_vec` is unconstrained",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "unsorted_from_vec_unconstrained",
+    "type": "behavioral",
+    "code": "proof fn phi_2_unsorted_from_vec_unconstrained(v: Vec<CKeyKV>)\n    requires\n        !spec_sorted_keys(v),\n    ensures\n        CKeyHashMap::spec_from_vec(v).spec_to_vec()@ == Seq::<CKeyKV>::empty(),\n{\n}",
+    "reason": "`lemma_from_vec` only constrains `from_vec(v).to_vec()` when `spec_sorted_keys(v)` holds \u2014 for unsorted input the result is completely uninterpreted, so the SMT solver could derive any property about unsorted from_vec results",
+    "entailed": false,
+    "verus_output": "ht_specific_v__impl2__deserialize/phi_2_unsorted_from_vec_unconstrained.rs:387:9\n    |\n383 | proof fn phi_2_unsorted_from_vec_unconstrained(v: Vec<CKeyKV>)\n    |       -------------------------------------------------------- at the end of the function body\n...\n387 |         CKeyHashMap::spec_from_vec(v).spec_to_vec()@ == Seq::<CKeyKV>::empty(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "ckeyhashmap_is_marshalable_but_to_vec_empty",
+    "type": "logical",
+    "code": "proof fn phi_3_ckeyhashmap_is_marshalable_but_to_vec_empty(h: CKeyHashMap)\n    requires\n        h.to_vec()@.len() == 0,\n    ensures\n        h.is_marshalable(),\n{\n    reveal(ckeyhashmap_max_serialized_size);\n}",
+    "reason": "An empty `to_vec()` is trivially sorted, trivially marshalable, and fits within the size limit \u2014 so any CKeyHashMap with an empty key-vector is marshalable regardless of what logical state the hashmap actually holds, since `spec_to_vec` is uninterpreted",
+    "entailed": false,
+    "verus_output": "nyu/intent_formalization/verusage/workspace_v2/ironkv__marshal_ironsht_specific_v__impl2__deserialize/phi_3_ckeyhashmap_is_marshalable_but_to_vec_empty.rs:387:9\n    |\n383 | proof fn phi_3_ckeyhashmap_is_marshalable_but_to_vec_empty(h: CKeyHashMap)\n    |       -------------------------------------------------------------------- at the end of the function body\n...\n387 |         h.is_marshalable(),\n    |         ^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "sorted_keys_empty_trivially_true",
+    "type": "boundary",
+    "code": "proof fn phi_4_sorted_keys_empty_trivially_true()\n    ensures\n        spec_sorted_keys(Vec::<CKeyKV>::new()),\n{\n}",
+    "reason": "`spec_sorted_keys` is vacuously true for empty and single-element vectors \u2014 the `forall` quantifier over adjacent pairs has no witnesses, so empty vectors pass the sorted check without ever validating any ordering property",
+    "entailed": false,
+    "verus_output": "error: cannot call function `alloc::vec::impl&%0::new` with mode exec\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__marshal_ironsht_specific_v__impl2__deserialize/phi_4_sorted_keys_empty_trivially_true.rs:385:26\n    |\n385 |         spec_sorted_keys(Vec::<CKeyKV>::new()),\n    |                          ^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "deserialize_external_body_no_injectivity",
+    "type": "logical",
+    "code": "proof fn phi_5_deserialize_external_body_no_injectivity(d1: Vec<u8>, d2: Vec<u8>, s: usize)\n    requires\n        d1@.subrange(s as int, d1@.len() as int) != d2@.subrange(s as int, d2@.len() as int),\n        d1@.len() >= s,\n        d2@.len() >= s,\n    ensures\n        ({\n            let r1 = u64::deserialize(&d1, s);\n            let r2 = u64::deserialize(&d2, s);\n            r1 is Some && r2 is Some ==> r1.unwrap().0 != r2.unwrap().0\n        }),\n{\n}",
+    "reason": "`deserialize` is `external_body` with ensures that only relate the output to the input subrange \u2014 but there is no axiom that `ghost_serialize` is injective, so two different byte sequences could deserialize to the same value, or two identical values could have different serializations",
+    "entailed": false,
+    "verus_output": "error: cannot call function `phi_5_deserialize_external_body_no_injectivity::Marshalable::deserialize` with mode exec\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__marshal_ironsht_specific_v__impl2__deserialize/phi_5_deserialize_external_body_no_injectivity.rs:390:22\n    |\n390 |             let r1 = u64::deserialize(&d1, s);\n    |                      ^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

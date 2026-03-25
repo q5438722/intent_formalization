@@ -1,0 +1,93 @@
+===PHI_START===
+NAME: max_of_empty_is_zero
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_max_of_empty_is_zero()
+    ensures
+        max_of_set(Set::empty()) == 0,
+{
+    let _ = max_of_set(Set::<nat>::empty());
+}
+```
+REASON: The "maximum" of an empty set is defined as 0 — this is an arbitrary choice that could lead to unsound reasoning if callers assume the max is meaningful for empty sets
+===PHI_END===
+
+===PHI_START===
+NAME: max_geq_any_element
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_max_geq_any_element(s: Set<nat>, x: nat)
+    requires
+        s.finite(),
+        s.contains(x),
+    ensures
+        x <= max_of_set(s),
+{
+    let _ = max_of_set(s);
+}
+```
+REASON: Every element is bounded by the max — tests the core ensures clause on a concrete element
+===PHI_END===
+
+===PHI_START===
+NAME: max_not_tight
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_max_not_tight(s: Set<nat>)
+    requires
+        s.finite(),
+        s.len() > 0,
+    ensures
+        max_of_set(s) >= s.choose(),
+{
+    let _ = max_of_set(s);
+}
+```
+REASON: The max is at least as large as the chosen element — but the spec does not guarantee the max is actually IN the set, so it could be arbitrarily larger
+===PHI_END===
+
+===PHI_START===
+NAME: singleton_max_is_element
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_singleton_max_is_element(x: nat)
+    ensures
+        max_of_set(set!{x}) == x,
+{
+    let s = set!{x};
+    let r = max_of_set(s);
+    assert(s.contains(x));
+    assert(x <= r);
+    assert(s.remove(x) =~= Set::empty());
+}
+```
+REASON: For a singleton set, the max equals the element — but this relies on `choose()` picking the only element and the recursive structure working out
+===PHI_END===
+
+===PHI_START===
+NAME: max_monotone_subset
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_max_monotone_subset(s1: Set<nat>, s2: Set<nat>)
+    requires
+        s1.finite(),
+        s2.finite(),
+        s1.subset_of(s2),
+    ensures
+        max_of_set(s1) <= max_of_set(s2),
+{
+    let r1 = max_of_set(s1);
+    let r2 = max_of_set(s2);
+    // r1 is the return value, and for all x in s1, x <= r1
+    // but r1 itself might not be in s1, so we can't directly conclude r1 <= r2
+    // However, r1 is constructed as either v1 or v2 in the recursion...
+    // This might NOT be provable — the max could exceed actual elements
+}
+```
+REASON: Subset monotonicity of max — if max_of_set returns values larger than any actual element, a subset could have a larger "max" than its superset
+===PHI_END===

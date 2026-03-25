@@ -1,0 +1,47 @@
+[
+  {
+    "name": "delegate_abstractable_unchecked_hashmap",
+    "type": "behavioral",
+    "code": "proof fn phi_1_delegate_abstractable_unchecked_hashmap(kr: KeyRange<CKey>, h: CKeyHashMap)\n    ensures\n        CMessage::Delegate { range: kr, h: h }.abstractable(),\n{\n}",
+    "reason": "`Delegate` falls through to `_ => true` in `abstractable()` without validating the CKeyHashMap, so any hash map \u2014 including corrupted or inconsistent ones \u2014 is considered abstractable",
+    "entailed": false,
+    "verus_output": "error: struct literals are not allowed here; try surrounding the struct literal with parentheses\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__host_impl_v__impl2__receive_packet_next/phi_1_delegate_abstractable_unchecked_hashmap.rs:2194:9\n     |\n2194 |         CMessage::Delegate { range: kr, h: h }.abstractable(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "get_set_reply_abstractable_trivially",
+    "type": "behavioral",
+    "code": "proof fn phi_2_get_set_reply_abstractable_trivially(k: CKey, v: Option<Vec<u8>>)\n    ensures\n        CMessage::GetRequest { k }.abstractable(),\n        CMessage::SetRequest { k, v }.abstractable(),\n        CMessage::Reply { k, v }.abstractable(),\n{\n}",
+    "reason": "GetRequest, SetRequest, and Reply are unconditionally abstractable \u2014 no validation on the key `k` or optional value `v`, so malformed keys or values silently enter the abstract model",
+    "entailed": false,
+    "verus_output": "tatic`, `const`, `unsafe`, `mod`, `type`, `struct`, `enum`, `union`, `trait`, `auto`, `impl`, `default`, `global`, `broadcast`, `macro`, identifier, `self`, `super`, `crate`, `::`\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__host_impl_v__impl2__receive_packet_next/phi_2_get_set_reply_abstractable_trivially.rs:2194:35\n     |\n2194 |         CMessage::GetRequest { k }.abstractable(),\n     |                                   ^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "between_empty_at_equal_bounds",
+    "type": "boundary",
+    "code": "proof fn phi_3_between_empty_at_equal_bounds<K: KeyTrait + VerusClone>(ki: KeyIterator<K>)\n    ensures\n        !KeyIterator::<K>::between(ki, ki, ki),\n{\n}",
+    "reason": "`between(x, x, x)` is false because `x.lt_spec(x)` is false for strict ordering \u2014 a degenerate range `[x, x)` is empty, so point queries using `between` silently match nothing",
+    "entailed": true,
+    "verus_output": "hes` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__host_impl_v__impl2__receive_packet_next/phi_3_between_empty_at_equal_bounds.rs:1686:91\n     |\n1686 |       || (!self.k.is_None() && !other.k.is_None() && self.k.get_Some_0().cmp_spec(other.k.get_Some_0()).lt())\n     |                                                                                           ^^^^^^^^^^\n\nwarning: 6 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "invalid_message_abstractable_and_viewable",
+    "type": "behavioral",
+    "code": "proof fn phi_4_invalid_message_abstractable_and_viewable()\n    ensures\n        CSingleMessage::InvalidMessage{}.abstractable(),\n        CSingleMessage::InvalidMessage{}@ == SingleMessage::InvalidMessage{},\n{\n}",
+    "reason": "`InvalidMessage` is unconditionally abstractable and maps directly to `SingleMessage::InvalidMessage` \u2014 corrupted/malformed network messages pass the abstraction barrier with no validation, entering verified protocol logic",
+    "entailed": false,
+    "verus_output": "`unsafe`, `mod`, `type`, `struct`, `enum`, `union`, `trait`, `auto`, `impl`, `default`, `global`, `broadcast`, `macro`, identifier, `self`, `super`, `crate`, `::`\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__host_impl_v__impl2__receive_packet_next/phi_4_invalid_message_abstractable_and_viewable.rs:2194:41\n     |\n2194 |         CSingleMessage::InvalidMessage{}.abstractable(),\n     |                                         ^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "vec_t_serialize_element_order_dependent",
+    "type": "logical",
+    "code": "proof fn phi_5_vec_t_serialize_element_order_dependent(a: u64, b: u64)\n    requires\n        a != b,\n    ensures\n        ({\n            let v1: Vec<u64> = vec_new2(a, b);\n            let v2: Vec<u64> = vec_new2(b, a);\n            v1.is_marshalable() && v2.is_marshalable() ==>\n                v1.ghost_serialize() != v2.ghost_serialize()\n        }),\n{\n}",
+    "reason": "`Vec<T>::ghost_serialize` serializes elements in sequence order via `fold_left`, so reordering elements produces different byte sequences \u2014 but there is no spec-level guarantee that `ghost_serialize` is injective (no `lemma_serialize_injective` for `Vec<T>`), meaning two semantically-different vectors could theoretically be treated as equal by downstream code relying on serialization identity",
+    "entailed": false,
+    "verus_output": "ot found in this scope\n\nerror[E0425]: cannot find function `vec_new2` in this scope\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__host_impl_v__impl2__receive_packet_next/phi_5_vec_t_serialize_element_order_dependent.rs:2198:32\n     |\n2198 |             let v2: Vec<u64> = vec_new2(b, a);\n     |                                ^^^^^^^^ not found in this scope\n\nerror: aborting due to 2 previous errors\n\nFor more information about this error, try `rustc --explain E0425`.\n",
+    "timed_out": false
+  }
+]

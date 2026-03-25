@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: push_to_set_superset
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is a basic set-theoretic property: `S ⊆ S ∪ {x}`. Pushing an element can only add to the set, never remove. This is correct and expected.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: push_duplicate_set_unchanged
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Inserting an already-present element into a set is idempotent — this is standard set semantics. The `to_set()` abstraction is intentionally designed to lose multiplicity; that's what sets do.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: push_to_set_contains_all_original
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: If `y ∈ s.to_set()` then `y ∈ s.to_set() ∪ {x}`. This is a trivial monotonicity property of set union, correct and expected.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: push_empty_singleton_set
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `∅ ∪ {x} = {x}` is a basic set identity. The base case is correct and expected.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: push_to_set_len_not_preserved
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Sequence length growing while set size stays the same when pushing a duplicate is the expected behavior — sequences track multiplicity, sets don't. This is by design, not a spec gap.
+===VERDICT_END===
+
+===SUMMARY===
+All five candidates are false positives. They test basic set-theoretic properties (monotonicity of union, idempotence of insert, base case for empty set) that are correct and expected consequences of the `to_set()` abstraction. The lemma `lemma_seq_push_to_set` correctly establishes that `s.push(x).to_set() == s.to_set().insert(x)`, and all candidates are trivial corollaries of this identity combined with standard set axioms.
+===END_SUMMARY===

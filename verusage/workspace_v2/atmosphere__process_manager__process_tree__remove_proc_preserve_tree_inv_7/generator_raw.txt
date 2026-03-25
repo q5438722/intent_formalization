@@ -1,0 +1,107 @@
+===PHI_START===
+NAME: remove_proc_owned_threads_unconstrained
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_remove_proc_owned_threads_unconstrained(
+    root_proc: ProcPtr,
+    proc_tree_dom: Set<ProcPtr>,
+    old_proc_perms: Map<ProcPtr, PointsTo<Process>>,
+    new_proc_perms: Map<ProcPtr, PointsTo<Process>>,
+    proc_ptr: ProcPtr,
+    t: ThreadPtr,
+)
+    requires
+        remove_proc_ensures(root_proc, proc_tree_dom, old_proc_perms, new_proc_perms, proc_ptr),
+        old_proc_perms[proc_ptr].value().owned_threads@.contains(t),
+    ensures
+        !new_proc_perms.dom().contains(proc_ptr) || !new_proc_perms[proc_ptr].value().owned_threads@.contains(t),
+{
+}
+```
+REASON: `remove_proc_ensures` removes the proc from the tree domain but never constrains cleanup of its `owned_threads` Ghost field — threads owned by the removed process could remain dangling
+===PHI_END===
+
+===PHI_START===
+NAME: remove_proc_subtree_set_not_cleaned
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_remove_proc_subtree_set_not_cleaned(
+    root_proc: ProcPtr,
+    proc_tree_dom: Set<ProcPtr>,
+    old_proc_perms: Map<ProcPtr, PointsTo<Process>>,
+    new_proc_perms: Map<ProcPtr, PointsTo<Process>>,
+    proc_ptr: ProcPtr,
+    parent_ptr: ProcPtr,
+)
+    requires
+        remove_proc_ensures(root_proc, proc_tree_dom, old_proc_perms, new_proc_perms, proc_ptr),
+        old_proc_perms[proc_ptr].value().parent == Some(parent_ptr),
+        proc_tree_dom.contains(parent_ptr),
+    ensures
+        !new_proc_perms[parent_ptr].value().subtree_set@.contains(proc_ptr),
+{
+}
+```
+REASON: When a proc is removed, its parent's `subtree_set` should no longer contain the removed proc — if `remove_proc_ensures` doesn't constrain parent subtree cleanup, stale references persist
+===PHI_END===
+
+===PHI_START===
+NAME: seq_remove_lemma_external_body_unsound
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_seq_remove_lemma_external_body_unsound()
+    ensures
+        forall|s: Seq<int>, v: int, i: int|
+            #![trigger s.subrange(0,i), s.contains(v)]
+            0 <= i < s.len() && s.contains(v) && s[i] == v && s.no_duplicates()
+            ==> !s.subrange(0, i).add(s.subrange(i + 1, s.len() as int)).contains(v),
+{
+    seq_remove_lemma::<int>();
+}
+```
+REASON: `seq_remove_lemma` is external_body — if the trusted axiom is wrong about removing a unique element eliminating it from the spliced sequence, proofs depending on it (like `remove_proc_preserve_tree_inv_7`) would be unsound
+===PHI_END===
+
+===PHI_START===
+NAME: remove_proc_sibling_uppertree_unchanged
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_remove_proc_sibling_uppertree_unchanged(
+    root_proc: ProcPtr,
+    proc_tree_dom: Set<ProcPtr>,
+    old_proc_perms: Map<ProcPtr, PointsTo<Process>>,
+    new_proc_perms: Map<ProcPtr, PointsTo<Process>>,
+    proc_ptr: ProcPtr,
+    sibling: ProcPtr,
+)
+    requires
+        remove_proc_ensures(root_proc, proc_tree_dom, old_proc_perms, new_proc_perms, proc_ptr),
+        proc_tree_dom.contains(sibling),
+        sibling != proc_ptr,
+    ensures
+        new_proc_perms[sibling].value().uppertree_seq@ == old_proc_perms[sibling].value().uppertree_seq@,
+{
+}
+```
+REASON: `remove_proc_ensures` should preserve uppertree_seq for all non-removed procs — if it doesn't constrain this, the tree ancestry path could silently change for siblings
+===PHI_END===
+
+===PHI_START===
+NAME: sll_len_without_wf_returns_value_list_len
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_sll_len_without_wf_returns_value_list_len(sll: StaticLinkedList<ProcPtr, CONTAINER_PROC_LIST_LEN>)
+    requires
+        !sll.wf(),
+    ensures
+        sll.len() == sll.value_list_len,
+{
+}
+```
+REASON: The external_body `len()` unconditionally ensures `l == self.value_list_len` regardless of `wf()` — a malformed list reports its cached length field which may disagree with actual spec_seq length, enabling inconsistent reasoning
+===PHI_END===

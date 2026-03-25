@@ -1,0 +1,52 @@
+[
+  {
+    "name": "result_exceeds_input",
+    "target_fn": "align_to_usize",
+    "type": "behavioral",
+    "reason": "Alignment-down should never produce a value larger than the original input",
+    "entailed": false,
+    "verified": 31,
+    "errors": 1,
+    "output_tail": "t_exceeds_input(a: usize, b: usize)\n    |       ------------------------------------------------- at the end of the function body\n...\n516 |         align_to_usize(a, b) > a,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n"
+  },
+  {
+    "name": "unaligned_input_unchanged",
+    "target_fn": "align_to_usize",
+    "type": "boundary",
+    "reason": "If an unaligned value is returned unchanged, the function fails its core purpose of aligning down",
+    "entailed": false,
+    "verified": 31,
+    "errors": 1,
+    "output_tail": "nchanged(a: usize, b: usize)\n    |       ------------------------------------------------------ at the end of the function body\n...\n517 |         align_to_usize(a, b) == a,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n"
+  },
+  {
+    "name": "result_not_aligned",
+    "target_fn": "align_to_usize",
+    "type": "logical",
+    "reason": "The result of align_to_usize must always be a multiple of b; if not, the alignment is broken",
+    "entailed": false,
+    "verified": 31,
+    "errors": 1,
+    "output_tail": "aligned(a: usize, b: usize)\n    |       ----------------------------------------------- at the end of the function body\n...\n516 |         align_to_usize(a, b) % b != 0,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n"
+  },
+  {
+    "name": "different_granularity_equal",
+    "target_fn": "align_to_usize",
+    "type": "behavioral",
+    "reason": "Coarser and finer alignment granularities collapsing to the same value would indicate the spec conflates page sizes",
+    "entailed": false,
+    "verified": 31,
+    "errors": 1,
+    "output_tail": "--------- at the end of the function body\n...\n516 |         align_to_usize(a, L1_ENTRY_SIZE) == align_to_usize(a, L2_ENTRY_SIZE),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n"
+  },
+  {
+    "name": "gap_exceeds_alignment",
+    "target_fn": "align_to_usize",
+    "type": "boundary",
+    "reason": "The rounding-down gap must always be strictly less than b; a gap >= b means the result skipped past a valid aligned address",
+    "entailed": false,
+    "verified": 31,
+    "errors": 1,
+    "output_tail": "usize, b: usize)\n    |       -------------------------------------------------- at the end of the function body\n...\n516 |         sub(a, align_to_usize(a, b)) >= b,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n"
+  }
+]

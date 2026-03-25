@@ -1,0 +1,40 @@
+Looking at the source and each φ carefully:
+
+===VERDICT_START===
+PHI: preconditions_vacuous
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The preconditions (os.wf(), thread in domain, valid endpoint index, thread RUNNING) are standard OS syscall preconditions that should be jointly satisfiable. Since `wf()` is a `closed spec` with `external_body`, the verifier treats it as an uninterpreted predicate and cannot derive `false` from it combined with the other conditions. This proof cannot verify with opaque specs.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: always_returns_error
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The parameter `ret` is completely unconstrained in the requires block — it appears only in the ensures. This proof is structurally unprovable unless the requires are vacuously unsatisfiable (reducing to φ1, which itself cannot verify). The proof also does not invoke `syscall_send_empty_no_block` or reference its postcondition, so it does not actually test the function's spec weakness.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: sender_thread_lost
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The parameter `os_post` is constrained only by `os_post.wf()` with no connection to `os_pre` or the function's execution. Since `os_post` is an independent universally-quantified parameter, the proof would need `!os_post.thread_dom().contains(sender_thread_ptr)` for ALL well-formed OS states, which is clearly not derivable. This can only verify vacuously, and the preconditions are not vacuous.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: receiver_never_exists
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: medium
+REASONING: This claims `wf()` plus standard thread conditions structurally preclude any waiting receiver. Since both `wf()` and `receiver_exist` are opaque (`external_body`/`closed spec`), the SMT solver has no axioms to relate them and cannot derive the ensures. The OS is clearly designed to support IPC with receivers; `receiver_exist` being a separate predicate from `wf()` means the verifier cannot conclude anything about their relationship.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: endpoint_index_degenerate
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: medium
+REASONING: This would require `MAX_NUM_ENDPOINT_DESCRIPTORS <= 1`. While the constant's value is not shown in the source, the OS design includes `EndpointIdx`, `EndpointPtr`, endpoint descriptor arrays, and IPC infrastructure — all strongly suggesting multiple endpoints per thread. A single-endpoint system would be architecturally degenerate for a microkernel supporting IPC, making this extremely unlikely to hold.
+===VERDICT_END===
+
+===SUMMARY===
+All five φ are FALSE_POSITIVE. The proof functions target `syscall_send_empty_no_block` but none incorporate its actual postcondition — they are standalone claims about the precondition space. The critical structural flaw is that φ2 and φ3 contain universally-quantified parameters (`ret`, `os_post`) that are unconstrained or minimally constrained in the requires, making them unprovable unless the preconditions are vacuously unsatisfiable. Meanwhile φ1, φ4, and φ5 rely on opaque `external_body`/`closed spec` predicates (`wf()`, `receiver_exist`, `MAX_NUM_ENDPOINT_DESCRIPTORS`) that the SMT solver cannot unfold or reason about. The OS kernel design clearly supports multiple endpoints, IPC receivers, and running threads, so none of these degenerate conditions hold.
+===END_SUMMARY===

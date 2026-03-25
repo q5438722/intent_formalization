@@ -1,0 +1,77 @@
+===PHI_START===
+NAME: compare_slice_reflexive
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_compare_slice_reflexive(x: Seq<u8>)
+    ensures
+        x =~= x,
+{
+}
+```
+REASON: Extensional equality should be reflexive — if it weren't, `compare_slice(x, x)` could return false
+===PHI_END===
+
+===PHI_START===
+NAME: compare_slice_symmetric
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_compare_slice_symmetric(x: Seq<u8>, y: Seq<u8>)
+    requires
+        x =~= y,
+    ensures
+        y =~= x,
+{
+}
+```
+REASON: Extensional equality should be symmetric — if comparison were order-dependent, it would violate basic equality semantics
+===PHI_END===
+
+===PHI_START===
+NAME: compare_slice_empty_equal
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_compare_slice_empty_equal()
+    ensures
+        Seq::<u8>::empty() =~= Seq::<u8>::empty(),
+{
+}
+```
+REASON: Two empty slices should always compare equal — if the loop or length check mishandled zero-length inputs, this could fail
+===PHI_END===
+
+===PHI_START===
+NAME: compare_slice_different_lengths_not_equal
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_compare_slice_different_lengths_not_equal(x: Seq<u8>, y: Seq<u8>)
+    requires
+        x.len() != y.len(),
+    ensures
+        !(x =~= y),
+{
+}
+```
+REASON: Sequences of different lengths should never be extensionally equal — if `=~=` ignored length, the early return would be unsound
+===PHI_END===
+
+===PHI_START===
+NAME: compare_slice_single_diff_not_equal
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_compare_slice_single_diff_not_equal(x: Seq<u8>, y: Seq<u8>, k: int)
+    requires
+        x.len() == y.len(),
+        0 <= k < x.len(),
+        x[k] != y[k],
+    ensures
+        !(x =~= y),
+{
+}
+```
+REASON: A single differing element should make the sequences unequal — if `=~=` were too coarse-grained, the element-wise comparison loop would be incorrect
+===PHI_END===

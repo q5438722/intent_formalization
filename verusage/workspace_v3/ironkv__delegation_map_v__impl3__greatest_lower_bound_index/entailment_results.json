@@ -1,0 +1,52 @@
+[
+  {
+    "name": "equal_is_lt",
+    "target_fn": "is_lt",
+    "type": "behavioral",
+    "reason": "If Equal is classified as Less, is_lt would return true on Equal inputs, corrupting comparison logic",
+    "entailed": false,
+    "verified": 3,
+    "errors": 1,
+    "output_tail": "s_lt.rs:363:9\n    |\n361 | proof fn phi_1_equal_is_lt()\n    |       ---------------------- at the end of the function body\n362 |     ensures\n363 |         Ordering::Equal.lt(),\n    |         ^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 13 warnings emitted\n\n"
+  },
+  {
+    "name": "greater_is_lt",
+    "target_fn": "is_lt",
+    "type": "boundary",
+    "reason": "If Greater is classified as Less, is_lt conflates opposite orderings, breaking all ordering-dependent code",
+    "entailed": false,
+    "verified": 3,
+    "errors": 1,
+    "output_tail": "363:9\n    |\n361 | proof fn phi_2_greater_is_lt()\n    |       ------------------------ at the end of the function body\n362 |     ensures\n363 |         Ordering::Greater.lt(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 13 warnings emitted\n\n"
+  },
+  {
+    "name": "glb_ignores_later_keys",
+    "target_fn": "greatest_lower_bound_index",
+    "type": "behavioral",
+    "reason": "When iter equals the last key, the GLB should be that key itself, not the minimum key \u2014 this would mean the search never advances past index 0",
+    "entailed": false,
+    "verified": 3,
+    "errors": 1,
+    "output_tail": "------- at the end of the function body\n...\n368 |         m.greatest_lower_bound_spec(iter, KeyIterator::new_spec(m.keys@[0])),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 13 warnings emitted\n\n"
+  },
+  {
+    "name": "glb_never_matches_iter",
+    "target_fn": "greatest_lower_bound_index",
+    "type": "logical",
+    "reason": "If the GLB is always strictly less than iter and never equal, exact key lookups would return the wrong lower bound, missing the matching key",
+    "entailed": false,
+    "verified": 3,
+    "errors": 1,
+    "output_tail": "----------------------------------------- at the end of the function body\n...\n369 |         KeyIterator::new_spec(m.keys@[index]).lt_spec(iter),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 13 warnings emitted\n\n"
+  },
+  {
+    "name": "end_iter_glb_is_min",
+    "target_fn": "greatest_lower_bound_index",
+    "type": "boundary",
+    "reason": "For an end iterator the GLB should be the greatest key, not the least \u2014 returning index 0 would discard all keys above the minimum",
+    "entailed": false,
+    "verified": 3,
+    "errors": 1,
+    "output_tail": "------- at the end of the function body\n...\n368 |         m.greatest_lower_bound_spec(iter, KeyIterator::new_spec(m.keys@[0])),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 13 warnings emitted\n\n"
+  }
+]

@@ -1,0 +1,88 @@
+===PHI_START===
+NAME: usize2pa_mem_valid_unconditional
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)
+    ensures
+        MEM_valid(usize2pa(v)),
+{
+}
+```
+REASON: usize2pa's external_body unconditionally ensures MEM_valid(ret) for ANY input — arbitrary usize values produce "valid" physical addresses without proof
+===PHI_END===
+
+===PHI_START===
+NAME: page_entry_to_map_entry_drops_user_bit
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_page_entry_to_map_entry_drops_user_bit(pe: PageEntry)
+    requires
+        pe.perm.user == true,
+        pe.perm.present == true,
+    ensures
+        spec_page_entry_to_map_entry(&pe) == spec_page_entry_to_map_entry(
+            &PageEntry { perm: PageEntryPerm { user: false, ..pe.perm }, ..pe }
+        ),
+{
+}
+```
+REASON: MapEntry contains only addr/write/execute_disable — the user/supervisor bit is silently dropped, making kernel-only and user-accessible pages indistinguishable in mappings
+===PHI_END===
+
+===PHI_START===
+NAME: page_closure_l4_l3_can_overlap
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_page_closure_l4_l3_can_overlap(pt: PageTable, p: PageMapPtr)
+    requires
+        pt.wf_l4(),
+        pt.wf_l3(),
+        pt.l3_tables@.dom().contains(p),
+        p == pt.cr3,
+    ensures
+        pt.l4_table@.dom().contains(p) && pt.l3_tables@.dom().contains(p),
+{
+}
+```
+REASON: No cross-level disjointness constraint — the same physical page can appear in both l4_table and l3_tables domains, meaning it serves as two different page table levels simultaneously
+===PHI_END===
+
+===PHI_START===
+NAME: page_entry_to_map_entry_drops_ps_bit
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_page_entry_to_map_entry_drops_ps_bit(pe: PageEntry)
+    requires
+        pe.perm.ps == true,
+        pe.perm.present == true,
+    ensures
+        spec_page_entry_to_map_entry(&pe) == spec_page_entry_to_map_entry(
+            &PageEntry { perm: PageEntryPerm { ps: false, ..pe.perm }, ..pe }
+        ),
+{
+}
+```
+REASON: MapEntry does not preserve the ps (page size) bit — a 2M huge page entry and a 4K page table pointer with the same address become indistinguishable after conversion
+===PHI_END===
+
+===PHI_START===
+NAME: page_entry_to_map_entry_drops_present_bit
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_page_entry_to_map_entry_drops_present_bit(pe: PageEntry)
+    requires
+        pe.perm.present == false,
+    ensures
+        spec_page_entry_to_map_entry(&pe) == spec_page_entry_to_map_entry(
+            &PageEntry { perm: PageEntryPerm { present: true, ..pe.perm }, ..pe }
+        ),
+{
+}
+```
+REASON: MapEntry does not preserve the present bit — non-present (invalid) entries produce the same MapEntry as present (valid) entries, allowing non-present mappings to appear valid
+===PHI_END===

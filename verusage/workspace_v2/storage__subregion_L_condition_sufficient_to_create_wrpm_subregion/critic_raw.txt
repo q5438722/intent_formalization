@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: condition_transfer_vacuous_empty
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: For empty regions, `can_crash_as(alt_crash_state)` requires `alt_crash_state.len() == alt_region_view.len() == 0`. The ensures follows directly from the length constraint in `can_crash_as`. Correct by definition.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: views_differ_vacuous_all_writable
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: With `start == 0`, `len == v1.len()`, and `is_writable_absolute_addr_fn = |_| true`, every address `addr` in `[0, v1.len())` falls into the third disjunct (`start <= addr < start + len && !true`), which is false. The antecedent of the implication is false for all in-range addresses, making the predicate vacuously true. This is the intended design — a fully writable subregion imposes no constraints on view differences.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: memories_differ_reflexive
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `mem[addr] == mem[addr]` is trivially true for all addresses, so the implication holds regardless of which disjunct the address falls into. Reflexivity is a correct and expected property.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: condition_not_closed_under_arbitrary_writes
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: With `start=0, len=4`, addresses 4–7 fall into the second disjunct (`start + len <= addr < mem1.len()`), requiring `s1[addr] == s2[addr]`. Since `s1[4..7] = [0,0,0,0]` but `s2[4..7] = [42,42,42,42]`, the predicate correctly evaluates to false. The subregion boundary enforcement works as designed.
+===VERDICT_END===
+
+===SUMMARY===
+All four candidates are false positives. They confirm correct definitional properties: empty region crash states have length zero, fully writable subregions impose no view constraints, memory-differ is reflexive, and writes outside the subregion range are correctly rejected by the predicate.
+===END_SUMMARY===

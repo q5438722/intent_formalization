@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: map_min_value_base_case
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_map_min_value_base_case(m: Map<NodeId, nat>, v: nat)
+    requires
+        m.contains_key(0),
+        m[0] == v,
+    ensures
+        map_min_value(m, 0) == v,
+{
+}
+```
+REASON: Base case returns `m[0]` directly — tests that `map_min_value` at index 0 equals the value at key 0
+===PHI_END===
+
+===PHI_START===
+NAME: map_min_value_leq_all
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_map_min_value_leq_all(m: Map<NodeId, nat>, idx: nat, n: nat)
+    requires
+        forall|i| 0 <= i <= idx ==> m.contains_key(i),
+        0 <= n <= idx,
+    ensures
+        map_min_value(m, idx) <= m[n],
+{
+    map_min_value_smallest(m, idx);
+}
+```
+REASON: The minimum is at most every element in range — direct consequence of the verified lemma
+===PHI_END===
+
+===PHI_START===
+NAME: map_min_value_is_in_map
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_map_min_value_is_in_map(m: Map<NodeId, nat>, idx: nat)
+    requires
+        forall|i| 0 <= i <= idx ==> m.contains_key(i),
+    ensures
+        map_contains_value(m, map_min_value(m, idx)),
+{
+    map_min_value_smallest(m, idx);
+}
+```
+REASON: The minimum value exists in the map — tests that `map_min_value` returns an actual value from the map, not a fabricated one
+===PHI_END===
+
+===PHI_START===
+NAME: map_min_value_ignores_keys_beyond_idx
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_map_min_value_ignores_keys_beyond_idx(m: Map<NodeId, nat>, idx: nat, extra_val: nat)
+    requires
+        forall|i| 0 <= i <= idx ==> m.contains_key(i),
+        !m.contains_key(idx + 1),
+        extra_val < map_min_value(m, idx),
+    ensures
+        map_min_value(m, idx) == map_min_value(m.insert(idx + 1, extra_val), idx),
+{
+}
+```
+REASON: `map_min_value(m, idx)` only examines keys `[0, idx]` — inserting a smaller value at `idx+1` doesn't change the result, so the "minimum" over the map can miss the actual global minimum
+===PHI_END===
+
+===PHI_START===
+NAME: map_min_value_not_global_min
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_map_min_value_not_global_min(m: Map<NodeId, nat>, idx: nat)
+    requires
+        forall|i| 0 <= i <= idx + 1 ==> m.contains_key(i),
+        m[idx + 1] < map_min_value(m, idx),
+    ensures
+        map_min_value(m, idx) > m[idx + 1],
+{
+}
+```
+REASON: The minimum over `[0, idx]` can be strictly larger than `m[idx+1]` — the function name suggests "map minimum" but it only covers a prefix, potentially misleading callers about what range is covered
+===PHI_END===

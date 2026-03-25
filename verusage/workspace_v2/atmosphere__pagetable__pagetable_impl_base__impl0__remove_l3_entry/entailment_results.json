@@ -1,0 +1,47 @@
+[
+  {
+    "name": "spec_index2va_bitand_collapses",
+    "type": "logical",
+    "code": "proof fn phi_1_spec_index2va_bitand_collapses()\n    ensures\n        spec_index2va((1, 0, 0, 0)) == spec_index2va((2, 0, 0, 0)),\n{\n}",
+    "reason": "spec_index2va uses `&` (bitwise AND) instead of `|` (bitwise OR) to combine shifted fields \u2014 distinct L4 indices map to the same VA (both zero)",
+    "entailed": false,
+    "verus_output": "e__pagetable_impl_base__impl0__remove_l3_entry/phi_1_spec_index2va_bitand_collapses.rs:1308:9\n     |\n1306 | proof fn phi_1_spec_index2va_bitand_collapses()\n     |       ----------------------------------------- at the end of the function body\n1307 |     ensures\n1308 |         spec_index2va((1, 0, 0, 0)) == spec_index2va((2, 0, 0, 0)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 50 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "va_1g_valid_equals_va_2m_valid",
+    "type": "behavioral",
+    "code": "proof fn phi_2_va_1g_valid_equals_va_2m_valid(va: usize)\n    ensures\n        va_1g_valid(va) == spec_va_2m_valid(va),\n{\n}",
+    "reason": "va_1g_valid has `when_used_as_spec(spec_va_2m_valid)` instead of `spec_va_1g_valid` \u2014 copy-paste bug making 1G validation use the 2M mask",
+    "entailed": true,
+    "verus_output": "_2m_valid.rs:66:10\n   |\n66 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__remove_l3_entry/phi_2_va_1g_valid_equals_va_2m_valid.rs:75:10\n   |\n75 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 50 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "usize2pa_mem_valid_unconditional",
+    "type": "logical",
+    "code": "proof fn phi_3_usize2pa_mem_valid_unconditional(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body ensures MEM_valid(ret) for ALL inputs \u2014 trusts without proof that masking any usize yields a valid physical address",
+    "entailed": false,
+    "verus_output": "ization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__remove_l3_entry/phi_3_usize2pa_mem_valid_unconditional.rs:1308:9\n     |\n1306 | proof fn phi_3_usize2pa_mem_valid_unconditional(v: usize)\n     |       --------------------------------------------------- at the end of the function body\n1307 |     ensures\n1308 |         MEM_valid(usize2pa(v)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 50 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "map_2m_no_existing_4k_conflict_check",
+    "type": "behavioral",
+    "code": "proof fn phi_4_map_2m_no_existing_4k_conflict_check(\n    pt: PageTable,\n    l4i: L4Index,\n    l3i: L3Index,\n    l2i: L2Index,\n    target_entry: MapEntry,\n)\n    requires\n        pt.wf(),\n        pt.kernel_l4_end <= l4i < 512,\n        0 <= l3i < 512,\n        0 <= l2i < 512,\n        pt.spec_resolve_mapping_l3(l4i, l3i).is_Some(),\n        pt.spec_resolve_mapping_l2(l4i, l3i, l2i).is_None(),\n        pt.spec_resolve_mapping_2m_l2(l4i, l3i, l2i).is_None(),\n        pt.page_closure().contains(target_entry.addr) == false,\n        page_ptr_valid(target_entry.addr),\n        page_ptr_2m_valid(target_entry.addr),\n    ensures\n        forall|l1i: L1Index|\n            0 <= l1i < 512 ==>\n            !pt.mapping_4k@.dom().contains(spec_index2va((l4i, l3i, l2i, l1i))),\n{\n    pt.reveal_page_table_wf();\n    pt.reveal_page_table_levels_wf();\n    pt.reveal_page_table_mappings_wf();\n}",
+    "reason": "map_2m_page doesn't require the absence of existing 4k mappings under the same L2 slot \u2014 but this may be vacuously true since L2 resolves to None means no L1 subtable exists",
+    "entailed": false,
+    "verus_output": "hentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__remove_l3_entry/phi_4_map_2m_no_existing_4k_conflict_check.rs:1325:9\n     |\n1325 | /         forall|l1i: L1Index|\n1326 | |             0 <= l1i < 512 ==>\n1327 | |             !pt.mapping_4k@.dom().contains(spec_index2va((l4i, l3i, l2i, l1i))),\n     | |_______________________________________________________________________________^\n\nerror: aborting due to 1 previous error; 53 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_map_set_accepts_non_present_non_empty",
+    "type": "boundary",
+    "code": "proof fn phi_5_page_map_set_accepts_non_present_non_empty()\n    ensures\n        ({\n            let pe = PageEntry {\n                addr: 0,\n                perm: PageEntryPerm {\n                    present: false,\n                    ps: false,\n                    write: false,\n                    execute_disable: false,\n                    user: false,\n                },\n            };\n            pe.is_empty() && !pe.perm.present\n        }),\n{\n}",
+    "reason": "page_map_set requires `present == false ==> is_empty()` but this collapses all non-present entries to zero \u2014 preventing storage of non-present entries with metadata (e.g. swap bits), which may be intentional but overly restrictive",
+    "entailed": true,
+    "verus_output": ":66:10\n   |\n66 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__remove_l3_entry/phi_5_page_map_set_accepts_non_present_non_empty.rs:75:10\n   |\n75 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 50 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

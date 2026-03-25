@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "write_seq_idle_allows_arbitrary_read_on_missing_key",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`lemma_write_seq_idle` correctly preserves the read value for untouched addresses. The fact that `read` on an out-of-domain address returns an arbitrary (but deterministic per Map axioms) value is standard vstd Map semantics. The lemma faithfully preserves this \u2014 no spec gap."
+  },
+  {
+    "phi": "flags_combine_chain_loses_writable",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`combine` defines `is_writable: self.is_writable && other.is_writable`. With `!f2.is_writable`, `f1.combine(f2).is_writable` is `true && false == false`, and `false && f3.is_writable == false`. This is correct x86 semantics \u2014 permission flags are intersected down the page table hierarchy."
+  },
+  {
+    "phi": "memories_disjoint_strict_ordering",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`memories_disjoint` is defined with strict ordering `range_mem.0 < range_mem.1 < range_ptmem.0 < range_ptmem.1`. The ensures directly follow from unfolding this conjunction. This is correct \u2014 strict ordering ensures non-empty, non-overlapping regions."
+  },
+  {
+    "phi": "valid_core_external_body_unconstrained",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`valid_core` is `external_body` with `unimplemented!()` body. Since it's opaque, Verus treats it as an uninterpreted predicate. Two `Core` values with identical `node_id` and `core_id` are structurally equal (Core has only those two fields), so Verus can prove `core1 == core2` and substitute. This actually verifies via structural equality, not the external_body \u2014 but it confirms `valid_core` is completely unconstrained, accepting any property derivable from its opaqueness."
+  },
+  {
+    "phi": "seq_tup_ext_contains_fst_witness",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`contains_fst` is `exists|i| 0 <= i < self.len() && self[i] == (fst, self[i].1)`. With `s[0] == (addr, val)`, witness `i=0` gives `s[0] == (addr, s[0].1)` which is `(addr, val) == (addr, val)`. The trigger `self[i]` at index 0 fires naturally. This is correct existential instantiation."
+  }
+]

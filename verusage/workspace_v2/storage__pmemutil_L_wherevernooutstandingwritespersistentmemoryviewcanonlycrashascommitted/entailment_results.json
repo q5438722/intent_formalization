@@ -1,0 +1,47 @@
+[
+  {
+    "name": "per_addr_crash_determinism_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_per_addr_crash_determinism_external_body(\n    pm_region_view: PersistentMemoryRegionView,\n    addr: int,\n    s: Seq<u8>,\n)\n    requires\n        0 <= addr < pm_region_view.len(),\n        pm_region_view.state[addr].outstanding_write.is_none(),\n        pm_region_view.can_crash_as(s),\n    ensures\n        s[addr] == pm_region_view.committed()[addr],\n{\n    lemma_if_no_outstanding_writes_at_addr_then_persistent_memory_view_can_only_crash_as_committed(pm_region_view, addr);\n}",
+    "reason": "`lemma_if_no_outstanding_writes_at_addr_then_persistent_memory_view_can_only_crash_as_committed` is `external_body` \u2014 the per-address crash determinism when no outstanding write exists is trusted without proof; if a chunk containing this byte crashes as flushed but the byte has no write, it should still equal committed, but this reasoning is unverified",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "crash_as_admits_all_committed",
+    "type": "behavioral",
+    "code": "proof fn phi_2_crash_as_admits_all_committed(view: PersistentMemoryRegionView)\n    requires\n        forall|k: int| 0 <= k < view.len() ==> (#[trigger] view.state[k].outstanding_write).is_none(),\n    ensures\n        view.can_crash_as(view.committed()),\n{\n}",
+    "reason": "When there are no outstanding writes, the committed state should be a valid crash outcome \u2014 if `can_crash_as` rejected committed, no valid crash state could exist",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "crash_as_admits_flushed_state",
+    "type": "behavioral",
+    "code": "proof fn phi_3_crash_as_admits_flushed_state(view: PersistentMemoryRegionView)\n    ensures\n        view.can_crash_as(\n            Seq::<u8>::new(view.len(), |i: int| view.state[i].flush_byte())\n        ),\n{\n}",
+    "reason": "The fully-flushed state should always be a valid crash outcome \u2014 every chunk satisfies `chunk_corresponds_after_flush`; if the flushed state weren't admitted, the crash model would reject a physically realizable outcome",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "two_addrs_same_chunk_same_outcome",
+    "type": "logical",
+    "code": "proof fn phi_4_two_addrs_same_chunk_same_outcome(\n    view: PersistentMemoryRegionView,\n    s: Seq<u8>,\n    a: int,\n    b: int,\n)\n    requires\n        view.can_crash_as(s),\n        0 <= a < view.len(),\n        0 <= b < view.len(),\n        a / const_persistence_chunk_size() == b / const_persistence_chunk_size(),\n        view.state[a].outstanding_write.is_none(),\n        view.state[b].outstanding_write.is_none(),\n    ensures\n        s[a] == view.state[a].state_at_last_flush,\n        s[b] == view.state[b].state_at_last_flush,\n{\n    lemma_if_no_outstanding_writes_at_addr_then_persistent_memory_view_can_only_crash_as_committed(view, a);\n    lemma_if_no_outstanding_writes_at_addr_then_persistent_memory_view_can_only_crash_as_committed(view, b);\n}",
+    "reason": "Two addresses in the same chunk with no outstanding writes must both crash as committed \u2014 this is a corollary of the per-address external_body lemma, testing that the trusted assumption composes correctly across addresses",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "mixed_chunk_outstanding_write_addr_can_differ",
+    "type": "behavioral",
+    "code": "proof fn phi_5_mixed_chunk_outstanding_write_addr_can_differ(\n    b_clean: PersistentMemoryByte,\n    b_dirty: PersistentMemoryByte,\n)\n    requires\n        b_clean.outstanding_write.is_none(),\n        b_clean.state_at_last_flush == 0,\n        b_dirty.outstanding_write == Some(42u8),\n        b_dirty.state_at_last_flush == 0,\n    ensures\n        ({\n            let view = PersistentMemoryRegionView {\n                state: seq![b_clean, b_dirty, b_clean, b_clean, b_clean, b_clean, b_clean, b_clean],\n            };\n            let s = seq![0u8, 42u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8];\n            view.can_crash_as(s)\n        }),\n{\n}",
+    "reason": "A chunk with mixed clean/dirty bytes can crash as flushed \u2014 the dirty byte takes its outstanding write value while the clean byte's flush_byte equals state_at_last_flush anyway; tests that the per-chunk model correctly handles heterogeneous outstanding writes within a chunk",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

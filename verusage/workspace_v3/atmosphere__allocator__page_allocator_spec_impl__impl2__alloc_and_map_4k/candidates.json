@@ -1,0 +1,37 @@
+[
+  {
+    "name": "ret_in_allocated_after_map",
+    "target_fn": "alloc_and_map_4k",
+    "type": "behavioral",
+    "code": "proof fn phi_1_ret_in_allocated_after_map(\n    old_self: PageAllocator, new_self: PageAllocator,\n    ret: PagePtr, pcid: Pcid, va: VAddr, c_ptr: ContainerPtr,\n)\n    requires\n        old_self.wf(),\n        old_self.free_pages_4k.len() > 0,\n        old_self.container_map_4k@.dom().contains(c_ptr),\n        new_self.wf(),\n        new_self.allocated_pages_4k() =~= old_self.allocated_pages_4k(),\n        old_self.allocated_pages_4k().contains(ret) == false,\n    ensures\n        new_self.allocated_pages_4k().contains(ret),\n{\n}",
+    "reason": "If ret ends up in allocated_pages_4k the page skipped the mapped state, violating the free\u2192mapped transition"
+  },
+  {
+    "name": "ret_not_from_free_list",
+    "target_fn": "alloc_and_map_4k",
+    "type": "boundary",
+    "code": "proof fn phi_2_ret_not_from_free_list(\n    old_self: PageAllocator, new_self: PageAllocator,\n    ret: PagePtr, pcid: Pcid, va: VAddr, c_ptr: ContainerPtr,\n)\n    requires\n        old_self.wf(),\n        old_self.free_pages_4k.len() > 0,\n        old_self.container_map_4k@.dom().contains(c_ptr),\n        new_self.wf(),\n        new_self.free_pages_4k() =~= old_self.free_pages_4k().remove(ret),\n        new_self.free_pages_4k.len() == old_self.free_pages_4k.len() - 1,\n        page_ptr_valid(ret),\n    ensures\n        !old_self.free_pages_4k().contains(ret),\n{\n}",
+    "reason": "If ret was never in the free set then remove is a no-op and the set/length invariant is broken, indicating a spec gap between Set and list length"
+  },
+  {
+    "name": "ret_cross_category_free_2m",
+    "target_fn": "alloc_and_map_4k",
+    "type": "logical",
+    "code": "proof fn phi_3_ret_cross_category_free_2m(\n    old_self: PageAllocator, new_self: PageAllocator,\n    ret: PagePtr, pcid: Pcid, va: VAddr, c_ptr: ContainerPtr,\n)\n    requires\n        old_self.wf(),\n        old_self.free_pages_4k.len() > 0,\n        old_self.container_map_4k@.dom().contains(c_ptr),\n        new_self.wf(),\n        new_self.free_pages_2m() =~= old_self.free_pages_2m(),\n        new_self.free_pages_4k() =~= old_self.free_pages_4k().remove(ret),\n        page_ptr_valid(ret),\n    ensures\n        old_self.free_pages_2m().contains(ret),\n{\n}",
+    "reason": "If ret is simultaneously in free_pages_4k and free_pages_2m then a single physical page has two conflicting states, violating page-state exclusivity"
+  },
+  {
+    "name": "extra_mapping_after_alloc",
+    "target_fn": "alloc_and_map_4k",
+    "type": "behavioral",
+    "code": "proof fn phi_4_extra_mapping_after_alloc(\n    old_self: PageAllocator, new_self: PageAllocator,\n    ret: PagePtr, pcid: Pcid, va: VAddr, c_ptr: ContainerPtr,\n    pcid2: Pcid, va2: VAddr,\n)\n    requires\n        old_self.wf(),\n        old_self.free_pages_4k.len() > 0,\n        old_self.container_map_4k@.dom().contains(c_ptr),\n        new_self.wf(),\n        new_self.page_mappings(ret) =~= Set::<(Pcid, VAddr)>::empty().insert((pcid, va)),\n        new_self.page_is_mapped(ret),\n        pcid2 != pcid || va2 != va,\n    ensures\n        new_self.page_mappings(ret).contains((pcid2, va2)),\n{\n}",
+    "reason": "If a second distinct mapping sneaks in, the freshly mapped page has stale or phantom TLB-relevant entries, breaking address-space isolation"
+  },
+  {
+    "name": "other_container_pages_lost",
+    "target_fn": "alloc_and_map_4k",
+    "type": "logical",
+    "code": "proof fn phi_5_other_container_pages_lost(\n    old_self: PageAllocator, new_self: PageAllocator,\n    ret: PagePtr, pcid: Pcid, va: VAddr, c_ptr: ContainerPtr,\n    other_c: ContainerPtr, p: PagePtr,\n)\n    requires\n        old_self.wf(),\n        old_self.free_pages_4k.len() > 0,\n        old_self.container_map_4k@.dom().contains(c_ptr),\n        new_self.wf(),\n        old_self.container_map_4k@.dom() =~= new_self.container_map_4k@.dom(),\n        new_self.container_map_4k@.dom().contains(other_c),\n        other_c != c_ptr,\n        forall|c: ContainerPtr|\n            #![auto]\n            new_self.container_map_4k@.dom().contains(c) && c_ptr != c\n                ==> new_self.get_container_owned_pages(c) =~= old_self.get_container_owned_pages(c),\n        old_self.get_container_owned_pages(other_c).contains(p),\n    ensures\n        !new_self.get_container_owned_pages(other_c).contains(p),\n{\n}",
+    "reason": "If another container silently loses an owned page during a 4k allocation, container isolation is broken and pages could be double-mapped across security domains"
+  }
+]

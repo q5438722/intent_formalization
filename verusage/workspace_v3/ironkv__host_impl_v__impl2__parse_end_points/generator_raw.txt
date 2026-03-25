@@ -1,0 +1,87 @@
+===PHI_START===
+NAME: empty_args_returns_none
+TARGET_FN: parse_end_points
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_empty_args_returns_none(args: AbstractArgs)
+    requires
+        args.len() == 0,
+    ensures
+        parse_args(args) is None,
+{
+}
+```
+REASON: Empty args should satisfy the vacuous forall and return Some, not None
+===PHI_END===
+
+===PHI_START===
+NAME: output_length_mismatch
+TARGET_FN: parse_end_points
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_output_length_mismatch(args: AbstractArgs)
+    requires
+        parse_args(args) is Some,
+    ensures
+        parse_args(args).unwrap().len() != args.len(),
+{
+}
+```
+REASON: parse_args maps 1-to-1 over args so output length must equal input length
+===PHI_END===
+
+===PHI_START===
+NAME: some_contains_invalid_address
+TARGET_FN: parse_end_points
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_some_contains_invalid(args: AbstractArgs, i: int)
+    requires
+        parse_args(args) is Some,
+        0 <= i < args.len(),
+    ensures
+        !parse_args(args).unwrap()[i].valid_physical_address(),
+{
+}
+```
+REASON: When parse_args returns Some, all endpoints must have valid addresses by construction
+===PHI_END===
+
+===PHI_START===
+NAME: parse_loses_identity
+TARGET_FN: parse_args
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_parse_loses_identity(args: AbstractArgs, i: int)
+    requires
+        parse_args(args) is Some,
+        0 <= i < args.len(),
+    ensures
+        parse_args(args).unwrap()[i].id != args[i],
+{
+}
+```
+REASON: Each endpoint's id should equal its corresponding arg since parse_arg_as_end_point wraps the arg directly
+===PHI_END===
+
+===PHI_START===
+NAME: all_valid_but_none
+TARGET_FN: parse_args
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_all_valid_but_none(args: AbstractArgs)
+    requires
+        args.len() > 0,
+        forall |i: int| 0 <= i < args.len() ==> (#[trigger] args[i]).len() < 0x100000,
+    ensures
+        parse_args(args) is None,
+{
+}
+```
+REASON: When every arg has length under the threshold all endpoints are valid so parse_args must return Some
+===PHI_END===

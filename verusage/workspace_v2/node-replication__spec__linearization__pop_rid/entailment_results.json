@@ -1,0 +1,47 @@
+[
+  {
+    "name": "pop_rid_choose_deterministic",
+    "type": "behavioral",
+    "code": "proof fn phi_1_pop_rid_choose_deterministic(t: Set<ReqId>)\n    requires\n        !t.is_empty(),\n        t.finite(),\n    ensures ({\n        let (s1, r1) = pop_rid(t);\n        let (s2, r2) = pop_rid(t);\n        r1 == r2 && s1 =~= s2\n    }),\n{\n    let _ = pop_rid(t);\n    let _ = pop_rid(t);\n}",
+    "reason": "`choose()` is deterministic in Verus specs \u2014 calling `pop_rid` twice on the same set always picks the same element, but the spec doesn't document which element is chosen",
+    "entailed": false,
+    "verus_output": "error: cannot call function `phi_1_pop_rid_choose_deterministic::pop_rid` with mode proof\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/node-replication__spec__linearization__pop_rid/phi_1_pop_rid_choose_deterministic.rs:34:24\n   |\n34 |         let (s1, r1) = pop_rid(t);\n   |                        ^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pop_rid_result_strictly_smaller",
+    "type": "boundary",
+    "code": "proof fn phi_2_pop_rid_result_strictly_smaller(t: Set<ReqId>)\n    requires\n        !t.is_empty(),\n        t.finite(),\n    ensures ({\n        let (s, r) = pop_rid(t);\n        s.len() == t.len() - 1\n    }),\n{\n    let _ = pop_rid(t);\n}",
+    "reason": "The result set has exactly one fewer element \u2014 tests that `remove` on a contained element decrements length by exactly 1",
+    "entailed": false,
+    "verus_output": "error: cannot call function `phi_2_pop_rid_result_strictly_smaller::pop_rid` with mode proof\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/node-replication__spec__linearization__pop_rid/phi_2_pop_rid_result_strictly_smaller.rs:34:22\n   |\n34 |         let (s, r) = pop_rid(t);\n   |                      ^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pop_rid_singleton_empty",
+    "type": "boundary",
+    "code": "proof fn phi_3_pop_rid_singleton_empty(r: ReqId)\n    ensures ({\n        let t = set!{r};\n        let (s, popped) = pop_rid(t);\n        s.is_empty() && popped == r\n    }),\n{\n    let t = set!{r};\n    let (s, popped) = pop_rid(t);\n    assert(t.choose() == r);\n}",
+    "reason": "Popping from a singleton set yields the empty set and the only element \u2014 tests the minimal case",
+    "entailed": false,
+    "verus_output": "error: cannot call function `phi_3_pop_rid_singleton_empty::pop_rid` with mode proof\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/node-replication__spec__linearization__pop_rid/phi_3_pop_rid_singleton_empty.rs:32:27\n   |\n32 |         let (s, popped) = pop_rid(t);\n   |                           ^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pop_rid_removed_not_in_result",
+    "type": "behavioral",
+    "code": "proof fn phi_4_pop_rid_removed_not_in_result(t: Set<ReqId>)\n    requires\n        !t.is_empty(),\n        t.finite(),\n    ensures ({\n        let (s, r) = pop_rid(t);\n        !s.contains(r)\n    }),\n{\n    let _ = pop_rid(t);\n}",
+    "reason": "The popped element is absent from the result set \u2014 tests that `remove` actually removes the element",
+    "entailed": false,
+    "verus_output": "error: cannot call function `phi_4_pop_rid_removed_not_in_result::pop_rid` with mode proof\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/node-replication__spec__linearization__pop_rid/phi_4_pop_rid_removed_not_in_result.rs:34:22\n   |\n34 |         let (s, r) = pop_rid(t);\n   |                      ^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pop_rid_preserves_other_elements",
+    "type": "logical",
+    "code": "proof fn phi_5_pop_rid_preserves_other_elements(t: Set<ReqId>, x: ReqId)\n    requires\n        !t.is_empty(),\n        t.finite(),\n        t.contains(x),\n    ensures ({\n        let (s, r) = pop_rid(t);\n        x != r ==> s.contains(x)\n    }),\n{\n    let _ = pop_rid(t);\n}",
+    "reason": "All elements other than the popped one are preserved in the result \u2014 tests the frame condition of `remove`",
+    "entailed": false,
+    "verus_output": "error: cannot call function `phi_5_pop_rid_preserves_other_elements::pop_rid` with mode proof\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/node-replication__spec__linearization__pop_rid/phi_5_pop_rid_preserves_other_elements.rs:35:22\n   |\n35 |         let (s, r) = pop_rid(t);\n   |                      ^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

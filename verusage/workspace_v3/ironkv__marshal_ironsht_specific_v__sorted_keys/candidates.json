@@ -1,0 +1,37 @@
+[
+  {
+    "name": "clone_always_zero",
+    "target_fn": "clone",
+    "type": "behavioral",
+    "code": "proof fn phi_1_clone_always_zero(key: SHTKey, out: SHTKey)\n    requires\n        out == key,  // from clone's ensures\n    ensures\n        out.ukey == 0u64,\n{\n}",
+    "reason": "Undesirable if clone always produces a key with ukey 0 regardless of input"
+  },
+  {
+    "name": "clone_collapses_distinct_keys",
+    "target_fn": "clone",
+    "type": "logical",
+    "code": "proof fn phi_2_clone_collapses_distinct_keys(k1: SHTKey, k2: SHTKey, out1: SHTKey, out2: SHTKey)\n    requires\n        k1.ukey != k2.ukey,\n        out1 == k1,  // clone ensures for k1\n        out2 == k2,  // clone ensures for k2\n    ensures\n        out1 == out2,\n{\n}",
+    "reason": "Undesirable if cloning two distinct keys yields equal outputs, meaning clone loses information"
+  },
+  {
+    "name": "sorted_keys_empty_is_unsorted",
+    "target_fn": "sorted_keys",
+    "type": "boundary",
+    "code": "proof fn phi_3_sorted_keys_empty_is_unsorted(v: Vec<CKeyKV>, res: bool)\n    requires\n        v.len() == 0,\n        res == spec_sorted_keys(v),\n    ensures\n        res == false,\n{\n}",
+    "reason": "Undesirable if an empty vector is reported as unsorted; the vacuous forall should be true"
+  },
+  {
+    "name": "sorted_keys_descending_accepted",
+    "target_fn": "sorted_keys",
+    "type": "behavioral",
+    "code": "proof fn phi_4_sorted_keys_descending_accepted(v: Vec<CKeyKV>, res: bool)\n    requires\n        v.len() == 2,\n        v@[0].k.ukey > v@[1].k.ukey,\n        res == spec_sorted_keys(v),\n    ensures\n        res == true,\n{\n}",
+    "reason": "Undesirable if a strictly descending pair is accepted as sorted"
+  },
+  {
+    "name": "sorted_keys_always_true",
+    "target_fn": "sorted_keys",
+    "type": "logical",
+    "code": "proof fn phi_5_sorted_keys_always_true(v: Vec<CKeyKV>, res: bool)\n    requires\n        res == spec_sorted_keys(v),\n    ensures\n        res == true,\n{\n}",
+    "reason": "Undesirable if sorted_keys is trivially true for all inputs, meaning it never rejects unsorted vectors"
+  }
+]

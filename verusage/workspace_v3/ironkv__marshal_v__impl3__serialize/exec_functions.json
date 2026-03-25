@@ -1,0 +1,6 @@
+[
+  {
+    "name": "serialize",
+    "code": "#[verifier::spinoff_prover]\n  exec fn serialize(&self, data: &mut Vec<u8>)\n  // req, ens from trait\n  {\n    match self {\n      None => {\n        data.push(0);\n        let mid_data_len: Ghost<int> = Ghost(data@.len() as int);\n        proof {\n          assert(data@.subrange(old(data)@.len() as int, data@.len() as int) =~= self.ghost_serialize());\n          assert(data@.subrange(0, old(data)@.len() as int) =~= old(data)@);\n        }\n      }\n      Some(x) => {\n        data.push(1);\n        let mid_data_len: Ghost<int> = Ghost(data@.len() as int);\n        proof {\n          assert(data@.subrange(old(data)@.len() as int, mid_data_len@) =~= seq![1]);\n          assert(data@.subrange(0, old(data)@.len() as int) =~= old(data)@);\n        }\n        x.serialize(data);\n        proof {\n          assert(data@.subrange(old(data)@.len() as int, data@.len() as int) =~= self.ghost_serialize());\n          assert(data@.subrange(0, old(data)@.len() as int) =~= old(data)@);\n        }\n      }\n    }\n  }"
+  }
+]

@@ -1,0 +1,17 @@
+===VERDICT_START===
+PHI: empty_range_trivially_valid
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: A universally quantified property over an empty domain is vacuously true by definition. `spec_va_4k_range_valid(va, 0)` being true for any valid `va` is the mathematically correct and expected behavior of the spec — it would be a bug if it *weren't* true. Preventing zero-length ranges is a caller-side invariant concern, not a spec weakness.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: new_zero_len_wf
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is a direct consequence of the previous property: an empty sequence trivially has length 0 and no duplicates. `VaRange4K::new` correctly satisfying `wf()` for `len=0` is standard behavior for range abstractions. If callers need non-empty ranges, that constraint belongs in their preconditions, not in this constructor's spec.
+===VERDICT_END===
+
+===SUMMARY===
+Both candidate properties flag the same conceptual concern: zero-length ranges are trivially valid and well-formed. This is expected mathematical behavior (vacuous truth over empty domains) and is the standard, correct design for range abstractions. Requiring non-emptiness would be an unusual and restrictive design choice that belongs at call sites, not in the fundamental `VaRange4K` or `spec_va_4k_range_valid` definitions. No true spec gaps were identified.
+===END_SUMMARY===

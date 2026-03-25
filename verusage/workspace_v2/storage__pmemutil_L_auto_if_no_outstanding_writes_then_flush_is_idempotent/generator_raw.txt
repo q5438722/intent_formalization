@@ -1,0 +1,74 @@
+===PHI_START===
+NAME: flush_idempotent_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_flush_idempotent_external_body(regions_view: PersistentMemoryRegionsView)
+    requires
+        regions_view.no_outstanding_writes(),
+    ensures
+        regions_view.flush() == regions_view,
+{
+    lemma_if_no_outstanding_writes_then_flush_is_idempotent(regions_view);
+}
+```
+REASON: `lemma_if_no_outstanding_writes_then_flush_is_idempotent` is `external_body` — flush idempotency when there are no outstanding writes is trusted without proof; if flush altered `state_at_last_flush` even with no outstanding writes, the equality would be unsound
+===PHI_END===
+
+===PHI_START===
+NAME: flush_byte_no_outstanding_is_state
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_flush_byte_no_outstanding_is_state(b: PersistentMemoryByte)
+    requires
+        b.outstanding_write.is_none(),
+    ensures
+        b.flush_byte() == b.state_at_last_flush,
+{
+}
+```
+REASON: When there's no outstanding write, flush_byte should return the last flushed state — if flush_byte returned something else, crash recovery would read corrupted data
+===PHI_END===
+
+===PHI_START===
+NAME: flush_double_is_flush_single
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_flush_double_is_flush_single(b: PersistentMemoryByte)
+    ensures
+        b.flush().flush() == b.flush(),
+{
+}
+```
+REASON: Flushing twice should equal flushing once — if flush weren't idempotent at the byte level, repeated crash-recovery cycles could produce different states
+===PHI_END===
+
+===PHI_START===
+NAME: flush_clears_outstanding_write
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_flush_clears_outstanding_write(b: PersistentMemoryByte)
+    ensures
+        b.flush().outstanding_write.is_none(),
+{
+}
+```
+REASON: After flushing, a byte should have no outstanding write — if outstanding writes persisted through flush, the write-ahead log invariant would be violated
+===PHI_END===
+
+===PHI_START===
+NAME: no_outstanding_writes_empty_regions
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_no_outstanding_writes_empty_regions()
+    ensures
+        (PersistentMemoryRegionsView { regions: seq![] }).no_outstanding_writes(),
+{
+}
+```
+REASON: An empty regions view should vacuously have no outstanding writes — if the empty case failed, initialization would be unable to establish the no-outstanding-writes invariant
+===PHI_END===

@@ -1,0 +1,52 @@
+[
+  {
+    "name": "target_is_cr3",
+    "target_fn": "remove_l3_entry",
+    "type": "behavioral",
+    "reason": "If the L2 page being removed could be the root page table pointer, removing it would corrupt the entire page table structure",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "10 | |     target_l3_p: PageMapPtr,\n1311 | |     target_l2_p: PageMapPtr,\n1312 | | )\n     | |_- at the end of the function body\n...\n1325 |           target_l2_p == pt.cr3,\n     |           ^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 56 warnings emitted\n\n"
+  },
+  {
+    "name": "l3_ptr_equals_l2_ptr",
+    "target_fn": "remove_l3_entry",
+    "type": "boundary",
+    "reason": "If the L3 and L2 table pointers could alias, writing the zero entry into the L3 table would corrupt the L2 table being returned",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": " target_l3_p: PageMapPtr,\n1311 | |     target_l2_p: PageMapPtr,\n1312 | | )\n     | |_- at the end of the function body\n...\n1325 |           target_l3_p == target_l2_p,\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 56 warnings emitted\n\n"
+  },
+  {
+    "name": "cr3_changes_after_remove",
+    "target_fn": "remove_l3_entry",
+    "type": "logical",
+    "reason": "If the root page table pointer changes during an L3 entry removal, the entire address space would silently switch to a different page table",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "target_l4i: L4Index,\n...    |\n1312 | |     target_l2_p: PageMapPtr,\n1313 | | )\n     | |_- at the end of the function body\n...\n1331 |           new_pt.cr3 != old_pt.cr3,\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 54 warnings emitted\n\n"
+  },
+  {
+    "name": "l3_still_resolves_after_remove",
+    "target_fn": "remove_l3_entry",
+    "type": "behavioral",
+    "reason": "If the L3 entry still resolves after removal, the entry was not actually cleared and a dangling reference to the freed L2 table remains",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "    | |_- at the end of the function body\n...\n1332 |           new_pt.spec_resolve_mapping_l3(target_l4i, target_l3i).is_Some(),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 57 warnings emitted\n\n"
+  },
+  {
+    "name": "target_not_in_old_closure",
+    "target_fn": "remove_l3_entry",
+    "type": "logical",
+    "reason": "If target_l2_p is not in the old page closure, the postcondition's set-remove is a no-op and no page is actually reclaimed",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "11 | |     target_l2_p: PageMapPtr,\n1312 | | )\n     | |_- at the end of the function body\n...\n1325 |           !pt.page_closure().contains(target_l2_p),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 56 warnings emitted\n\n"
+  }
+]

@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: tla_forall_always_implies_intensional_equality
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The external_body axiom forces `==` (intensional equality) between two TempPred values built from structurally distinct closures. This propagates to `.pred` field equality, conflating extensional equivalence with intensional identity — a real unverified trust assumption.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: implies_apply_closure_bridge
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The external_body `implies_apply` bridges the intensional gap between `p.implies(q).satisfied_by(ex)` (which wraps the implication in a fresh `TempPred::new` closure) and the direct conclusion `q.satisfied_by(ex)`. While semantically correct, this is an unverified axiom that silently resolves closure-wrapping identity mismatches.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: equality_axiom_derives_false_if_distinct
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: This is the sharpest finding. If the LHS and RHS of `tla_forall_always_implies_equality2` are ever intensionally distinct (entirely possible given different closure constructions), the axiom forces `==` and the precondition `!=` directly yields `false`. This is a concrete soundness hole inherent in any external_body axiom asserting `==` between structurally distinct spec objects.
+===VERDICT_END===
+
+===SUMMARY===
+All three candidates are true positives. φ5 is the most critical: it demonstrates that `tla_forall_always_implies_equality2` can derive `false` from a satisfiable precondition, since the two sides are built from structurally distinct closures that could be intensionally unequal. φ1 shows the same axiom forces `.pred` field equality between distinct closures. φ2 identifies a lower-severity but real trust gap in `implies_apply` bridging closure-wrapping intensional mismatches.
+===END_SUMMARY===

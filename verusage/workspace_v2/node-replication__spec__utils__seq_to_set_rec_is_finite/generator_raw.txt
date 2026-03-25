@@ -1,0 +1,80 @@
+===PHI_START===
+NAME: seq_to_set_rec_empty_is_empty
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_seq_to_set_rec_empty_is_empty()
+    ensures
+        seq_to_set_rec(Seq::<nat>::empty()) == Set::<nat>::empty(),
+{
+}
+```
+REASON: Empty sequence produces empty set — tests the base case directly
+===PHI_END===
+
+===PHI_START===
+NAME: seq_to_set_rec_singleton_contains
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_seq_to_set_rec_singleton_contains(x: nat)
+    ensures
+        seq_to_set_rec(seq![x]).contains(x),
+{
+}
+```
+REASON: Singleton sequence's set contains the element — tests one-step recursion
+===PHI_END===
+
+===PHI_START===
+NAME: seq_to_set_rec_always_finite
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_seq_to_set_rec_always_finite(seq: Seq<nat>)
+    ensures
+        seq_to_set_rec(seq).finite(),
+{
+    seq_to_set_rec_is_finite(seq);
+}
+```
+REASON: The resulting set is always finite — direct consequence of the verified lemma
+===PHI_END===
+
+===PHI_START===
+NAME: seq_to_set_rec_last_in_set
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_seq_to_set_rec_last_in_set(seq: Seq<nat>)
+    requires
+        seq.len() > 0,
+    ensures
+        seq_to_set_rec(seq).contains(seq.last()),
+{
+}
+```
+REASON: The last element is always in the set — follows from the recursive definition inserting `seq.last()`, but only the last element is guaranteed per step
+===PHI_END===
+
+===PHI_START===
+NAME: seq_to_set_rec_len_leq_seq_len
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_seq_to_set_rec_len_leq_seq_len(seq: Seq<nat>)
+    ensures
+        seq_to_set_rec(seq).finite(),
+        seq_to_set_rec(seq).len() <= seq.len(),
+    decreases seq.len(),
+{
+    if seq.len() == 0 {
+    } else {
+        let sub = seq.drop_last();
+        phi_5_seq_to_set_rec_len_leq_seq_len(sub);
+        seq_to_set_rec_is_finite(sub);
+    }
+}
+```
+REASON: The set can be strictly smaller than the sequence due to deduplication — the set size is bounded by but not equal to the sequence length, so callers cannot rely on a bijection
+===PHI_END===

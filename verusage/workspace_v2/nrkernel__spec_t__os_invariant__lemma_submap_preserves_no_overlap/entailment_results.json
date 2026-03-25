@@ -1,0 +1,47 @@
+[
+  {
+    "name": "submap_shrinks_pte_size",
+    "type": "logical",
+    "code": "proof fn phi_1_submap_shrinks_pte_size(pt: Map<nat, PTE>, sub_pt: Map<nat, PTE>, vaddr: nat, ult_id: nat)\n    requires\n        sub_pt.submap_of(pt),\n        pt.contains_key(vaddr),\n        !sub_pt.contains_key(vaddr),\n    ensures\n        os::CoreState::UnmapWaiting { ult_id, vaddr }.pte_size(sub_pt) == 0,\n        os::CoreState::UnmapWaiting { ult_id, vaddr }.pte_size(pt) == pt[vaddr].frame.size,\n{\n}",
+    "reason": "When a key is in pt but not sub_pt, UnmapWaiting's pte_size drops to 0 \u2014 the lemma exploits this monotonicity (smaller regions overlap less), but the zero-size region means the core's operation becomes invisible to overlap checks on the submap",
+    "entailed": false,
+    "verus_output": "}.pte_size(sub_pt) == 0,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror[E0432]: unresolved import `crate::defs`\n --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__os_invariant__lemma_submap_preserves_no_overlap/phi_1_submap_shrinks_pte_size.rs:2:12\n  |\n2 | use crate::defs::*;\n  |            ^^^^ could not find `defs` in the crate root\n\nerror: aborting due to 2 previous errors\n\nFor more information about this error, try `rustc --explain E0432`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "no_overlap_vacuous_on_empty_values",
+    "type": "boundary",
+    "code": "proof fn phi_2_no_overlap_vacuous_on_empty_values(pt: Map<nat, PTE>)\n    ensures\n        no_overlap_vmem_values(Map::<Core, os::CoreState>::empty(), pt),\n{\n}",
+    "reason": "`no_overlap_vmem_values` is vacuously true for empty core_states \u2014 tests the base case; if this didn't hold, no initial state could satisfy the invariant",
+    "entailed": true,
+    "verus_output": " `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__os_invariant__lemma_submap_preserves_no_overlap/phi_2_no_overlap_vacuous_on_empty_values.rs:104:42\n    |\n104 |                 if result is Ok { result.get_Ok_0().frame.size } else { 0 }\n    |                                          ^^^^^^^^\n    |\n    = note: `#[warn(deprecated)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "submap_preserves_with_empty_submap",
+    "type": "boundary",
+    "code": "proof fn phi_3_submap_preserves_with_empty_submap(\n    c: os::Constants,\n    core_states: Map<Core, os::CoreState>,\n    pt: Map<nat, PTE>,\n)\n    requires\n        unique_CoreStates(core_states),\n        no_overlap_vmem_values(core_states, pt),\n    ensures\n        no_overlap_vmem_values(core_states, Map::empty()),\n{\n    lemma_submap_preserves_no_overlap(c, core_states, pt, Map::empty());\n}",
+    "reason": "Using empty submap makes all UnmapWaiting/UnmapExecuting pte_sizes 0, effectively hiding all unmap operations from overlap detection \u2014 the invariant degenerates but the lemma still claims no-overlap holds",
+    "entailed": true,
+    "verus_output": " `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__os_invariant__lemma_submap_preserves_no_overlap/phi_3_submap_preserves_with_empty_submap.rs:104:42\n    |\n104 |                 if result is Ok { result.get_Ok_0().frame.size } else { 0 }\n    |                                          ^^^^^^^^\n    |\n    = note: `#[warn(deprecated)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "unique_corestates_not_preserved_by_submap",
+    "type": "logical",
+    "code": "proof fn phi_4_unique_corestates_not_preserved_by_submap(\n    core1: Core, core2: Core,\n    vaddr: nat, pte: PTE, pt: Map<nat, PTE>,\n)\n    requires\n        core1 != core2,\n        pt.contains_key(vaddr),\n        pt[vaddr] == pte,\n    ensures\n        !unique_CoreStates(map![\n            core1 => os::CoreState::MapWaiting { ult_id: 0, vaddr, pte },\n            core2 => os::CoreState::MapWaiting { ult_id: 0, vaddr, pte }\n        ]),\n{\n}",
+    "reason": "Two cores with identical MapWaiting states violate uniqueness \u2014 tests that `unique_CoreStates` correctly rejects duplicate non-Idle entries; if it accepted them, the no-overlap argument would break",
+    "entailed": false,
+    "verus_output": "ubmap(\n    |  _______-\n190 | |     core1: Core, core2: Core,\n191 | |     vaddr: nat, pte: PTE, pt: Map<nat, PTE>,\n192 | | )\n    | |_- at the end of the function body\n...\n198 | /         !unique_CoreStates(map![\n199 | |             core1 => os::CoreState::MapWaiting { ult_id: 0, vaddr, pte },\n200 | |             core2 => os::CoreState::MapWaiting { ult_id: 0, vaddr, pte }\n201 | |         ]),\n    | |__________^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "overlap_monotone_in_size",
+    "type": "logical",
+    "code": "proof fn phi_5_overlap_monotone_in_size(base1: nat, size1_small: nat, size1_large: nat, base2: nat, size2_small: nat, size2_large: nat)\n    requires\n        size1_small <= size1_large,\n        size2_small <= size2_large,\n        overlap(MemRegion { base: base1, size: size1_small }, MemRegion { base: base2, size: size2_small }),\n    ensures\n        overlap(MemRegion { base: base1, size: size1_large }, MemRegion { base: base2, size: size2_large }),\n{\n}",
+    "reason": "The lemma's proof implicitly relies on overlap being monotone in region sizes \u2014 if overlap weren't monotone, the submap-to-supermap reasoning would be unsound",
+    "entailed": true,
+    "verus_output": "ated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__os_invariant__lemma_submap_preserves_no_overlap/phi_5_overlap_monotone_in_size.rs:104:42\n    |\n104 |                 if result is Ok { result.get_Ok_0().frame.size } else { 0 }\n    |                                          ^^^^^^^^\n    |\n    = note: `#[warn(deprecated)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

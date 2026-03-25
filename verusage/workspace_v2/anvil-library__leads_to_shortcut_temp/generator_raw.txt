@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: temp_pred_equality_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_temp_pred_equality_intensional_bridge(p: TempPred<int>, q: TempPred<int>)
+    requires
+        p.entails(q),
+        q.entails(p),
+    ensures
+        p == q,
+{
+    temp_pred_equality::<int>(p, q);
+}
+```
+REASON: temp_pred_equality is external_body forcing intensional equality of two TempPreds from mutual entailment — structurally distinct closures collapsed to equal without proof
+===PHI_END===
+
+===PHI_START===
+NAME: leads_to_trans_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_leads_to_trans_intensional_bridge(spec: TempPred<int>, p: TempPred<int>, q: TempPred<int>, r: TempPred<int>)
+    requires
+        spec.entails(p.leads_to(q)),
+        spec.entails(q.leads_to(r)),
+    ensures
+        spec.entails(p.leads_to(r)),
+{
+    leads_to_trans::<int>(spec, p, q, r);
+}
+```
+REASON: leads_to_trans is external_body composing two leads_to through nested always/implies/eventually closures — bridges intensional gaps without proof
+===PHI_END===
+
+===PHI_START===
+NAME: leads_to_framed_by_or_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_leads_to_framed_by_or_intensional_bridge(spec: TempPred<int>, p: TempPred<int>, q: TempPred<int>, r: TempPred<int>)
+    requires
+        spec.entails(p.leads_to(q)),
+    ensures
+        spec.entails(p.or(r).leads_to(q.or(r))),
+{
+    leads_to_framed_by_or::<int>(spec, p, q, r);
+}
+```
+REASON: leads_to_framed_by_or is external_body framing leads_to with disjunction — the or-lifted leads_to involves fresh closure constructions creating intensional gaps resolved without proof
+===PHI_END===
+
+===PHI_START===
+NAME: or_idempotent_equality
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_or_idempotent_equality(p: TempPred<int>, q: TempPred<int>)
+    ensures
+        p.or(q).or(q) == p.or(q),
+{
+    temp_pred_equality::<int>(p.or(q).or(q), p.or(q));
+}
+```
+REASON: temp_pred_equality forces p.or(q).or(q) == p.or(q) as intensional equality — two structurally distinct nested or-closures collapsed to equal via mutual entailment without verifying closure identity
+===PHI_END===
+
+===PHI_START===
+NAME: mutual_entailment_derives_false_if_distinct
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_mutual_entailment_derives_false_if_distinct(p: TempPred<int>, q: TempPred<int>)
+    requires
+        p.entails(q),
+        q.entails(p),
+        p !== q,
+    ensures
+        false,
+{
+    temp_pred_equality::<int>(p, q);
+}
+```
+REASON: temp_pred_equality forces intensionally distinct but mutually entailing TempPreds to be equal — if two preds are structurally different but semantically equivalent, this derives false from the contradiction
+===PHI_END===

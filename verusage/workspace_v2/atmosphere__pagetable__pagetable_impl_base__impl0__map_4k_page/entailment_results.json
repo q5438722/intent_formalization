@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize2pa_mem_valid_unconditional",
+    "type": "logical",
+    "code": "proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body unconditionally ensures MEM_valid(ret) for ANY input \u2014 arbitrary usize values produce \"valid\" physical addresses without proof",
+    "entailed": false,
+    "verus_output": "rmalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__map_4k_page/phi_1_usize2pa_mem_valid_unconditional.rs:1441:9\n     |\n1439 | proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n     |       --------------------------------------------------- at the end of the function body\n1440 |     ensures\n1441 |         MEM_valid(usize2pa(v)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 64 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_entry_to_map_entry_drops_user_bit",
+    "type": "behavioral",
+    "code": "proof fn phi_2_page_entry_to_map_entry_drops_user_bit(pe: PageEntry)\n    requires\n        pe.perm.user == true,\n        pe.perm.present == true,\n    ensures\n        spec_page_entry_to_map_entry(&pe) == spec_page_entry_to_map_entry(\n            &PageEntry { perm: PageEntryPerm { user: false, ..pe.perm }, ..pe }\n        ),\n{\n}",
+    "reason": "MapEntry contains only addr/write/execute_disable \u2014 the user/supervisor bit is silently dropped, making kernel-only and user-accessible pages indistinguishable after conversion",
+    "entailed": false,
+    "verus_output": "s scope\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__map_4k_page/phi_2_page_entry_to_map_entry_drops_user_bit.rs:1444:46\n     |\n1444 |         spec_page_entry_to_map_entry(&pe) == spec_page_entry_to_map_entry(\n     |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope\n\nerror: aborting due to 2 previous errors\n\nFor more information about this error, try `rustc --explain E0425`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_closure_no_cross_level_disjointness",
+    "type": "logical",
+    "code": "proof fn phi_3_page_closure_no_cross_level_disjointness(pt: PageTable, p: PageMapPtr)\n    requires\n        pt.wf_l4(),\n        pt.wf_l3(),\n        pt.l3_tables@.dom().contains(p),\n        p == pt.cr3,\n    ensures\n        pt.l4_table@.dom().contains(p) && pt.l3_tables@.dom().contains(p),\n{\n}",
+    "reason": "No cross-level disjointness constraint \u2014 the same physical page pointer can appear in both l4_table and l3_tables domains simultaneously, meaning page_closure double-counts it",
+    "entailed": true,
+    "verus_output": "ess.rs:65:10\n   |\n65 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__map_4k_page/phi_3_page_closure_no_cross_level_disjointness.rs:74:10\n   |\n74 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 64 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "user_only_no_l1_constraint",
+    "type": "behavioral",
+    "code": "proof fn phi_4_user_only_no_l1_constraint(pt: PageTable, p: PageMapPtr, i: L1Index)\n    requires\n        pt.user_only(),\n        pt.wf_l1(),\n        pt.l1_tables@.dom().contains(p),\n        0 <= i < 512,\n        pt.l1_tables@[p].value()[i].perm.present,\n    ensures\n        pt.l1_tables@[p].value()[i].perm.user\n        || !pt.l1_tables@[p].value()[i].perm.user,\n{\n}",
+    "reason": "user_only constrains L4/L3/L2 entries to have user bit set when present, but if L1 entries are not similarly constrained, a kernel-only 4K page could exist under an otherwise user-accessible subtree",
+    "entailed": true,
+    "verus_output": "_no_l1_constraint.rs:65:10\n   |\n65 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__map_4k_page/phi_4_user_only_no_l1_constraint.rs:74:10\n   |\n74 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 64 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "wf_l4_kernel_region_unconstrained",
+    "type": "boundary",
+    "code": "proof fn phi_5_wf_l4_kernel_region_unconstrained(pt: PageTable, i: L4Index)\n    requires\n        pt.wf_l4(),\n        0 <= i < pt.kernel_l4_end,\n        pt.l4_table@[pt.cr3].value()[i].perm.present,\n    ensures\n        pt.l4_table@[pt.cr3].value()[i].perm.ps\n        || !pt.l4_table@[pt.cr3].value()[i].perm.ps,\n{\n}",
+    "reason": "wf_l4 only constrains entries at indices >= kernel_l4_end \u2014 kernel-region L4 entries (below kernel_l4_end) can have arbitrary permission bits and point to arbitrary addresses with no well-formedness checks",
+    "entailed": true,
+    "verus_output": "onstrained.rs:65:10\n   |\n65 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__map_4k_page/phi_5_wf_l4_kernel_region_unconstrained.rs:74:10\n   |\n74 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 64 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

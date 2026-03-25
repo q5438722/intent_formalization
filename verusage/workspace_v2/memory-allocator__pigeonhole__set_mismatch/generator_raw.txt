@@ -1,0 +1,104 @@
+===PHI_START===
+NAME: singleton_set_unique_elt_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_singleton_set_unique_elt_external_body(s: Set<nat>, a: nat, b: nat)
+    requires
+        s.finite(),
+        s.len() == 1,
+        s.contains(a),
+        s.contains(b),
+    ensures
+        a == b,
+{
+    singleton_set_unique_elt(s, a, b);
+}
+```
+REASON: `singleton_set_unique_elt` is `external_body` — the fundamental uniqueness property of singleton sets is trusted without proof; if wrong, `set_mismatch` inherits unsoundness
+===PHI_END===
+
+===PHI_START===
+NAME: set_mismatch_derives_false
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_set_mismatch_derives_false(s1: Set<nat>, s2: Set<nat>, missing: nat)
+    requires
+        s1.finite(),
+        s2.finite(),
+        s1.len() == s2.len(),
+        forall |elt| s2.contains(elt) ==> s1.contains(elt),
+        s1.contains(missing),
+        !s2.contains(missing),
+    ensures
+        false,
+{
+    set_mismatch(s1, s2, missing);
+}
+```
+REASON: `set_mismatch` derives `false` — a contradiction lemma whose correctness depends on the external_body `singleton_set_unique_elt`; the chain of trust bottoms out at an unverified axiom
+===PHI_END===
+
+===PHI_START===
+NAME: singleton_any_two_elements_equal
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_singleton_any_two_elements_equal()
+    ensures ({
+        let s = Set::<nat>::empty().insert(5);
+        forall |a: nat, b: nat| s.contains(a) && s.contains(b) ==> a == b
+    }),
+{
+    let s = Set::<nat>::empty().insert(5);
+    assert forall |a: nat, b: nat| s.contains(a) && s.contains(b) implies a == b by {
+        assert(s.finite());
+        assert(s.len() == 1);
+        singleton_set_unique_elt(s, a, b);
+    }
+}
+```
+REASON: The external_body axiom allows deriving that any concrete singleton set has exactly one element — testing the axiom on a concrete set to confirm it doesn't over-constrain
+===PHI_END===
+
+===PHI_START===
+NAME: set_mismatch_len_zero
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_set_mismatch_len_zero(s1: Set<nat>, missing: nat)
+    requires
+        s1.finite(),
+        s1.len() == 0,
+        s1.contains(missing),
+    ensures
+        false,
+{
+    // s1.len() == 0 and s1.contains(missing) is contradictory
+    // vstd should derive false without set_mismatch
+}
+```
+REASON: A set of length 0 containing an element is contradictory — tests whether `set_mismatch` can be invoked at the degenerate boundary where `s2` is empty
+===PHI_END===
+
+===PHI_START===
+NAME: set_mismatch_strict_subset_equal_len
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_set_mismatch_strict_subset_equal_len(n: nat)
+    requires
+        n > 0,
+    ensures ({
+        let s1 = Set::new(|i: nat| i < n + 1);
+        let s2 = Set::new(|i: nat| i < n);
+        !(s1.finite() && s2.finite() && s1.len() == s2.len())
+    }),
+{
+    // If s1 = {0,...,n} and s2 = {0,...,n-1}, they can't have equal cardinality
+    // This tests that set_mismatch's precondition (equal len + subset + missing) is unsatisfiable for strict subsets
+}
+```
+REASON: A strict subset of a finite set cannot have equal cardinality — tests the consistency of `set_mismatch`'s preconditions against basic set theory
+===PHI_END===

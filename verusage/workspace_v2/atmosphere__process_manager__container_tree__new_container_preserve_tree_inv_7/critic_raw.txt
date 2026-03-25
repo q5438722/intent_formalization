@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: owned_endpoints_shared_across_containers
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: Neither `container_perms_wf` nor `container_tree_wf` constrains `owned_endpoints`. The code comments explicitly state endpoints should "ONLY be referenced by threads in the subtree," yet no spec enforces cross-container disjointness.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: new_container_owned_procs_unconstrained
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `new_container_ensures` constrains tree-structural fields but never requires `owned_procs@ =~= Seq::empty()`. A freshly created container should logically have no processes.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: new_container_scheduler_unconstrained
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `new_container_ensures` never constrains the scheduler. A freshly created container should have an empty scheduler since it has no threads yet.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: new_container_root_process_unconstrained
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `new_container_ensures` never requires `root_process == None`. A freshly created container with no processes should not already have a root process assigned.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: owned_cpus_shared_across_containers
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: Neither `container_perms_wf` nor `container_tree_wf` constrains `owned_cpus`. CPUs are exclusive hardware resources, so two containers owning the same CPU violates resource isolation.
+===VERDICT_END===
+
+===SUMMARY===
+All five candidates are true positives. They collectively reveal that `container_perms_wf` and `container_tree_wf` focus exclusively on tree structure (parent/child/depth/subtree/uppertree) while leaving all resource fields completely unconstrained: `owned_endpoints`, `owned_cpus`, `owned_procs`, `scheduler`, and `root_process`. The `new_container_ensures` spec similarly constrains only structural fields, allowing freshly created containers to have arbitrary resource state. This is a systematic pattern — the container tree spec needs resource-ownership invariants.
+===END_SUMMARY===

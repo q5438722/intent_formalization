@@ -1,0 +1,82 @@
+===PHI_START===
+NAME: double_marshal_fixpoint
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_double_marshal_fixpoint<T: ResourceView>(o: T)
+    requires
+        true,
+    ensures
+        o.marshal().spec == T::marshal_spec(T::unmarshal_spec(o.marshal().spec)->Ok_0),
+{
+}
+```
+REASON: this assumes unmarshal_spec succeeds on marshal_spec output AND that re-marshalling produces the same Value — only unmarshal∘marshal = id is axiomatized (via external_body), not marshal∘unmarshal = id
+===PHI_END===
+
+===PHI_START===
+NAME: different_objects_different_marshalled_specs
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_different_objects_different_marshalled_specs<T: ResourceView>(o1: T, o2: T)
+    requires
+        o1.spec() != o2.spec(),
+    ensures
+        T::marshal_spec(o1.spec()) != T::marshal_spec(o2.spec()),
+{
+}
+```
+REASON: marshal_spec is uninterpreted — the spec guarantees left-inverse (unmarshal∘marshal = id which implies injectivity), but this is only assumed via external_body and not actually proven, so the SMT solver should not be able to derive injectivity
+===PHI_END===
+
+===PHI_START===
+NAME: allocate_counter_unbounded_gap
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_allocate_counter_unbounded_gap(a: ReconcileIdAllocator, n: nat)
+    requires
+        n > 0,
+    ensures
+        a.allocate().0.reconcile_id_counter == a.reconcile_id_counter + n,
+{
+}
+```
+REASON: allocate increments by exactly 1, so the post-state counter should equal original + 1, not original + arbitrary n
+===PHI_END===
+
+===PHI_START===
+NAME: unmarshal_wrong_kind_succeeds
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_unmarshal_wrong_kind_succeeds<T: ResourceView>(obj: DynamicObjectView)
+    requires
+        obj.kind != T::kind(),
+        T::unmarshal_spec(obj.spec) is Ok,
+        T::unmarshal_status(obj.status) is Ok,
+    ensures
+        T::unmarshal(obj) is Ok,
+{
+}
+```
+REASON: unmarshal explicitly rejects kind mismatches as its first check — valid spec and status should NOT override a wrong kind
+===PHI_END===
+
+===PHI_START===
+NAME: update_key_independent_of_obj
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_update_key_independent_of_obj(r1: UpdateRequest, r2: UpdateRequest)
+    requires
+        r1.namespace == r2.namespace,
+        r1.name == r2.name,
+    ensures
+        r1.key() == r2.key(),
+{
+}
+```
+REASON: key() pulls kind from self.obj.kind — two requests with same namespace/name but different obj.kind yield different keys, so namespace+name alone should NOT determine key equality
+===PHI_END===

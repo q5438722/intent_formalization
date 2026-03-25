@@ -1,0 +1,112 @@
+===PHI_START===
+NAME: lemma_specializes_any_n_without_constraint
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_lemma_specializes_any_n_without_constraint(
+    spec: TempPred<ClusterState>, vrs: VReplicaSetView, cluster: Cluster, controller_id: int
+)
+    requires
+        spec.entails(always(
+            lift_state(Cluster::pending_req_in_flight_or_resp_in_flight_at_reconcile_state(
+                controller_id,
+                vrs.object_ref(),
+                unwrap_local_state_closure(
+                    |s: VReplicaSetReconcileState| s.reconcile_step.is_AfterCreatePod()
+                )
+            )))),
+    ensures
+        spec.entails(always(
+            lift_state(Cluster::pending_req_in_flight_or_resp_in_flight_at_reconcile_state(
+                controller_id,
+                vrs.object_ref(),
+                at_step_closure(VReplicaSetRecStepView::AfterCreatePod(0))
+            )))),
+        spec.entails(always(
+            lift_state(Cluster::pending_req_in_flight_or_resp_in_flight_at_reconcile_state(
+                controller_id,
+                vrs.object_ref(),
+                at_step_closure(VReplicaSetRecStepView::AfterCreatePod(999999))
+            )))),
+{
+    lemma_from_pending_req_in_flight_or_resp_in_flight_at_all_create_to_create_n(spec, vrs, cluster, controller_id, 0);
+    lemma_from_pending_req_in_flight_or_resp_in_flight_at_all_create_to_create_n(spec, vrs, cluster, controller_id, 999999);
+}
+```
+REASON: the lemma instantiates for any n including values far beyond the actual replicas count, so the "pending req or resp in flight" property is claimed for AfterCreatePod(999999) which should never be a reachable reconcile state
+===PHI_END===
+
+===PHI_START===
+NAME: pending_req_vacuous_when_not_at_state
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_pending_req_vacuous_when_not_at_state(controller_id: int, key: ObjectRef, s: ClusterState)
+    requires
+        !s.ongoing_reconciles(controller_id).contains_key(key),
+    ensures
+        Cluster::pending_req_in_flight_or_resp_in_flight_at_reconcile_state(
+            controller_id, key, |_ls: ReconcileLocalState| true
+        )(s),
+{
+}
+```
+REASON: pending_req_in_flight_or_resp_in_flight_at_reconcile_state is vacuously true whenever the key has no ongoing reconcile, so the "always" invariant in the lemma's precondition is trivially satisfiable for non-existent reconciles — the lemma provides no guarantee when the reconcile is absent
+===PHI_END===
+
+===PHI_START===
+NAME: unmarshal_unwrap_undefined_on_bad_state
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_unmarshal_unwrap_undefined_on_bad_state(v1: Value, v2: Value)
+    requires
+        VReplicaSetReconcileState::unmarshal(v1) is Err,
+        VReplicaSetReconcileState::unmarshal(v2) is Err,
+    ensures
+        at_step_closure(VReplicaSetRecStepView::AfterCreatePod(0))(v1)
+            == at_step_closure(VReplicaSetRecStepView::AfterCreatePod(0))(v2),
+{
+}
+```
+REASON: unmarshal is uninterpreted so .unwrap() on Err yields an arbitrary but fixed-per-input value — at_step_closure cannot meaningfully distinguish bad states, meaning the reconcile step predicates are undefined on corrupt local state
+===PHI_END===
+
+===PHI_START===
+NAME: at_step_closure_conflates_steps_on_unmarshal_collision
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_at_step_closure_conflates_steps_on_unmarshal_collision(v: Value, n1: nat, n2: nat)
+    requires
+        VReplicaSetReconcileState::unmarshal(v) is Err,
+    ensures
+        at_step_closure(VReplicaSetRecStepView::AfterCreatePod(n1))(v)
+            == at_step_closure(VReplicaSetRecStepView::AfterCreatePod(n2))(v),
+{
+}
+```
+REASON: when unmarshal fails, unwrap produces the same arbitrary value regardless of which step is being tested — all step predicates collapse to the same boolean, making step-specific reasoning unsound on non-unmarshallable states
+===PHI_END===
+
+===PHI_START===
+NAME: object_ref_ignores_uid
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_object_ref_ignores_uid(v1: VReplicaSetView, v2: VReplicaSetView)
+    requires
+        v1.metadata.name is Some,
+        v2.metadata.name is Some,
+        v1.metadata.namespace is Some,
+        v2.metadata.namespace is Some,
+        v1.metadata.name == v2.metadata.name,
+        v1.metadata.namespace == v2.metadata.namespace,
+        v1.metadata.uid != v2.metadata.uid,
+    ensures
+        v1.object_ref() == v2.object_ref(),
+{
+}
+```
+REASON: object_ref uses only kind/name/namespace and ignores uid, so a deleted-and-recreated VReplicaSet with a new uid maps to the same ObjectRef — ongoing_reconciles keyed by object_ref could conflate old and new resource instances
+===PHI_END===

@@ -1,0 +1,78 @@
+This is the same file again. Let me target different aspects — flag combination semantics, walk flag indexing safety, and Constants structure.
+
+===PHI_START===
+NAME: flags_combine_idempotent
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_flags_combine_idempotent(f: Flags)
+    ensures
+        f.combine(f) == f,
+{
+}
+```
+REASON: Flag combination should NOT be idempotent — `is_supervisor` uses OR, so `false || false == false` but the combine is not a projection; if it is idempotent, the lattice structure may be too restrictive
+===PHI_END===
+
+===PHI_START===
+NAME: flags_out_of_bounds_path_access
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_flags_out_of_bounds_path_access(w: Walk)
+    requires
+        w.path.len() == 1,
+    ensures
+        w.flags() == Flags::from_GPDE(w.path[0].1),
+{
+}
+```
+REASON: `Walk::flags` computes `flags1 = flags0.combine(Flags::from_GPDE(path[1].1))` unconditionally — for path.len()==1, `path[1]` is out of bounds, making `flags1..flags3` depend on undefined values
+===PHI_END===
+
+===PHI_START===
+NAME: walk_result_not_invalid_implies_page_last
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_walk_result_not_invalid_implies_page_last(w: Walk)
+    requires
+        w.result() is Valid,
+    ensures
+        w.path.last().1 is Page,
+{
+}
+```
+REASON: If result is Valid but last entry is not Page, `Walk::result` returns `arbitrary()` which could be anything — tests whether Valid results always come from Page entries
+===PHI_END===
+
+===PHI_START===
+NAME: valid_core_external_body_vacuous
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_valid_core_external_body_vacuous(c: Constants, c1: Core, c2: Core)
+    requires
+        c.valid_core(c1),
+        c1 == c2,
+    ensures
+        c.valid_core(c2),
+{
+}
+```
+REASON: `valid_core` is `external_body` — even substitution of equal cores is trusted; the predicate is fully opaque with no constraints
+===PHI_END===
+
+===PHI_START===
+NAME: write_read_same_addr
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_write_read_same_addr(mem: PTMem, addr: usize, value: usize)
+    ensures
+        mem.write(addr, value).read(addr) == value,
+{
+}
+```
+REASON: After writing a value to an address, reading it back should return that value — tests basic Map::insert/index consistency which is foundational but depends on vstd axioms
+===PHI_END===

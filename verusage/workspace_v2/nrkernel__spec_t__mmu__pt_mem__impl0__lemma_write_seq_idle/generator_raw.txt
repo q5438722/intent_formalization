@@ -1,0 +1,83 @@
+===PHI_START===
+NAME: lemma_write_seq_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_lemma_write_seq_external_body(pt: PTMem, writes: Seq<(usize, usize)>)
+    requires
+        true,
+    ensures
+        pt.write_seq(writes).pml4 == pt.pml4,
+        pt.mem.dom().subset_of(pt.write_seq(writes).mem.dom()),
+{
+    pt.lemma_write_seq(writes);
+}
+```
+REASON: `lemma_write_seq` is `external_body` with `unimplemented!()` — its two postconditions are trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: write_then_read_returns_written
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_write_then_read_returns_written(pt: PTMem, addr: usize, value: usize)
+    ensures
+        pt.write(addr, value).read(addr) == value,
+{
+}
+```
+REASON: Write-then-read returns the written value — tests basic map insert/index consistency
+===PHI_END===
+
+===PHI_START===
+NAME: read_uncontained_key_arbitrary
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_read_uncontained_key_arbitrary(pt1: PTMem, pt2: PTMem, addr: usize)
+    requires
+        !pt1.mem.contains_key(addr),
+        !pt2.mem.contains_key(addr),
+    ensures
+        pt1.read(addr) == pt2.read(addr),
+{
+}
+```
+REASON: Reading an address not in the map domain returns the same `arbitrary()` value for any two PTMem instances — `Map::index` on missing keys returns a deterministic but unspecified value per key
+===PHI_END===
+
+===PHI_START===
+NAME: write_seq_idle_preserves_read_external_body_dep
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_write_seq_idle_preserves_read_external_body_dep(pt: PTMem, addr: usize, other: usize, value: usize)
+    requires
+        addr != other,
+        pt.mem.contains_key(other),
+    ensures
+        pt.write_seq(seq![(addr, value)]).read(other) == pt.read(other),
+{
+    pt.lemma_write_seq_idle(seq![(addr, value)], other);
+}
+```
+REASON: `lemma_write_seq_idle` depends on `lemma_write_seq` (external_body) in its proof body — the idle preservation guarantee transitively relies on an unverified lemma
+===PHI_END===
+
+===PHI_START===
+NAME: write_to_pml4_addr_no_effect_on_field
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_write_to_pml4_addr_no_effect_on_field(pt: PTMem, value: usize)
+    requires
+        value != pt.pml4,
+    ensures
+        pt.write(pt.pml4, value).pml4 == pt.pml4,
+        pt.write(pt.pml4, value).read(pt.pml4) == value,
+{
+}
+```
+REASON: Writing a different value to the address equal to `pml4` changes memory but not the `pml4` field — the PML4 base pointer diverges from what's stored at its own address
+===PHI_END===

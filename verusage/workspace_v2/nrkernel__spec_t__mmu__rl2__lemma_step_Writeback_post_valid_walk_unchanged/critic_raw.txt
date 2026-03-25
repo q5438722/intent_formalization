@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: core_mem_empty_sbuf_equals_pt_mem
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `write_seq(seq![])` is `seq![].fold_left(pt_mem, f)` which returns `pt_mem` by the base case of `fold_left`. This is correct and expected — an empty store buffer means no pending writes.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: writer_mem_equals_core_mem_writer
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `writer_mem` is marked `#[verifier(inline)]` and defined as `self.core_mem(self.writes.core)`. This equality is correct by construction — it's a definitional alias.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: core_mem_diverges_with_sbuf
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This correctly models TSO store buffer forwarding — `write_seq(seq![(addr, value)])` applies one write, making `core_mem.read(addr) == value` while `pt_mem.read(addr)` retains the old value. This is the intended TSO semantics.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: valid_core_external_body_unconstrained
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `c1 === c2` means structural equality, so `c1.valid_core(core) == c2.valid_core(core)` is trivially true for any spec function — spec functions are deterministic by construction. This proves nothing about the external_body gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: contains_fst_single_element
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: A single-element sequence containing its first element is trivially correct — the witness `i=0` satisfies the existential in `contains_fst`. This is a basic correctness property of the predicate.
+===VERDICT_END===
+
+===SUMMARY===
+All five candidates are false positives. Empty store buffer identity, writer_mem alias consistency, TSO store buffer forwarding divergence, structural equality implying functional equality, and single-element containment are all correct and expected properties following from open spec definitions and standard vstd semantics.
+===END_SUMMARY===

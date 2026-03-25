@@ -1,0 +1,84 @@
+===PHI_START===
+NAME: pt_walk_iter_walk_equivalence_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_pt_walk_iter_walk_equivalence_external_body(mem: PTMem, vaddr: usize)
+    ensures
+        iter_walk(mem, vaddr) == mem.pt_walk(vaddr),
+{
+    lemma_iter_walk_equals_pt_walk(mem, vaddr);
+}
+```
+REASON: Duplicate of existing lemma — confirms the equivalence but `pt_walk` relies on `PDE::view` which uses `all_mb0_bits_are_zero` (external_body), propagating the opaque predicate through both walk implementations
+===PHI_END===
+
+===PHI_START===
+NAME: pt_walk_layer0_non_present_invalid
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_pt_walk_layer0_non_present_invalid(mem: PTMem, vaddr: usize)
+    requires
+        mem.read(add(mem.pml4, mul(l0_bits!(vaddr), WORD_SIZE))) & 1 == 0,
+    ensures
+        mem.pt_walk(vaddr).path.len() == 1,
+        mem.pt_walk(vaddr).complete,
+{
+}
+```
+REASON: When the L0 entry has P bit clear, the walk should terminate immediately with a single-entry path — tests that non-present entries at the root produce a 1-entry completed walk
+===PHI_END===
+
+===PHI_START===
+NAME: pt_walk_deterministic
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_pt_walk_deterministic(mem: PTMem, vaddr: usize)
+    ensures
+        mem.pt_walk(vaddr) == mem.pt_walk(vaddr),
+{
+}
+```
+REASON: `pt_walk` is a pure spec function — calling it twice on the same inputs must yield the same result, but the `all_mb0_bits_are_zero` external_body could theoretically break this
+===PHI_END===
+
+===PHI_START===
+NAME: walk_next_at_layer0_uses_pml4
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_walk_next_at_layer0_uses_pml4(mem1: PTMem, mem2: PTMem, vaddr: usize)
+    requires
+        mem1.pml4 == mem2.pml4,
+        mem1.mem[add(mem1.pml4, mul(l0_bits!(vaddr), WORD_SIZE))] == mem2.mem[add(mem2.pml4, mul(l0_bits!(vaddr), WORD_SIZE))],
+    ensures
+        ({
+            reveal(walk_next);
+            let w = Walk { vaddr, path: seq![], complete: false };
+            walk_next(mem1, w) == walk_next(mem2, w)
+        }),
+{
+    reveal(walk_next);
+}
+```
+REASON: The first walk step depends only on pml4 and the L0 entry — two memories agreeing on these should produce identical first steps, testing that walk_next doesn't depend on unrelated memory
+===PHI_END===
+
+===PHI_START===
+NAME: max_phyaddr_width_gap
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_max_phyaddr_width_gap()
+    ensures
+        32 <= MAX_PHYADDR_WIDTH <= 52,
+        MAX_PHYADDR_WIDTH == 52 ==> MAX_PHYADDR_SPEC == 0xFFFFFFFFFFFFF,
+{
+    axiom_max_phyaddr_width_facts();
+    assert(((1usize << 52) - 1) == 0xFFFFFFFFFFFFF) by (bit_vector);
+}
+```
+REASON: `MAX_PHYADDR_WIDTH` is `external_body` with value 52 but axiom only constrains to `32..=52` — the actual value could be any width in that range, making MASK_ADDR and all address masks potentially wrong
+===PHI_END===

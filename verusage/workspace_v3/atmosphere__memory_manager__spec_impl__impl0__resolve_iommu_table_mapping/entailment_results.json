@@ -1,0 +1,52 @@
+[
+  {
+    "name": "always_returns_none",
+    "target_fn": "resolve_iommu_table_mapping",
+    "type": "behavioral",
+    "reason": "If entailed, no IOMMU mapping could ever be resolved for any active ioid and valid VA, rendering DMA translation useless.",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "ntry>)\n     |       ----------------------------------------------------------------------------------------------- at the end of the function body\n...\n1179 |         ret.is_None(),\n     |         ^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 39 warnings emitted\n\n"
+  },
+  {
+    "name": "resolved_addr_always_zero",
+    "target_fn": "resolve_iommu_table_mapping",
+    "type": "behavioral",
+    "reason": "If entailed, every resolved IOMMU mapping would point to physical address zero, meaning all device DMA targets the null page.",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "------------------------------------------------------------- at the end of the function body\n...\n1179 |         ret.is_Some() ==> ret.unwrap().addr == 0,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 39 warnings emitted\n\n"
+  },
+  {
+    "name": "write_always_enabled",
+    "target_fn": "resolve_iommu_table_mapping",
+    "type": "logical",
+    "reason": "If entailed, all IOMMU-resolved pages are writable, so read-only DMA protections would be impossible.",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "------------------------------------------- at the end of the function body\n...\n1179 |         ret.is_Some() ==> ret.unwrap().perm.write == true,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 39 warnings emitted\n\n"
+  },
+  {
+    "name": "execute_disable_never_set",
+    "target_fn": "resolve_iommu_table_mapping",
+    "type": "logical",
+    "reason": "If entailed, no IOMMU mapping could ever disable execution, breaking NX-bit enforcement for device-accessible memory.",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "--------------------- at the end of the function body\n...\n1179 |         ret.is_Some() ==> ret.unwrap().perm.execute_disable == false,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 39 warnings emitted\n\n"
+  },
+  {
+    "name": "different_va_same_physical_addr",
+    "target_fn": "resolve_iommu_table_mapping",
+    "type": "boundary",
+    "reason": "If entailed, all distinct mapped VAs for a device alias to the same physical address, collapsing the entire IOMMU address space.",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "== spec_page_entry_to_map_entry(&ret2.unwrap()).addr,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 42 warnings emitted\n\n"
+  }
+]

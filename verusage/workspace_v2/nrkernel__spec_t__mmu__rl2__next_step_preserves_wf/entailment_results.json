@@ -1,0 +1,47 @@
+[
+  {
+    "name": "is_base_pt_walk_requires_aligned_vaddr",
+    "type": "behavioral",
+    "code": "proof fn phi_1_is_base_pt_walk_requires_aligned_vaddr(mem: PTMem, vaddr: usize)\n    requires\n        mem.is_base_pt_walk(vaddr),\n        mem.pt_walk(vaddr).path.len() == 4,\n    ensures\n        aligned(vaddr as nat, L3_ENTRY_SIZE as nat),\n{\n}",
+    "reason": "`is_base_pt_walk` requires `vbase == vaddr` and `vbase = align_to_usize(vaddr, L3_ENTRY_SIZE)` for 4-level walks \u2014 so `vaddr` must already be page-aligned; if this holds for non-aligned vaddrs, the alignment rounding is broken",
+    "entailed": true,
+    "verus_output": "has been renamed to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__next_step_preserves_wf/phi_1_is_base_pt_walk_requires_aligned_vaddr.rs:170:9\n    |\n170 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "is_base_pt_walk_l1_requires_1g_aligned",
+    "type": "behavioral",
+    "code": "proof fn phi_2_is_base_pt_walk_l1_requires_1g_aligned(mem: PTMem, vaddr: usize)\n    requires\n        mem.is_base_pt_walk(vaddr),\n        mem.pt_walk(vaddr).path.len() == 2,\n    ensures\n        aligned(vaddr as nat, L1_ENTRY_SIZE as nat),\n{\n}",
+    "reason": "For 2-level walks (1GB pages), `is_base_pt_walk` forces `vaddr == align_to_usize(vaddr, L1_ENTRY_SIZE)` \u2014 vaddr must be 1GB-aligned; tests that huge page base walk semantics correctly constrain alignment",
+    "entailed": true,
+    "verus_output": "has been renamed to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__next_step_preserves_wf/phi_2_is_base_pt_walk_l1_requires_1g_aligned.rs:170:9\n    |\n170 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "ptmem_view_external_body_no_domain_constraint",
+    "type": "logical",
+    "code": "proof fn phi_3_ptmem_view_external_body_no_domain_constraint(mem1: PTMem, mem2: PTMem)\n    requires\n        mem1.pml4 == mem2.pml4,\n        mem1.mem === mem2.mem,\n    ensures\n        mem1@ === mem2@,\n{\n}",
+    "reason": "`PTMem::view` is `external_body` \u2014 two PTMem values with identical fields should produce identical views, but this is unverified; if `view` could differ for structurally equal inputs, the abstraction would be unsound",
+    "entailed": true,
+    "verus_output": "n renamed to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__next_step_preserves_wf/phi_3_ptmem_view_external_body_no_domain_constraint.rs:170:9\n    |\n170 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "walk_result_valid_implies_page_last",
+    "type": "logical",
+    "code": "proof fn phi_4_walk_result_valid_implies_page_last(w: Walk)\n    requires\n        w.path.len() >= 2,\n        w.path.len() <= 4,\n        w.result() is Valid,\n    ensures\n        w.path.last().1 is Page,\n{\n}",
+    "reason": "`Walk::result` returns Valid only when `path.last().1 is Page` (the if-branch); otherwise it returns `arbitrary()` \u2014 tests that the converse holds: if result is Valid with reasonable path length, the last entry must be Page",
+    "entailed": false,
+    "verus_output": "chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__next_step_preserves_wf/phi_4_walk_result_valid_implies_page_last.rs:1323:9\n     |\n1317 | proof fn phi_4_walk_result_valid_implies_page_last(w: Walk)\n     |       ----------------------------------------------------- at the end of the function body\n...\n1323 |         w.path.last().1 is Page,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "max_base_exceeds_48bit_vaddr_space",
+    "type": "boundary",
+    "code": "proof fn phi_5_max_base_exceeds_48bit_vaddr_space()\n    ensures\n        MAX_BASE == 512 * 512 * 512 * 512 * 4096,\n{\n}",
+    "reason": "`MAX_BASE = X86_MAX_ENTRY_SIZE * X86_NUM_ENTRIES = (512^3 * 4096) * 512 = 512^4 * 4096 = 2^48` \u2014 tests that the virtual address space bound is exactly 256TB (2^48), the canonical x86-64 limit; if wrong, `is_base_pt_walk` would accept or reject valid addresses incorrectly",
+    "entailed": true,
+    "verus_output": "ds` has been renamed to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__next_step_preserves_wf/phi_5_max_base_exceeds_48bit_vaddr_space.rs:170:9\n    |\n170 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

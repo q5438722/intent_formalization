@@ -1,0 +1,94 @@
+Here are 5 candidate undesirable properties:
+
+===PHI_START===
+NAME: entry_base_collision
+TARGET_FN: Arch::entry_base
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_entry_base_collision(arch: Arch, layer: nat, base: nat, i: nat, j: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+        i < arch.num_entries(layer),
+        j < arch.num_entries(layer),
+        i != j,
+    ensures
+        arch.entry_base(layer, base, i) == arch.entry_base(layer, base, j),
+{
+}
+```
+REASON: Two distinct entry indices mapping to the same base address would cause virtual address aliasing in the page table
+===PHI_END===
+
+===PHI_START===
+NAME: well_formed_allows_zero_entries
+TARGET_FN: Directory::well_formed
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_well_formed_allows_zero_entries(d: Directory)
+    requires
+        d.well_formed(),
+    ensures
+        d.entries.len() == 0,
+{
+}
+```
+REASON: A well-formed directory with zero entries is degenerate and would mean the page table maps no address space at that subtree
+===PHI_END===
+
+===PHI_START===
+NAME: inv_allows_subpage_entry_size
+TARGET_FN: Arch::inv
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_inv_allows_subpage_entry_size(arch: Arch)
+    requires
+        arch.inv(),
+        arch.layers.len() > 0,
+    ensures
+        arch.entry_size((arch.layers.len() - 1) as nat) < 4096,
+{
+}
+```
+REASON: A leaf-layer entry_size below 4096 bytes would violate the x86 minimum page size, making the architecture physically unrealizable
+===PHI_END===
+
+===PHI_START===
+NAME: dir_base_vaddr_mismatch
+TARGET_FN: Directory::directories_are_in_next_layer
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_dir_base_vaddr_mismatch(d: Directory, i: nat)
+    requires
+        d.inv(),
+        i < d.entries.len(),
+        d.entries[i as int] is Directory,
+    ensures
+        d.entries[i as int]->Directory_0.base_vaddr != d.base_vaddr + i * d.entry_size(),
+{
+}
+```
+REASON: A child directory whose base_vaddr disagrees with its parent's layout would break the contiguous virtual address mapping invariant
+===PHI_END===
+
+===PHI_START===
+NAME: entry_size_not_decomposable
+TARGET_FN: Arch::entry_size_is_next_layer_size
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_entry_size_not_decomposable(arch: Arch, i: nat)
+    requires
+        arch.inv(),
+        i + 1 < arch.layers.len(),
+    ensures
+        arch.entry_size(i) != arch.entry_size((i + 1) as nat) * arch.num_entries((i + 1) as nat),
+{
+}
+```
+REASON: If a layer's entry_size is not the product of the next layer's entry_size and num_entries, the hierarchical address space decomposition is inconsistent
+===PHI_END===

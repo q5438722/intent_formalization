@@ -1,0 +1,47 @@
+[
+  {
+    "name": "subtract_mod_eq_zero_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_subtract_mod_eq_zero_external_body(a: nat, b: nat, c: nat)\n    requires\n        aligned(a, c),\n        aligned(b, c),\n        a <= b,\n        c > 0,\n    ensures\n        aligned((b - a) as nat, c),\n{\n    subtract_mod_eq_zero(a, b, c);\n}",
+    "reason": "`subtract_mod_eq_zero` is `external_body` \u2014 closure of alignment under subtraction is trusted without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 5 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "div_mul_cancel_external_body",
+    "type": "logical",
+    "code": "proof fn phi_2_div_mul_cancel_external_body(a: nat, b: nat)\n    requires\n        aligned(a, b),\n        b != 0,\n    ensures\n        a / b * b == a,\n{\n    div_mul_cancel(a, b);\n}",
+    "reason": "`div_mul_cancel` is `external_body` \u2014 the division-multiplication roundtrip for aligned values is trusted without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 5 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "aligned_addr_equals_entry_base",
+    "type": "behavioral",
+    "code": "proof fn phi_3_aligned_addr_equals_entry_base(base: nat, addr: nat, entry_size: nat, num_entries: nat)\n    requires\n        addr >= base,\n        addr < entry_base_from_index(base, num_entries, entry_size),\n        entry_size > 0,\n        aligned(base, entry_size),\n        aligned(addr, entry_size),\n    ensures\n        addr == entry_base_from_index(base, index_from_base_and_addr(base, addr, entry_size), entry_size),\n{\n    lemma_index_from_base_and_addr(base, addr, entry_size, num_entries);\n}",
+    "reason": "An aligned address equals the entry base at its index \u2014 depends on both `subtract_mod_eq_zero` and `div_mul_cancel` external_body axioms",
+    "entailed": true,
+    "verus_output": "verification results:: 5 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "index_in_bounds",
+    "type": "boundary",
+    "code": "proof fn phi_4_index_in_bounds(base: nat, addr: nat, entry_size: nat, num_entries: nat)\n    requires\n        addr >= base,\n        addr < entry_base_from_index(base, num_entries, entry_size),\n        entry_size > 0,\n    ensures\n        index_from_base_and_addr(base, addr, entry_size) < num_entries,\n{\n    lemma_index_from_base_and_addr(base, addr, entry_size, num_entries);\n}",
+    "reason": "The computed index is always within bounds \u2014 verified by nonlinear_arith without external_body dependency",
+    "entailed": true,
+    "verus_output": "verification results:: 5 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "addr_between_entry_bases",
+    "type": "behavioral",
+    "code": "proof fn phi_5_addr_between_entry_bases(base: nat, addr: nat, entry_size: nat, num_entries: nat)\n    requires\n        addr >= base,\n        addr < entry_base_from_index(base, num_entries, entry_size),\n        entry_size > 0,\n    ensures\n        between(\n            addr,\n            entry_base_from_index(base, index_from_base_and_addr(base, addr, entry_size), entry_size),\n            next_entry_base_from_index(base, index_from_base_and_addr(base, addr, entry_size), entry_size),\n        ),\n{\n    lemma_index_from_base_and_addr(base, addr, entry_size, num_entries);\n}",
+    "reason": "Any address falls between consecutive entry bases at its index \u2014 verified by nonlinear_arith, tests the floor-division localization property",
+    "entailed": true,
+    "verus_output": "verification results:: 5 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

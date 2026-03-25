@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "well_typed_allows_empty_everything",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "An empty event batch being well-typed is standard \u2014 it represents a no-op or internal step. Whether such steps can refine real transitions is constrained elsewhere (e.g., `next_ensures`), not by `well_typed_events` alone."
+  },
+  {
+    "phi": "well_typed_no_upper_bound_on_sends",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is intentional for I/O automata modeling in IronFleet-style systems \u2014 a single protocol step may produce multiple sends (e.g., broadcasting to all replicas). The bound on clocks (\u22641) reflects that you read the clock at most once per step, while sends are naturally unbounded."
+  },
+  {
+    "phi": "event_seq_ordering_fixed",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The fixed `recvs + clocks + sends` ordering is the intentional design \u2014 the implementation first receives, then reads the clock, then sends. This canonical ordering simplifies refinement proofs and matches the actual execution model where receives precede sends within a single step."
+  },
+  {
+    "phi": "well_typed_allows_multiple_recvs",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "While many I/O automaton formalizations restrict to one receive per step, the IronFleet/SHT model this code is based on allows batching multiple receives in a single step for performance. Additional constraints on receive counts would be imposed at the protocol level, not at the event-results typing level."
+  }
+]

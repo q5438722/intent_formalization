@@ -1,0 +1,52 @@
+[
+  {
+    "name": "align_always_zero",
+    "target_fn": "align_to_usize",
+    "type": "behavioral",
+    "reason": "If alignment collapses every value >= b to zero, the function destroys address information and is trivially wrong.",
+    "entailed": false,
+    "verified": 6,
+    "errors": 1,
+    "output_tail": " | proof fn phi_1_align_always_zero(a: usize, b: usize)\n    |       ---------------------------------------------- at the end of the function body\n...\n267 |         align_to_usize(a, b) == 0,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "align_exceeds_input",
+    "target_fn": "align_to_usize",
+    "type": "boundary",
+    "reason": "Floor alignment must never produce a value strictly greater than the input; that would map addresses beyond their original range.",
+    "entailed": false,
+    "verified": 6,
+    "errors": 1,
+    "output_tail": " proof fn phi_2_align_exceeds_input(a: usize, b: usize)\n    |       ------------------------------------------------ at the end of the function body\n...\n266 |         align_to_usize(a, b) > a,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "result_not_aligned",
+    "target_fn": "align_to_usize",
+    "type": "logical",
+    "reason": "The fundamental contract of alignment is that the result is a multiple of b; violating this breaks all page-boundary assumptions in the MMU.",
+    "entailed": false,
+    "verified": 0,
+    "errors": 0,
+    "output_tail": "                             this argument influences the return type of `spec_euclidean_mod`\nnote: method defined here\n   --> /home/runner/work/verus/verus/source/builtin/src/lib.rs:1178:7\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0308`.\n"
+  },
+  {
+    "name": "not_idempotent",
+    "target_fn": "align_to_usize",
+    "type": "behavioral",
+    "reason": "Alignment must be idempotent \u2014 re-aligning an already-aligned value should be a no-op; failure means vbase recomputation in Walk::result is unstable.",
+    "entailed": false,
+    "verified": 6,
+    "errors": 1,
+    "output_tail": "-------------------------------------- at the end of the function body\n...\n266 |         align_to_usize(align_to_usize(a, b), b) != align_to_usize(a, b),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "same_block_different_align",
+    "target_fn": "align_to_usize",
+    "type": "boundary",
+    "reason": "Two addresses within the same alignment block must map to the same base; otherwise iter_walk could assign different vbases to addresses on the same page.",
+    "entailed": false,
+    "verified": 0,
+    "errors": 0,
+    "output_tail": "e_equal/phi_5_same_block_different_align.rs:92:27\n    |\n 92 | pub open spec(checked) fn align_to_usize(a: usize, b: usize) -> usize {\n    |                           ^^^^^^^^^^^^^^ --------\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0308`.\n"
+  }
+]

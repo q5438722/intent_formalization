@@ -1,0 +1,37 @@
+[
+  {
+    "name": "ret_some_but_not_present",
+    "target_fn": "get_entry_2m_l2",
+    "type": "behavioral",
+    "code": "proof fn phi_1_ret_some_but_not_present(pt: PageTable, l4i: L4Index, l3i: L3Index, l2i: L2Index, l3_entry: PageEntry, ret: Option<PageEntry>)\n    requires\n        pt.wf(),\n        pt.kernel_l4_end <= l4i < 512,\n        0 <= l3i < 512,\n        0 <= l2i < 512,\n        pt.spec_resolve_mapping_l3(l4i, l3i) =~= Some(l3_entry),\n        pt.spec_resolve_mapping_2m_l2(l4i, l3i, l2i) =~= ret,\n        ret.is_Some(),\n    ensures\n        ret.unwrap().perm.present == false,\n{\n}",
+    "reason": "A resolved 2MB mapping should always have its present bit set; returning a non-present entry as Some indicates a spec inconsistency."
+  },
+  {
+    "name": "ret_some_but_ps_not_set",
+    "target_fn": "get_entry_2m_l2",
+    "type": "behavioral",
+    "code": "proof fn phi_2_ret_some_but_ps_not_set(pt: PageTable, l4i: L4Index, l3i: L3Index, l2i: L2Index, l3_entry: PageEntry, ret: Option<PageEntry>)\n    requires\n        pt.wf(),\n        pt.kernel_l4_end <= l4i < 512,\n        0 <= l3i < 512,\n        0 <= l2i < 512,\n        pt.spec_resolve_mapping_l3(l4i, l3i) =~= Some(l3_entry),\n        pt.spec_resolve_mapping_2m_l2(l4i, l3i, l2i) =~= ret,\n        ret.is_Some(),\n    ensures\n        ret.unwrap().perm.ps == false,\n{\n}",
+    "reason": "A 2MB large-page entry must have the ps (page-size) bit set; returning an entry without ps would confuse large-page and table-pointer semantics."
+  },
+  {
+    "name": "always_returns_none",
+    "target_fn": "get_entry_2m_l2",
+    "type": "boundary",
+    "code": "proof fn phi_3_always_returns_none(pt: PageTable, l4i: L4Index, l3i: L3Index, l2i: L2Index, l3_entry: PageEntry, ret: Option<PageEntry>)\n    requires\n        pt.wf(),\n        pt.kernel_l4_end <= l4i < 512,\n        0 <= l3i < 512,\n        0 <= l2i < 512,\n        pt.spec_resolve_mapping_l3(l4i, l3i) =~= Some(l3_entry),\n        pt.spec_resolve_mapping_2m_l2(l4i, l3i, l2i) =~= ret,\n    ensures\n        ret.is_None(),\n{\n}",
+    "reason": "If the spec forces every 2MB lookup to return None, the function is vacuously correct but useless\u2014no 2MB page could ever be resolved."
+  },
+  {
+    "name": "ret_some_addr_zero",
+    "target_fn": "get_entry_2m_l2",
+    "type": "logical",
+    "code": "proof fn phi_4_ret_some_addr_zero(pt: PageTable, l4i: L4Index, l3i: L3Index, l2i: L2Index, l3_entry: PageEntry, ret: Option<PageEntry>)\n    requires\n        pt.wf(),\n        pt.kernel_l4_end <= l4i < 512,\n        0 <= l3i < 512,\n        0 <= l2i < 512,\n        pt.spec_resolve_mapping_l3(l4i, l3i) =~= Some(l3_entry),\n        pt.spec_resolve_mapping_2m_l2(l4i, l3i, l2i) =~= ret,\n        ret.is_Some(),\n    ensures\n        ret.unwrap().addr == 0,\n{\n}",
+    "reason": "A successfully resolved 2MB mapping pointing to physical address 0 is almost certainly a null-pointer bug in the page table specification."
+  },
+  {
+    "name": "result_ignores_l2_index",
+    "target_fn": "get_entry_2m_l2",
+    "type": "logical",
+    "code": "proof fn phi_5_result_ignores_l2_index(pt: PageTable, l4i: L4Index, l3i: L3Index, l2i_a: L2Index, l2i_b: L2Index, l3_entry: PageEntry, ret_a: Option<PageEntry>, ret_b: Option<PageEntry>)\n    requires\n        pt.wf(),\n        pt.kernel_l4_end <= l4i < 512,\n        0 <= l3i < 512,\n        0 <= l2i_a < 512,\n        0 <= l2i_b < 512,\n        l2i_a != l2i_b,\n        pt.spec_resolve_mapping_l3(l4i, l3i) =~= Some(l3_entry),\n        pt.spec_resolve_mapping_2m_l2(l4i, l3i, l2i_a) =~= ret_a,\n        pt.spec_resolve_mapping_2m_l2(l4i, l3i, l2i_b) =~= ret_b,\n    ensures\n        ret_a =~= ret_b,\n{\n}",
+    "reason": "If the L2 index has no effect on the resolved mapping, the spec fails to distinguish distinct L2 slots and would collapse all 512 entries into one."
+  }
+]

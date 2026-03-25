@@ -1,0 +1,47 @@
+[
+  {
+    "name": "lemma_addresses_external_body_roundtrip",
+    "type": "logical",
+    "code": "proof fn phi_1_lemma_addresses_external_body_roundtrip(\n    pm_region_view: PersistentMemoryRegionView,\n    info: LogInfo,\n    log_area_offset: int,\n)\n    requires\n        pm_region_view.len() == info.log_area_len,\n        info.head_log_area_offset < info.log_area_len,\n        info.log_area_len > 0,\n        0 <= log_area_offset < info.log_area_len,\n    ensures\n        ({\n            let pos = log_area_offset_to_relative_log_pos(log_area_offset, info.head_log_area_offset as int, info.log_area_len as int);\n            &&& 0 <= pos < info.log_area_len\n            &&& log_area_offset == relative_log_pos_to_log_area_offset(pos, info.head_log_area_offset as int, info.log_area_len as int)\n        }),\n{\n    lemma_addresses_in_log_area_subregion_correspond_to_relative_log_positions(pm_region_view, info);\n}",
+    "reason": "`lemma_addresses_in_log_area_subregion_correspond_to_relative_log_positions` is `external_body` \u2014 the roundtrip between offset and relative position is trusted without proof; an incorrect modular arithmetic implementation would break the entire log layout",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "relative_pos_wraps_incorrectly",
+    "type": "boundary",
+    "code": "proof fn phi_2_relative_pos_wraps_incorrectly(head_offset: int, log_area_len: int)\n    requires\n        0 <= head_offset < log_area_len,\n        log_area_len > 0,\n    ensures\n        relative_log_pos_to_log_area_offset(0, head_offset, log_area_len) == head_offset,\n        relative_log_pos_to_log_area_offset(log_area_len - head_offset, head_offset, log_area_len) == 0,\n{\n}",
+    "reason": "Tests that relative position 0 maps to head_offset and the wrap-around point maps to offset 0 \u2014 if the wrapping logic were off-by-one, log reads would be shifted by one byte",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "inverse_not_bijective_at_boundary",
+    "type": "boundary",
+    "code": "proof fn phi_3_inverse_not_bijective_at_boundary(head_offset: int, log_area_len: int)\n    requires\n        0 < head_offset < log_area_len,\n        log_area_len > 1,\n    ensures\n        log_area_offset_to_relative_log_pos(head_offset, head_offset, log_area_len) == 0,\n        log_area_offset_to_relative_log_pos(head_offset - 1, head_offset, log_area_len) == log_area_len - 1,\n{\n}",
+    "reason": "The inverse mapping at the boundary (offset just below head) should give the maximum relative position \u2014 if the boundary case is wrong, the last byte of the log area would be misaddressed",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "tentative_append_preserves_committed_log",
+    "type": "behavioral",
+    "code": "proof fn phi_4_tentative_append_preserves_committed_log(state: AbstractLogState, bytes: Seq<u8>)\n    requires\n        bytes.len() > 0,\n    ensures\n        state.tentatively_append(bytes).log == state.log,\n        state.tentatively_append(bytes).head == state.head,\n        state.tentatively_append(bytes).capacity == state.capacity,\n{\n}",
+    "reason": "`tentatively_append` only extends `pending` \u2014 if it also modified `log`, `head`, or `capacity`, committed data would be corrupted by tentative operations",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "write_outside_range_unchanged",
+    "type": "behavioral",
+    "code": "proof fn phi_5_write_outside_range_unchanged(view: PersistentMemoryRegionView, addr: int, bytes: Seq<u8>, k: int)\n    requires\n        0 <= k < view.len(),\n        bytes.len() > 0,\n        0 <= addr,\n        addr + bytes.len() <= view.len(),\n        !(addr <= k < addr + bytes.len()),\n    ensures\n        view.write(addr, bytes).state[k] == view.state[k],\n{\n}",
+    "reason": "Writing to a range should leave bytes outside that range untouched \u2014 if the map-based write implementation leaked into other positions, it would corrupt unrelated log data",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

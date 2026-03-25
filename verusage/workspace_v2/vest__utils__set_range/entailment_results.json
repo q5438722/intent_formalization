@@ -1,0 +1,47 @@
+[
+  {
+    "name": "splice_preserves_length",
+    "type": "behavioral",
+    "code": "proof fn phi_1_splice_preserves_length(data: Seq<u8>, pos: usize, v: Seq<u8>)\n    requires\n        pos + v.len() <= data.len(),\n    ensures\n        seq_splice(data, pos, v).len() == data.len(),\n{\n}",
+    "reason": "Splicing should preserve the total length \u2014 if it didn't, the ensures `data@.len() == old(data)@.len()` would be inconsistent with `data@ == seq_splice(...)`",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "splice_empty_is_identity",
+    "type": "boundary",
+    "code": "proof fn phi_2_splice_empty_is_identity(data: Seq<u8>, pos: usize)\n    requires\n        pos as int <= data.len(),\n    ensures\n        seq_splice(data, pos, Seq::<u8>::empty()) =~= data,\n{\n}",
+    "reason": "Splicing an empty sequence at any valid position should be the identity \u2014 if it modified data, zero-length set_range calls would corrupt the buffer",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "splice_overwrites_range",
+    "type": "behavioral",
+    "code": "proof fn phi_3_splice_overwrites_range(data: Seq<u8>, pos: usize, v: Seq<u8>, k: int)\n    requires\n        pos + v.len() <= data.len(),\n        0 <= k < v.len(),\n    ensures\n        seq_splice(data, pos, v)[pos + k] == v[k],\n{\n}",
+    "reason": "The spliced region should contain exactly the input bytes \u2014 if indexing into the splice didn't yield the input, set_range would silently corrupt data",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "splice_preserves_before",
+    "type": "behavioral",
+    "code": "proof fn phi_4_splice_preserves_before(data: Seq<u8>, pos: usize, v: Seq<u8>, k: int)\n    requires\n        pos + v.len() <= data.len(),\n        0 <= k < pos,\n    ensures\n        seq_splice(data, pos, v)[k] == data[k],\n{\n}",
+    "reason": "Bytes before the splice position should be unchanged \u2014 if they were modified, set_range would have out-of-bounds side effects",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "splice_preserves_after",
+    "type": "behavioral",
+    "code": "proof fn phi_5_splice_preserves_after(data: Seq<u8>, pos: usize, v: Seq<u8>, k: int)\n    requires\n        pos + v.len() <= data.len(),\n        (pos + v.len()) as int <= k < data.len(),\n    ensures\n        seq_splice(data, pos, v)[k] == data[k],\n{\n}",
+    "reason": "Bytes after the splice region should be unchanged \u2014 if they were modified, set_range would corrupt trailing data",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

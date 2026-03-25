@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "u64_serialized_size_external_body",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`u64::serialized_size` is `external_body` with `unimplemented!()` \u2014 the exec body panics at runtime while the spec-exec ensures is trusted without verification. The spec property itself (8-byte length) is correct and provable, but the exec implementation is missing."
+  },
+  {
+    "phi": "usize_serialized_size_external_body",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "Same pattern \u2014 `usize::serialized_size` is `external_body` with `unimplemented!()`. The ensures `res as int == self.ghost_serialize().len()` is trusted, and the exec body will panic. Could be implemented by delegating to u64's serialized_size."
+  },
+  {
+    "phi": "vec_u8_serialized_size_external_body",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`Vec<u8>::serialized_size` is `external_body` with `unimplemented!()` \u2014 the exec body panics at runtime. The spec property (length = length-prefix size + data length) is a correct definitional consequence, but the missing exec implementation means the ensures is unverified."
+  },
+  {
+    "phi": "fold_left_sum_right_external_body_unsound",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`lemma_seq_fold_left_sum_right` is `external_body` \u2014 the fold decomposition property (splitting last element from prefix) is a correct mathematical fact but is entirely trusted without proof. It underpins the Vec<T>::serialized_size loop correctness."
+  },
+  {
+    "phi": "fold_left_append_len_monotone_external_body",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`lemma_seq_fold_left_append_len_int_le` is `external_body` \u2014 prefix fold monotonicity is trusted without proof. This is used to establish that partial sums don't exceed usize::MAX in the Vec<T>::serialized_size loop. The property is mathematically correct (assuming non-negative lengths) but unverified."
+  }
+]

@@ -1,0 +1,91 @@
+===PHI_START===
+NAME: aligned_successor
+TARGET_FN: aligned
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_aligned_successor(a: nat, s: nat)
+    requires
+        aligned(a, s),
+        s > 1,
+    ensures
+        aligned(a + 1, s),
+{
+}
+```
+REASON: Alignment should not be preserved by incrementing the address by 1 for any size > 1
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_implies_double_size
+TARGET_FN: aligned
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_aligned_implies_double_size(a: nat, s: nat)
+    requires
+        aligned(a, s),
+        s > 0,
+    ensures
+        aligned(a, 2 * s),
+{
+}
+```
+REASON: Alignment to s should not imply alignment to 2*s (e.g., 2 is aligned to 2 but not to 4)
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_pred
+TARGET_FN: aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_aligned_pred(s: nat)
+    requires
+        s > 1,
+    ensures
+        aligned((s - 1) as nat, s),
+{
+}
+```
+REASON: The value s-1 should never be aligned to s when s > 1 (e.g., 1 is not aligned to 2)
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_sum_off_by_one
+TARGET_FN: aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_aligned_sum_off_by_one(a: nat, b: nat, s: nat)
+    requires
+        aligned(a, s),
+        aligned(b, s),
+        s > 1,
+    ensures
+        aligned(a + b + 1, s),
+{
+}
+```
+REASON: Sum of two aligned values plus 1 should not be aligned for size > 1, since alignment is closed under addition but not under +1
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_product_distrib
+TARGET_FN: aligned
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_aligned_product_distrib(a: nat, b: nat, s: nat, t: nat)
+    requires
+        aligned(a, s),
+        aligned(b, t),
+        s > 0,
+        t > 0,
+    ensures
+        aligned(a + b, s * t),
+{
+}
+```
+REASON: Alignment to different moduli should not distribute over addition into their product (e.g., aligned(2,2) and aligned(3,3) but 5 is not aligned to 6)
+===PHI_END===

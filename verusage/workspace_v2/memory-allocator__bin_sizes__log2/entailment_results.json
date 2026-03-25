@@ -1,0 +1,47 @@
+[
+  {
+    "name": "pow2_zero_is_one",
+    "type": "boundary",
+    "code": "proof fn phi_1_pow2_zero_is_one()\n    ensures\n        pow2(0) == 1,\n{\n}",
+    "reason": "If `pow2(0)` weren't 1, the entire tower of pow2 properties would be inconsistent with standard mathematical convention",
+    "entailed": true,
+    "verus_output": "verification results:: 16 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "pow2_negative_is_one",
+    "type": "boundary",
+    "code": "proof fn phi_2_pow2_negative_is_one(e: int)\n    requires\n        e < 0,\n    ensures\n        pow2(e) == 1,\n{\n}",
+    "reason": "`pow2` returns 1 for all negative exponents \u2014 this is a non-standard choice that could silently mask errors when callers accidentally pass negative values",
+    "entailed": true,
+    "verus_output": "verification results:: 16 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "log2_one_is_zero",
+    "type": "boundary",
+    "code": "proof fn phi_3_log2_one_is_zero()\n    ensures\n        pow2(0) <= 1 < pow2(1),\n{\n    let e = log2(1);\n}",
+    "reason": "`log2(1)` should return 0, placing 1 in `[pow2(0), pow2(1))` = `[1, 2)` \u2014 if bounds were wrong, log2 wouldn't correctly identify powers of two",
+    "entailed": true,
+    "verus_output": "verification results:: 16 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "shift_zero_is_identity",
+    "type": "boundary",
+    "code": "proof fn phi_4_shift_zero_is_identity(x: u64)\n    ensures\n        x >> 0u64 == x as nat / 1,\n{\n    shift_is_div(x, 0);\n}",
+    "reason": "Right-shifting by 0 should be the identity \u2014 if `shift_is_div` didn't handle the base case correctly, the recursive proof would be unsound",
+    "entailed": true,
+    "verus_output": "verification results:: 16 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "div_by_multiple_zero_numerator",
+    "type": "boundary",
+    "code": "proof fn phi_5_div_by_multiple_zero_numerator(d: int)\n    requires\n        0 < d,\n    ensures\n        (0 * d) / d == 0,\n{\n    lemma_div_by_multiple(0, d);\n}",
+    "reason": "Dividing `0 * d` by `d` must yield 0 \u2014 if the lemma's precondition `0 <= b` didn't correctly handle the zero boundary, it could produce an incorrect result",
+    "entailed": true,
+    "verus_output": "verification results:: 16 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

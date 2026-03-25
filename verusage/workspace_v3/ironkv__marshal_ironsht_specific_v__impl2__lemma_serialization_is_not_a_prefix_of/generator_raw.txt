@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: empty_map_nonempty_vec
+TARGET_FN: to_vec
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_empty_map_nonempty_vec(m: CKeyHashMap)
+    requires
+        m@ === Map::<AbstractKey, Seq<u8>>::empty(),
+    ensures
+        m.spec_to_vec()@.len() > 0,
+{
+}
+```
+REASON: An empty map should never produce a non-empty vector representation
+===PHI_END===
+
+===PHI_START===
+NAME: single_entry_vec_length_exceeds_one
+TARGET_FN: to_vec
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_single_entry_vec_length_exceeds_one(m: CKeyHashMap, k: AbstractKey, v: Seq<u8>)
+    requires
+        m@ === Map::<AbstractKey, Seq<u8>>::empty().insert(k, v),
+    ensures
+        m.spec_to_vec()@.len() > 1,
+{
+}
+```
+REASON: A map with exactly one entry should not produce a vector with more than one element
+===PHI_END===
+
+===PHI_START===
+NAME: equal_view_different_vec_len
+TARGET_FN: to_vec
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_equal_view_different_vec_len(m1: CKeyHashMap, m2: CKeyHashMap)
+    requires
+        m1@ === m2@,
+    ensures
+        m1.spec_to_vec()@.len() != m2.spec_to_vec()@.len(),
+{
+}
+```
+REASON: Maps with identical abstract views must produce vectors of the same length; differing lengths would break the bijection
+===PHI_END===
+
+===PHI_START===
+NAME: vec_key_not_in_domain
+TARGET_FN: to_vec
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_vec_key_not_in_domain(m: CKeyHashMap, i: int)
+    requires
+        0 <= i < m.spec_to_vec()@.len(),
+    ensures
+        !m@.dom().contains(m.spec_to_vec()@[i].k),
+{
+}
+```
+REASON: Every key appearing in the vector representation should belong to the map's domain
+===PHI_END===
+
+===PHI_START===
+NAME: duplicate_keys_in_vec
+TARGET_FN: to_vec
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_duplicate_keys_in_vec(m: CKeyHashMap, i: int, j: int)
+    requires
+        0 <= i < m.spec_to_vec()@.len(),
+        0 <= j < m.spec_to_vec()@.len(),
+        i != j,
+    ensures
+        m.spec_to_vec()@[i].k === m.spec_to_vec()@[j].k,
+{
+}
+```
+REASON: A faithful map-to-vector conversion must not contain duplicate keys since maps have unique keys
+===PHI_END===

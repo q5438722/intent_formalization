@@ -1,0 +1,109 @@
+Looking at the `kernel_kill_thread` spec, I'll generate 5 candidate undesirable properties focusing on the ensures clauses — particularly the thread domain removal, owned threads accounting, and the `threads_unchanged_except(... set![])` postcondition.
+
+===PHI_START===
+NAME: thread_not_removed
+TARGET_FN: kernel_kill_thread
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_thread_not_removed(old_self: Os, new_self: Os, thread_ptr: ThreadPtr)
+    requires
+        old_self.wf(),
+        old_self.thread_dom().contains(thread_ptr),
+        new_self.wf(),
+        new_self.thread_dom() == old_self.thread_dom().remove(thread_ptr),
+    ensures
+        new_self.thread_dom().contains(thread_ptr),
+{
+}
+```
+REASON: The killed thread should be removed from the domain; if it persists, the kill had no effect on thread membership.
+===PHI_END===
+
+===PHI_START===
+NAME: thread_dom_empty_after_kill
+TARGET_FN: kernel_kill_thread
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_thread_dom_empty_after_kill(old_self: Os, new_self: Os, thread_ptr: ThreadPtr)
+    requires
+        old_self.wf(),
+        old_self.thread_dom().contains(thread_ptr),
+        new_self.wf(),
+        new_self.thread_dom() == old_self.thread_dom().remove(thread_ptr),
+    ensures
+        new_self.thread_dom() =~= Set::<ThreadPtr>::empty(),
+{
+}
+```
+REASON: Killing a single thread should not empty the entire thread domain; if it does, the spec over-constrains removal.
+===PHI_END===
+
+===PHI_START===
+NAME: other_thread_also_removed
+TARGET_FN: kernel_kill_thread
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_other_thread_also_removed(old_self: Os, new_self: Os, thread_ptr: ThreadPtr, other_ptr: ThreadPtr)
+    requires
+        old_self.wf(),
+        old_self.thread_dom().contains(thread_ptr),
+        old_self.thread_dom().contains(other_ptr),
+        thread_ptr != other_ptr,
+        new_self.wf(),
+        new_self.thread_dom() == old_self.thread_dom().remove(thread_ptr),
+        threads_unchanged_except(old_self.proc_man, new_self.proc_man, set![]),
+    ensures
+        !new_self.thread_dom().contains(other_ptr),
+{
+}
+```
+REASON: Killing one thread must not silently remove a different thread from the domain; the spec should preserve all other threads.
+===PHI_END===
+
+===PHI_START===
+NAME: owned_threads_always_empty
+TARGET_FN: kernel_kill_thread
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_owned_threads_always_empty(old_self: Os, new_self: Os, thread_ptr: ThreadPtr)
+    requires
+        old_self.wf(),
+        old_self.thread_dom().contains(thread_ptr),
+        new_self.wf(),
+        new_self.get_proc(old_self.get_thread(thread_ptr).owning_proc).owned_threads@ ==
+            old_self.get_proc(old_self.get_thread(thread_ptr).owning_proc).owned_threads@.remove_value(thread_ptr),
+        new_self.get_proc(old_self.get_thread(thread_ptr).owning_proc).owned_threads.len() ==
+            old_self.get_proc(old_self.get_thread(thread_ptr).owning_proc).owned_threads.len() - 1,
+    ensures
+        new_self.get_proc(old_self.get_thread(thread_ptr).owning_proc).owned_threads@.len() == 0,
+{
+}
+```
+REASON: Killing one thread should only decrement the owning process's thread count by 1, not force it to zero regardless of how many threads the process owns.
+===PHI_END===
+
+===PHI_START===
+NAME: threads_unchanged_empty_set_contradiction
+TARGET_FN: kernel_kill_thread
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_threads_unchanged_empty_set_contradiction(old_self: Os, new_self: Os, thread_ptr: ThreadPtr)
+    requires
+        old_self.wf(),
+        old_self.thread_dom().contains(thread_ptr),
+        new_self.wf(),
+        new_self.thread_dom() == old_self.thread_dom().remove(thread_ptr),
+        threads_unchanged_except(old_self.proc_man, new_self.proc_man, set![]),
+        new_self.proc_dom() == old_self.proc_dom(),
+    ensures
+        false,
+{
+}
+```
+REASON: threads_unchanged_except with the empty set claims NO threads are excepted from the unchanged invariant, yet a thread was removed; if this derives false the spec postconditions are mutually contradictory.
+===PHI_END===

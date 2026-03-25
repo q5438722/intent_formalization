@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "container_map_4k_not_subset_allocated",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`container_map_4k` tracks per-container page ownership but `wf()` does not require these pages to be in `allocated_pages_4k`. The preconditions are simultaneously satisfiable \u2014 a container can claim a page that is free or in any other state, breaking the containment invariant."
+  },
+  {
+    "phi": "container_map_2m_not_subset_allocated",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Same pattern as 4k \u2014 `wf()` never constrains `container_map_2m` entries to be a subset of `allocated_pages_2m`. Containers can reference non-allocated 2M pages."
+  },
+  {
+    "phi": "container_map_1g_not_subset_allocated",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Same pattern \u2014 `container_map_1g` is unconstrained relative to `allocated_pages_1g` in `wf()`. Containers can reference non-allocated 1G pages."
+  },
+  {
+    "phi": "free_and_allocated_pages_overlap",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The `free_pages_4k_wf` ensures free pages have state `Free4k`, and `allocated_pages_4k_wf` ensures allocated pages have state `Allocated4k`. Since each page has exactly one state in `page_array`, a page cannot simultaneously satisfy both `Free4k` and `Allocated4k`. The preconditions are unsatisfiable under `wf()`."
+  },
+  {
+    "phi": "mapped_page_no_mappings_tracked",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`mapped_pages_4k_wf` only links the mapped set to `PageState::Mapped4k` in the page array \u2014 it never requires `mappings@` to be non-empty. A page can transition to Mapped4k state and remain there even after all its virtual address mappings are removed, creating a stale \"mapped\" page with no actual mappings."
+  }
+]

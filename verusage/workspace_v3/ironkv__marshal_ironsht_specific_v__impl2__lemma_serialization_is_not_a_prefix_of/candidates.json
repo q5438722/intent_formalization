@@ -1,0 +1,37 @@
+[
+  {
+    "name": "empty_map_nonempty_vec",
+    "target_fn": "to_vec",
+    "type": "behavioral",
+    "code": "proof fn phi_1_empty_map_nonempty_vec(m: CKeyHashMap)\n    requires\n        m@ === Map::<AbstractKey, Seq<u8>>::empty(),\n    ensures\n        m.spec_to_vec()@.len() > 0,\n{\n}",
+    "reason": "An empty map should never produce a non-empty vector representation"
+  },
+  {
+    "name": "single_entry_vec_length_exceeds_one",
+    "target_fn": "to_vec",
+    "type": "boundary",
+    "code": "proof fn phi_2_single_entry_vec_length_exceeds_one(m: CKeyHashMap, k: AbstractKey, v: Seq<u8>)\n    requires\n        m@ === Map::<AbstractKey, Seq<u8>>::empty().insert(k, v),\n    ensures\n        m.spec_to_vec()@.len() > 1,\n{\n}",
+    "reason": "A map with exactly one entry should not produce a vector with more than one element"
+  },
+  {
+    "name": "equal_view_different_vec_len",
+    "target_fn": "to_vec",
+    "type": "logical",
+    "code": "proof fn phi_3_equal_view_different_vec_len(m1: CKeyHashMap, m2: CKeyHashMap)\n    requires\n        m1@ === m2@,\n    ensures\n        m1.spec_to_vec()@.len() != m2.spec_to_vec()@.len(),\n{\n}",
+    "reason": "Maps with identical abstract views must produce vectors of the same length; differing lengths would break the bijection"
+  },
+  {
+    "name": "vec_key_not_in_domain",
+    "target_fn": "to_vec",
+    "type": "behavioral",
+    "code": "proof fn phi_4_vec_key_not_in_domain(m: CKeyHashMap, i: int)\n    requires\n        0 <= i < m.spec_to_vec()@.len(),\n    ensures\n        !m@.dom().contains(m.spec_to_vec()@[i].k),\n{\n}",
+    "reason": "Every key appearing in the vector representation should belong to the map's domain"
+  },
+  {
+    "name": "duplicate_keys_in_vec",
+    "target_fn": "to_vec",
+    "type": "logical",
+    "code": "proof fn phi_5_duplicate_keys_in_vec(m: CKeyHashMap, i: int, j: int)\n    requires\n        0 <= i < m.spec_to_vec()@.len(),\n        0 <= j < m.spec_to_vec()@.len(),\n        i != j,\n    ensures\n        m.spec_to_vec()@[i].k === m.spec_to_vec()@[j].k,\n{\n}",
+    "reason": "A faithful map-to-vector conversion must not contain duplicate keys since maps have unique keys"
+  }
+]

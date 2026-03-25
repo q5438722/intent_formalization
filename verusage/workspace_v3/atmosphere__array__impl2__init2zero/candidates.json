@@ -1,0 +1,37 @@
+[
+  {
+    "name": "set_changes_other_index",
+    "target_fn": "set",
+    "type": "behavioral",
+    "code": "proof fn phi_1_set_changes_other_index(old_seq: Seq<u8>, new_seq: Seq<u8>, i: int, j: int, out: u8, n: int)\n    requires\n        old_seq.len() == n,\n        0 <= i < n,\n        new_seq =~= old_seq.update(i, out),\n        new_seq.len() == n,\n        0 <= j < n,\n        j != i,\n    ensures\n        new_seq[j] != old_seq[j],\n{\n}",
+    "reason": "If entailed, set would corrupt elements at indices other than the one being written."
+  },
+  {
+    "name": "set_value_not_written",
+    "target_fn": "set",
+    "type": "logical",
+    "code": "proof fn phi_2_set_value_not_written(old_seq: Seq<u8>, new_seq: Seq<u8>, i: int, out: u8, n: int)\n    requires\n        old_seq.len() == n,\n        0 <= i < n,\n        new_seq =~= old_seq.update(i, out),\n        new_seq.len() == n,\n    ensures\n        new_seq[i] != out,\n{\n}",
+    "reason": "If entailed, set would fail to actually store the provided value at the target index."
+  },
+  {
+    "name": "set_length_changes",
+    "target_fn": "set",
+    "type": "boundary",
+    "code": "proof fn phi_3_set_length_changes(old_seq: Seq<u8>, new_seq: Seq<u8>, i: int, out: u8, n: int)\n    requires\n        old_seq.len() == n,\n        0 <= i < n,\n        new_seq =~= old_seq.update(i, out),\n        new_seq.len() == n,\n        n > 0,\n    ensures\n        new_seq.len() != old_seq.len(),\n{\n}",
+    "reason": "If entailed, set would change the array length, violating the structural invariant."
+  },
+  {
+    "name": "init2zero_forces_empty",
+    "target_fn": "init2zero",
+    "type": "boundary",
+    "code": "proof fn phi_4_init2zero_forces_empty(new_seq: Seq<u8>, n: int)\n    requires\n        new_seq.len() == n,\n        n <= usize::MAX,\n        forall|index: int| 0 <= index < n ==> #[trigger] new_seq[index] == 0u8,\n        n > 0,\n    ensures\n        n == 0,\n{\n}",
+    "reason": "If entailed, the init2zero postcondition would be satisfiable only for empty arrays, making it useless."
+  },
+  {
+    "name": "init2zero_nonzero_element",
+    "target_fn": "init2zero",
+    "type": "logical",
+    "code": "proof fn phi_5_init2zero_nonzero_element(new_seq: Seq<u8>, n: int)\n    requires\n        new_seq.len() == n,\n        n == 1,\n        forall|index: int| 0 <= index < n ==> #[trigger] new_seq[index] == 0u8,\n    ensures\n        new_seq[0] == 1u8,\n{\n}",
+    "reason": "If entailed, init2zero would allow a non-zero value at a valid index, contradicting its zeroing guarantee."
+  }
+]

@@ -1,0 +1,89 @@
+===PHI_START===
+NAME: external_body_filter_subset
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_external_body_filter_subset(s: Seq<int>, pred: spec_fn(int) -> bool, e: int)
+    requires
+        s.filter(pred).contains(e),
+    ensures
+        s.contains(e),
+{
+    seq_filter_is_a_subset_of_original_seq(s, pred);
+}
+```
+REASON: seq_filter_is_a_subset_of_original_seq is external_body — unverified axiom asserting filter containment without proof
+===PHI_END===
+
+===PHI_START===
+NAME: filter_preserves_no_dup
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_filter_preserves_no_dup(s: Seq<int>, pred: spec_fn(int) -> bool)
+    requires
+        s.no_duplicates(),
+    ensures
+        s.filter(pred).no_duplicates(),
+{
+    seq_filter_preserves_no_duplicates(s, pred);
+}
+```
+REASON: directly tests the main lemma — if external_body axiom is inconsistent, no_duplicates preservation could be unsound
+===PHI_END===
+
+===PHI_START===
+NAME: filter_len_leq_original
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_filter_len_leq_original(s: Seq<int>, pred: spec_fn(int) -> bool)
+    ensures
+        s.filter(pred).len() <= s.len(),
+    decreases s.len(),
+{
+    reveal(Seq::filter);
+    if s.len() != 0 {
+        phi_3_filter_len_leq_original(s.drop_last(), pred);
+    }
+}
+```
+REASON: filter should never produce a longer sequence — tests basic consistency of filter definition
+===PHI_END===
+
+===PHI_START===
+NAME: no_dup_filter_len_leq_distinct_count
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_no_dup_filter_len_leq_distinct_count(s: Seq<int>, pred: spec_fn(int) -> bool)
+    requires
+        s.no_duplicates(),
+    ensures
+        s.filter(pred).len() <= s.len(),
+{
+    seq_filter_preserves_no_duplicates(s, pred);
+    phi_3_filter_len_leq_original(s, pred);
+}
+```
+REASON: under no_duplicates, filtered length should still be bounded by original — tests interaction of the two lemmas
+===PHI_END===
+
+===PHI_START===
+NAME: filter_false_empty
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_filter_false_empty(s: Seq<int>)
+    ensures
+        s.filter(|x: int| false).len() == 0,
+    decreases s.len(),
+{
+    reveal(Seq::filter);
+    if s.len() != 0 {
+        phi_5_filter_false_empty(s.drop_last());
+    }
+}
+```
+REASON: always-false predicate should yield empty filter — tests base consistency of filter and whether external_body axiom interacts correctly
+===PHI_END===

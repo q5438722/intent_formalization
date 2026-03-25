@@ -1,0 +1,119 @@
+===PHI_START===
+NAME: sll_len_without_wf_returns_value_list_len
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)
+    ensures
+        sll.len() == sll.value_list_len,
+{
+}
+```
+REASON: StaticLinkedList::len's external_body unconditionally ensures l == self.value_list_len without requiring wf() — the raw field is exposed even for malformed lists
+===PHI_END===
+
+===PHI_START===
+NAME: owned_threads_shared_across_containers
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_owned_threads_shared_across_containers(
+    root_container: ContainerPtr,
+    container_perms: Map<ContainerPtr, PointsTo<Container>>,
+    c1: ContainerPtr,
+    c2: ContainerPtr,
+    t: ThreadPtr,
+)
+    requires
+        container_perms_wf(container_perms),
+        container_tree_wf(root_container, container_perms),
+        container_perms.dom().contains(c1),
+        container_perms.dom().contains(c2),
+        c1 != c2,
+        container_perms[c1].value().owned_threads@.contains(t),
+        container_perms[c2].value().owned_threads@.contains(t),
+    ensures
+        true,
+{
+}
+```
+REASON: Neither container_perms_wf nor container_tree_wf constrains owned_threads disjointness — two distinct containers can claim ownership of the same thread simultaneously
+===PHI_END===
+
+===PHI_START===
+NAME: owned_endpoints_shared_across_containers
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_owned_endpoints_shared_across_containers(
+    root_container: ContainerPtr,
+    container_perms: Map<ContainerPtr, PointsTo<Container>>,
+    c1: ContainerPtr,
+    c2: ContainerPtr,
+    e: EndpointPtr,
+)
+    requires
+        container_perms_wf(container_perms),
+        container_tree_wf(root_container, container_perms),
+        container_perms.dom().contains(c1),
+        container_perms.dom().contains(c2),
+        c1 != c2,
+        container_perms[c1].value().owned_endpoints@.contains(e),
+        container_perms[c2].value().owned_endpoints@.contains(e),
+    ensures
+        true,
+{
+}
+```
+REASON: owned_endpoints is a Ghost<Set<EndpointPtr>> with no disjointness constraint in container_tree_wf — two containers can claim the same endpoint
+===PHI_END===
+
+===PHI_START===
+NAME: owned_procs_shared_across_containers
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_owned_procs_shared_across_containers(
+    root_container: ContainerPtr,
+    container_perms: Map<ContainerPtr, PointsTo<Container>>,
+    c1: ContainerPtr,
+    c2: ContainerPtr,
+    p: ProcPtr,
+)
+    requires
+        container_perms_wf(container_perms),
+        container_tree_wf(root_container, container_perms),
+        container_perms.dom().contains(c1),
+        container_perms.dom().contains(c2),
+        c1 != c2,
+        container_perms[c1].value().owned_procs@.contains(p),
+        container_perms[c2].value().owned_procs@.contains(p),
+    ensures
+        true,
+{
+}
+```
+REASON: owned_procs is a StaticLinkedList with no cross-container disjointness constraint — the same ProcPtr can appear in two containers' owned_procs lists simultaneously
+===PHI_END===
+
+===PHI_START===
+NAME: root_container_parent_unconstrained
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_root_container_parent_unconstrained(
+    root_container: ContainerPtr,
+    container_perms: Map<ContainerPtr, PointsTo<Container>>,
+)
+    requires
+        container_perms_wf(container_perms),
+        container_tree_wf(root_container, container_perms),
+        container_perms.dom().contains(root_container),
+        container_perms[root_container].value().parent.is_Some(),
+    ensures
+        true,
+{
+}
+```
+REASON: container_root_wf constrains depth==0 and non-root nodes have parent.is_Some(), but never asserts that root's parent.is_None() — the root container can have a spurious parent pointer
+===PHI_END===

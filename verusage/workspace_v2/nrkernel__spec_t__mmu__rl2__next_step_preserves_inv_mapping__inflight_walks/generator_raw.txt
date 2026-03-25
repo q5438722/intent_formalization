@@ -1,0 +1,92 @@
+This round adds `lemma_write_seq` (pml4 preservation + domain monotonicity), `lemma_view_addr_aligned` (alignment guarantees), and `lemma_bit_indices_less_512`. Let me target interactions and gaps in these external_body lemmas.
+
+===PHI_START===
+NAME: write_seq_dom_grows_but_no_value_constraint
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_write_seq_dom_grows_but_no_value_constraint(mem: PTMem, addr: usize, val1: usize, val2: usize)
+    requires
+        val1 != val2,
+    ensures
+        mem.write_seq(seq![(addr, val1)]).write_seq(seq![(addr, val2)]).read(addr) == mem.write_seq(seq![(addr, val2)]).read(addr),
+{
+}
+```
+REASON: `lemma_write_seq` only constrains pml4 and domain monotonicity — it says nothing about the *values* written; tests whether last-write-wins is provable without the lemma (it should be, from open spec unfolding)
+===PHI_END===
+
+===PHI_START===
+NAME: lemma_view_addr_aligned_directory_below_max
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_lemma_view_addr_aligned_directory_below_max(pde: PDE)
+    requires
+        pde.layer@ < 4,
+        pde@ is Directory,
+    ensures
+        pde@->Directory_addr < usize::MAX - 4096,
+        aligned(pde@->Directory_addr as nat, 4096),
+{
+    pde.lemma_view_addr_aligned();
+}
+```
+REASON: `lemma_view_addr_aligned` is `external_body` — it asserts Directory addresses are page-aligned and bounded, but since Directory_addr is extracted via `entry & MASK_ADDR`, this alignment depends on MASK_ADDR zeroing bits 0-11, which is unverified
+===PHI_END===
+
+===PHI_START===
+NAME: write_seq_preserves_pml4_chained
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_write_seq_preserves_pml4_chained(mem: PTMem, w1: Seq<(usize, usize)>, w2: Seq<(usize, usize)>)
+    ensures
+        mem.write_seq(w1).write_seq(w2).pml4 == mem.pml4,
+{
+    mem.lemma_write_seq(w1);
+    mem.write_seq(w1).lemma_write_seq(w2);
+}
+```
+REASON: Chaining two `lemma_write_seq` calls to prove double write_seq preserves pml4 — relies on the external_body lemma being compositional; if the lemma's ensures are too weak, chaining could fail
+===PHI_END===
+
+===PHI_START===
+NAME: lemma_view_addr_aligned_page_addr_8_aligned
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_lemma_view_addr_aligned_page_addr_8_aligned(pde: PDE)
+    requires
+        pde.layer@ < 4,
+        pde@ is Page,
+    ensures
+        aligned(pde@->Page_addr as nat, 8),
+        pde@->Page_addr < usize::MAX - 4096,
+{
+    pde.lemma_view_addr_aligned();
+}
+```
+REASON: `lemma_view_addr_aligned` asserts Page addresses are 8-byte and 4096-byte aligned and bounded — but Page_addr is extracted via layer-specific masks (MASK_L1/L2/L3_PG_ADDR) which zero different low bits; the 8-byte alignment claim is unverified for all layers
+===PHI_END===
+
+===PHI_START===
+NAME: bit_indices_less_512_implies_walk_addr_bounded
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_bit_indices_less_512_implies_walk_addr_bounded(mem: PTMem, va: usize)
+    requires
+        mem.pml4 < usize::MAX - 4096,
+    ensures
+        add(mem.pml4, mul(l0_bits!(va), WORD_SIZE)) < mem.pml4 + 4096,
+{
+    lemma_bit_indices_less_512(va);
+    assert(l0_bits!(va) < 512);
+    assert(mul(l0_bits!(va), WORD_SIZE) < 4096) by {
+        assert(forall|x: usize| x < 512 ==> mul(x, 8usize) < 4096) by (bit_vector);
+    };
+}
+```
+REASON: `lemma_bit_indices_less_512` is `external_body` — it asserts all bit-index extractions produce values < 512; combined with WORD_SIZE=8, this bounds L0 walk addresses within a 4KB page, but the bit extraction correctness is unverified
+===PHI_END===

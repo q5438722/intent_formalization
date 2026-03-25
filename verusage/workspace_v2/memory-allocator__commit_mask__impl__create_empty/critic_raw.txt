@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: lemma_is_bit_set_not0_no_bound
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The axiom `forall|j: usize| is_bit_set(!0usize, j)` has no `j < 64` guard. For `j >= 64`, `1usize << j` wraps (e.g., `1usize << 64 == 0` on a 64-bit platform), so `is_bit_set(!0usize, 64)` would expand to `!0usize & 0 == 0` which is `0 == 0 == true` — but this is accidental and the axiom asserts bit-set semantics for non-existent bit positions.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: or_bit_set_no_bound
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The OR biconditional axiom lacks a `j < 64` guard. For `j >= 64`, `1usize << j` wraps around, and the biconditional relates three `is_bit_set` calls at wrapped positions where the logical meaning of "bit j is set" breaks down — this could enable unsound reasoning chains.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: and_bit_set_no_bound
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: Same issue as OR — the AND biconditional axiom has no `j < 64` guard. For out-of-range bit positions, `1usize << j` wraps and the biconditional asserts equivalences about wrapped bit operations that don't correspond to actual bit semantics.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: lemma_view_external_body_decomposition
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The first ensures clause of `lemma_view` decomposes any `i` in `self@` into `a = i / 64` and `b = i % 64`, then asserts `is_bit_set(self.mask[a], b)` — but there's no guard that `0 <= a < 8`. The `view()` definition does constrain elements to `0 <= t.0 < 8`, but the external_body lemma doesn't faithfully reflect this, so for out-of-range `i` the axiom accesses `self.mask[a]` out of bounds in spec.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: disjoint_axiom_redundant_unsound
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Given `j < 64`, the AND biconditional axiom (`is_bit_set(a & b, j) <==> is_bit_set(a, j) && is_bit_set(b, j)`) combined with `a & b == 0` and the zero axiom (`j < 64 ==> !is_bit_set(0, j)`) already implies `!is_bit_set(b, j)` when `is_bit_set(a, j)`. The sixth clause is indeed redundant under the bounded case, and the property shown here is a correct consequence of the other axioms at `j < 64`.
+===VERDICT_END===
+
+===SUMMARY===
+Four true positives were found, all stemming from missing `j < 64` bounds in `external_body` axioms. Three relate to `lemma_is_bit_set`: the `!0usize` axiom, OR biconditional, and AND biconditional all lack guards for out-of-range bit positions where shift wrapping breaks the intended semantics. The fourth is `lemma_view`'s first ensures clause which doesn't bound `a` to `[0,8)`, allowing spec-level out-of-bounds array access. The disjoint axiom candidate is a false positive — it's a correct consequence of the other bounded axioms when `j < 64`.
+===END_SUMMARY===

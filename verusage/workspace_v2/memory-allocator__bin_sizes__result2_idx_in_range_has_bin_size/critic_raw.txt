@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: size_of_bin_external_body_unconstrained
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `size_of_bin(1) == size_of_bin(1)` is a trivial tautology (x == x) that holds for any expression. It demonstrates nothing about the external_body gap — the ensures would be true even if `size_of_bin` were fully specified.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: pow2_negative_is_one
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `pow2` returns 1 for all negative exponents, which is mathematically incorrect (2^(-n) = 1/2^n). Callers passing negative exponents by mistake silently get 1 with no precondition guard, and this non-standard behavior could mask off-by-one errors near e=0 boundaries.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: result_idx_external_body_trusted
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `result_idx_in_range_has_bin_size` is `external_body` with `unimplemented!()` — the inductive lemma connecting `check_idx_in_range_has_bin_size` to the universally quantified `property_idx_in_range_has_bin_size` is trusted without proof. This is a real soundness concern since the entire bin-fitting correctness argument depends on this unverified induction step.
+===VERDICT_END===
+
+===SUMMARY===
+One false positive: the `size_of_bin` candidate is a trivial tautology that proves nothing about the external_body gap. Two true positives: `pow2` silently returning 1 for negative exponents is a non-standard design choice that could mask errors, and `result_idx_in_range_has_bin_size` being external_body means the core inductive lemma connecting bounded checking to universal quantification is entirely trusted without verification.
+===END_SUMMARY===

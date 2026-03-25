@@ -1,0 +1,52 @@
+[
+  {
+    "name": "write_immediately_persists",
+    "target_fn": "write_relative",
+    "type": "behavioral",
+    "reason": "write should only set outstanding_write, not immediately update state_at_last_flush (that requires a flush)",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "end of the function body\n...\n355 |           view.write(addr, bytes).state[addr].state_at_last_flush == bytes[0 as int],\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 3 warnings emitted\n\n"
+  },
+  {
+    "name": "empty_write_alters_view",
+    "target_fn": "write_relative",
+    "type": "boundary",
+    "reason": "Writing zero bytes should be a no-op; if it changes the view, the write spec is unsound",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "addr: int,\n346 | | )\n    | |_- at the end of the function body\n...\n352 |           view.write(addr, Seq::<u8>::empty()) =~= view ==> false,\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 3 warnings emitted\n\n"
+  },
+  {
+    "name": "write_changes_view_len",
+    "target_fn": "write_relative",
+    "type": "logical",
+    "reason": "Write should preserve region length; a length change would corrupt the memory region abstraction",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": ": int,\n346 | |     bytes: Seq<u8>,\n347 | | )\n    | |_- at the end of the function body\n...\n354 |           view.write(addr, bytes).len() != view.len(),\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 3 warnings emitted\n\n"
+  },
+  {
+    "name": "write_clobbers_adjacent_byte",
+    "target_fn": "write_relative",
+    "type": "behavioral",
+    "reason": "Write must not modify bytes outside the target range; clobbering an adjacent byte violates memory isolation",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": " | )\n    | |_- at the end of the function body\n...\n355 |           view.write(addr, bytes).state[addr - 1] != view.state[addr - 1],\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 3 warnings emitted\n\n"
+  },
+  {
+    "name": "write_drops_outstanding",
+    "target_fn": "write_relative",
+    "type": "logical",
+    "reason": "After writing byte b at addr, outstanding_write must be Some(b); if it is None the write was silently lost",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "\n    | |_- at the end of the function body\n...\n354 |           (view.write(addr, bytes).state[addr].outstanding_write).is_none(),\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 3 warnings emitted\n\n"
+  }
+]

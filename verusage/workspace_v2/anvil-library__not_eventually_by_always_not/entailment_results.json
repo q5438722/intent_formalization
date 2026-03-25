@@ -1,0 +1,47 @@
+[
+  {
+    "name": "always_unfold_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_1_always_unfold_intensional_bridge(ex: Execution<int>, p: TempPred<int>, i: nat)\n    requires\n        always(p).satisfied_by(ex),\n    ensures\n        p.satisfied_by(ex.suffix(i)),\n{\n    always_unfold::<int>(ex, p);\n}",
+    "reason": "always_unfold is external_body bridging always's TempPred::new closure-wrapped forall to a bare forall in ensures \u2014 intensionally distinct formulations equated without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "not_eventually_from_always_not",
+    "type": "logical",
+    "code": "proof fn phi_2_not_eventually_from_always_not(ex: Execution<int>, p: TempPred<int>)\n    requires\n        always(not(p)).satisfied_by(ex),\n    ensures\n        not(eventually(p)).satisfied_by(ex),\n{\n    not_eventually_by_always_not::<int>(ex, p);\n}",
+    "reason": "not_eventually_by_always_not bridges always(not(p)) to not(eventually(p)) \u2014 these are intensionally distinct TempPred closures (forall-of-not vs not-of-exists) equated through always_unfold without verifying closure identity",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "always_not_blocks_any_witness",
+    "type": "behavioral",
+    "code": "proof fn phi_3_always_not_blocks_any_witness(ex: Execution<int>, p: TempPred<int>, witness: nat)\n    requires\n        always(not(p)).satisfied_by(ex),\n    ensures\n        !p.satisfied_by(ex.suffix(witness)),\n{\n    always_unfold::<int>(ex, not(p));\n}",
+    "reason": "always_unfold allows extracting negation at any specific witness index \u2014 if the closure bridge is unsound, this could incorrectly block valid witnesses",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "double_not_eventually_collapse",
+    "type": "logical",
+    "code": "proof fn phi_4_double_not_eventually_collapse(ex: Execution<int>, p: TempPred<int>)\n    requires\n        always(not(not(p))).satisfied_by(ex),\n    ensures\n        not(eventually(not(p))).satisfied_by(ex),\n{\n    not_eventually_by_always_not::<int>(ex, not(p));\n}",
+    "reason": "applying always(not(not(p))) => not(eventually(not(p))) chains two levels of not-closure wrapping \u2014 if closure identity resolution is unsound, double negation could produce incorrect temporal conclusions",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "always_not_self_contradicts_eventually",
+    "type": "boundary",
+    "code": "proof fn phi_5_always_not_self_contradicts_eventually(ex: Execution<int>, p: TempPred<int>)\n    requires\n        always(not(p)).satisfied_by(ex),\n        eventually(p).satisfied_by(ex),\n    ensures\n        false,\n{\n    not_eventually_by_always_not::<int>(ex, p);\n}",
+    "reason": "combining always(not(p)) and eventually(p) derives false \u2014 if either the always_unfold bridge or the not/eventually closure resolution is unsound, this contradiction could be reached from consistent premises",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

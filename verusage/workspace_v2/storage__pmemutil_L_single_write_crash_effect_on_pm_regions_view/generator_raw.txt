@@ -1,0 +1,109 @@
+===PHI_START===
+NAME: single_write_crash_region_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_single_write_crash_region_external_body(
+    pm_region_view: PersistentMemoryRegionView,
+    write_addr: int,
+    bytes_to_write: Seq<u8>,
+    crash_bytes: Seq<u8>,
+)
+    requires
+        bytes_to_write.len() == const_persistence_chunk_size(),
+        write_addr % const_persistence_chunk_size() == 0,
+        0 <= write_addr,
+        write_addr + const_persistence_chunk_size() <= pm_region_view.len(),
+        pm_region_view.no_outstanding_writes(),
+        pm_region_view.write(write_addr, bytes_to_write).can_crash_as(crash_bytes),
+    ensures
+        crash_bytes == pm_region_view.committed()
+        || crash_bytes == pm_region_view.write(write_addr, bytes_to_write).flush().committed(),
+{
+    lemma_single_write_crash_effect_on_pm_region_view(pm_region_view, write_addr, bytes_to_write);
+}
+```
+REASON: `lemma_single_write_crash_effect_on_pm_region_view` is `external_body` — the two-outcome crash guarantee for a single aligned chunk write is trusted without proof; if more crash states were possible, the crash consistency argument would be unsound
+===PHI_END===
+
+===PHI_START===
+NAME: no_writes_crash_committed_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_no_writes_crash_committed_external_body(
+    pm_region_view: PersistentMemoryRegionView,
+    s: Seq<u8>,
+)
+    requires
+        pm_region_view.no_outstanding_writes(),
+        pm_region_view.can_crash_as(s),
+    ensures
+        s == pm_region_view.committed(),
+{
+    lemma_if_no_outstanding_writes_then_persistent_memory_view_can_only_crash_as_committed(pm_region_view);
+}
+```
+REASON: `lemma_if_no_outstanding_writes_then_persistent_memory_view_can_only_crash_as_committed` is `external_body` — the uniqueness of crash states with no outstanding writes is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: regions_write_only_modifies_target
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_regions_write_only_modifies_target(
+    views: PersistentMemoryRegionsView,
+    index: int,
+    addr: int,
+    bytes: Seq<u8>,
+    other: int,
+)
+    requires
+        0 <= index < views.len(),
+        0 <= other < views.len(),
+        other != index,
+    ensures
+        views.write(index, addr, bytes)[other] == views[other],
+{
+}
+```
+REASON: Writing to one region should not affect other regions — if the map-based write leaked across region indices, cross-region data corruption would go undetected
+===PHI_END===
+
+===PHI_START===
+NAME: regions_write_target_matches_region_write
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_regions_write_target_matches_region_write(
+    views: PersistentMemoryRegionsView,
+    index: int,
+    addr: int,
+    bytes: Seq<u8>,
+)
+    requires
+        0 <= index < views.len(),
+    ensures
+        views.write(index, addr, bytes)[index] == views[index].write(addr, bytes),
+{
+}
+```
+REASON: The multi-region write at the target index should equal the single-region write — if the map dispatched incorrectly, the written region would have wrong state
+===PHI_END===
+
+===PHI_START===
+NAME: regions_flush_distributes
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_regions_flush_distributes(views: PersistentMemoryRegionsView, i: int)
+    requires
+        0 <= i < views.len(),
+    ensures
+        views.flush()[i] == views[i].flush(),
+{
+}
+```
+REASON: Flushing all regions should equal flushing each individually — if the outer map didn't distribute correctly, some regions could flush with wrong state
+===PHI_END===

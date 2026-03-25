@@ -1,0 +1,167 @@
+===PHI_START===
+NAME: erase_removes_below_lo
+TARGET_FN: erase
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_erase_removes_below_lo<K: KeyTrait + VerusClone>(
+    pre: StrictlyOrderedMap<K>, post: StrictlyOrderedMap<K>,
+    lo: KeyIterator<K>, hi: KeyIterator<K>, k: K,
+)
+    requires
+        pre.valid(),
+        post.valid(),
+        forall |k2: K| {
+            let ki = KeyIterator::<K>::new_spec(k2);
+            if ki.geq_spec(lo) && ki.lt_spec(hi) {
+                !(#[trigger] post@.contains_key(k2))
+            } else {
+                (pre@.contains_key(k2) ==>
+                     post@.contains_key(k2) && post@[k2] == pre@[k2])
+                && (post@.contains_key(k2) ==> pre@.contains_key(k2))
+            }
+        },
+        pre@.contains_key(k),
+        KeyIterator::<K>::new_spec(k).lt_spec(lo),
+    ensures
+        !post@.contains_key(k),
+{
+}
+```
+REASON: Keys strictly below `lo` are outside [lo, hi) and must be preserved, not erased
+===PHI_END===
+
+===PHI_START===
+NAME: empty_range_removes_key
+TARGET_FN: erase
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_empty_range_removes_key<K: KeyTrait + VerusClone>(
+    pre: StrictlyOrderedMap<K>, post: StrictlyOrderedMap<K>,
+    lo: KeyIterator<K>, hi: KeyIterator<K>, k: K,
+)
+    requires
+        pre.valid(),
+        post.valid(),
+        !lo.lt_spec(hi),
+        forall |k2: K| {
+            let ki = KeyIterator::<K>::new_spec(k2);
+            if ki.geq_spec(lo) && ki.lt_spec(hi) {
+                !(#[trigger] post@.contains_key(k2))
+            } else {
+                (pre@.contains_key(k2) ==>
+                     post@.contains_key(k2) && post@[k2] == pre@[k2])
+                && (post@.contains_key(k2) ==> pre@.contains_key(k2))
+            }
+        },
+        pre@.contains_key(k),
+    ensures
+        !post@.contains_key(k),
+{
+    K::cmp_properties();
+}
+```
+REASON: When lo >= hi the range [lo, hi) is empty so no key should ever be removed
+===PHI_END===
+
+===PHI_START===
+NAME: erase_introduces_new_key
+TARGET_FN: erase
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_erase_introduces_new_key<K: KeyTrait + VerusClone>(
+    pre: StrictlyOrderedMap<K>, post: StrictlyOrderedMap<K>,
+    lo: KeyIterator<K>, hi: KeyIterator<K>, k: K,
+)
+    requires
+        pre.valid(),
+        post.valid(),
+        forall |k2: K| {
+            let ki = KeyIterator::<K>::new_spec(k2);
+            if ki.geq_spec(lo) && ki.lt_spec(hi) {
+                !(#[trigger] post@.contains_key(k2))
+            } else {
+                (pre@.contains_key(k2) ==>
+                     post@.contains_key(k2) && post@[k2] == pre@[k2])
+                && (post@.contains_key(k2) ==> pre@.contains_key(k2))
+            }
+        },
+        !pre@.contains_key(k),
+    ensures
+        post@.contains_key(k),
+{
+}
+```
+REASON: Erase should never introduce a key absent from the original map
+===PHI_END===
+
+===PHI_START===
+NAME: erase_changes_preserved_value
+TARGET_FN: erase
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_erase_changes_preserved_value<K: KeyTrait + VerusClone>(
+    pre: StrictlyOrderedMap<K>, post: StrictlyOrderedMap<K>,
+    lo: KeyIterator<K>, hi: KeyIterator<K>, k: K,
+)
+    requires
+        pre.valid(),
+        post.valid(),
+        forall |k2: K| {
+            let ki = KeyIterator::<K>::new_spec(k2);
+            if ki.geq_spec(lo) && ki.lt_spec(hi) {
+                !(#[trigger] post@.contains_key(k2))
+            } else {
+                (pre@.contains_key(k2) ==>
+                     post@.contains_key(k2) && post@[k2] == pre@[k2])
+                && (post@.contains_key(k2) ==> pre@.contains_key(k2))
+            }
+        },
+        pre@.contains_key(k),
+        post@.contains_key(k),
+        !(KeyIterator::<K>::new_spec(k).geq_spec(lo) && KeyIterator::<K>::new_spec(k).lt_spec(hi)),
+    ensures
+        !(post@[k] == pre@[k]),
+{
+}
+```
+REASON: A key outside the erase range that survives must retain its original mapped value
+===PHI_END===
+
+===PHI_START===
+NAME: erase_removes_at_hi_boundary
+TARGET_FN: erase
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_erase_removes_at_hi_boundary<K: KeyTrait + VerusClone>(
+    pre: StrictlyOrderedMap<K>, post: StrictlyOrderedMap<K>,
+    lo: KeyIterator<K>, hi: KeyIterator<K>,
+)
+    requires
+        pre.valid(),
+        post.valid(),
+        !hi.is_end_spec(),
+        lo.lt_spec(hi),
+        forall |k2: K| {
+            let ki = KeyIterator::<K>::new_spec(k2);
+            if ki.geq_spec(lo) && ki.lt_spec(hi) {
+                !(#[trigger] post@.contains_key(k2))
+            } else {
+                (pre@.contains_key(k2) ==>
+                     post@.contains_key(k2) && post@[k2] == pre@[k2])
+                && (post@.contains_key(k2) ==> pre@.contains_key(k2))
+            }
+        },
+        pre@.contains_key(*hi.get_spec()),
+    ensures
+        !post@.contains_key(*hi.get_spec()),
+{
+    K::cmp_properties();
+}
+```
+REASON: The key at `hi` is at the exclusive upper bound and must not be erased
+===PHI_END===

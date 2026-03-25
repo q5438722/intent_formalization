@@ -1,0 +1,10 @@
+===VERDICT_START===
+PHI: new_valid_implies_lows_empty
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This proof fn calls the exec function `DelegationMap::new` from proof context, which is invalid in Verus—exec functions cannot be called in proof/spec mode. Even setting that aside, tracing the implementation shows `new` calls `StrictlyOrderedMap::new()` (postcondition: empty map) then `lows.set(k_zero, id_zero)` (postcondition: inserts the key), so `lows@` contains exactly one entry (`k_zero`), not zero. The ensures clause `s.lows@.dom().len() == 0` contradicts the actual implementation and is unprovable from the postcondition of `new`, which only exposes `s.valid()` and `s@ == Map::total(...)`.
+===VERDICT_END===
+
+===SUMMARY===
+The single candidate property `new_valid_implies_lows_empty` is a false positive. It is structurally invalid because it attempts to call an exec function (`DelegationMap::new`) from a proof function, which Verus rejects. Even ignoring that, the claim that `lows@.dom().len() == 0` after construction is factually wrong: the `new` implementation inserts `k_zero` into `lows` via `set`, so the backing map has exactly one entry. The postcondition of `new` correctly ensures `s.valid()` (which requires `lows@.contains_key(K::zero_spec())`) and `s@ == Map::total(|k| id_zero@)`, both of which are consistent with the implementation. No real spec issue exists here.
+===END_SUMMARY===

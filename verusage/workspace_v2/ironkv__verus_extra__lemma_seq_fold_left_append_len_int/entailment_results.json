@@ -1,0 +1,47 @@
+[
+  {
+    "name": "fold_left_append_len_empty_prefix",
+    "type": "boundary",
+    "code": "proof fn phi_1_fold_left_append_len_empty_prefix<A, B>(s: Seq<A>, f: spec_fn(A) -> Seq<B>)\n    ensures\n        s.fold_left(Seq::<B>::empty(), |sb: Seq<B>, a: A| sb + f(a)).len() as int\n        ==\n        s.fold_left(0int, |i: int, a: A| i + f(a).len() as int),\n{\n    lemma_seq_fold_left_append_len_int::<A, B>(s, Seq::<B>::empty(), f);\n}",
+    "reason": "With empty prefix the fold length equals the integer fold starting at 0 \u2014 this is correct but the integer accumulator could go negative if `f(a).len()` is cast oddly, since the lemma uses `int` arithmetic with no non-negativity guarantee on the result",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "fold_left_empty_seq_identity",
+    "type": "boundary",
+    "code": "proof fn phi_2_fold_left_empty_seq_identity<A, B>(prefix: Seq<B>, f: spec_fn(A) -> Seq<B>)\n    ensures\n        Seq::<A>::empty().fold_left(prefix, |sb: Seq<B>, a: A| sb + f(a)).len() as int\n        ==\n        prefix.len() as int,\n{\n    lemma_seq_fold_left_append_len_int::<A, B>(Seq::<A>::empty(), prefix, f);\n}",
+    "reason": "Folding over an empty sequence returns the prefix unchanged \u2014 trivially true but confirms the base case works without actually exercising the inductive step",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "fold_left_int_accumulator_no_lower_bound",
+    "type": "logical",
+    "code": "proof fn phi_3_fold_left_int_accumulator_no_lower_bound<A, B>(s: Seq<A>, prefix: Seq<B>, f: spec_fn(A) -> Seq<B>)\n    ensures\n        s.fold_left(prefix.len() as int, |i: int, a: A| i + f(a).len() as int) >= prefix.len() as int,\n{\n    lemma_seq_fold_left_append_len_int::<A, B>(s, prefix, f);\n}",
+    "reason": "The integer accumulator should be monotonically non-decreasing since we only add non-negative lengths \u2014 but the lemma only equates it to the sequence length, and this monotonicity is derived indirectly rather than stated, so a bug in the fold could violate it",
+    "entailed": false,
+    "verus_output": "Seq<A>, prefix: Seq<B>, f: spec_fn(A) -> Seq<B>)\n   |       ----------------------------------------------------------------------------------------------------------- at the end of the function body\n31 |     ensures\n32 |         s.fold_left(prefix.len() as int, |i: int, a: A| i + f(a).len() as int) >= prefix.len() as int,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "fold_left_singleton_len",
+    "type": "behavioral",
+    "code": "proof fn phi_4_fold_left_singleton_len<A, B>(a: A, prefix: Seq<B>, f: spec_fn(A) -> Seq<B>)\n    ensures\n        seq![a].fold_left(prefix, |sb: Seq<B>, x: A| sb + f(x)).len() as int\n        ==\n        prefix.len() as int + f(a).len() as int,\n{\n    lemma_seq_fold_left_append_len_int::<A, B>(seq![a], prefix, f);\n}",
+    "reason": "A singleton fold should produce length = prefix + f(a) \u2014 this tests the single inductive step and would catch off-by-one errors in the subrange decomposition",
+    "entailed": false,
+    "verus_output": "t_singleton_len<A, B>(a: A, prefix: Seq<B>, f: spec_fn(A) -> Seq<B>)\n   |         ------------------------------------------------------------------------------------- at the end of the function body\n31 |       ensures\n32 | /         seq![a].fold_left(prefix, |sb: Seq<B>, x: A| sb + f(x)).len() as int\n33 | |         ==\n34 | |         prefix.len() as int + f(a).len() as int,\n   | |_______________________________________________^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "fold_left_append_associativity",
+    "type": "logical",
+    "code": "proof fn phi_5_fold_left_append_associativity<A, B>(s1: Seq<A>, s2: Seq<A>, prefix: Seq<B>, f: spec_fn(A) -> Seq<B>)\n    ensures\n        s1.add(s2).fold_left(prefix, |sb: Seq<B>, a: A| sb + f(a)).len() as int\n        ==\n        s2.fold_left(\n            s1.fold_left(prefix.len() as int, |i: int, a: A| i + f(a).len() as int),\n            |i: int, a: A| i + f(a).len() as int\n        ),\n{\n    lemma_seq_fold_left_append_len_int::<A, B>(s1.add(s2), prefix, f);\n    lemma_seq_fold_left_append_len_int::<A, B>(s1, prefix, f);\n}",
+    "reason": "Splitting a fold over concatenated sequences should decompose the integer accumulator \u2014 if the lemma's inductive structure mishandles sequence concatenation, this associativity would fail",
+    "entailed": false,
+    "verus_output": "--------------------------------------------------------------- at the end of the function body\n31 |       ensures\n32 | /         s1.add(s2).fold_left(prefix, |sb: Seq<B>, a: A| sb + f(a)).len() as int\n33 | |         ==\n34 | |         s2.fold_left(\n35 | |             s1.fold_left(prefix.len() as int, |i: int, a: A| i + f(a).len() as int),\n36 | |             |i: int, a: A| i + f(a).len() as int\n37 | |         ),\n   | |_________^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

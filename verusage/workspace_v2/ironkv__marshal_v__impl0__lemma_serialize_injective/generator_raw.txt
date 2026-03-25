@@ -1,0 +1,87 @@
+===PHI_START===
+NAME: usize_serialize_injective_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_usize_serialize_injective_external_body(a: usize, b: usize)
+    requires
+        a.is_marshalable(),
+        b.is_marshalable(),
+        a.ghost_serialize() == b.ghost_serialize(),
+    ensures
+        a.view_equal(&b),
+{
+    a.lemma_serialize_injective(&b);
+}
+```
+REASON: `usize::lemma_serialize_injective` is `external_body` — injectivity of usize serialization is trusted without proof, despite being provable from the u64 injectivity since usize serializes via cast to u64
+===PHI_END===
+
+===PHI_START===
+NAME: usize_distinct_values_same_serialize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_usize_distinct_values_same_serialize(a: usize, b: usize)
+    requires
+        a as int > u64::MAX,
+        b as int > u64::MAX,
+        a != b,
+    ensures
+        !a.is_marshalable() && !b.is_marshalable(),
+{
+}
+```
+REASON: Non-marshalable usize values (above u64::MAX on hypothetical >64-bit platforms) have `ghost_serialize` governed only by a `recommends` — the trait-level `external_body` ghost_serialize could map them to anything, potentially collapsing distinct values to the same serialization with no way to detect it
+===PHI_END===
+
+===PHI_START===
+NAME: u64_all_marshalable
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_u64_all_marshalable(x: u64)
+    ensures
+        x.is_marshalable(),
+{
+}
+```
+REASON: Every u64 is unconditionally marshalable — there is no size bound on the serialization output, so callers cannot bound buffer sizes from `is_marshalable` alone without additional knowledge about serialization length
+===PHI_END===
+
+===PHI_START===
+NAME: ghost_serialize_trait_uninterpreted_for_marshalable
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_ghost_serialize_trait_uninterpreted_for_marshalable(a: u64, b: u64)
+    requires
+        a != b,
+        a.is_marshalable(),
+        b.is_marshalable(),
+    ensures
+        !a.view_equal(&b),
+{
+    lemma_auto_spec_u64_to_from_le_bytes();
+    a.lemma_serialize_injective(&b);
+}
+```
+REASON: The injectivity axiom combined with `view_equal` being `self@ === other@` means serialization injectivity implies value equality for u64 — but if the ensures direction were reversed (proving distinct values have distinct serializations), it would rely on contrapositive of an external_body axiom which may not be sound
+===PHI_END===
+
+===PHI_START===
+NAME: usize_ghost_serialize_len_equals_u64
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_usize_ghost_serialize_len_equals_u64(x: usize)
+    requires
+        x.is_marshalable(),
+    ensures
+        x.ghost_serialize().len() == 8,
+{
+    lemma_auto_spec_u64_to_from_le_bytes();
+}
+```
+REASON: Marshalable usize serialization always produces exactly 8 bytes (same as u64) — this fixed length is implicit and never stated as a spec guarantee, so any consumer relying on variable-length encoding or length < 8 would silently break
+===PHI_END===

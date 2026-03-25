@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: interp_aux_equal_from_entries
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Direct consequence of the fully verified `lemma_entries_interp_equal_implies_interp_aux_equal`. Correct extensional equality property proved by induction.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: interp_aux_tail_empty
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Direct unfolding of the open spec `interp_aux` base case (`i >= entries.len() => map![]`). Correct by definition.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: page_entry_singleton_map
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Direct unfolding of the open spec `NodeEntry::interp` for the `Page` variant. Correct by definition.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: invalid_entry_empty_map
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Direct unfolding of the open spec `NodeEntry::interp` for the `Invalid` variant. Correct by definition.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: directory_entry_ignores_base
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The `Directory` variant calls `d.interp_aux(0)` which uses `d.base_vaddr` internally — the directory carries its own base address. The `directories_are_in_next_layer` invariant ensures `d.base_vaddr` is correctly set to the parent's entry_base, so the `base` parameter is intentionally unused. This is correct design.
+===VERDICT_END===
+
+===SUMMARY===
+All five candidates are false positives. The file contains a fully verified lemma proving interp_aux extensional equality, with no external_body or trust gaps. The other candidates test open spec definitions directly. The directory-ignores-base observation is interesting but intentional — subdirectories carry their own `base_vaddr` set by the `directories_are_in_next_layer` invariant.
+===END_SUMMARY===

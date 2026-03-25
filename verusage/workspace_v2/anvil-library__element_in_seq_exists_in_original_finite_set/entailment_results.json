@@ -1,0 +1,47 @@
+[
+  {
+    "name": "empty_set_to_seq_empty",
+    "type": "boundary",
+    "code": "proof fn phi_1_empty_set_to_seq_empty()\n    ensures\n        Set::<int>::empty().to_seq().len() == 0,\n{\n}",
+    "reason": "empty set should convert to empty sequence \u2014 tests base case of to_seq",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "to_seq_contains_implies_set_contains",
+    "type": "logical",
+    "code": "proof fn phi_2_to_seq_contains_implies_set_contains(s: Set<int>, e: int)\n    requires\n        s.finite(),\n        s.to_seq().contains(e),\n    ensures\n        s.contains(e),\n{\n    element_in_seq_exists_in_original_finite_set(s, e);\n}",
+    "reason": "direct restatement of the lemma \u2014 tests that to_seq doesn't introduce spurious elements",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "singleton_to_seq_no_extra",
+    "type": "boundary",
+    "code": "proof fn phi_3_singleton_to_seq_no_extra(v: int, e: int)\n    requires\n        v != e,\n    ensures\n        !Set::empty().insert(v).to_seq().contains(e),\n{\n    if Set::empty().insert(v).to_seq().contains(e) {\n        element_in_seq_exists_in_original_finite_set(Set::empty().insert(v), e);\n    }\n}",
+    "reason": "singleton set's to_seq should not contain elements not in the set",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "to_seq_len_equals_set_len",
+    "type": "behavioral",
+    "code": "proof fn phi_4_to_seq_len_equals_set_len(s: Set<int>)\n    requires\n        s.finite(),\n    ensures\n        s.to_seq().len() == s.len(),\n{\n}",
+    "reason": "to_seq should preserve cardinality \u2014 if lengths disagree the bijection is broken",
+    "entailed": false,
+    "verus_output": "condition not satisfied\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-library__element_in_seq_exists_in_original_finite_set/phi_4_to_seq_len_equals_set_len.rs:30:9\n   |\n26 | proof fn phi_4_to_seq_len_equals_set_len(s: Set<int>)\n   |       ----------------------------------------------- at the end of the function body\n...\n30 |         s.to_seq().len() == s.len(),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "not_in_set_not_in_to_seq",
+    "type": "behavioral",
+    "code": "proof fn phi_5_not_in_set_not_in_to_seq(s: Set<int>, e: int)\n    requires\n        s.finite(),\n        !s.contains(e),\n    ensures\n        !s.to_seq().contains(e),\n{\n    if s.to_seq().contains(e) {\n        element_in_seq_exists_in_original_finite_set(s, e);\n    }\n}",
+    "reason": "contrapositive of the lemma \u2014 elements not in set should not appear in to_seq",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "push_preserves_prefix_state",
+    "type": "behavioral",
+    "code": "proof fn phi_1_push_preserves_prefix_state<DT: Dispatch>(\n    a: Seq<DT::WriteOperation>,\n    x: DT::WriteOperation,\n    i: LogIdx,\n)\n    requires\n        i <= a.len(),\n    ensures\n        compute_nrstate_at_version::<DT>(a, i) == compute_nrstate_at_version::<DT>(a.push(x), i),\n{\n    state_at_version_preserves::<DT>(a, a.push(x), x, i);\n}",
+    "reason": "Appending an operation preserves state at all prior versions \u2014 the new operation is invisible to prefix computations",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "version_zero_always_init",
+    "type": "boundary",
+    "code": "proof fn phi_2_version_zero_always_init<DT: Dispatch>(log: Seq<DT::WriteOperation>)\n    ensures\n        compute_nrstate_at_version::<DT>(log, 0) == DT::init_spec(),\n{\n}",
+    "reason": "Version 0 always returns `init_spec()` regardless of log contents \u2014 the initial state is hardcoded",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "single_op_state",
+    "type": "behavioral",
+    "code": "proof fn phi_3_single_op_state<DT: Dispatch>(op: DT::WriteOperation)\n    ensures\n        compute_nrstate_at_version::<DT>(Seq::empty().push(op), 1) == DT::dispatch_mut_spec(DT::init_spec(), op).0,\n{\n}",
+    "reason": "A single-element log at version 1 applies the op to init_spec \u2014 tests that the recursion unfolds correctly for the minimal non-trivial case",
+    "entailed": false,
+    "verus_output": "roof fn phi_3_single_op_state<DT: Dispatch>(op: DT::WriteOperation)\n   |       -------------------------------------------------------------- at the end of the function body\n81 |     ensures\n82 |         compute_nrstate_at_version::<DT>(Seq::empty().push(op), 1) == DT::dispatch_mut_spec(DT::init_spec(), op).0,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "dispatch_mut_spec_unconstrained",
+    "type": "logical",
+    "code": "proof fn phi_4_dispatch_mut_spec_unconstrained<DT: Dispatch>(\n    a: Seq<DT::WriteOperation>,\n    op: DT::WriteOperation,\n)\n    requires\n        a.len() == 0,\n    ensures ({\n        let log = a.push(op);\n        let (new_state, _resp) = DT::dispatch_mut_spec(DT::init_spec(), op);\n        compute_nrstate_at_version::<DT>(log, 1) == new_state\n    }),\n{\n}",
+    "reason": "`dispatch_mut_spec` is a trait method with no constraints \u2014 any implementation can define arbitrary state transitions, and the spec blindly trusts it",
+    "entailed": false,
+    "verus_output": "constrained<DT: Dispatch>(\n   |  _______-\n81 | |     a: Seq<DT::WriteOperation>,\n82 | |     op: DT::WriteOperation,\n83 | | )\n   | |_- at the end of the function body\n...\n86 |       ensures ({\n   |  _____________^\n87 | |         let log = a.push(op);\n88 | |         let (new_state, _resp) = DT::dispatch_mut_spec(DT::init_spec(), op);\n89 | |         compute_nrstate_at_version::<DT>(log, 1) == new_state\n90 | |     }),\n   | |______^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "refinement_proof_phantom",
+    "type": "logical",
+    "code": "proof fn phi_5_refinement_proof_phantom()\n    ensures\n        exists|p: RefinementProof| true,\n{\n}",
+    "reason": "`RefinementProof` is a unit-like tracked struct \u2014 its existence is unconditionally provable, meaning the refinement witness carries no actual proof content",
+    "entailed": false,
+    "verus_output": "error: Could not automatically infer triggers for this quantifier.  Use #[trigger] annotations to manually mark trigger terms instead.\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/node-replication__spec__linearization__state_at_version_preserves/phi_5_refinement_proof_phantom.rs:82:9\n   |\n82 |         exists|p: RefinementProof| true,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

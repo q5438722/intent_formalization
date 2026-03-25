@@ -1,0 +1,37 @@
+[
+  {
+    "name": "empty_arch_satisfies_inv",
+    "target_fn": "inv (Arch)",
+    "type": "boundary",
+    "code": "proof fn phi_1_empty_arch_satisfies_inv(arch: Arch)\n    requires\n        arch.layers.len() == 0,\n    ensures\n        arch.inv(),\n{\n}",
+    "reason": "A zero-layer architecture cannot map any addresses and should not satisfy the invariant"
+  },
+  {
+    "name": "aligned_trivial_size_one",
+    "target_fn": "aligned",
+    "type": "behavioral",
+    "code": "proof fn phi_2_aligned_trivial_size_one(addr: nat)\n    ensures\n        aligned(addr, 1),\n{\n}",
+    "reason": "Alignment to size 1 is vacuously true for every address, providing no meaningful constraint"
+  },
+  {
+    "name": "byte_granularity_arch_valid",
+    "target_fn": "entry_size_is_next_layer_size",
+    "type": "boundary",
+    "code": "proof fn phi_3_byte_granularity_arch_valid(arch: Arch)\n    requires\n        arch.layers.len() == 1,\n        arch.entry_size(0) == 1,\n        arch.num_entries(0) == 1,\n    ensures\n        arch.inv(),\n{\n}",
+    "reason": "An arch with 1-byte entry size and single entry covers only 1 byte, far below any valid x86 page size"
+  },
+  {
+    "name": "zero_width_entry_region",
+    "target_fn": "entry_base",
+    "type": "logical",
+    "code": "proof fn phi_4_zero_width_entry_region(arch: Arch, layer: nat, base: nat, idx: nat)\n    requires\n        arch.inv(),\n        layer < arch.layers.len(),\n    ensures\n        arch.entry_base(layer, base, idx) == arch.next_entry_base(layer, base, idx),\n{\n}",
+    "reason": "Equal entry_base and next_entry_base means a zero-width address region, so distinct entries would alias"
+  },
+  {
+    "name": "wellformed_implies_zero_entries",
+    "target_fn": "well_formed",
+    "type": "logical",
+    "code": "proof fn phi_5_wellformed_implies_zero_entries(d: Directory)\n    requires\n        d.well_formed(),\n    ensures\n        d.num_entries() == 0,\n{\n}",
+    "reason": "A well-formed directory with zero entries would make the page table structure degenerate and unmappable"
+  }
+]

@@ -1,0 +1,109 @@
+===PHI_START===
+NAME: l2_always_none
+TARGET_FN: get_entry_l2
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_l2_always_none(pt: PageTable, target_l4i: L4Index, target_l3i: L3Index, target_l2i: L2Index, l3_entry: PageEntry)
+    requires
+        pt.wf(),
+        pt.kernel_l4_end <= target_l4i < 512,
+        0 <= target_l3i < 512,
+        0 <= target_l2i < 512,
+        pt.spec_resolve_mapping_l3(target_l4i, target_l3i) =~= Some(l3_entry),
+    ensures
+        pt.spec_resolve_mapping_l2(target_l4i, target_l3i, target_l2i).is_None(),
+{
+}
+```
+REASON: If L2 resolution always fails, the page table can never walk past L2 to reach 4K pages, making 4K mappings dead code.
+===PHI_END===
+
+===PHI_START===
+NAME: l2_entry_addr_zero
+TARGET_FN: get_entry_l2
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_l2_entry_addr_zero(pt: PageTable, target_l4i: L4Index, target_l3i: L3Index, target_l2i: L2Index, l3_entry: PageEntry)
+    requires
+        pt.wf(),
+        pt.kernel_l4_end <= target_l4i < 512,
+        0 <= target_l3i < 512,
+        0 <= target_l2i < 512,
+        pt.spec_resolve_mapping_l3(target_l4i, target_l3i) =~= Some(l3_entry),
+        pt.spec_resolve_mapping_l2(target_l4i, target_l3i, target_l2i).is_Some(),
+    ensures
+        pt.spec_resolve_mapping_l2(target_l4i, target_l3i, target_l2i).unwrap().addr == 0,
+{
+}
+```
+REASON: If every resolved L2 entry points to address 0, all L1 tables would alias to the null page, collapsing the entire 4K mapping space.
+===PHI_END===
+
+===PHI_START===
+NAME: l2_some_implies_writable
+TARGET_FN: get_entry_l2
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_l2_some_implies_writable(pt: PageTable, target_l4i: L4Index, target_l3i: L3Index, target_l2i: L2Index, l3_entry: PageEntry)
+    requires
+        pt.wf(),
+        pt.kernel_l4_end <= target_l4i < 512,
+        0 <= target_l3i < 512,
+        0 <= target_l2i < 512,
+        pt.spec_resolve_mapping_l3(target_l4i, target_l3i) =~= Some(l3_entry),
+        pt.spec_resolve_mapping_l2(target_l4i, target_l3i, target_l2i).is_Some(),
+    ensures
+        pt.spec_resolve_mapping_l2(target_l4i, target_l3i, target_l2i).unwrap().perm.write == true,
+{
+}
+```
+REASON: If all resolvable L2 entries are forced writable, read-only page protections at L2 would be impossible, breaking memory safety.
+===PHI_END===
+
+===PHI_START===
+NAME: l2_none_empties_all_4k
+TARGET_FN: get_entry_l2
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_l2_none_empties_all_4k(pt: PageTable, target_l4i: L4Index, target_l3i: L3Index, target_l2i: L2Index, l3_entry: PageEntry, l1i: L1Index)
+    requires
+        pt.wf(),
+        pt.kernel_l4_end <= target_l4i < 512,
+        0 <= target_l3i < 512,
+        0 <= target_l2i < 512,
+        0 <= l1i < 512,
+        pt.spec_resolve_mapping_l3(target_l4i, target_l3i) =~= Some(l3_entry),
+        pt.spec_resolve_mapping_l2(target_l4i, target_l3i, target_l2i).is_None(),
+    ensures
+        l3_entry.addr == 0,
+{
+}
+```
+REASON: If L2 returning None forces the L3 entry address to zero, it conflates absent L2 sub-tables with null L3 pointers, over-constraining reachable states.
+===PHI_END===
+
+===PHI_START===
+NAME: l2_result_equals_l3
+TARGET_FN: get_entry_l2
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_l2_result_equals_l3(pt: PageTable, target_l4i: L4Index, target_l3i: L3Index, target_l2i: L2Index, l3_entry: PageEntry)
+    requires
+        pt.wf(),
+        pt.kernel_l4_end <= target_l4i < 512,
+        0 <= target_l3i < 512,
+        0 <= target_l2i < 512,
+        pt.spec_resolve_mapping_l3(target_l4i, target_l3i) =~= Some(l3_entry),
+        pt.spec_resolve_mapping_l2(target_l4i, target_l3i, target_l2i).is_Some(),
+    ensures
+        pt.spec_resolve_mapping_l2(target_l4i, target_l3i, target_l2i).unwrap() =~= l3_entry,
+{
+}
+```
+REASON: If the L2 resolution always returns the L3 entry itself, the L2 table walk is a no-op and no independent L2-level translation occurs.
+===PHI_END===

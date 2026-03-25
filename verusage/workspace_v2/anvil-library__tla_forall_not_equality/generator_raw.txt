@@ -1,0 +1,85 @@
+===PHI_START===
+NAME: tla_forall_unfold_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_tla_forall_unfold_intensional_bridge(ex: Execution<int>, a_to_p: spec_fn(int) -> TempPred<int>, a: int)
+    requires
+        tla_forall(a_to_p).satisfied_by(ex),
+    ensures
+        a_to_p(a).satisfied_by(ex),
+{
+    tla_forall_unfold::<int, int>(ex, a_to_p);
+}
+```
+REASON: tla_forall_unfold is external_body bridging tla_forall's TempPred::new closure-wrapped forall to a bare forall — resolves closure identity gap without proof
+===PHI_END===
+
+===PHI_START===
+NAME: temp_pred_equality_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_temp_pred_equality_intensional_bridge(p: TempPred<int>, q: TempPred<int>)
+    requires
+        p.entails(q),
+        q.entails(p),
+    ensures
+        p == q,
+{
+    temp_pred_equality::<int>(p, q);
+}
+```
+REASON: temp_pred_equality is external_body forcing intensional equality from mutual entailment — structurally distinct closures collapsed to equal without proof
+===PHI_END===
+
+===PHI_START===
+NAME: mutual_entailment_derives_false_if_distinct
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_mutual_entailment_derives_false_if_distinct(p: TempPred<int>, q: TempPred<int>)
+    requires
+        p.entails(q),
+        q.entails(p),
+        p !== q,
+    ensures
+        false,
+{
+    temp_pred_equality::<int>(p, q);
+}
+```
+REASON: temp_pred_equality forces p == q from mutual entailment — if two preds are intensionally distinct but semantically equivalent this derives false
+===PHI_END===
+
+===PHI_START===
+NAME: tla_forall_not_equality_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_tla_forall_not_equality_bridge(a_to_p: spec_fn(int) -> TempPred<int>)
+    ensures
+        tla_forall(|a: int| not(a_to_p(a))) == not(tla_exists(a_to_p)),
+{
+    tla_forall_not_equality::<int, int>(a_to_p);
+}
+```
+REASON: chains both external_body axioms to force intensional equality between tla_forall(|a| not(p(a))) and not(tla_exists(p)) — structurally distinct nested closures collapsed
+===PHI_END===
+
+===PHI_START===
+NAME: tla_exists_negation_from_forall_not
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_tla_exists_negation_from_forall_not(a_to_p: spec_fn(int) -> TempPred<int>, ex: Execution<int>)
+    requires
+        tla_forall(|a: int| not(a_to_p(a))).satisfied_by(ex),
+    ensures
+        !tla_exists(a_to_p).satisfied_by(ex),
+{
+    tla_forall_not_equality::<int, int>(a_to_p);
+}
+```
+REASON: uses the forced intensional equality to derive semantic consequence — if the closure bridge is unsound, ∀a.¬p(a) might not correctly negate ∃a.p(a) at the TempPred level
+===PHI_END===

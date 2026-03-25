@@ -1,0 +1,83 @@
+===PHI_START===
+NAME: empty_seq_vacuously_true
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_empty_seq_vacuously_true(pred: spec_fn(int) -> bool)
+    ensures
+        forall |obj: int| #[trigger] Seq::<int>::empty().contains(obj) ==> pred(obj),
+{
+    true_pred_on_all_element_equal_to_pred_on_all_index(Seq::<int>::empty(), pred);
+}
+```
+REASON: empty sequence vacuously satisfies any predicate — tests that the biconditional handles the empty case correctly
+===PHI_END===
+
+===PHI_START===
+NAME: index_form_implies_contains_form
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_index_form_implies_contains_form(s: Seq<int>, pred: spec_fn(int) -> bool)
+    requires
+        forall |i: int| 0 <= i < s.len() ==> pred(s[i]),
+    ensures
+        forall |obj: int| #[trigger] s.contains(obj) ==> pred(obj),
+{
+    true_pred_on_all_element_equal_to_pred_on_all_index(s, pred);
+}
+```
+REASON: tests the index-to-contains direction of the biconditional
+===PHI_END===
+
+===PHI_START===
+NAME: contains_form_implies_index_form
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_contains_form_implies_index_form(s: Seq<int>, pred: spec_fn(int) -> bool)
+    requires
+        forall |obj: int| #[trigger] s.contains(obj) ==> pred(obj),
+    ensures
+        forall |i: int| 0 <= i < s.len() ==> pred(s[i]),
+{
+    true_pred_on_all_element_equal_to_pred_on_all_index(s, pred);
+}
+```
+REASON: tests the contains-to-index direction of the biconditional
+===PHI_END===
+
+===PHI_START===
+NAME: singleton_pred_true
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_singleton_pred_true(v: int, pred: spec_fn(int) -> bool)
+    requires
+        pred(v),
+    ensures
+        forall |obj: int| #[trigger] seq![v].contains(obj) ==> pred(obj),
+{
+    true_pred_on_all_element_equal_to_pred_on_all_index(seq![v], pred);
+}
+```
+REASON: singleton with pred true should satisfy the contains form — tests minimal nontrivial case
+===PHI_END===
+
+===PHI_START===
+NAME: negated_pred_false_element_not_in_seq
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_negated_pred_false_element_not_in_seq(s: Seq<int>, pred: spec_fn(int) -> bool, e: int)
+    requires
+        forall |i: int| 0 <= i < s.len() ==> pred(s[i]),
+        !pred(e),
+    ensures
+        !s.contains(e),
+{
+    true_pred_on_all_element_equal_to_pred_on_all_index(s, pred);
+}
+```
+REASON: element failing pred should not be contained — tests contrapositive of the contains-form universal
+===PHI_END===

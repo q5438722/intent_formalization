@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize2pa_mem_valid_unconditional",
+    "type": "logical",
+    "code": "proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body unconditionally ensures MEM_valid(ret) for ANY input \u2014 arbitrary usize values produce \"valid\" physical addresses without proof",
+    "entailed": false,
+    "verus_output": "ization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__get_entry_1g_l3/phi_1_usize2pa_mem_valid_unconditional.rs:1082:9\n     |\n1080 | proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n     |       --------------------------------------------------- at the end of the function body\n1081 |     ensures\n1082 |         MEM_valid(usize2pa(v)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 44 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "disjoint_l4_no_cross_level_check",
+    "type": "logical",
+    "code": "proof fn phi_2_disjoint_l4_no_cross_level_check(pt: PageTable, l4i: L4Index, p: PageMapPtr)\n    requires\n        pt.wf_l4(),\n        pt.wf_l3(),\n        pt.disjoint_l4(),\n        pt.kernel_l4_end <= l4i < 512,\n        pt.l4_table@[pt.cr3].value()[l4i].perm.present,\n        pt.l3_tables@.dom().contains(p),\n    ensures\n        pt.l4_table@[pt.cr3].value()[l4i].addr == p\n        || pt.l4_table@[pt.cr3].value()[l4i].addr != p,\n{\n}",
+    "reason": "disjoint_l4 only checks L4 entries don't alias each other, but never checks that L4 target addresses are disjoint from L2/L1 table addresses \u2014 cross-level aliasing is unconstrained",
+    "entailed": true,
+    "verus_output": "l_check.rs:79:10\n   |\n79 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__get_entry_1g_l3/phi_2_disjoint_l4_no_cross_level_check.rs:88:10\n   |\n88 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 44 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "l4_dom_singleton_cr3",
+    "type": "behavioral",
+    "code": "proof fn phi_3_l4_dom_singleton_cr3(pt: PageTable, p: PageMapPtr)\n    requires\n        pt.wf_l4(),\n        pt.l4_table@.dom().contains(p),\n    ensures\n        p == pt.cr3,\n{\n}",
+    "reason": "wf_l4 constrains l4_table domain to exactly {cr3} \u2014 only a single L4 table exists, meaning PCID-based multi-address-space sharing at the L4 level is impossible under this spec",
+    "entailed": true,
+    "verus_output": "4_dom_singleton_cr3.rs:79:10\n   |\n79 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__get_entry_1g_l3/phi_3_l4_dom_singleton_cr3.rs:88:10\n   |\n88 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 44 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "tlb_submap_no_staleness_check",
+    "type": "behavioral",
+    "code": "proof fn phi_4_tlb_submap_no_staleness_check(pt: PageTable, cpu: CpuId, va: VAddr)\n    requires\n        pt.tlb_wf(),\n        pt.tlb_submap_of_mapping(),\n        0 <= cpu < NUM_CPUS,\n        pt.tlb_mapping_4k@[cpu as int].dom().contains(va),\n    ensures\n        pt.mapping_4k@.dom().contains(va),\n        pt.tlb_mapping_4k@[cpu as int][va] == pt.mapping_4k@[va],\n{\n}",
+    "reason": "tlb_submap_of_mapping ensures TLB entries are always consistent submaps of current mappings \u2014 but real TLBs can hold stale entries after mapping changes until explicit flush, so this overly strong invariant may mask TLB shootdown bugs",
+    "entailed": false,
+    "verus_output": "_4_tlb_submap_no_staleness_check.rs:1088:9\n     |\n1080 | proof fn phi_4_tlb_submap_no_staleness_check(pt: PageTable, cpu: CpuId, va: VAddr)\n     |       ---------------------------------------------------------------------------- at the end of the function body\n...\n1088 |         pt.tlb_mapping_4k@[cpu as int][va] == pt.mapping_4k@[va],\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 44 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "zero_entry_is_empty",
+    "type": "behavioral",
+    "code": "proof fn phi_5_zero_entry_is_empty()\n    ensures\n        usize2page_entry(0usize).is_empty(),\n{\n}",
+    "reason": "Relies on two independent external_body claims (usize2page_entry special-casing v==0 and usize2pa producing addr==0 for v==0) agreeing \u2014 if either is wrong the combined property is unsound",
+    "entailed": false,
+    "verus_output": "home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__get_entry_1g_l3/phi_5_zero_entry_is_empty.rs:1082:9\n     |\n1080 | proof fn phi_5_zero_entry_is_empty()\n     |       ------------------------------ at the end of the function body\n1081 |     ensures\n1082 |         usize2page_entry(0usize).is_empty(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 44 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

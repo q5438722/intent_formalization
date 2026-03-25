@@ -1,0 +1,37 @@
+[
+  {
+    "name": "aligned_zero_size",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "code": "proof fn phi_1_aligned_zero_size()\n    ensures\n        aligned(42, 0),\n{\n}",
+    "reason": "aligned with size=0 should not be satisfiable (division by zero), indicating a missing precondition"
+  },
+  {
+    "name": "upper_vaddr_no_progress",
+    "target_fn": "upper_vaddr",
+    "type": "behavioral",
+    "code": "proof fn phi_2_upper_vaddr_no_progress(arch: Arch, layer: nat, base: nat)\n    requires\n        arch.inv(),\n        layer < arch.layers.len(),\n    ensures\n        arch.upper_vaddr(layer, base) <= base,\n{\n}",
+    "reason": "upper_vaddr should always exceed base under inv(), otherwise the layer maps a zero-size address range"
+  },
+  {
+    "name": "entry_base_non_monotonic",
+    "target_fn": "entry_base",
+    "type": "logical",
+    "code": "proof fn phi_3_entry_base_non_monotonic(arch: Arch, layer: nat, base: nat, idx: nat)\n    requires\n        arch.inv(),\n        layer < arch.layers.len(),\n        idx < arch.num_entries(layer),\n    ensures\n        arch.entry_base(layer, base, idx + 1) <= arch.entry_base(layer, base, idx),\n{\n}",
+    "reason": "entry_base must be strictly monotonic in idx; non-monotonicity would cause overlapping page table entries"
+  },
+  {
+    "name": "inv_allows_empty_arch",
+    "target_fn": "inv",
+    "type": "boundary",
+    "code": "proof fn phi_4_inv_allows_empty_arch(arch: Arch)\n    requires\n        arch.inv(),\n    ensures\n        arch.layers.len() == 0,\n{\n}",
+    "reason": "inv() should require at least one layer; an empty architecture cannot perform any address translation"
+  },
+  {
+    "name": "deeper_layer_larger_entries",
+    "target_fn": "entry_size_is_next_layer_size",
+    "type": "logical",
+    "code": "proof fn phi_5_deeper_layer_larger_entries(arch: Arch, i: nat)\n    requires\n        arch.inv(),\n        i + 1 < arch.layers.len(),\n    ensures\n        arch.entry_size((i + 1) as nat) > arch.entry_size(i),\n{\n}",
+    "reason": "in a valid page table hierarchy, deeper layers must have smaller-or-equal entry sizes; larger would invert the address decomposition"
+  }
+]

@@ -1,0 +1,52 @@
+[
+  {
+    "name": "inv_allows_empty_arch",
+    "target_fn": "Arch::inv",
+    "type": "behavioral",
+    "reason": "An architecture with zero layers is degenerate and should not satisfy the well-formedness invariant",
+    "entailed": true,
+    "verified": 11,
+    "errors": 0,
+    "output_tail": "verification results:: 11 verified, 0 errors\n\n"
+  },
+  {
+    "name": "entry_base_ignores_index",
+    "target_fn": "Arch::entry_base",
+    "type": "boundary",
+    "reason": "If entry_base returns the same value regardless of index, all entries would map to the same address causing total overlap",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": "    ------------------------------------------------------------------------------ at the end of the function body\n...\n289 |         arch.entry_base(layer, base, idx) == base,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "inv_page_size_mismatch",
+    "target_fn": "Directory::pages_match_entry_size",
+    "type": "logical",
+    "reason": "If page frame sizes are allowed to differ from the layer's entry size under inv, address translation would map incorrect regions",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": "-------------------------------------------- at the end of the function body\n...\n288 |         dir.entries[i as int]->Page_0.frame.size != dir.entry_size(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "inv_entry_size_zero",
+    "target_fn": "Arch::entry_size",
+    "type": "boundary",
+    "reason": "Zero-sized entries would collapse the entire address space and break entry_base monotonicity and page mapping",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": "4_inv_entry_size_zero(arch: Arch, layer: nat)\n    |       ---------------------------------------------------- at the end of the function body\n...\n287 |         arch.entry_size(layer) == 0,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "subdir_base_equals_parent_base",
+    "target_fn": "Directory::directories_are_in_next_layer",
+    "type": "logical",
+    "reason": "If non-zero-index subdirectories share the parent's base_vaddr, their mapped regions would overlap with index-0's region",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": "-------------------------------------- at the end of the function body\n...\n289 |         dir.entries[i as int]->Directory_0.base_vaddr == dir.base_vaddr,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

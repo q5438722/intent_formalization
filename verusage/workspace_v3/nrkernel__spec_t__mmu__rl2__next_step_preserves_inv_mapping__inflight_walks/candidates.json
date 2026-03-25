@@ -1,0 +1,37 @@
+[
+  {
+    "name": "align_exceeds_input",
+    "target_fn": "align_to_usize",
+    "type": "behavioral",
+    "code": "proof fn phi_1_align_exceeds_input(a: usize, b: usize)\n    requires\n        b > 0,\n        a >= b,\n    ensures\n        align_to_usize(a, b) > a,\n{\n}",
+    "reason": "align_to_usize rounds down, so the result must never exceed the input"
+  },
+  {
+    "name": "align_result_not_aligned",
+    "target_fn": "align_to_usize",
+    "type": "logical",
+    "code": "proof fn phi_2_align_result_not_aligned(a: usize, b: usize)\n    requires\n        b > 0,\n    ensures\n        !aligned(align_to_usize(a, b) as nat, b as nat),\n{\n}",
+    "reason": "The whole purpose of align_to_usize is to produce an aligned address; if the result is not aligned the function is broken"
+  },
+  {
+    "name": "aligned_successor_also_aligned",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "code": "proof fn phi_3_aligned_successor_also_aligned(addr: nat, size: nat)\n    requires\n        size > 1,\n        aligned(addr, size),\n    ensures\n        aligned(addr + 1, size),\n{\n}",
+    "reason": "If addr is aligned to size>1 then addr+1 cannot also be aligned, so this being provable would mean aligned is trivially true"
+  },
+  {
+    "name": "align_drops_too_much",
+    "target_fn": "align_to_usize",
+    "type": "boundary",
+    "code": "proof fn phi_4_align_drops_too_much(a: usize, b: usize)\n    requires\n        b > 0,\n        a >= b,\n    ensures\n        a - align_to_usize(a, b) >= b,\n{\n}",
+    "reason": "The rounding loss must be strictly less than b; losing b or more means we skipped an entire alignment boundary"
+  },
+  {
+    "name": "inflight_walks_preconditions_vacuous",
+    "target_fn": "next_step_preserves_inv_mapping__inflight_walks",
+    "type": "logical",
+    "code": "proof fn phi_5_inflight_walks_preconditions_vacuous(pre: State, post: State, c: Constants, step: Step, lbl: Lbl)\n    requires\n        pre.wf(c),\n        pre.happy,\n        post.happy,\n        post.polarity is Mapping,\n        pre.inv_sbuf_facts(c),\n        post.inv_sbuf_facts(c),\n        pre.inv_mapping__valid_is_not_in_sbuf(c),\n        pre.inv_mapping__inflight_walks(c),\n        next_step(pre, post, c, step, lbl),\n    ensures\n        false,\n{\n}",
+    "reason": "If the combined preconditions are unsatisfiable the invariant preservation theorem is vacuously true and proves nothing"
+  }
+]

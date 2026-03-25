@@ -1,0 +1,116 @@
+Looking at the `remove_l2_entry` spec, I'll generate 5 candidate undesirable properties targeting its requires/ensures.
+
+===PHI_START===
+NAME: closure_loses_l2_table_page
+TARGET_FN: remove_l2_entry
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_closure_loses_l2_table_page(
+    old_closure: Set<PagePtr>,
+    new_closure: Set<PagePtr>,
+    target_l1_p: PageMapPtr,
+    target_l2_p: PageMapPtr,
+)
+    requires
+        target_l1_p != target_l2_p,
+        old_closure.contains(target_l1_p),
+        old_closure.contains(target_l2_p),
+        new_closure =~= old_closure.remove(target_l1_p),
+    ensures
+        !new_closure.contains(target_l2_p),
+{
+}
+```
+REASON: Removing an L2 entry should only evict the L1 page from the closure, not the L2 table page itself
+===PHI_END===
+
+===PHI_START===
+NAME: l1_page_still_in_closure
+TARGET_FN: remove_l2_entry
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_l1_page_still_in_closure(
+    old_closure: Set<PagePtr>,
+    new_closure: Set<PagePtr>,
+    target_l1_p: PageMapPtr,
+)
+    requires
+        old_closure.contains(target_l1_p),
+        new_closure =~= old_closure.remove(target_l1_p),
+    ensures
+        new_closure.contains(target_l1_p),
+{
+}
+```
+REASON: After removal the L1 page must not remain in the page closure or the page table leaks a page frame
+===PHI_END===
+
+===PHI_START===
+NAME: mapping_4k_gains_entry
+TARGET_FN: remove_l2_entry
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_mapping_4k_gains_entry(
+    old_mapping_4k: Map<VAddr, MapEntry>,
+    new_mapping_4k: Map<VAddr, MapEntry>,
+    va: VAddr,
+)
+    requires
+        new_mapping_4k =~= old_mapping_4k,
+        !old_mapping_4k.dom().contains(va),
+    ensures
+        new_mapping_4k.dom().contains(va),
+{
+}
+```
+REASON: Removing an L2 entry must never introduce a new 4K mapping that did not previously exist
+===PHI_END===
+
+===PHI_START===
+NAME: mapping_2m_loses_entry
+TARGET_FN: remove_l2_entry
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_mapping_2m_loses_entry(
+    old_mapping_2m: Map<VAddr, MapEntry>,
+    new_mapping_2m: Map<VAddr, MapEntry>,
+    va: VAddr,
+)
+    requires
+        new_mapping_2m == old_mapping_2m,
+        old_mapping_2m.dom().contains(va),
+    ensures
+        !new_mapping_2m.dom().contains(va),
+{
+}
+```
+REASON: Removing an L2-to-L1 link must not destroy any existing 2M large-page mappings
+===PHI_END===
+
+===PHI_START===
+NAME: closure_gains_new_page
+TARGET_FN: remove_l2_entry
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_closure_gains_new_page(
+    old_closure: Set<PagePtr>,
+    new_closure: Set<PagePtr>,
+    target_l1_p: PageMapPtr,
+    new_p: PageMapPtr,
+)
+    requires
+        new_closure =~= old_closure.remove(target_l1_p),
+        !old_closure.contains(new_p),
+        new_p != target_l1_p,
+    ensures
+        new_closure.contains(new_p),
+{
+}
+```
+REASON: A removal operation must never grow the page closure with pages that were not previously tracked
+===PHI_END===

@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "owned_endpoints_shared_across_containers",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "The ensures merely restates the preconditions, but the key insight is that the preconditions are simultaneously satisfiable \u2014 neither `container_perms_wf` nor `container_tree_wf` constrains `owned_endpoints` at all. The code comments explicitly describe unique ownership intent (\"each endpoint can ONLY be referenced by threads in the subtree\"), yet no spec enforces endpoint disjointness across containers."
+  },
+  {
+    "phi": "owned_threads_not_in_subtree_containers",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "Same pattern as owned_endpoints \u2014 `owned_threads` is a `Ghost<Set<ThreadPtr>>` field with zero constraints in `container_perms_wf` or `container_tree_wf`. Threads logically belong to exactly one container, but the spec permits the same thread in multiple containers' owned_threads sets simultaneously."
+  },
+  {
+    "phi": "scheduler_contains_non_owned_thread",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "The spec never relates `scheduler` contents to `owned_threads`. A container's scheduler can contain threads not in its `owned_threads` set, which would break the containment model \u2014 only threads owned by a container (or its subtree) should be schedulable by that container."
+  },
+  {
+    "phi": "children_cross_container_overlap",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is a desirable property correctly enforced by the spec. `container_childern_parent_wf` ensures that if `child` is in `c1`'s children, then `child.parent == c1`. If `child` were also in `c2`'s children, then `child.parent == c2`, contradicting `c1 != c2`. The spec correctly prevents a child from appearing in multiple parents' children lists."
+  }
+]

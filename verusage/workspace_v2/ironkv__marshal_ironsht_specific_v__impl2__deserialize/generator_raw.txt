@@ -1,0 +1,88 @@
+===PHI_START===
+NAME: from_vec_to_vec_not_roundtrip
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_from_vec_to_vec_not_roundtrip(v1: Vec<CKeyKV>, v2: Vec<CKeyKV>)
+    requires
+        spec_sorted_keys(v1),
+        spec_sorted_keys(v2),
+        v1@ != v2@,
+    ensures
+        CKeyHashMap::spec_from_vec(v1) != CKeyHashMap::spec_from_vec(v2),
+{
+    CKeyHashMap::lemma_from_vec(v1);
+    CKeyHashMap::lemma_from_vec(v2);
+}
+```
+REASON: `lemma_from_vec` only guarantees `from_vec(v).to_vec() == v` for sorted inputs but never states injectivity — two distinct sorted vectors could map to the same CKeyHashMap, or equivalently the roundtrip axiom could be vacuously true if `spec_from_vec` is unconstrained
+===PHI_END===
+
+===PHI_START===
+NAME: unsorted_from_vec_unconstrained
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_unsorted_from_vec_unconstrained(v: Vec<CKeyKV>)
+    requires
+        !spec_sorted_keys(v),
+    ensures
+        CKeyHashMap::spec_from_vec(v).spec_to_vec()@ == Seq::<CKeyKV>::empty(),
+{
+}
+```
+REASON: `lemma_from_vec` only constrains `from_vec(v).to_vec()` when `spec_sorted_keys(v)` holds — for unsorted input the result is completely uninterpreted, so the SMT solver could derive any property about unsorted from_vec results
+===PHI_END===
+
+===PHI_START===
+NAME: ckeyhashmap_is_marshalable_but_to_vec_empty
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_ckeyhashmap_is_marshalable_but_to_vec_empty(h: CKeyHashMap)
+    requires
+        h.to_vec()@.len() == 0,
+    ensures
+        h.is_marshalable(),
+{
+    reveal(ckeyhashmap_max_serialized_size);
+}
+```
+REASON: An empty `to_vec()` is trivially sorted, trivially marshalable, and fits within the size limit — so any CKeyHashMap with an empty key-vector is marshalable regardless of what logical state the hashmap actually holds, since `spec_to_vec` is uninterpreted
+===PHI_END===
+
+===PHI_START===
+NAME: sorted_keys_empty_trivially_true
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_sorted_keys_empty_trivially_true()
+    ensures
+        spec_sorted_keys(Vec::<CKeyKV>::new()),
+{
+}
+```
+REASON: `spec_sorted_keys` is vacuously true for empty and single-element vectors — the `forall` quantifier over adjacent pairs has no witnesses, so empty vectors pass the sorted check without ever validating any ordering property
+===PHI_END===
+
+===PHI_START===
+NAME: deserialize_external_body_no_injectivity
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_deserialize_external_body_no_injectivity(d1: Vec<u8>, d2: Vec<u8>, s: usize)
+    requires
+        d1@.subrange(s as int, d1@.len() as int) != d2@.subrange(s as int, d2@.len() as int),
+        d1@.len() >= s,
+        d2@.len() >= s,
+    ensures
+        ({
+            let r1 = u64::deserialize(&d1, s);
+            let r2 = u64::deserialize(&d2, s);
+            r1 is Some && r2 is Some ==> r1.unwrap().0 != r2.unwrap().0
+        }),
+{
+}
+```
+REASON: `deserialize` is `external_body` with ensures that only relate the output to the input subrange — but there is no axiom that `ghost_serialize` is injective, so two different byte sequences could deserialize to the same value, or two identical values could have different serializations
+===PHI_END===

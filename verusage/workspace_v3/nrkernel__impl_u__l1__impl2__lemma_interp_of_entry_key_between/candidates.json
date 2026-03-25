@@ -1,0 +1,37 @@
+[
+  {
+    "name": "arch_inv_unsatisfiable",
+    "target_fn": "Arch::inv",
+    "type": "logical",
+    "code": "proof fn phi_1_arch_inv_unsatisfiable(arch: Arch)\n    requires\n        arch.inv(),\n    ensures\n        false,\n{\n}",
+    "reason": "If Arch::inv is unsatisfiable, every spec depending on it is vacuously true and provides no guarantees"
+  },
+  {
+    "name": "entry_base_equals_next_entry_base",
+    "target_fn": "Arch::entry_base",
+    "type": "behavioral",
+    "code": "proof fn phi_2_entry_base_equals_next_entry_base(arch: Arch, layer: nat, base: nat, idx: nat)\n    requires\n        arch.inv(),\n        layer < arch.layers.len(),\n        idx < arch.num_entries(layer),\n    ensures\n        arch.entry_base(layer, base, idx) == arch.next_entry_base(layer, base, idx),\n{\n}",
+    "reason": "If entry_base equals next_entry_base, entries have zero width and address regions collapse to empty intervals"
+  },
+  {
+    "name": "arch_inv_forces_single_layer",
+    "target_fn": "entry_size_is_next_layer_size",
+    "type": "boundary",
+    "code": "proof fn phi_3_arch_inv_forces_single_layer(arch: Arch)\n    requires\n        arch.inv(),\n        arch.layers.len() > 1,\n    ensures\n        false,\n{\n}",
+    "reason": "If multi-layer architectures are impossible under inv, the hierarchical page table structure is unmodelable"
+  },
+  {
+    "name": "directory_inv_forbids_subdirectories",
+    "target_fn": "Directory::directories_are_in_next_layer",
+    "type": "behavioral",
+    "code": "proof fn phi_4_directory_inv_forbids_subdirectories(dir: Directory)\n    requires\n        dir.inv(),\n        dir.entries.len() > 0,\n    ensures\n        forall|i: nat| i < dir.entries.len() ==> !(#[trigger] dir.entries[i as int] is Directory),\n{\n}",
+    "reason": "If inv forbids all subdirectories, the page table cannot represent a multi-level hierarchy"
+  },
+  {
+    "name": "well_formed_forces_single_entry",
+    "target_fn": "Directory::well_formed",
+    "type": "boundary",
+    "code": "proof fn phi_5_well_formed_forces_single_entry(dir: Directory)\n    requires\n        dir.well_formed(),\n    ensures\n        dir.num_entries() <= 1,\n{\n}",
+    "reason": "If well_formed forces at most one entry, directories cannot map the full address space with 512-entry page tables"
+  }
+]

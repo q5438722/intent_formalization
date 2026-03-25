@@ -1,0 +1,47 @@
+[
+  {
+    "name": "two_mul_with_bit0_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_two_mul_with_bit0_external_body(x1: int, y1: int)\n    requires\n        y1 != 0,\n    ensures\n        (2 * x1) / (2 * y1) == x1 / y1,\n{\n    two_mul_with_bit0(x1, y1);\n}",
+    "reason": "`two_mul_with_bit0` is `external_body` \u2014 the integer division scaling property `(2*x)/(2*y) == x/y` is trusted without proof; for negative values, Verus integer division semantics (Euclidean vs truncation) could make this subtly wrong",
+    "entailed": true,
+    "verus_output": "verification results:: 19 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "two_mul_with_bit1_external_body",
+    "type": "logical",
+    "code": "proof fn phi_2_two_mul_with_bit1_external_body(x1: int, y1: int)\n    requires\n        y1 != 0,\n    ensures\n        (2 * x1 + 1) / (2 * y1) == x1 / y1,\n{\n    two_mul_with_bit1(x1, y1);\n}",
+    "reason": "`two_mul_with_bit1` is `external_body` \u2014 the odd-numerator division property `(2*x+1)/(2*y) == x/y` is trusted without proof; this is the key lemma enabling the main theorem and any error here propagates to `bitand_with_mask_gives_rounding`",
+    "entailed": true,
+    "verus_output": "verification results:: 19 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "power_of_two_rounddown",
+    "type": "behavioral",
+    "code": "proof fn phi_3_power_of_two_rounddown(x: usize, y: usize)\n    requires\n        y != 0,\n        y & sub(y, 1) == 0,\n    ensures\n        x & !sub(y, 1) == (x / y) * y,\n{\n    bitand_with_mask_gives_rounding(x, y);\n}",
+    "reason": "The main theorem asserts bitwise AND with mask equals arithmetic round-down for all power-of-two `y` \u2014 this depends on both external_body lemmas being correct; if either is wrong, the bitwise-arithmetic equivalence is unsound",
+    "entailed": true,
+    "verus_output": "verification results:: 19 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "two_mul_bit1_negative_y",
+    "type": "boundary",
+    "code": "proof fn phi_4_two_mul_bit1_negative_y(x1: int)\n    requires\n        true,\n    ensures\n        (2 * x1 + 1) / (2 * (-1)) == x1 / (-1),\n{\n    two_mul_with_bit1(x1, -1);\n}",
+    "reason": "`two_mul_with_bit1` has no constraint that `y1 > 0` \u2014 for negative `y1`, Verus Euclidean division semantics differ from truncation division, and the property may not hold",
+    "entailed": true,
+    "verus_output": "verification results:: 19 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "two_mul_bit0_negative_both",
+    "type": "boundary",
+    "code": "proof fn phi_5_two_mul_bit0_negative_both(x1: int, y1: int)\n    requires\n        y1 < 0,\n        x1 < 0,\n    ensures\n        (2 * x1) / (2 * y1) == x1 / y1,\n{\n    two_mul_with_bit0(x1, y1);\n}",
+    "reason": "`two_mul_with_bit0` is called with negative arguments \u2014 Verus uses Euclidean division where `(-4)/(-2)` may differ from truncation division; the axiom is trusted for all non-zero `y1` including negatives",
+    "entailed": true,
+    "verus_output": "verification results:: 19 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

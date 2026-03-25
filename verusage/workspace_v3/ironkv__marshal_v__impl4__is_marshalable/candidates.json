@@ -1,0 +1,37 @@
+[
+  {
+    "name": "empty_vec_not_marshalable",
+    "target_fn": "_is_marshalable",
+    "type": "behavioral",
+    "code": "proof fn phi_1_empty_vec_not_marshalable(v: Vec<u64>)\n    requires\n        v@.len() == 0,\n    ensures\n        !v.is_marshalable(),\n{\n}",
+    "reason": "An empty vector should trivially be marshalable; if the spec says otherwise, element iteration or base-case logic is wrong"
+  },
+  {
+    "name": "non_marshalable_element_ignored",
+    "target_fn": "_is_marshalable",
+    "type": "behavioral",
+    "code": "proof fn phi_2_non_marshalable_element_ignored(v: Vec<usize>, i: int)\n    requires\n        0 <= i < v@.len() as int,\n        !v@[i].is_marshalable(),\n    ensures\n        v.is_marshalable(),\n{\n}",
+    "reason": "A vector containing a non-marshalable element must not be marshalable; if entailed, the per-element check is vacuous"
+  },
+  {
+    "name": "marshalable_serialization_exceeds_max",
+    "target_fn": "_is_marshalable",
+    "type": "logical",
+    "code": "proof fn phi_3_marshalable_serialization_exceeds_max(v: Vec<u64>)\n    requires\n        v.is_marshalable(),\n    ensures\n        v.ghost_serialize().len() > usize::MAX,\n{\n}",
+    "reason": "A marshalable vector's serialized size must fit in usize::MAX; exceeding it contradicts the size-bound invariant"
+  },
+  {
+    "name": "huge_vec_always_marshalable",
+    "target_fn": "_is_marshalable",
+    "type": "boundary",
+    "code": "proof fn phi_4_huge_vec_always_marshalable(v: Vec<u64>)\n    requires\n        v@.len() as int > usize::MAX / 8,\n    ensures\n        v.is_marshalable(),\n{\n}",
+    "reason": "A Vec<u64> with length exceeding usize::MAX/8 would serialize to more than usize::MAX bytes; being marshalable would mean overflow is undetected"
+  },
+  {
+    "name": "marshalable_implies_element_not_marshalable",
+    "target_fn": "_is_marshalable",
+    "type": "logical",
+    "code": "proof fn phi_5_marshalable_implies_element_not_marshalable(v: Vec<usize>, i: int)\n    requires\n        v.is_marshalable(),\n        0 <= i < v@.len() as int,\n    ensures\n        !v@[i].is_marshalable(),\n{\n}",
+    "reason": "If a vector is marshalable then every element must individually be marshalable; the negation would indicate the forall quantifier in the spec is inverted"
+  }
+]

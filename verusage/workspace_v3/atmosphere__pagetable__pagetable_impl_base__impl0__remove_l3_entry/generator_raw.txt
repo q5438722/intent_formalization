@@ -1,0 +1,172 @@
+===PHI_START===
+NAME: target_is_cr3
+TARGET_FN: remove_l3_entry
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_target_is_cr3(
+    pt: PageTable,
+    target_l4i: L4Index,
+    target_l3i: L3Index,
+    target_l3_p: PageMapPtr,
+    target_l2_p: PageMapPtr,
+)
+    requires
+        pt.wf(),
+        pt.kernel_l4_end <= target_l4i < 512,
+        0 <= target_l3i < 512,
+        pt.spec_resolve_mapping_l4(target_l4i).is_Some(),
+        pt.spec_resolve_mapping_l4(target_l4i).get_Some_0().addr == target_l3_p,
+        pt.spec_resolve_mapping_l3(target_l4i, target_l3i).is_Some(),
+        pt.spec_resolve_mapping_1g_l3(target_l4i, target_l3i).is_None(),
+        pt.spec_resolve_mapping_l3(target_l4i, target_l3i).unwrap().addr == target_l2_p,
+        forall|i: L2Index| #![auto] 0 <= i < 512 ==> pt.spec_resolve_mapping_l2(target_l4i, target_l3i, i).is_None(),
+        forall|i: L2Index| #![auto] 0 <= i < 512 ==> pt.spec_resolve_mapping_2m_l2(target_l4i, target_l3i, i).is_None(),
+    ensures
+        target_l2_p == pt.cr3,
+{
+}
+```
+REASON: If the L2 page being removed could be the root page table pointer, removing it would corrupt the entire page table structure
+===PHI_END===
+
+===PHI_START===
+NAME: l3_ptr_equals_l2_ptr
+TARGET_FN: remove_l3_entry
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_l3_ptr_equals_l2_ptr(
+    pt: PageTable,
+    target_l4i: L4Index,
+    target_l3i: L3Index,
+    target_l3_p: PageMapPtr,
+    target_l2_p: PageMapPtr,
+)
+    requires
+        pt.wf(),
+        pt.kernel_l4_end <= target_l4i < 512,
+        0 <= target_l3i < 512,
+        pt.spec_resolve_mapping_l4(target_l4i).is_Some(),
+        pt.spec_resolve_mapping_l4(target_l4i).get_Some_0().addr == target_l3_p,
+        pt.spec_resolve_mapping_l3(target_l4i, target_l3i).is_Some(),
+        pt.spec_resolve_mapping_1g_l3(target_l4i, target_l3i).is_None(),
+        pt.spec_resolve_mapping_l3(target_l4i, target_l3i).unwrap().addr == target_l2_p,
+        forall|i: L2Index| #![auto] 0 <= i < 512 ==> pt.spec_resolve_mapping_l2(target_l4i, target_l3i, i).is_None(),
+        forall|i: L2Index| #![auto] 0 <= i < 512 ==> pt.spec_resolve_mapping_2m_l2(target_l4i, target_l3i, i).is_None(),
+    ensures
+        target_l3_p == target_l2_p,
+{
+}
+```
+REASON: If the L3 and L2 table pointers could alias, writing the zero entry into the L3 table would corrupt the L2 table being returned
+===PHI_END===
+
+===PHI_START===
+NAME: cr3_changes_after_remove
+TARGET_FN: remove_l3_entry
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_cr3_changes_after_remove(
+    old_pt: PageTable,
+    new_pt: PageTable,
+    target_l4i: L4Index,
+    target_l3i: L3Index,
+    target_l3_p: PageMapPtr,
+    target_l2_p: PageMapPtr,
+)
+    requires
+        old_pt.wf(),
+        old_pt.kernel_l4_end <= target_l4i < 512,
+        0 <= target_l3i < 512,
+        old_pt.spec_resolve_mapping_l4(target_l4i).is_Some(),
+        old_pt.spec_resolve_mapping_l4(target_l4i).get_Some_0().addr == target_l3_p,
+        old_pt.spec_resolve_mapping_l3(target_l4i, target_l3i).is_Some(),
+        old_pt.spec_resolve_mapping_1g_l3(target_l4i, target_l3i).is_None(),
+        old_pt.spec_resolve_mapping_l3(target_l4i, target_l3i).unwrap().addr == target_l2_p,
+        new_pt.wf(),
+        new_pt.kernel_l4_end == old_pt.kernel_l4_end,
+        new_pt.page_closure() =~= old_pt.page_closure().remove(target_l2_p),
+        new_pt.mapping_4k() =~= old_pt.mapping_4k(),
+        new_pt.mapping_2m() == old_pt.mapping_2m(),
+        new_pt.mapping_1g() =~= old_pt.mapping_1g(),
+        new_pt.kernel_entries =~= old_pt.kernel_entries,
+    ensures
+        new_pt.cr3 != old_pt.cr3,
+{
+}
+```
+REASON: If the root page table pointer changes during an L3 entry removal, the entire address space would silently switch to a different page table
+===PHI_END===
+
+===PHI_START===
+NAME: l3_still_resolves_after_remove
+TARGET_FN: remove_l3_entry
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_l3_still_resolves_after_remove(
+    old_pt: PageTable,
+    new_pt: PageTable,
+    target_l4i: L4Index,
+    target_l3i: L3Index,
+    target_l3_p: PageMapPtr,
+    target_l2_p: PageMapPtr,
+)
+    requires
+        old_pt.wf(),
+        old_pt.kernel_l4_end <= target_l4i < 512,
+        0 <= target_l3i < 512,
+        old_pt.spec_resolve_mapping_l4(target_l4i).is_Some(),
+        old_pt.spec_resolve_mapping_l4(target_l4i).get_Some_0().addr == target_l3_p,
+        old_pt.spec_resolve_mapping_l3(target_l4i, target_l3i).is_Some(),
+        old_pt.spec_resolve_mapping_1g_l3(target_l4i, target_l3i).is_None(),
+        old_pt.spec_resolve_mapping_l3(target_l4i, target_l3i).unwrap().addr == target_l2_p,
+        forall|i: L2Index| #![auto] 0 <= i < 512 ==> old_pt.spec_resolve_mapping_l2(target_l4i, target_l3i, i).is_None(),
+        forall|i: L2Index| #![auto] 0 <= i < 512 ==> old_pt.spec_resolve_mapping_2m_l2(target_l4i, target_l3i, i).is_None(),
+        new_pt.wf(),
+        new_pt.kernel_l4_end == old_pt.kernel_l4_end,
+        new_pt.page_closure() =~= old_pt.page_closure().remove(target_l2_p),
+        new_pt.mapping_4k() =~= old_pt.mapping_4k(),
+        new_pt.mapping_2m() == old_pt.mapping_2m(),
+        new_pt.mapping_1g() =~= old_pt.mapping_1g(),
+    ensures
+        new_pt.spec_resolve_mapping_l3(target_l4i, target_l3i).is_Some(),
+{
+}
+```
+REASON: If the L3 entry still resolves after removal, the entry was not actually cleared and a dangling reference to the freed L2 table remains
+===PHI_END===
+
+===PHI_START===
+NAME: target_not_in_old_closure
+TARGET_FN: remove_l3_entry
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_target_not_in_old_closure(
+    pt: PageTable,
+    target_l4i: L4Index,
+    target_l3i: L3Index,
+    target_l3_p: PageMapPtr,
+    target_l2_p: PageMapPtr,
+)
+    requires
+        pt.wf(),
+        pt.kernel_l4_end <= target_l4i < 512,
+        0 <= target_l3i < 512,
+        pt.spec_resolve_mapping_l4(target_l4i).is_Some(),
+        pt.spec_resolve_mapping_l4(target_l4i).get_Some_0().addr == target_l3_p,
+        pt.spec_resolve_mapping_l3(target_l4i, target_l3i).is_Some(),
+        pt.spec_resolve_mapping_1g_l3(target_l4i, target_l3i).is_None(),
+        pt.spec_resolve_mapping_l3(target_l4i, target_l3i).unwrap().addr == target_l2_p,
+        forall|i: L2Index| #![auto] 0 <= i < 512 ==> pt.spec_resolve_mapping_l2(target_l4i, target_l3i, i).is_None(),
+        forall|i: L2Index| #![auto] 0 <= i < 512 ==> pt.spec_resolve_mapping_2m_l2(target_l4i, target_l3i, i).is_None(),
+    ensures
+        !pt.page_closure().contains(target_l2_p),
+{
+}
+```
+REASON: If target_l2_p is not in the old page closure, the postcondition's set-remove is a no-op and no page is actually reclaimed
+===PHI_END===

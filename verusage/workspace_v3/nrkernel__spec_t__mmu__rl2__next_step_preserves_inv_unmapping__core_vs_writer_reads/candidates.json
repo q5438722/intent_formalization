@@ -1,0 +1,37 @@
+[
+  {
+    "name": "align_exceeds_input",
+    "target_fn": "align_to_usize",
+    "type": "behavioral",
+    "code": "proof fn phi_1_align_exceeds_input(a: usize, b: usize)\n    requires\n        b > 0,\n    ensures\n        align_to_usize(a, b) > a,\n{\n}",
+    "reason": "Aligning down should never produce a value greater than the original input"
+  },
+  {
+    "name": "align_not_idempotent",
+    "target_fn": "align_to_usize",
+    "type": "boundary",
+    "code": "proof fn phi_2_align_not_idempotent(a: usize, b: usize)\n    requires\n        b > 0,\n        a % b == 0,\n    ensures\n        align_to_usize(a, b) != a,\n{\n}",
+    "reason": "Aligning an already-aligned value should be the identity; changing it would be unsound"
+  },
+  {
+    "name": "align_result_not_aligned",
+    "target_fn": "align_to_usize",
+    "type": "logical",
+    "code": "proof fn phi_3_align_result_not_aligned(a: usize, b: usize)\n    requires\n        b > 0,\n    ensures\n        align_to_usize(a, b) % b != 0,\n{\n}",
+    "reason": "The whole purpose of align_to_usize is to produce a b-aligned result; failing that breaks all downstream alignment invariants"
+  },
+  {
+    "name": "zero_not_aligned",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "code": "proof fn phi_4_zero_not_aligned(size: nat)\n    requires\n        size > 0,\n    ensures\n        !aligned(0 as nat, size),\n{\n}",
+    "reason": "Zero is divisible by every nonzero number, so aligned(0, size) must be true for all size > 0"
+  },
+  {
+    "name": "aligned_disagrees_with_align",
+    "target_fn": "aligned",
+    "type": "logical",
+    "code": "proof fn phi_5_aligned_disagrees_with_align(addr: usize, size: usize)\n    requires\n        size > 0,\n        aligned(addr as nat, size as nat),\n    ensures\n        align_to_usize(addr, size) != addr,\n{\n}",
+    "reason": "If aligned says addr is aligned then align_to_usize must be the identity on it; disagreement means the two specs are inconsistent"
+  }
+]

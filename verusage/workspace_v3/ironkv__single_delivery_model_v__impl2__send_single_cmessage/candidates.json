@@ -1,0 +1,37 @@
+[
+  {
+    "name": "payload_differs_from_input",
+    "target_fn": "send_single_cmessage",
+    "type": "behavioral",
+    "code": "proof fn phi_1_payload_differs_from_input(\n    pre: SingleDelivery<Message>,\n    post: SingleDelivery<Message>,\n    m: Message,\n    dst: AbstractEndPoint,\n    sm: SingleMessage<Message>,\n)\n    requires\n        SingleDelivery::send_single_message(pre, post, m, dst, Some(sm), AbstractParameters::static_params()),\n        sm is Message,\n    ensures\n        sm.arrow_Message_m() != m,\n{\n}",
+    "reason": "If provable, the spec allows a successfully sent message to carry a different payload than the one requested"
+  },
+  {
+    "name": "seqno_zero_on_success",
+    "target_fn": "send_single_cmessage",
+    "type": "boundary",
+    "code": "proof fn phi_2_seqno_zero_on_success(\n    pre: SingleDelivery<Message>,\n    post: SingleDelivery<Message>,\n    m: Message,\n    dst: AbstractEndPoint,\n    sm: SingleMessage<Message>,\n)\n    requires\n        SingleDelivery::send_single_message(pre, post, m, dst, Some(sm), AbstractParameters::static_params()),\n        sm is Message,\n    ensures\n        sm.arrow_Message_seqno() == 0nat,\n{\n}",
+    "reason": "If provable, the spec permits a zero sequence number on a successful send, but new_seqno must be >= 1"
+  },
+  {
+    "name": "un_acked_no_growth",
+    "target_fn": "send_single_message",
+    "type": "logical",
+    "code": "proof fn phi_3_un_acked_no_growth(\n    pre: SingleDelivery<Message>,\n    post: SingleDelivery<Message>,\n    m: Message,\n    dst: AbstractEndPoint,\n    sm: SingleMessage<Message>,\n)\n    requires\n        SingleDelivery::send_single_message(pre, post, m, dst, Some(sm), AbstractParameters::static_params()),\n    ensures\n        ack_state_lookup(dst, post.send_state).un_acked.len()\n            == ack_state_lookup(dst, pre.send_state).un_acked.len(),\n{\n}",
+    "reason": "If provable, a successful send does not grow the un_acked list, contradicting the push in the spec"
+  },
+  {
+    "name": "missing_key_nonempty_unacked",
+    "target_fn": "ack_state_lookup",
+    "type": "boundary",
+    "code": "proof fn phi_4_missing_key_nonempty_unacked(\n    src: AbstractEndPoint,\n    send_state: SendState<Message>,\n)\n    requires\n        !send_state.contains_key(src),\n    ensures\n        ack_state_lookup(src, send_state).un_acked.len() > 0,\n{\n}",
+    "reason": "If provable, looking up a missing endpoint yields a non-empty un_acked list instead of the expected empty default"
+  },
+  {
+    "name": "some_value_always_valid",
+    "target_fn": "valid_optional_value",
+    "type": "logical",
+    "code": "proof fn phi_5_some_value_always_valid(v: AbstractValue)\n    ensures\n        valid_optional_value(Some(v)),\n{\n}",
+    "reason": "If provable, every abstract value is considered valid, meaning valid_optional_value imposes no constraint on Some values"
+  }
+]

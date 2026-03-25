@@ -1,0 +1,82 @@
+===PHI_START===
+NAME: external_body_filter_subset
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_external_body_filter_subset(s: Seq<int>, pred: spec_fn(int) -> bool)
+    ensures
+        forall |e: int| s.filter(pred).contains(e) ==> #[trigger] s.contains(e),
+{
+    seq_filter_is_a_subset_of_original_seq(s, pred);
+}
+```
+REASON: seq_filter_is_a_subset_of_original_seq is external_body — unverified axiom asserting filter containment without proof
+===PHI_END===
+
+===PHI_START===
+NAME: filter_index_in_original
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_filter_index_in_original(s: Seq<int>, pred: spec_fn(int) -> bool, i: int)
+    requires
+        0 <= i < s.filter(pred).len(),
+    ensures
+        s.contains(s.filter(pred)[i]),
+{
+    seq_filter_is_a_subset_of_original_seq(s, pred);
+}
+```
+REASON: second ensures clause of external_body axiom — unverified claim that every indexed filter element exists in original
+===PHI_END===
+
+===PHI_START===
+NAME: filter_pred_true_on_elements
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_filter_pred_true_on_elements(s: Seq<int>, pred: spec_fn(int) -> bool, e: int)
+    requires
+        s.filter(pred).contains(e),
+    ensures
+        pred(e),
+{
+    reveal(Seq::filter);
+}
+```
+REASON: filter should only contain elements satisfying pred — tests that filter's definition correctly restricts membership
+===PHI_END===
+
+===PHI_START===
+NAME: filter_len_leq_original
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_filter_len_leq_original(s: Seq<int>, pred: spec_fn(int) -> bool)
+    ensures
+        s.filter(pred).len() <= s.len(),
+    decreases s.len(),
+{
+    reveal(Seq::filter);
+    if s.len() != 0 {
+        phi_4_filter_len_leq_original(s.drop_last(), pred);
+    }
+}
+```
+REASON: filter should never produce a longer sequence than the original — if this fails the external_body axiom could be inconsistent with filter's definition
+===PHI_END===
+
+===PHI_START===
+NAME: empty_filter_empty
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_empty_filter_empty(pred: spec_fn(int) -> bool)
+    ensures
+        Seq::<int>::empty().filter(pred).len() == 0,
+{
+    reveal(Seq::filter);
+}
+```
+REASON: filtering an empty sequence should produce empty — tests base case consistency between external_body axiom and filter definition
+===PHI_END===

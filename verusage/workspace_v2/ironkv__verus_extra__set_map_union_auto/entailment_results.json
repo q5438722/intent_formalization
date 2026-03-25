@@ -1,0 +1,47 @@
+[
+  {
+    "name": "set_map_union_external_body_trusted",
+    "type": "logical",
+    "code": "proof fn phi_1_set_map_union_external_body_trusted(s1: Set<int>, s2: Set<int>, f: spec_fn(int) -> int)\n    ensures\n        (s1 + s2).map(f) == s1.map(f) + s2.map(f),\n{\n    set_map_union(s1, s2, f);\n}",
+    "reason": "`set_map_union` is `external_body` with `unimplemented!()` \u2014 this distributive law is provable via `assert_sets_equal!` but is instead trusted, creating an unnecessary soundness dependency",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "map_union_empty_left",
+    "type": "boundary",
+    "code": "proof fn phi_2_map_union_empty_left<A, B>(s: Set<A>, f: spec_fn(A) -> B)\n    ensures\n        (Set::<A>::empty() + s).map(f) == s.map(f),\n{\n    set_map_union(Set::<A>::empty(), s, f);\n    assert(Set::<A>::empty().map(f) =~= Set::<B>::empty());\n}",
+    "reason": "If union with empty on the left changed the map result, the identity element of set union would be broken under mapping",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "map_union_idempotent",
+    "type": "behavioral",
+    "code": "proof fn phi_3_map_union_idempotent<A, B>(s: Set<A>, f: spec_fn(A) -> B)\n    ensures\n        (s + s).map(f) == s.map(f),\n{\n    set_map_union(s, s, f);\n}",
+    "reason": "Mapping over a self-union should equal mapping once \u2014 if not, the union distribution would double-count elements in the mapped set",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "map_union_subset_left",
+    "type": "logical",
+    "code": "proof fn phi_4_map_union_subset_left<A, B>(s1: Set<A>, s2: Set<A>, f: spec_fn(A) -> B)\n    ensures\n        s1.map(f).subset_of((s1 + s2).map(f)),\n{\n    set_map_union(s1, s2, f);\n}",
+    "reason": "If mapping s1 weren't a subset of mapping the union, the distributive law would lose elements from the left operand",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "auto_lemma_universal_instantiation",
+    "type": "logical",
+    "code": "proof fn phi_5_auto_lemma_universal_instantiation(s1: Set<int>, s2: Set<int>, s3: Set<int>, f: spec_fn(int) -> int)\n    ensures\n        (s1 + s2 + s3).map(f) == s1.map(f) + s2.map(f) + s3.map(f),\n{\n    set_map_union_auto::<int, int>();\n}",
+    "reason": "The auto lemma should compose for three-way unions \u2014 if it fails, the universal quantifier doesn't chain correctly through repeated union-map distribution",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

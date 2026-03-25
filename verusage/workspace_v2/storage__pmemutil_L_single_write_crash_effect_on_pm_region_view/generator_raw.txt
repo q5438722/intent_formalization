@@ -1,0 +1,124 @@
+===PHI_START===
+NAME: single_write_crash_depends_on_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_single_write_crash_depends_on_external_body(
+    pm_region_view: PersistentMemoryRegionView,
+    write_addr: int,
+    bytes_to_write: Seq<u8>,
+    crash_bytes: Seq<u8>,
+    addr: int,
+)
+    requires
+        bytes_to_write.len() == const_persistence_chunk_size(),
+        write_addr % const_persistence_chunk_size() == 0,
+        0 <= write_addr,
+        write_addr + const_persistence_chunk_size() <= pm_region_view.len(),
+        pm_region_view.no_outstanding_writes(),
+        pm_region_view.write(write_addr, bytes_to_write).can_crash_as(crash_bytes),
+        0 <= addr < crash_bytes.len(),
+        !(write_addr <= addr < write_addr + const_persistence_chunk_size()),
+    ensures
+        crash_bytes[addr] == pm_region_view.committed()[addr],
+{
+    lemma_wherever_no_outstanding_writes_persistent_memory_view_can_only_crash_as_committed(
+        pm_region_view.write(write_addr, bytes_to_write)
+    );
+}
+```
+REASON: The proof that unwritten bytes crash as committed relies entirely on the `external_body` lemma — if the per-address crash determinism is wrong, unwritten regions could contain arbitrary data after a crash
+===PHI_END===
+
+===PHI_START===
+NAME: write_then_flush_committed_equals_bytes
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_write_then_flush_committed_equals_bytes(
+    pm_region_view: PersistentMemoryRegionView,
+    write_addr: int,
+    bytes_to_write: Seq<u8>,
+    k: int,
+)
+    requires
+        0 <= write_addr,
+        write_addr + bytes_to_write.len() <= pm_region_view.len(),
+        bytes_to_write.len() > 0,
+        write_addr <= k < write_addr + bytes_to_write.len(),
+    ensures
+        pm_region_view.write(write_addr, bytes_to_write).flush().committed()[k] == bytes_to_write[k - write_addr],
+{
+}
+```
+REASON: After writing and flushing, the committed bytes in the written range should equal the written bytes — if flush didn't properly propagate outstanding writes to `state_at_last_flush`, crash recovery would see stale data
+===PHI_END===
+
+===PHI_START===
+NAME: write_outside_range_unchanged
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_write_outside_range_unchanged(
+    pm_region_view: PersistentMemoryRegionView,
+    write_addr: int,
+    bytes_to_write: Seq<u8>,
+    k: int,
+)
+    requires
+        0 <= write_addr,
+        write_addr + bytes_to_write.len() <= pm_region_view.len(),
+        bytes_to_write.len() > 0,
+        0 <= k < pm_region_view.len(),
+        !(write_addr <= k < write_addr + bytes_to_write.len()),
+    ensures
+        pm_region_view.write(write_addr, bytes_to_write).state[k] == pm_region_view.state[k],
+{
+}
+```
+REASON: Writing should not affect bytes outside the written range — if the map-based write leaked into other positions, unrelated persistent data would be corrupted
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_write_single_chunk
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_aligned_write_single_chunk(write_addr: int, k: int)
+    requires
+        write_addr % const_persistence_chunk_size() == 0,
+        write_addr <= k < write_addr + const_persistence_chunk_size(),
+    ensures
+        k / const_persistence_chunk_size() == write_addr / const_persistence_chunk_size(),
+{
+}
+```
+REASON: An aligned write of exactly chunk_size bytes should touch exactly one chunk — if addresses within the range mapped to different chunks, the two-outcome crash lemma would be unsound
+===PHI_END===
+
+===PHI_START===
+NAME: crash_exactly_two_outcomes
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_crash_exactly_two_outcomes(
+    pm_region_view: PersistentMemoryRegionView,
+    write_addr: int,
+    bytes_to_write: Seq<u8>,
+)
+    requires
+        bytes_to_write.len() == const_persistence_chunk_size(),
+        write_addr % const_persistence_chunk_size() == 0,
+        0 <= write_addr,
+        write_addr + const_persistence_chunk_size() <= pm_region_view.len(),
+        pm_region_view.no_outstanding_writes(),
+    ensures
+        pm_region_view.write(write_addr, bytes_to_write).can_crash_as(pm_region_view.committed()),
+        pm_region_view.write(write_addr, bytes_to_write).can_crash_as(
+            pm_region_view.write(write_addr, bytes_to_write).flush().committed()
+        ),
+{
+}
+```
+REASON: Both the old committed state and the fully-flushed state should be valid crash outcomes — if either were rejected, the crash model would be strictly stronger than intended, potentially making some correct programs unverifiable
+===PHI_END===

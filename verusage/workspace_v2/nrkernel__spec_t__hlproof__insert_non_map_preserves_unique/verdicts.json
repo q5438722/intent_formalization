@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "insert_unmap_preserves_unique",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Transitioning a thread from Map to Unmap is a normal state machine step \u2014 the thread is completing its map operation. The uniqueness invariant only needs to hold for active Map entries. Replacing a Map with Unmap correctly removes it from the set of entries that need uniqueness, and the prior state already ensured uniqueness."
+  },
+  {
+    "phi": "insert_idle_over_map_preserves_unique",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Transitioning from Map to Idle is a cancellation or completion. If uniqueness held before, removing a Map entry can only make the remaining entries \"more unique\" \u2014 it cannot introduce duplicates. This is correct monotonic reasoning."
+  },
+  {
+    "phi": "if_map_then_unique_vacuous_for_non_map",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is by design \u2014 `if_map_then_unique` is specifically about Map entries. Non-Map entries (Unmap, Idle) don't participate in the physical frame uniqueness invariant because they don't represent active mapping operations that could cause physical frame aliasing."
+  },
+  {
+    "phi": "inflight_maps_unique_empty",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "An empty thread state having no uniqueness violations is trivially correct and expected. This is standard behavior for universally quantified invariants over empty domains."
+  },
+  {
+    "phi": "uniqueness_value_equality_not_frame_overlap",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is intentional \u2014 `inflight_maps_unique` prevents exact duplicate `ThreadState` values, while physical frame overlap is separately handled by `candidate_mapping_overlaps_inflight_pmem` (visible in other files). The `insert_map_preserves_unique` lemma requires `!candidate_mapping_overlaps_inflight_pmem` as a precondition, so the two checks work together to prevent both duplicate entries and overlapping physical frames."
+  }
+]

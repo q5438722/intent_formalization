@@ -1,0 +1,33 @@
+## File 1: init_invariant_rec (verified proof body)
+
+===PHI_START===
+NAME: init_invariant_rec_suffix_head_next_link
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_init_invariant_rec_suffix_head_next_link(ex: Execution<int>, i: nat)
+    requires
+        i > 0,
+    ensures
+        ex.suffix((i - 1) as nat).head_next() == ex.suffix(i).head(),
+{
+}
+```
+REASON: the inductive step relies on suffix(i-1).head_next() == suffix(i).head() through closure evaluation — if the SMT solver cannot resolve this through nested closures, the induction breaks
+===PHI_END===
+
+===PHI_START===
+NAME: init_invariant_rec_false_init_any_inv
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_init_invariant_rec_false_init_any_inv(ex: Execution<int>, next: ActionPred<int>, inv: StatePred<int>, i: nat)
+    requires
+        (|s: int| false)(ex.head()),
+        forall |idx: nat| next(#[trigger] ex.suffix(idx).head(), ex.suffix(idx).head_next()),
+        forall |idx: nat| (|s: int| false)(#[trigger] ex.suffix(idx).head()) ==> inv(ex.suffix(idx).head()),
+        forall |idx: nat| inv(#[trigger] ex.suffix(idx).head()) && next(ex.suffix(idx).head(), ex.suffix(idx).head_next()) ==> inv(ex.suffix(idx).head_next()),
+    ensures
+        inv(ex.suffix(i).head()),
+{
+    init_invariant_rec:

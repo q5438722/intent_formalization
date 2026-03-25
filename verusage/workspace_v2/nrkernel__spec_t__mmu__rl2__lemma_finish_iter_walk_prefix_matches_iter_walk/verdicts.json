@@ -1,0 +1,20 @@
+[
+  {
+    "phi": "all_mb0_bits_are_zero_external_body",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`all_mb0_bits_are_zero` is `external_body` with `unimplemented!()` \u2014 it's a completely opaque predicate used in the critical `PDE::view` function to determine whether a page directory entry is valid or invalid. While this specific \u03c6 shows functional consistency (same inputs \u2192 same output), the underlying issue is that the predicate is unverified and could permit or reject entries incorrectly."
+  },
+  {
+    "phi": "mask_l3_pg_addr_equals_mask_addr",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Both `MASK_L3_PG_ADDR` and `MASK_ADDR` are defined as `bitmask_inc!(12, MAX_PHYADDR_WIDTH - 1)` \u2014 this equality is correct by construction. L3 page addresses and directory addresses both use bits 12 through MAX_PHYADDR_WIDTH-1 on x86, as L3 is the leaf level with 4KB page granularity."
+  },
+  {
+    "phi": "iter_walk_max_4_steps",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`iter_walk` structurally applies `walk_next` at most 4 times (the function is unrolled 4 times). Each call adds one path entry, so the maximum path length is 4. This correctly matches the x86-64 4-level page table walk and is a desirable property."
+  }
+]

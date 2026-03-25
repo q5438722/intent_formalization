@@ -1,0 +1,80 @@
+===PHI_START===
+NAME: always_true
+TARGET_FN: all_set
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_always_true(s: CommitMask, o: CommitMask)
+    ensures
+        o@.subset_of(s@),
+{
+}
+```
+REASON: If subset_of always holds, all_set would be trivially true regardless of inputs
+===PHI_END===
+
+===PHI_START===
+NAME: always_false
+TARGET_FN: all_set
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_always_false(s: CommitMask, o: CommitMask)
+    ensures
+        !o@.subset_of(s@),
+{
+}
+```
+REASON: If subset_of never holds, all_set would be trivially false regardless of inputs
+===PHI_END===
+
+===PHI_START===
+NAME: symmetric_subset
+TARGET_FN: all_set
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_symmetric_subset(s: CommitMask, o: CommitMask)
+    requires
+        o@.subset_of(s@),
+    ensures
+        s@.subset_of(o@),
+{
+}
+```
+REASON: Subset is not symmetric in general; this holding would mean all_set implies mutual containment
+===PHI_END===
+
+===PHI_START===
+NAME: empty_self_contains_all
+TARGET_FN: all_set
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_empty_self_contains_all(o: CommitMask)
+    ensures
+        o@.subset_of(
+            (CommitMask { mask: [0usize, 0usize, 0usize, 0usize, 0usize, 0usize, 0usize, 0usize] })@
+        ),
+{
+}
+```
+REASON: A zero mask should have an empty view; nothing non-empty should be its subset
+===PHI_END===
+
+===PHI_START===
+NAME: subset_implies_equal
+TARGET_FN: all_set
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_subset_implies_equal(s: CommitMask, o: CommitMask)
+    requires
+        o@.subset_of(s@),
+    ensures
+        s@ =~= o@,
+{
+}
+```
+REASON: Subset does not imply equality; this holding would collapse all_set to an equality check
+===PHI_END===

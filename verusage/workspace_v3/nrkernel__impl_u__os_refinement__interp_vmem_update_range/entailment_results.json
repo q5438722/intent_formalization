@@ -1,0 +1,52 @@
+[
+  {
+    "name": "upper_vaddr_no_progress",
+    "target_fn": "upper_vaddr",
+    "type": "behavioral",
+    "reason": "If upper_vaddr equals the base, the layer maps a zero-sized address range, making page table traversal useless",
+    "entailed": false,
+    "verified": 13,
+    "errors": 1,
+    "output_tail": "base: nat)\n    |       ------------------------------------------------------------------- at the end of the function body\n...\n656 |         arch.upper_vaddr(layer, base) == base,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "entry_base_collapses_indices",
+    "target_fn": "entry_base",
+    "type": "behavioral",
+    "reason": "Distinct entry indices mapping to the same base address would mean page table entries alias, breaking address space partitioning",
+    "entailed": false,
+    "verified": 13,
+    "errors": 1,
+    "output_tail": "-------------------- at the end of the function body\n...\n659 |         arch.entry_base(layer, base, idx1) == arch.entry_base(layer, base, idx2),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "inv_allows_empty_arch",
+    "target_fn": "inv",
+    "type": "logical",
+    "reason": "An architecture with zero layers satisfies inv vacuously, yet cannot perform any translation\u2014the invariant may be too weak",
+    "entailed": true,
+    "verified": 14,
+    "errors": 0,
+    "output_tail": "verification results:: 14 verified, 0 errors\n\n"
+  },
+  {
+    "name": "entry_size_non_decreasing_across_layers",
+    "target_fn": "entry_size_is_next_layer_size",
+    "type": "boundary",
+    "reason": "Parent layers must map strictly larger regions than child layers; equal-or-smaller sizes would break the hierarchical decomposition of the address space",
+    "entailed": false,
+    "verified": 13,
+    "errors": 1,
+    "output_tail": "    ------------------------------------------------------ at the end of the function body\n...\n656 |         arch.entry_size(i) <= arch.entry_size((i + 1) as nat),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "num_entries_allows_degenerate",
+    "target_fn": "num_entries",
+    "type": "boundary",
+    "reason": "A layer with at most one entry makes the directory level pointless and would collapse the page table hierarchy, indicating the invariant permits degenerate configurations",
+    "entailed": false,
+    "verified": 13,
+    "errors": 1,
+    "output_tail": "ate(arch: Arch, layer: nat)\n    |       -------------------------------------------------------------- at the end of the function body\n...\n656 |         arch.num_entries(layer) <= 1nat,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

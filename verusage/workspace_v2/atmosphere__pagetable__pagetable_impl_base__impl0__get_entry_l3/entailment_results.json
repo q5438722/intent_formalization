@@ -1,0 +1,47 @@
+[
+  {
+    "name": "spec_index2va_bitand_not_bitor",
+    "type": "logical",
+    "code": "proof fn phi_1_spec_index2va_bitand_not_bitor(l4a: L4Index, l4b: L4Index)\n    requires\n        1 <= l4a < 512,\n        1 <= l4b < 512,\n        l4a != l4b,\n    ensures\n        spec_index2va((l4a, 0, 0, 0)) == spec_index2va((l4b, 0, 0, 0)),\n{\n}",
+    "reason": "spec_index2va uses `&` (bitwise AND) instead of `|` (bitwise OR) to combine shifted fields \u2014 distinct index tuples collapse to the same VA (likely 0)",
+    "entailed": false,
+    "verus_output": "3/phi_1_spec_index2va_bitand_not_bitor.rs:1099:9\n     |\n1093 | proof fn phi_1_spec_index2va_bitand_not_bitor(l4a: L4Index, l4b: L4Index)\n     |       ------------------------------------------------------------------- at the end of the function body\n...\n1099 |         spec_index2va((l4a, 0, 0, 0)) == spec_index2va((l4b, 0, 0, 0)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 48 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "va_1g_valid_equals_va_2m_valid",
+    "type": "behavioral",
+    "code": "proof fn phi_2_va_1g_valid_equals_va_2m_valid(va: usize)\n    ensures\n        va_1g_valid(va) == spec_va_2m_valid(va),\n{\n}",
+    "reason": "va_1g_valid has `when_used_as_spec(spec_va_2m_valid)` instead of `spec_va_1g_valid` \u2014 a copy-paste bug making 1G validation use the 2M mask in spec contexts",
+    "entailed": true,
+    "verus_output": "_va_2m_valid.rs:83:10\n   |\n83 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__get_entry_l3/phi_2_va_1g_valid_equals_va_2m_valid.rs:92:10\n   |\n92 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 48 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "usize2pa_mem_valid_unconditional",
+    "type": "logical",
+    "code": "proof fn phi_3_usize2pa_mem_valid_unconditional(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body ensures MEM_valid(ret) for ALL inputs without proof \u2014 trusts that masking any arbitrary usize yields a valid physical address",
+    "entailed": false,
+    "verus_output": "malization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__get_entry_l3/phi_3_usize2pa_mem_valid_unconditional.rs:1095:9\n     |\n1093 | proof fn phi_3_usize2pa_mem_valid_unconditional(v: usize)\n     |       --------------------------------------------------- at the end of the function body\n1094 |     ensures\n1095 |         MEM_valid(usize2pa(v)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 48 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "get_entry_l2_none_kills_all_4k",
+    "type": "behavioral",
+    "code": "proof fn phi_4_get_entry_l2_none_kills_all_4k(\n    pt: PageTable,\n    target_l4i: L4Index,\n    target_l3i: L3Index,\n    target_l2i: L2Index,\n    l3_entry: PageEntry,\n)\n    requires\n        pt.wf(),\n        pt.kernel_l4_end <= target_l4i < 512,\n        0 <= target_l3i < 512,\n        0 <= target_l2i < 512,\n        pt.spec_resolve_mapping_l3(target_l4i, target_l3i) =~= Some(l3_entry),\n        pt.spec_resolve_mapping_l2(target_l4i, target_l3i, target_l2i).is_None(),\n    ensures\n        forall|l1i: L1Index|\n            0 <= l1i < 512 ==>\n            !pt.mapping_4k().dom().contains(spec_index2va((target_l4i, target_l3i, target_l2i, l1i))),\n{\n    pt.reveal_page_table_wf();\n    pt.reveal_page_table_levels_wf();\n    pt.reveal_page_table_disjoint_wf();\n    pt.reveal_page_table_mappings_wf();\n    pt.reveal_page_table_addtional_wf();\n    va_lemma();\n}",
+    "reason": "If spec_resolve_mapping_l2 returns None (L2 entry not present or is a 2M hugepage), the spec should ensure no 4k mappings exist underneath \u2014 but this depends on the broken spec_index2va and external_body va_lemma",
+    "entailed": false,
+    "verus_output": "error[E0425]: cannot find function `va_lemma` in this scope\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__get_entry_l3/phi_4_get_entry_l2_none_kills_all_4k.rs:1117:5\n     |\n1117 |     va_lemma();\n     |     ^^^^^^^^ not found in this scope\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0425`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "va_lemma_all_indices_4k_valid",
+    "type": "logical",
+    "code": "proof fn phi_5_va_lemma_all_indices_4k_valid(l4i: L4Index, l3i: L3Index, l2i: L2Index, l1i: L1Index)\n    requires\n        0 <= l4i < 512,\n        0 <= l3i < 512,\n        0 <= l2i < 512,\n        0 <= l1i < 512,\n    ensures\n        va_4k_valid(spec_index2va((l4i, l3i, l2i, l1i))),\n{\n    va_lemma();\n}",
+    "reason": "va_lemma is external_body and axiomatically asserts that spec_index2va produces valid 4k VAs \u2014 but spec_index2va uses `&` not `|`, so the function is broken and this axiom papers over the defect",
+    "entailed": false,
+    "verus_output": "error[E0425]: cannot find function `va_lemma` in this scope\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__get_entry_l3/phi_5_va_lemma_all_indices_4k_valid.rs:1102:5\n     |\n1102 |     va_lemma();\n     |     ^^^^^^^^ not found in this scope\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0425`.\n",
+    "timed_out": false
+  }
+]

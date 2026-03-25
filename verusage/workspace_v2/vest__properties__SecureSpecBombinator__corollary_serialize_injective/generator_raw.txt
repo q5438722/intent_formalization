@@ -1,0 +1,99 @@
+===PHI_START===
+NAME: serialize_parse_roundtrip_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_serialize_parse_roundtrip_external_body<C: SecureSpecCombinator>(
+    c: &C,
+    v: C::Type,
+)
+    requires
+        c.requires(),
+        c.wf(v),
+    ensures
+        c.spec_parse(c.spec_serialize(v)) == Some((c.spec_serialize(v).len() as int, v)),
+{
+    c.theorem_serialize_parse_roundtrip(v);
+}
+```
+REASON: `theorem_serialize_parse_roundtrip` is `external_body` with `unimplemented!()` — the fundamental correctness property linking serialize and parse is entirely trusted without verification, so any buggy combinator implementation would be accepted as sound
+===PHI_END===
+
+===PHI_START===
+NAME: serialize_injective_from_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_serialize_injective_from_external_body<C: SecureSpecCombinator>(
+    c: &C,
+    v1: C::Type,
+    v2: C::Type,
+)
+    requires
+        c.requires(),
+        c.wf(v1),
+        c.wf(v2),
+        c.spec_serialize(v1) == c.spec_serialize(v2),
+    ensures
+        v1 == v2,
+{
+    c.corollary_serialize_injective(v1, v2);
+}
+```
+REASON: Serialize injectivity is derived entirely from the unverified `external_body` roundtrip theorem — if the roundtrip axiom were wrong for some combinator, injectivity would be unsoundly assumed
+===PHI_END===
+
+===PHI_START===
+NAME: parse_result_length_unconstrained
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_parse_result_length_unconstrained<C: SecureSpecCombinator>(
+    c: &C,
+    v: C::Type,
+)
+    requires
+        c.requires(),
+        c.wf(v),
+    ensures
+        c.spec_parse(c.spec_serialize(v)).is_some(),
+        c.spec_parse(c.spec_serialize(v)).unwrap().0 >= 0,
+{
+    c.theorem_serialize_parse_roundtrip(v);
+}
+```
+REASON: The roundtrip theorem guarantees parse returns a non-negative consumed length equal to serialized length, but there is no upper bound constraint on `spec_parse` for arbitrary inputs — parse could claim to consume more bytes than exist without violating any axiom
+===PHI_END===
+
+===PHI_START===
+NAME: wf_default_true_vacuous
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_wf_default_true_vacuous<C: SpecCombinator>(
+    c: &C,
+    v: C::Type,
+)
+    ensures
+        c.wf(v),
+{
+}
+```
+REASON: The default `wf` implementation returns `true` for all values — any combinator that forgets to override `wf` would vacuously satisfy the roundtrip theorem's precondition for ALL values including malformed ones
+===PHI_END===
+
+===PHI_START===
+NAME: requires_default_true_vacuous
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_requires_default_true_vacuous<C: SpecCombinator>(
+    c: &C,
+)
+    ensures
+        c.requires(),
+{
+}
+```
+REASON: The default `requires` implementation returns `true` unconditionally — any combinator that needs initialization constraints but forgets to override `requires` would have all its proof obligations trivially satisfiable
+===PHI_END===

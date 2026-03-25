@@ -1,0 +1,47 @@
+[
+  {
+    "name": "remove_container_preserves_inv_external_body_trusted",
+    "type": "logical",
+    "code": "proof fn phi_1_remove_container_preserves_inv_external_body_trusted(\n    root_container: ContainerPtr,\n    old_container_perms: Map<ContainerPtr, PointsTo<Container>>,\n    new_container_perms: Map<ContainerPtr, PointsTo<Container>>,\n    container_ptr: ContainerPtr,\n)\n    requires\n        remove_container_ensures(root_container, old_container_perms, new_container_perms, container_ptr),\n    ensures\n        container_root_wf(root_container, new_container_perms),\n        container_childern_parent_wf(root_container, new_container_perms),\n{\n    remove_container_preserve_tree_inv_1(root_container, old_container_perms, new_container_perms, container_ptr);\n    remove_container_preserve_tree_inv_2(root_container, old_container_perms, new_container_perms, container_ptr);\n}",
+    "reason": "All remove_container_preserve_tree_inv lemmas are external_body \u2014 tree invariant preservation after removal is axiomatically trusted without proof",
+    "entailed": true,
+    "verus_output": "s deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__container_tree__remove_container_preserve_tree_inv/phi_1_remove_container_preserves_inv_external_body_trusted.rs:569:56\n    |\n569 |      old_container_perms[container_ptr].value().parent.is_Some(),\n    |                                                        ^^^^^^^\n\nwarning: 6 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "removed_container_owned_threads_leaked",
+    "type": "behavioral",
+    "code": "proof fn phi_2_removed_container_owned_threads_leaked(\n    root_container: ContainerPtr,\n    old_container_perms: Map<ContainerPtr, PointsTo<Container>>,\n    new_container_perms: Map<ContainerPtr, PointsTo<Container>>,\n    container_ptr: ContainerPtr,\n    t: ThreadPtr,\n)\n    requires\n        remove_container_ensures(root_container, old_container_perms, new_container_perms, container_ptr),\n        old_container_perms[container_ptr].value().owned_threads@.contains(t),\n    ensures\n        !new_container_perms.dom().contains(container_ptr),\n{\n}",
+    "reason": "remove_container_ensures removes the container from the domain but never requires its owned_threads to be empty or transferred \u2014 threads are silently leaked",
+    "entailed": true,
+    "verus_output": ": is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__container_tree__remove_container_preserve_tree_inv/phi_2_removed_container_owned_threads_leaked.rs:569:56\n    |\n569 |      old_container_perms[container_ptr].value().parent.is_Some(),\n    |                                                        ^^^^^^^\n\nwarning: 6 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "removed_container_owned_endpoints_leaked",
+    "type": "behavioral",
+    "code": "proof fn phi_3_removed_container_owned_endpoints_leaked(\n    root_container: ContainerPtr,\n    old_container_perms: Map<ContainerPtr, PointsTo<Container>>,\n    new_container_perms: Map<ContainerPtr, PointsTo<Container>>,\n    container_ptr: ContainerPtr,\n    ep: EndpointPtr,\n)\n    requires\n        remove_container_ensures(root_container, old_container_perms, new_container_perms, container_ptr),\n        old_container_perms[container_ptr].value().owned_endpoints@.contains(ep),\n    ensures\n        !new_container_perms.dom().contains(container_ptr),\n{\n}",
+    "reason": "remove_container_ensures removes container without requiring owned_endpoints to be empty \u2014 endpoints are silently orphaned",
+    "entailed": true,
+    "verus_output": "is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__container_tree__remove_container_preserve_tree_inv/phi_3_removed_container_owned_endpoints_leaked.rs:569:56\n    |\n569 |      old_container_perms[container_ptr].value().parent.is_Some(),\n    |                                                        ^^^^^^^\n\nwarning: 6 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "removed_container_owned_procs_leaked",
+    "type": "behavioral",
+    "code": "proof fn phi_4_removed_container_owned_procs_leaked(\n    root_container: ContainerPtr,\n    old_container_perms: Map<ContainerPtr, PointsTo<Container>>,\n    new_container_perms: Map<ContainerPtr, PointsTo<Container>>,\n    container_ptr: ContainerPtr,\n    p: ProcPtr,\n)\n    requires\n        remove_container_ensures(root_container, old_container_perms, new_container_perms, container_ptr),\n        old_container_perms[container_ptr].value().owned_procs@.contains(p),\n    ensures\n        !new_container_perms.dom().contains(container_ptr),\n{\n}",
+    "reason": "remove_container_ensures removes container without requiring owned_procs to be empty \u2014 processes are silently orphaned",
+    "entailed": true,
+    "verus_output": "e`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__container_tree__remove_container_preserve_tree_inv/phi_4_removed_container_owned_procs_leaked.rs:569:56\n    |\n569 |      old_container_perms[container_ptr].value().parent.is_Some(),\n    |                                                        ^^^^^^^\n\nwarning: 6 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "parent_subtree_not_shrunk_after_remove",
+    "type": "logical",
+    "code": "proof fn phi_5_parent_subtree_not_shrunk_after_remove(\n    root_container: ContainerPtr,\n    old_container_perms: Map<ContainerPtr, PointsTo<Container>>,\n    new_container_perms: Map<ContainerPtr, PointsTo<Container>>,\n    container_ptr: ContainerPtr,\n    ancestor: ContainerPtr,\n)\n    requires\n        remove_container_ensures(root_container, old_container_perms, new_container_perms, container_ptr),\n        old_container_perms[container_ptr].value().uppertree_seq@.contains(ancestor),\n        new_container_perms.dom().contains(ancestor),\n    ensures\n        new_container_perms[ancestor].value().subtree_set@ =~= old_container_perms[ancestor].value().subtree_set@.remove(container_ptr),\n{\n}",
+    "reason": "remove_container_ensures should shrink ancestor subtree_sets by removing the deleted container, but the spec may not enforce this for all ancestors",
+    "entailed": true,
+    "verus_output": ": is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__container_tree__remove_container_preserve_tree_inv/phi_5_parent_subtree_not_shrunk_after_remove.rs:569:56\n    |\n569 |      old_container_perms[container_ptr].value().parent.is_Some(),\n    |                                                        ^^^^^^^\n\nwarning: 6 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

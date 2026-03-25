@@ -1,0 +1,37 @@
+[
+  {
+    "name": "new_nonempty_domain",
+    "target_fn": "StrictlyOrderedMap::new",
+    "type": "behavioral",
+    "code": "proof fn phi_1_new_nonempty_domain<K: KeyTrait + VerusClone>(s: StrictlyOrderedMap<K>)\n    requires\n        s.valid(),\n        s@ == Map::<K,ID>::empty(),\n    ensures\n        s@.dom().len() > 0,\n{\n}",
+    "reason": "A freshly constructed map must have an empty domain; provability would mean the spec allows non-empty initial state"
+  },
+  {
+    "name": "new_contains_arbitrary_key",
+    "target_fn": "StrictlyOrderedMap::new",
+    "type": "behavioral",
+    "code": "proof fn phi_2_new_contains_arbitrary_key<K: KeyTrait + VerusClone>(s: StrictlyOrderedMap<K>, k: K)\n    requires\n        s.valid(),\n        s@ == Map::<K,ID>::empty(),\n    ensures\n        s@.contains_key(k),\n{\n}",
+    "reason": "An empty map must not contain any key; provability would indicate the empty-map postcondition is inconsistent with containment semantics"
+  },
+  {
+    "name": "valid_contradicts_empty",
+    "target_fn": "StrictlyOrderedMap::new",
+    "type": "logical",
+    "code": "proof fn phi_3_valid_contradicts_empty<K: KeyTrait + VerusClone>(s: StrictlyOrderedMap<K>)\n    requires\n        s.valid(),\n        s@ == Map::<K,ID>::empty(),\n    ensures\n        !s.valid(),\n{\n}",
+    "reason": "valid() and empty view are co-guaranteed; if both requires lead to !valid(), the ensures of new are mutually contradictory"
+  },
+  {
+    "name": "new_domain_off_by_one",
+    "target_fn": "StrictlyOrderedMap::new",
+    "type": "boundary",
+    "code": "proof fn phi_4_new_domain_off_by_one<K: KeyTrait + VerusClone>(s: StrictlyOrderedMap<K>)\n    requires\n        s.valid(),\n        s@ == Map::<K,ID>::empty(),\n    ensures\n        s@.dom().len() == 1,\n{\n}",
+    "reason": "An empty map domain must have length 0 not 1; provability would reveal an off-by-one error in the validity or emptiness specification"
+  },
+  {
+    "name": "empty_map_not_finite_domain",
+    "target_fn": "StrictlyOrderedMap::new",
+    "type": "logical",
+    "code": "proof fn phi_5_empty_map_not_finite_domain<K: KeyTrait + VerusClone>(s: StrictlyOrderedMap<K>)\n    requires\n        s.valid(),\n        s@ == Map::<K,ID>::empty(),\n    ensures\n        !s@.dom().finite(),\n{\n}",
+    "reason": "The empty map's domain is trivially finite; provability would mean map_valid's finiteness invariant is contradicted by the view spec"
+  }
+]

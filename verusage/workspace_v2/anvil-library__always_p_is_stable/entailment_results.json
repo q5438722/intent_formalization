@@ -1,0 +1,47 @@
+[
+  {
+    "name": "always_propagate_forwards_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_1_always_propagate_forwards_intensional_bridge(ex: Execution<int>, p: TempPred<int>, i: nat)\n    requires\n        always(p).satisfied_by(ex),\n    ensures\n        always(p).satisfied_by(ex.suffix(i)),\n{\n    always_propagate_forwards::<int>(ex, p, i);\n}",
+    "reason": "always_propagate_forwards is external_body asserting always(p) transfers to ex.suffix(i), but ex.suffix(i) creates a new closure intensionally distinct from ex \u2014 the axiom silently equates these without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "stable_always_vacuously_true_when_not_satisfied",
+    "type": "boundary",
+    "code": "proof fn phi_2_stable_always_vacuously_true_when_not_satisfied(ex: Execution<int>, p: TempPred<int>)\n    requires\n        !always(p).satisfied_by(ex),\n    ensures\n        stable(always(p)).satisfied_by(ex),\n{\n}",
+    "reason": "stable(always(p)) is defined as always(p) ==> always(always(p)), so when always(p) is false the implication is vacuously true \u2014 stable claims hold for every execution regardless of whether the predicate actually holds",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "valid_stable_says_nothing_about_p",
+    "type": "logical",
+    "code": "proof fn phi_3_valid_stable_says_nothing_about_p(p: TempPred<int>, ex: Execution<int>)\n    requires\n        valid(stable(always(p))),\n    ensures\n        !always(p).satisfied_by(ex) || always(always(p)).satisfied_by(ex),\n{\n    always_p_is_stable::<int>(p);\n}",
+    "reason": "valid(stable(always(p))) does not guarantee always(p) holds on any execution \u2014 it only guarantees the implication, so it provides no actual safety assurance about p",
+    "entailed": false,
+    "verus_output": "phi_3_valid_stable_says_nothing_about_p.rs:87:9\n   |\n83 | proof fn phi_3_valid_stable_says_nothing_about_p(p: TempPred<int>, ex: Execution<int>)\n   |       -------------------------------------------------------------------------------- at the end of the function body\n...\n87 |         !always(p).satisfied_by(ex) || always(always(p)).satisfied_by(ex),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "suffix_zero_intensional_gap",
+    "type": "logical",
+    "code": "proof fn phi_4_suffix_zero_intensional_gap(ex: Execution<int>, p: TempPred<int>)\n    requires\n        always(p).satisfied_by(ex),\n    ensures\n        always(p).satisfied_by(ex.suffix(0)),\n{\n    always_propagate_forwards::<int>(ex, p, 0);\n}",
+    "reason": "ex.suffix(0) creates closure |i| f(i+0) intensionally distinct from ex \u2014 the external_body axiom equates always(p) on these without proof, and this is the i=0 base case showing the axiom is needed even for trivial shifts",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "stable_any_pred_vacuous",
+    "type": "boundary",
+    "code": "proof fn phi_5_stable_any_pred_vacuous(ex: Execution<int>)\n    ensures\n        stable(TempPred::<int>::new(|ex: Execution<int>| false)).satisfied_by(ex),\n{\n}",
+    "reason": "stable(false_pred) is vacuously satisfied on every execution since the antecedent of the implication is always false \u2014 stable provides no guarantee for predicates that never hold, making it a weak specification pattern",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

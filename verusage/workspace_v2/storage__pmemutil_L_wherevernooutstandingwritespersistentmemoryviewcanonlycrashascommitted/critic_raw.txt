@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: per_addr_crash_determinism_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `lemma_if_no_outstanding_writes_at_addr_then_persistent_memory_view_can_only_crash_as_committed` is `external_body` with `unimplemented!()`. It asserts that a byte with no outstanding write must crash as committed regardless of which chunk branch (ignoring writes vs after flush) is taken. This requires reasoning that `flush_byte()` equals `state_at_last_flush` when `outstanding_write` is `None` and that the chunk disjunction forces this — trusted without verification.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: crash_as_admits_all_committed
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: With no outstanding writes, `flush_byte() == state_at_last_flush` for all bytes. Both chunk predicates hold for `committed()`, so `can_crash_as(committed())` is satisfied. Correct by definition.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: crash_as_admits_flushed_state
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The flushed sequence has `s[addr] == view.state[addr].flush_byte()` for all addresses, so every chunk satisfies `chunk_corresponds_after_flush`. Correct by definition.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: two_addrs_same_chunk_same_outcome
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: This is a direct corollary of invoking the `external_body` lemma twice. While the property itself is correct, both invocations rely on the unverified per-address crash determinism assumption. The composition inherits the same trust gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: mixed_chunk_outstanding_write_addr_can_differ
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The chunk satisfies `chunk_corresponds_after_flush` since `b_clean.flush_byte() == 0` and `b_dirty.flush_byte() == 42`, matching the crash sequence exactly. The length matches (8 == 8). Correct by definition.
+===VERDICT_END===
+
+===SUMMARY===
+One clear true positive: the per-address crash determinism lemma is `external_body` and trusted without proof. One derivative true positive: the two-address same-chunk corollary inherits the same trust gap by invoking the external_body lemma twice. Three false positives confirm correct definitional properties: committed is a valid crash state, the flushed state is always a valid crash outcome, and mixed chunks with clean/dirty bytes correctly crash as flushed.
+===END_SUMMARY===

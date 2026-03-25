@@ -1,0 +1,47 @@
+[
+  {
+    "name": "write_seq_idle_allows_arbitrary_read_on_missing_key",
+    "type": "logical",
+    "code": "proof fn phi_1_write_seq_idle_allows_arbitrary_read_on_missing_key(mem: PTMem, addr: usize, writes: Seq<(usize, usize)>)\n    requires\n        !mem.mem.dom().contains(addr),\n        forall|i| 0 <= i < writes.len() ==> (#[trigger] writes[i]).0 != addr,\n    ensures\n        mem.write_seq(writes).read(addr) == mem.read(addr),\n{\n    mem.lemma_write_seq_idle(writes, addr);\n}",
+    "reason": "`lemma_write_seq_idle` guarantees untouched addresses read the same \u2014 but `read` on an address not in `mem.dom()` returns an arbitrary value from the total Map; the lemma preserves this arbitrary value faithfully, which is correct but tests the interaction",
+    "entailed": true,
+    "verus_output": "verification results:: 18 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "flags_combine_chain_loses_writable",
+    "type": "behavioral",
+    "code": "proof fn phi_2_flags_combine_chain_loses_writable(f1: Flags, f2: Flags, f3: Flags)\n    requires\n        f1.is_writable,\n        !f2.is_writable,\n        f3.is_writable,\n    ensures\n        !f1.combine(f2).combine(f3).is_writable,\n{\n}",
+    "reason": "`combine` uses AND for `is_writable` \u2014 a single non-writable entry in the chain kills writability for all deeper levels; tests that the most restrictive flag propagation is correct",
+    "entailed": true,
+    "verus_output": "verification results:: 18 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "memories_disjoint_strict_ordering",
+    "type": "boundary",
+    "code": "proof fn phi_3_memories_disjoint_strict_ordering(c: Constants)\n    requires\n        c.memories_disjoint(),\n    ensures\n        c.range_mem.0 < c.range_ptmem.0,\n        c.range_ptmem.1 <= MAX_PHYADDR,\n        c.range_mem.1 < c.range_ptmem.0,\n{\n}",
+    "reason": "`memories_disjoint` uses strict ordering `range_mem.1 < range_ptmem.0` \u2014 tests that physical memory and page table memory regions are truly non-overlapping; if this were `<=` instead, zero-size gaps could allow aliasing",
+    "entailed": true,
+    "verus_output": "verification results:: 18 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "valid_core_external_body_unconstrained",
+    "type": "logical",
+    "code": "proof fn phi_4_valid_core_external_body_unconstrained(c: Constants, core1: Core, core2: Core)\n    requires\n        c.valid_core(core1),\n        core1.node_id == core2.node_id,\n        core1.core_id == core2.core_id,\n    ensures\n        c.valid_core(core2),\n{\n}",
+    "reason": "`valid_core` is `external_body` \u2014 tests whether structurally equal cores are interchangeable; since Core has no invariants beyond its fields, this should hold but is unverified",
+    "entailed": true,
+    "verus_output": "verification results:: 18 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "seq_tup_ext_contains_fst_witness",
+    "type": "logical",
+    "code": "proof fn phi_5_seq_tup_ext_contains_fst_witness(s: Seq<(usize, usize)>, addr: usize, val: usize)\n    requires\n        s.len() > 0,\n        s[0] == (addr, val),\n    ensures\n        s.contains_fst(addr),\n{\n}",
+    "reason": "`contains_fst` uses an existential with trigger `self[i] == (fst, self[i].1)` \u2014 tests that a concrete witness at index 0 can instantiate the existential; if the trigger is too restrictive, this simple case might not verify",
+    "entailed": true,
+    "verus_output": "verification results:: 18 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: no_mapping_infer_external_body_unsound
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Empty mappings trivially satisfy the preconditions of `no_mapping_infer_not_mapped` (vacuously true universal quantifiers over empty domains). The external_body bridges a trigger gap but the logical content is sound — if no mapping contains an address, then `page_not_mapped` holds by definition.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: root_table_resolve_unconstrained
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures clause is trivially `true`, but the real finding is valid: all invariants in `root_table_wf` linking `resolve` results to valid IOids and active IOMMU tables are commented out. This is a genuine spec gap — resolved PCI devices have no constraint tying them to valid, active IOMMU tables.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: pcid_ioid_active_overlap_allowed
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures is a tautology (`x != y || x == y` is always true). PCIDs and IOids are independent resource namespaces — a process can have a PCID for CPU address translation and an IOID for device DMA, and there's no reason these numeric IDs must be linked or that same-valued IDs must share ownership.
+===VERDICT_END===
+
+===SUMMARY===
+Of the three candidates, only `root_table_resolve_unconstrained` is a true positive — despite its trivial ensures clause, it correctly identifies that all resolve-linking invariants in `root_table_wf` are commented out, leaving PCI device resolution completely unconstrained. The other two are false positives: `no_mapping_infer_external_body_unsound` describes a logically sound derivation (empty maps vacuously satisfy the preconditions), and `pcid_ioid_active_overlap_allowed` has a tautological ensures clause while the underlying design of independent PCID/IOID namespaces is intentional.
+===END_SUMMARY===

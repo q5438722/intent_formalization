@@ -1,0 +1,97 @@
+===PHI_START===
+NAME: l0_l1_bits_independent
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_l0_l1_bits_independent(va1: usize, va2: usize)
+    requires
+        l0_bits!(va1) == l0_bits!(va2),
+    ensures
+        // l1_bits can still differ — they extract different bit ranges
+        true,
+{
+}
+```
+REASON: Placeholder — l0 and l1 extract non-overlapping ranges so same l0 doesn't constrain l1; replaced with a real test below
+===PHI_END===
+
+===PHI_START===
+NAME: l0_bits_covers_9_bits
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_l0_bits_covers_9_bits()
+    ensures
+        l0_bits!(bitmask_inc!(39usize, 47usize)) == 511,
+{
+    assert(l0_bits!(bitmask_inc!(39usize, 47usize)) == 511) by (bit_vector);
+}
+```
+REASON: When all 9 bits (39-47) are set, l0_bits should return 511 (2^9 - 1) — tests that the extraction range is exactly 9 bits wide, not wider or narrower
+===PHI_END===
+
+===PHI_START===
+NAME: l3_bits_zero_below_page_boundary
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_l3_bits_zero_below_page_boundary()
+    ensures
+        l3_bits!(4095usize) == 0,
+{
+    assert(l3_bits!(4095usize) == 0) by (bit_vector);
+}
+```
+REASON: Addresses below 4096 (one page) should have zero l3_bits since bits 12-20 are all zero — tests that sub-page offsets don't pollute the L3 index
+===PHI_END===
+
+===PHI_START===
+NAME: bit_ranges_non_overlapping
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_bit_ranges_non_overlapping()
+    ensures
+        bitmask_inc!(39usize, 47usize) & bitmask_inc!(30usize, 38usize) == 0,
+        bitmask_inc!(30usize, 38usize) & bitmask_inc!(21usize, 29usize) == 0,
+        bitmask_inc!(21usize, 29usize) & bitmask_inc!(12usize, 20usize) == 0,
+{
+    assert(bitmask_inc!(39usize, 47usize) & bitmask_inc!(30usize, 38usize) == 0) by (bit_vector);
+    assert(bitmask_inc!(30usize, 38usize) & bitmask_inc!(21usize, 29usize) == 0) by (bit_vector);
+    assert(bitmask_inc!(21usize, 29usize) & bitmask_inc!(12usize, 20usize) == 0) by (bit_vector);
+}
+```
+REASON: The four bit extraction ranges (L0: 39-47, L1: 30-38, L2: 21-29, L3: 12-20) must be disjoint — overlapping ranges would cause one level's index to be influenced by another level's bits
+===PHI_END===
+
+===PHI_START===
+NAME: all_index_bits_reconstruct_addr
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_all_index_bits_reconstruct_addr(va: usize)
+    ensures
+        (l0_bits!(va) << 39usize) | (l1_bits!(va) << 30usize) | (l2_bits!(va) << 21usize) | (l3_bits!(va) << 12usize)
+            == va & bitmask_inc!(12usize, 47usize),
+{
+    assert((l0_bits!(va) << 39usize) | (l1_bits!(va) << 30usize) | (l2_bits!(va) << 21usize) | (l3_bits!(va) << 12usize)
+        == va & bitmask_inc!(12usize, 47usize)) by (bit_vector);
+}
+```
+REASON: Reassembling the four 9-bit indices (shifted back) should recover bits 12-47 of the original address — if not, the extraction macros are losing or corrupting address information used for page table indexing
+===PHI_END===
+
+===PHI_START===
+NAME: bits_ignore_high_48_plus
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_bits_ignore_high_48_plus(va: usize)
+    ensures
+        l0_bits!(va) == l0_bits!(va & bitmask_inc!(0usize, 47usize)),
+{
+    assert(l0_bits!(va) == l0_bits!(va & bitmask_inc!(0usize, 47usize))) by (bit_vector);
+}
+```
+REASON: l0_bits extracts bits 39-47 so should be unaffected by bits 48-63 — tests that non-canonical high bits don't influence the L0 page table index
+===PHI_END===

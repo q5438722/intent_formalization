@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "serialize_nonempty",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`spec_serialize_helper` always returns either `seq![lo]` (base case) or `seq![...] + recursive_result`. Both branches produce at least one element. Correct by the open spec structure."
+  },
+  {
+    "phi": "serialize_zero_is_single_zero",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "For `v = 0`: `lo = 0 & 0x7f = 0`, `hi = 0 >> 7 = 0`, so base case returns `seq![0u8]`. Correct by unfolding the open spec with bitvector facts."
+  },
+  {
+    "phi": "serialize_length_max_10",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The verified `lemma_spec_serialize_length` proves this using `reveal_with_fuel(10)` and a bitvector chain showing 10 right-shifts of 7 bits zeroes any u64. The proof is verified, not `external_body`. Correct."
+  },
+  {
+    "phi": "serialize_last_byte_below_0x80",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "In the base case (`hi == 0`), the last byte is `take_low_7_bits!(v)` which is `< 0x80` by bitvector. In the recursive case, the last byte comes from the recursive call. The inductive proof is verified. Correct."
+  }
+]

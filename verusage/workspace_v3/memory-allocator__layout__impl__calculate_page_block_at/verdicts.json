@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "zero_block_size_collision",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "The preconditions of `calculate_page_block_at` don't require `block_size > 0`, so `block_size == 0` is a valid input where all block indices collapse to the same address. This is a missing precondition \u2014 a real spec weakness, though callers likely always pass nonzero block sizes in practice."
+  },
+  {
+    "phi": "result_at_segment_boundary",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "The `<=` in the precondition allows the computed pointer to land exactly at `segment_start + SEGMENT_SIZE`, which is one-past-the-end of the segment. This is a genuine spec weakness \u2014 the function doesn't guarantee the result stays within the segment's valid range, only that it doesn't exceed the boundary. Whether this is intentional (like C one-past-end pointers) is ambiguous."
+  },
+  {
+    "phi": "cross_segment_block_aliasing",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This \u03c6 constructs two page IDs from different segments whose `block_start_at` values coincidentally match, then shows they compute to the same block address. But `segment_start` is closed/opaque \u2014 the premise `block_start_at(page_id1, ...) == block_start_at(page_id2, ...)` already assumes aliasing. Cross-segment uniqueness is an allocator-level invariant, not something this single function's spec should guarantee."
+  },
+  {
+    "phi": "redundant_postcondition",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The two `ensures` clauses are intentionally structured: one in terms of the spec function `block_start_at` and one as a direct arithmetic expression. This is standard Verus practice \u2014 providing both an abstract and concrete postcondition for caller convenience. Redundancy in postconditions is a feature, not a spec gap."
+  }
+]

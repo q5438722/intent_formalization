@@ -1,0 +1,10 @@
+===VERDICT_START===
+PHI: resolve_l4_returns_non_present_for_kernel_range
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is intentional design. The `spec_resolve_mapping_l4` function explicitly includes the condition `l4i < self.kernel_l4_end` as an alternative to `perm.present` — kernel-range L4 entries are always considered resolved because they represent the kernel's memory mappings which are always present by construction. The `recommends` clause (`self.kernel_l4_end <= l4i < 512`) indicates the function is primarily intended for user-space indices, and the kernel-range handling is a deliberate catch-all for kernel entries.
+===VERDICT_END===
+
+===SUMMARY===
+The single candidate is a false positive. The behavior where `spec_resolve_mapping_l4` returns `Some` for all L4 indices below `kernel_l4_end` regardless of the present bit is an intentional design choice reflecting x86-64 page table architecture: kernel address space entries in the L4 table are shared across all processes and always considered valid/resolved. The spec correctly distinguishes kernel-range entries (always resolved) from user-range entries (resolved only when present).
+===END_SUMMARY===

@@ -1,0 +1,79 @@
+===PHI_START===
+NAME: rl3_interp_external_body_view_chain
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_rl3_interp_external_body_view_chain(s: crate::rl3::State)
+    ensures
+        s@.pt_mem === s.interp().writer_mem(),
+{
+}
+```
+REASON: `rl3::State::interp` is `external_body` `closed spec` — the rl1 view's `pt_mem` is set to `rl2.writer_mem()` by `rl2::interp`, but the rl3→rl2 interp is opaque; if it maps fields incorrectly, the entire refinement chain's pt_mem is wrong
+===PHI_END===
+
+===PHI_START===
+NAME: overlap_not_symmetric
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_overlap_not_symmetric(r1: MemRegion, r2: MemRegion)
+    requires
+        overlap(r1, r2),
+    ensures
+        overlap(r2, r1),
+{
+}
+```
+REASON: `overlap` has an asymmetric definition (splits on `region1.base <= region2.base`) — if the two branches don't correctly mirror each other, overlap could be non-symmetric, breaking mapping conflict detection
+===PHI_END===
+
+===PHI_START===
+NAME: overlap_zero_size_region
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_overlap_zero_size_region(base1: nat, base2: nat)
+    requires
+        base1 != base2,
+    ensures
+        !overlap(
+            MemRegion { base: base1, size: 0 },
+            MemRegion { base: base2, size: 0 },
+        ),
+{
+}
+```
+REASON: Zero-size regions at different bases should never overlap — if the overlap function returns true for empty regions, phantom conflicts would block valid mappings
+===PHI_END===
+
+===PHI_START===
+NAME: candidate_mapping_in_bounds_allows_overflow
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_candidate_mapping_in_bounds_allows_overflow(base: nat, pte: PTE)
+    requires
+        candidate_mapping_in_bounds(base, pte),
+    ensures
+        base < x86_arch_spec.upper_vaddr(0, 0),
+        pte.frame.size < x86_arch_spec.upper_vaddr(0, 0),
+{
+}
+```
+REASON: `candidate_mapping_in_bounds` checks `base + pte.frame.size < upper_vaddr` using strict `<` — tests whether base and size are individually bounded; if frame.size could be enormous with a small base, the check passes but the mapping spans unreasonable ranges
+===PHI_END===
+
+===PHI_START===
+NAME: arch_entry_size_layer0_equals_l0
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_arch_entry_size_layer0_equals_l0()
+    ensures
+        x86_arch_spec.entry_size(0) == L0_ENTRY_SIZE as nat,
+{
+}
+```
+REASON: Layer 0 entry size should match `L0_ENTRY_SIZE` (512 * L1_ENTRY_SIZE) — if the arch spec layers disagree with the constants, walk result sizes and alignment would be incorrect
+===PHI_END===

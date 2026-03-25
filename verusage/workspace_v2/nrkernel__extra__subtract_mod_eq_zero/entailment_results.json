@@ -1,0 +1,47 @@
+[
+  {
+    "name": "subtract_aligned_preserves",
+    "type": "behavioral",
+    "code": "proof fn phi_1_subtract_aligned_preserves(a: nat, b: nat, c: nat)\n    requires\n        aligned(a, c),\n        aligned(b, c),\n        a <= b,\n        c > 0,\n    ensures\n        aligned((b - a) as nat, c),\n{\n    subtract_mod_eq_zero(a, b, c);\n}",
+    "reason": "Difference of two aligned values is aligned \u2014 direct consequence of the verified lemma",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "subtract_self_aligned",
+    "type": "boundary",
+    "code": "proof fn phi_2_subtract_self_aligned(a: nat, c: nat)\n    requires\n        aligned(a, c),\n        c > 0,\n    ensures\n        aligned(0nat, c),\n{\n    subtract_mod_eq_zero(a, a, c);\n}",
+    "reason": "Subtracting a value from itself yields 0, which is trivially aligned \u2014 tests the `a == b` boundary",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "subtract_zero_aligned",
+    "type": "boundary",
+    "code": "proof fn phi_3_subtract_zero_aligned(b: nat, c: nat)\n    requires\n        aligned(b, c),\n        c > 0,\n    ensures\n        aligned(b, c),\n{\n    subtract_mod_eq_zero(0, b, c);\n}",
+    "reason": "Subtracting 0 preserves alignment \u2014 tests the `a == 0` boundary (tautological)",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "subtract_consecutive_multiples",
+    "type": "logical",
+    "code": "proof fn phi_4_subtract_consecutive_multiples(c: nat, k1: nat, k2: nat)\n    requires\n        c > 0,\n        k1 <= k2,\n    ensures\n        aligned((k2 * c - k1 * c) as nat, c),\n{\n    assert(aligned(k1 * c, c)) by {\n        assert((k1 * c) % c == 0) by (nonlinear_arith) requires c > 0;\n    };\n    assert(aligned(k2 * c, c)) by {\n        assert((k2 * c) % c == 0) by (nonlinear_arith) requires c > 0;\n    };\n    assert(k1 * c <= k2 * c) by (nonlinear_arith) requires k1 <= k2, c > 0;\n    subtract_mod_eq_zero(k1 * c, k2 * c, c);\n}",
+    "reason": "Difference of any two multiples of `c` is aligned to `c` \u2014 tests closure of multiples under subtraction",
+    "entailed": true,
+    "verus_output": "verification results:: 5 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "vstd_lemma_sub_mod_noop_trusted",
+    "type": "logical",
+    "code": "proof fn phi_5_vstd_lemma_sub_mod_noop_trusted(a: int, b: int, c: int)\n    requires\n        c > 0,\n    ensures\n        (b - a) % c == ((b % c) - (a % c)) % c,\n{\n    vstd::arithmetic::div_mod::lemma_sub_mod_noop(b, a, c);\n}",
+    "reason": "The proof depends on vstd's `lemma_sub_mod_noop` \u2014 if that library lemma were unsound the subtraction-alignment property would be wrong",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "admit_unsound_any_arrays_equal",
+    "type": "logical",
+    "code": "proof fn phi_1_admit_unsound_any_arrays_equal()\n    ensures\n        [0u8, 1u8] == [0u8, 0u8],\n{\n    bytes_eq_view_implies_eq([0u8, 1u8], [0u8, 0u8]);\n}",
+    "reason": "The `admit()` in the proof body makes the lemma trusted \u2014 if the biconditional direction from `a@ =~= b@` to `a == b` is provable but the reverse `a == b` to `a@ =~= b@` relies on admit, it could allow deriving equality of any two arrays",
+    "entailed": false,
+    "verus_output": "s\nerror: postcondition not satisfied\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/vest__regular__uints__bytes_eq_view_implies_eq/phi_1_admit_unsound_any_arrays_equal.rs:26:9\n   |\n24 | proof fn phi_1_admit_unsound_any_arrays_equal()\n   |       ----------------------------------------- at the end of the function body\n25 |     ensures\n26 |         [0u8, 1u8] == [0u8, 0u8],\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "view_eq_implies_structural_eq",
+    "type": "logical",
+    "code": "proof fn phi_2_view_eq_implies_structural_eq(a: [u8; 4], b: [u8; 4])\n    requires\n        a@ =~= b@,\n    ensures\n        a == b,\n{\n    bytes_eq_view_implies_eq(a, b);\n}",
+    "reason": "If the `admit()` is unsound, spec-level sequence equality (`a@ =~= b@`) would imply exec-level array equality (`a == b`) without actually proving the element-wise connection between view and structural equality",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "structural_eq_implies_view_eq",
+    "type": "logical",
+    "code": "proof fn phi_3_structural_eq_implies_view_eq(a: [u8; 4], b: [u8; 4])\n    requires\n        a == b,\n    ensures\n        a@ =~= b@,\n{\n    bytes_eq_view_implies_eq(a, b);\n}",
+    "reason": "The biconditional is ensured in one `ensures` clause \u2014 if `admit()` makes both directions hold vacuously, this direction should be trivially true but could still mask issues in how array equality relates to view equality",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "distinct_arrays_have_distinct_views",
+    "type": "behavioral",
+    "code": "proof fn phi_4_distinct_arrays_have_distinct_views()\n    ensures\n        !([0u8, 0u8]@ =~= [0u8, 1u8]@),\n{\n    bytes_eq_view_implies_eq([0u8, 0u8], [0u8, 1u8]);\n}",
+    "reason": "If the biconditional is sound, distinct arrays must have distinct views \u2014 but if `admit()` corrupts the proof, this could either hold vacuously or fail, revealing whether the `admit()` broke the `<==` direction",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "admit_derives_false",
+    "type": "logical",
+    "code": "proof fn phi_5_admit_derives_false()\n    ensures\n        false,\n{\n    let a: [u8; 2] = [0u8, 0u8];\n    let b: [u8; 2] = [0u8, 1u8];\n    bytes_eq_view_implies_eq(a, b);\n    assert(a@ =~= b@ <==> a == b);\n    // If the biconditional is unsound due to admit(), we might derive false\n    // from a != b but the lemma claiming a@ =~= b@ <==> a == b\n}",
+    "reason": "If `admit()` makes the biconditional hold unconditionally regardless of actual array contents, combining with concrete distinct arrays and their distinct views could derive `false`, proving the axiom system is inconsistent",
+    "entailed": false,
+    "verus_output": "verification results:: 1 verified, 1 errors\nerror: postcondition not satisfied\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/vest__regular__uints__bytes_eq_view_implies_eq/phi_5_admit_derives_false.rs:26:9\n   |\n24 | proof fn phi_5_admit_derives_false()\n   |       ------------------------------ at the end of the function body\n25 |     ensures\n26 |         false,\n   |         ^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

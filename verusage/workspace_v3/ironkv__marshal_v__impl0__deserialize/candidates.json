@@ -1,0 +1,37 @@
+[
+  {
+    "name": "always_deserializes_zero",
+    "target_fn": "deserialize",
+    "type": "behavioral",
+    "code": "proof fn phi_1_always_deserializes_zero(data: Seq<u8>, start: int, x: u64, end: int)\n    requires\n        x.is_marshalable(),\n        0 <= start <= end <= data.len(),\n        data.subrange(start, end) == x.ghost_serialize(),\n    ensures\n        x == 0u64,\n{\n}",
+    "reason": "Would mean deserialization is trivial and ignores the actual byte content"
+  },
+  {
+    "name": "consumes_zero_bytes",
+    "target_fn": "deserialize",
+    "type": "boundary",
+    "code": "proof fn phi_2_consumes_zero_bytes(data: Seq<u8>, start: int, x: u64, end: int)\n    requires\n        x.is_marshalable(),\n        0 <= start <= end <= data.len(),\n        data.subrange(start, end) == x.ghost_serialize(),\n    ensures\n        end == start,\n{\n}",
+    "reason": "Would mean successful deserialization consumes no bytes, making the cursor never advance"
+  },
+  {
+    "name": "consumes_all_remaining",
+    "target_fn": "deserialize",
+    "type": "behavioral",
+    "code": "proof fn phi_3_consumes_all_remaining(data: Seq<u8>, start: int, x: u64, end: int)\n    requires\n        x.is_marshalable(),\n        0 <= start <= end <= data.len(),\n        data.subrange(start, end) == x.ghost_serialize(),\n    ensures\n        end == data.len(),\n{\n}",
+    "reason": "Would mean deserialization always eats the rest of the buffer instead of a fixed 8-byte chunk"
+  },
+  {
+    "name": "not_eight_bytes",
+    "target_fn": "deserialize",
+    "type": "boundary",
+    "code": "proof fn phi_4_not_eight_bytes(data: Seq<u8>, start: int, x: u64, end: int)\n    requires\n        x.is_marshalable(),\n        0 <= start <= end <= data.len(),\n        data.subrange(start, end) == x.ghost_serialize(),\n    ensures\n        end - start != 8,\n{\n}",
+    "reason": "Would mean u64 serialization is not fixed-width 8 bytes, breaking framing assumptions"
+  },
+  {
+    "name": "value_fits_single_byte",
+    "target_fn": "deserialize",
+    "type": "logical",
+    "code": "proof fn phi_5_value_fits_single_byte(data: Seq<u8>, start: int, x: u64, end: int)\n    requires\n        x.is_marshalable(),\n        0 <= start <= end <= data.len(),\n        data.subrange(start, end) == x.ghost_serialize(),\n    ensures\n        x <= 255u64,\n{\n}",
+    "reason": "Would mean only the low byte matters, losing 56 bits of information during deserialization"
+  }
+]

@@ -1,0 +1,37 @@
+[
+  {
+    "name": "erase_removes_below_lo",
+    "target_fn": "erase",
+    "type": "behavioral",
+    "code": "proof fn phi_1_erase_removes_below_lo<K: KeyTrait + VerusClone>(\n    pre: StrictlyOrderedMap<K>, post: StrictlyOrderedMap<K>,\n    lo: KeyIterator<K>, hi: KeyIterator<K>, k: K,\n)\n    requires\n        pre.valid(),\n        post.valid(),\n        forall |k2: K| {\n            let ki = KeyIterator::<K>::new_spec(k2);\n            if ki.geq_spec(lo) && ki.lt_spec(hi) {\n                !(#[trigger] post@.contains_key(k2))\n            } else {\n                (pre@.contains_key(k2) ==>\n                     post@.contains_key(k2) && post@[k2] == pre@[k2])\n                && (post@.contains_key(k2) ==> pre@.contains_key(k2))\n            }\n        },\n        pre@.contains_key(k),\n        KeyIterator::<K>::new_spec(k).lt_spec(lo),\n    ensures\n        !post@.contains_key(k),\n{\n}",
+    "reason": "Keys strictly below `lo` are outside [lo, hi) and must be preserved, not erased"
+  },
+  {
+    "name": "empty_range_removes_key",
+    "target_fn": "erase",
+    "type": "boundary",
+    "code": "proof fn phi_2_empty_range_removes_key<K: KeyTrait + VerusClone>(\n    pre: StrictlyOrderedMap<K>, post: StrictlyOrderedMap<K>,\n    lo: KeyIterator<K>, hi: KeyIterator<K>, k: K,\n)\n    requires\n        pre.valid(),\n        post.valid(),\n        !lo.lt_spec(hi),\n        forall |k2: K| {\n            let ki = KeyIterator::<K>::new_spec(k2);\n            if ki.geq_spec(lo) && ki.lt_spec(hi) {\n                !(#[trigger] post@.contains_key(k2))\n            } else {\n                (pre@.contains_key(k2) ==>\n                     post@.contains_key(k2) && post@[k2] == pre@[k2])\n                && (post@.contains_key(k2) ==> pre@.contains_key(k2))\n            }\n        },\n        pre@.contains_key(k),\n    ensures\n        !post@.contains_key(k),\n{\n    K::cmp_properties();\n}",
+    "reason": "When lo >= hi the range [lo, hi) is empty so no key should ever be removed"
+  },
+  {
+    "name": "erase_introduces_new_key",
+    "target_fn": "erase",
+    "type": "logical",
+    "code": "proof fn phi_3_erase_introduces_new_key<K: KeyTrait + VerusClone>(\n    pre: StrictlyOrderedMap<K>, post: StrictlyOrderedMap<K>,\n    lo: KeyIterator<K>, hi: KeyIterator<K>, k: K,\n)\n    requires\n        pre.valid(),\n        post.valid(),\n        forall |k2: K| {\n            let ki = KeyIterator::<K>::new_spec(k2);\n            if ki.geq_spec(lo) && ki.lt_spec(hi) {\n                !(#[trigger] post@.contains_key(k2))\n            } else {\n                (pre@.contains_key(k2) ==>\n                     post@.contains_key(k2) && post@[k2] == pre@[k2])\n                && (post@.contains_key(k2) ==> pre@.contains_key(k2))\n            }\n        },\n        !pre@.contains_key(k),\n    ensures\n        post@.contains_key(k),\n{\n}",
+    "reason": "Erase should never introduce a key absent from the original map"
+  },
+  {
+    "name": "erase_changes_preserved_value",
+    "target_fn": "erase",
+    "type": "behavioral",
+    "code": "proof fn phi_4_erase_changes_preserved_value<K: KeyTrait + VerusClone>(\n    pre: StrictlyOrderedMap<K>, post: StrictlyOrderedMap<K>,\n    lo: KeyIterator<K>, hi: KeyIterator<K>, k: K,\n)\n    requires\n        pre.valid(),\n        post.valid(),\n        forall |k2: K| {\n            let ki = KeyIterator::<K>::new_spec(k2);\n            if ki.geq_spec(lo) && ki.lt_spec(hi) {\n                !(#[trigger] post@.contains_key(k2))\n            } else {\n                (pre@.contains_key(k2) ==>\n                     post@.contains_key(k2) && post@[k2] == pre@[k2])\n                && (post@.contains_key(k2) ==> pre@.contains_key(k2))\n            }\n        },\n        pre@.contains_key(k),\n        post@.contains_key(k),\n        !(KeyIterator::<K>::new_spec(k).geq_spec(lo) && KeyIterator::<K>::new_spec(k).lt_spec(hi)),\n    ensures\n        !(post@[k] == pre@[k]),\n{\n}",
+    "reason": "A key outside the erase range that survives must retain its original mapped value"
+  },
+  {
+    "name": "erase_removes_at_hi_boundary",
+    "target_fn": "erase",
+    "type": "boundary",
+    "code": "proof fn phi_5_erase_removes_at_hi_boundary<K: KeyTrait + VerusClone>(\n    pre: StrictlyOrderedMap<K>, post: StrictlyOrderedMap<K>,\n    lo: KeyIterator<K>, hi: KeyIterator<K>,\n)\n    requires\n        pre.valid(),\n        post.valid(),\n        !hi.is_end_spec(),\n        lo.lt_spec(hi),\n        forall |k2: K| {\n            let ki = KeyIterator::<K>::new_spec(k2);\n            if ki.geq_spec(lo) && ki.lt_spec(hi) {\n                !(#[trigger] post@.contains_key(k2))\n            } else {\n                (pre@.contains_key(k2) ==>\n                     post@.contains_key(k2) && post@[k2] == pre@[k2])\n                && (post@.contains_key(k2) ==> pre@.contains_key(k2))\n            }\n        },\n        pre@.contains_key(*hi.get_spec()),\n    ensures\n        !post@.contains_key(*hi.get_spec()),\n{\n    K::cmp_properties();\n}",
+    "reason": "The key at `hi` is at the exclusive upper bound and must not be erased"
+  }
+]

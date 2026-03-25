@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: unmarshal_spec_total
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `Result` is an enum with exactly two variants (`Ok` and `Err`), so any value of type `Result` is trivially one or the other. This is a tautology about the return type, not a spec gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: create_key_namespace_from_request_not_obj
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `CreateRequest::key()` derives namespace from `self.namespace` rather than `self.obj.metadata.namespace`. If these diverge, the object is stored under a namespace key that doesn't match its own metadata, which could cause lookup inconsistencies.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: allocator_monotone_unbounded
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `ReconcileId` is `nat`, which is intentionally unbounded in the spec-level model. Strict monotonicity of successive allocations is the desired design — resource exhaustion is a runtime concern, not a spec-level property.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: unmarshal_no_state_validation
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Unmarshal is intentionally a parsing/deserialization step separate from validation. In Kubernetes, the API server applies state validation as a distinct admission phase after unmarshalling.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: `CreateRequest::key()` uses `self.namespace` instead of `self.obj.metadata.namespace`, allowing namespace divergence between the key and the embedded object. The remaining three are false positives — Result totality is a tautology, unbounded nat allocation is intentional spec-level modeling, and unmarshal deliberately separates parsing from validation per Kubernetes semantics.
+===END_SUMMARY===

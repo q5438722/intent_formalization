@@ -1,0 +1,82 @@
+===PHI_START===
+NAME: lemma_pt_walk_external_body_completeness
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_lemma_pt_walk_external_body_completeness(mem: PTMem, va: usize)
+    ensures
+        mem.pt_walk(va).complete,
+        0 < mem.pt_walk(va).path.len() <= 4,
+{
+    mem.lemma_pt_walk(va);
+}
+```
+REASON: `lemma_pt_walk` is `external_body` with `unimplemented!()` — it asserts every walk is complete with path length 1..4, but this is trusted without proof; if the walk could diverge or produce empty paths, downstream reasoning would be unsound
+===PHI_END===
+
+===PHI_START===
+NAME: lemma_pt_walk_valid_implies_p_bit
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_lemma_pt_walk_valid_implies_p_bit(mem: PTMem, va: usize)
+    requires
+        mem.pt_walk(va).result() is Valid,
+    ensures
+        mem.read(mem.pt_walk(va).path.last().0) & 1 == 1,
+{
+    mem.lemma_pt_walk(va);
+}
+```
+REASON: `lemma_pt_walk` trusts that valid walk results have P-bit set on the last entry — this is asserted via `external_body` without verifying the `pt_walk` definition actually guarantees it
+===PHI_END===
+
+===PHI_START===
+NAME: lemma_pt_walk_intermediate_are_directories
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_lemma_pt_walk_intermediate_are_directories(mem: PTMem, va: usize, i: int)
+    requires
+        0 <= i < mem.pt_walk(va).path.len() - 1,
+    ensures
+        mem.pt_walk(va).path[i].1 is Directory,
+        mem.read(mem.pt_walk(va).path[i].0) & 1 == 1,
+{
+    mem.lemma_pt_walk(va);
+}
+```
+REASON: `lemma_pt_walk` trusts that all intermediate walk entries are Directory variants with P-bit set — this structural invariant over the walk path is asserted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: all_mb0_bits_are_zero_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_all_mb0_bits_are_zero_external_body(entry: usize)
+    ensures
+        (PDE { entry, layer: Ghost(0) }).all_mb0_bits_are_zero(),
+{
+}
+```
+REASON: `all_mb0_bits_are_zero` is `external_body` — if it returns true for arbitrary entries (including ones with reserved bits set), the PDE view would parse invalid entries as valid Directory/Page variants
+===PHI_END===
+
+===PHI_START===
+NAME: view_opaque_base_walk_only
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_view_opaque_base_walk_only(mem: PTMem, va: usize)
+    requires
+        va < MAX_BASE,
+        mem.pt_walk(va).result() matches WalkResult::Valid { vbase, pte } && vbase == va,
+    ensures
+        mem@.contains_key(va),
+{
+    reveal(PTMem::view);
+}
+```
+REASON: `PTMem::view` is opaque and defined via `is_base_pt_walk` — revealing it should show that base-aligned valid walks produce map entries; if the opaque barrier hides incorrect filtering logic, the view map could silently drop valid mappings
+===PHI_END===

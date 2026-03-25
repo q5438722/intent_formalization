@@ -1,0 +1,85 @@
+===PHI_START===
+NAME: execution_equality_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_execution_equality_intensional_bridge(ex1: Execution<int>, ex2: Execution<int>)
+    requires
+        forall |i: nat| #[trigger] (ex1.nat_to_state)(i) == (ex2.nat_to_state)(i),
+    ensures
+        ex1 == ex2,
+{
+    execution_equality::<int>(ex1, ex2);
+}
+```
+REASON: execution_equality is external_body forcing intensional equality of Execution from pointwise state equality — collapses structurally distinct spec_fn(nat)->T without proof
+===PHI_END===
+
+===PHI_START===
+NAME: implies_apply_closure_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_implies_apply_closure_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>)
+    requires
+        p.implies(q).satisfied_by(ex),
+        p.satisfied_by(ex),
+    ensures
+        q.satisfied_by(ex),
+{
+    implies_apply::<int>(ex, p, q);
+}
+```
+REASON: implies_apply is external_body bridging p.implies(q)'s TempPred::new closure-wrapped implication to modus ponens — resolves closure identity gap without proof
+===PHI_END===
+
+===PHI_START===
+NAME: stable_unfold_closure_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_stable_unfold_closure_bridge(ex: Execution<int>, p: TempPred<int>, i: nat)
+    requires
+        stable(p).satisfied_by(ex),
+        p.satisfied_by(ex),
+    ensures
+        p.satisfied_by(ex.suffix(i)),
+{
+    stable_unfold::<int>(ex, p);
+}
+```
+REASON: stable_unfold is external_body bridging stable(p)'s nested implies/always closure wrapping to a bare forall — resolves multiple layers of closure identity without proof
+===PHI_END===
+
+===PHI_START===
+NAME: leads_to_unfold_closure_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_leads_to_unfold_closure_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>, i: nat)
+    requires
+        p.leads_to(q).satisfied_by(ex),
+    ensures
+        p.implies(eventually(q)).satisfied_by(ex.suffix(i)),
+{
+    leads_to_unfold::<int>(ex, p, q);
+}
+```
+REASON: leads_to_unfold is external_body bridging leads_to's always(implies(eventually)) nested closure wrapping to a bare forall — resolves multiple layers of closure identity without proof
+===PHI_END===
+
+===PHI_START===
+NAME: suffix_zero_equals_self
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_suffix_zero_equals_self(ex: Execution<int>)
+    ensures
+        ex.suffix(0) == ex,
+{
+    assert forall |i: nat| #[trigger] (ex.suffix(0).nat_to_state)(i) == (ex.nat_to_state)(i) by {};
+    execution_equality::<int>(ex.suffix(0), ex);
+}
+```
+REASON: suffix(0) creates a new Execution with closure |i| nat_to_state(i+0) which is intensionally distinct from nat_to_state — execution_equality forces them equal, but this relies on the unverified axiom
+===PHI_END===

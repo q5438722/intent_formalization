@@ -1,0 +1,17 @@
+===VERDICT_START===
+PHI: write_relative_writable_check_absolute_translation
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `(relative_addr + start) - start == relative_addr` is basic integer arithmetic. This confirms the address translation is consistent, which is a correct and expected property.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: write_double_outstanding_silently_overwrites
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The `PersistentMemoryByte::write` spec intentionally sets `outstanding_write: Some(byte)` regardless of existing state — this is the correct definition. The `no_outstanding_writes_in_range` precondition on `PersistentMemoryRegion::write` prevents double writes at the exec level. The spec-level function merely defines what would happen; the precondition guards actual usage.
+===VERDICT_END===
+
+===SUMMARY===
+Both candidates are false positives. The address translation roundtrip is trivial integer arithmetic, and the double-write behavior at the spec level is intentional — the `no_outstanding_writes_in_range` precondition on the exec-level `write` prevents this scenario from occurring in verified code.
+===END_SUMMARY===

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "implies_apply_closure_bridge",
+    "type": "logical",
+    "code": "proof fn phi_1_implies_apply_closure_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.implies(q).satisfied_by(ex),\n        p.satisfied_by(ex),\n    ensures\n        q.satisfied_by(ex),\n{\n    implies_apply::<int>(ex, p, q);\n}",
+    "reason": "implies_apply is external_body bridging p.implies(q).satisfied_by(ex) through TempPred::new closure wrapping to modus ponens \u2014 resolves closure identity mismatch without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "implies_contraposition_closure_bridge",
+    "type": "logical",
+    "code": "proof fn phi_2_implies_contraposition_closure_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.implies(q).satisfied_by(ex),\n        not(q).satisfied_by(ex),\n    ensures\n        not(p).satisfied_by(ex),\n{\n    implies_contraposition_apply::<int>(ex, p, q);\n}",
+    "reason": "implies_contraposition_apply is external_body bridging p.implies(q) and not(q) \u2014 each wrapped in distinct TempPred::new closures \u2014 to not(p) without verifying closure identity",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "mutual_entailment_derives_false_if_distinct",
+    "type": "logical",
+    "code": "proof fn phi_3_mutual_entailment_derives_false_if_distinct(p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.entails(q),\n        q.entails(p),\n        p !== q,\n    ensures\n        false,\n{\n    temp_pred_equality::<int>(p, q);\n}",
+    "reason": "temp_pred_equality forces p == q from mutual entailment \u2014 if two preds are intensionally distinct but semantically equivalent this derives false",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "extensional_equality_of_spec_fn",
+    "type": "logical",
+    "code": "proof fn phi_4_extensional_equality_of_spec_fn(f: spec_fn(Execution<int>) -> bool, g: spec_fn(Execution<int>) -> bool)\n    requires\n        forall |ex: Execution<int>| f(ex) ==> g(ex),\n        forall |ex: Execution<int>| g(ex) ==> f(ex),\n    ensures\n        f == g,\n{\n    let p = TempPred::<int> { pred: f };\n    let q = TempPred::<int> { pred: g };\n    temp_pred_equality::<int>(p, q);\n}",
+    "reason": "the two external_body axioms together allow deriving intensional equality of arbitrary spec_fn(Execution) -> bool from pointwise equivalence \u2014 collapsing all extensionally equal functions to intensionally equal",
+    "entailed": false,
+    "verus_output": "error: Could not automatically infer triggers for this quantifier.  Use #[trigger] annotations to manually mark trigger terms instead.\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-library__temp_pred_equality/phi_4_extensional_equality_of_spec_fn.rs:93:9\n   |\n93 |         forall |ex: Execution<int>| f(ex) ==> g(ex),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "not_not_equals_self",
+    "type": "boundary",
+    "code": "proof fn phi_5_not_not_equals_self(p: TempPred<int>)\n    ensures\n        not(not(p)) == p,\n{\n    temp_pred_equality::<int>(not(not(p)), p);\n}",
+    "reason": "not(not(p)) wraps p in two layers of TempPred::new closures (!(!x)) \u2014 forced equal to p via the closure bridge axioms despite structural distinctness",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

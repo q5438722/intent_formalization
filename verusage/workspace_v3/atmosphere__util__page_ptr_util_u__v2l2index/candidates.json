@@ -1,0 +1,37 @@
+[
+  {
+    "name": "l2index_always_zero_4k",
+    "target_fn": "v2l2index",
+    "type": "behavioral",
+    "code": "proof fn phi_1_l2index_always_zero_4k(va: usize)\n    requires\n        spec_va_4k_valid(va),\n    ensures\n        spec_v2l2index(va) == 0,\n{\n}",
+    "reason": "If every 4K-valid address maps to L2 index 0, the function cannot distinguish any L2 page-table entries for 4K pages"
+  },
+  {
+    "name": "l2index_never_reaches_max",
+    "target_fn": "v2l2index",
+    "type": "boundary",
+    "code": "proof fn phi_2_l2index_never_reaches_max(va: usize)\n    requires\n        spec_va_4k_valid(va) || spec_va_2m_valid(va) || spec_va_1g_valid(va),\n    ensures\n        spec_v2l2index(va) < 0x1ff,\n{\n}",
+    "reason": "The ensures clause promises ret <= 0x1ff; if 0x1ff is unreachable, the upper bound is too loose and the full 9-bit index space is not usable"
+  },
+  {
+    "name": "l2index_determines_2m_addr",
+    "target_fn": "v2l2index",
+    "type": "logical",
+    "code": "proof fn phi_3_l2index_determines_2m_addr(va1: usize, va2: usize)\n    requires\n        spec_va_2m_valid(va1),\n        spec_va_2m_valid(va2),\n        spec_v2l2index(va1) == spec_v2l2index(va2),\n    ensures\n        va1 == va2,\n{\n}",
+    "reason": "Two 2M-valid addresses can share an L2 index yet differ in higher bits (L3/L4); if entailed, the spec conflates distinct address ranges"
+  },
+  {
+    "name": "l2index_always_zero_2m",
+    "target_fn": "v2l2index",
+    "type": "behavioral",
+    "code": "proof fn phi_4_l2index_always_zero_2m(va: usize)\n    requires\n        spec_va_2m_valid(va),\n    ensures\n        spec_v2l2index(va) == 0,\n{\n}",
+    "reason": "2M alignment zeros bits 0\u201320 but bits 21\u201329 are free; if the index were always 0, the L2 table could only map one 2M region per L3 entry"
+  },
+  {
+    "name": "l2index_upper_half_unreachable",
+    "target_fn": "v2l2index",
+    "type": "boundary",
+    "code": "proof fn phi_5_l2index_upper_half_unreachable(va: usize)\n    requires\n        spec_va_4k_valid(va) || spec_va_2m_valid(va),\n    ensures\n        spec_v2l2index(va) < 256,\n{\n}",
+    "reason": "If the top bit of the 9-bit index is never set, only 256 of 512 L2 entries are addressable, halving usable virtual address space per L3 slot"
+  }
+]

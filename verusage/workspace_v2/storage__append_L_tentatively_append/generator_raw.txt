@@ -1,0 +1,101 @@
+===PHI_START===
+NAME: lemma_addresses_external_body_roundtrip
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_lemma_addresses_external_body_roundtrip(
+    pm_region_view: PersistentMemoryRegionView,
+    info: LogInfo,
+    log_area_offset: int,
+)
+    requires
+        pm_region_view.len() == info.log_area_len,
+        info.head_log_area_offset < info.log_area_len,
+        info.log_area_len > 0,
+        0 <= log_area_offset < info.log_area_len,
+    ensures
+        ({
+            let pos = log_area_offset_to_relative_log_pos(log_area_offset, info.head_log_area_offset as int, info.log_area_len as int);
+            &&& 0 <= pos < info.log_area_len
+            &&& log_area_offset == relative_log_pos_to_log_area_offset(pos, info.head_log_area_offset as int, info.log_area_len as int)
+        }),
+{
+    lemma_addresses_in_log_area_subregion_correspond_to_relative_log_positions(pm_region_view, info);
+}
+```
+REASON: `lemma_addresses_in_log_area_subregion_correspond_to_relative_log_positions` is `external_body` — the roundtrip between offset and relative position is trusted without proof; an incorrect modular arithmetic implementation would break the entire log layout
+===PHI_END===
+
+===PHI_START===
+NAME: relative_pos_wraps_incorrectly
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_relative_pos_wraps_incorrectly(head_offset: int, log_area_len: int)
+    requires
+        0 <= head_offset < log_area_len,
+        log_area_len > 0,
+    ensures
+        relative_log_pos_to_log_area_offset(0, head_offset, log_area_len) == head_offset,
+        relative_log_pos_to_log_area_offset(log_area_len - head_offset, head_offset, log_area_len) == 0,
+{
+}
+```
+REASON: Tests that relative position 0 maps to head_offset and the wrap-around point maps to offset 0 — if the wrapping logic were off-by-one, log reads would be shifted by one byte
+===PHI_END===
+
+===PHI_START===
+NAME: inverse_not_bijective_at_boundary
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_inverse_not_bijective_at_boundary(head_offset: int, log_area_len: int)
+    requires
+        0 < head_offset < log_area_len,
+        log_area_len > 1,
+    ensures
+        log_area_offset_to_relative_log_pos(head_offset, head_offset, log_area_len) == 0,
+        log_area_offset_to_relative_log_pos(head_offset - 1, head_offset, log_area_len) == log_area_len - 1,
+{
+}
+```
+REASON: The inverse mapping at the boundary (offset just below head) should give the maximum relative position — if the boundary case is wrong, the last byte of the log area would be misaddressed
+===PHI_END===
+
+===PHI_START===
+NAME: tentative_append_preserves_committed_log
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_tentative_append_preserves_committed_log(state: AbstractLogState, bytes: Seq<u8>)
+    requires
+        bytes.len() > 0,
+    ensures
+        state.tentatively_append(bytes).log == state.log,
+        state.tentatively_append(bytes).head == state.head,
+        state.tentatively_append(bytes).capacity == state.capacity,
+{
+}
+```
+REASON: `tentatively_append` only extends `pending` — if it also modified `log`, `head`, or `capacity`, committed data would be corrupted by tentative operations
+===PHI_END===
+
+===PHI_START===
+NAME: write_outside_range_unchanged
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_write_outside_range_unchanged(view: PersistentMemoryRegionView, addr: int, bytes: Seq<u8>, k: int)
+    requires
+        0 <= k < view.len(),
+        bytes.len() > 0,
+        0 <= addr,
+        addr + bytes.len() <= view.len(),
+        !(addr <= k < addr + bytes.len()),
+    ensures
+        view.write(addr, bytes).state[k] == view.state[k],
+{
+}
+```
+REASON: Writing to a range should leave bytes outside that range untouched — if the map-based write implementation leaked into other positions, it would corrupt unrelated log data
+===PHI_END===

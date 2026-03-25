@@ -1,0 +1,17 @@
+===VERDICT_START===
+PHI: configmap_unmarshal_ignores_status
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: ConfigMap has `EmptyStatusView = ()` as status type. The `_unmarshal_helper` correctly discards status because ConfigMap status is unit type — there's nothing meaningful to preserve. The equality holds because both unmarshal results use the same metadata and spec.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: daemonset_transition_allows_template_change
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This matches real Kubernetes semantics — DaemonSet transition validation only requires selector immutability. Template changes (e.g., updating container images) are explicitly allowed and are the primary mechanism for rolling updates.
+===VERDICT_END===
+
+===SUMMARY===
+Both candidates are false positives. ConfigMap's status is unit type `()` so discarding it during unmarshal is correct. DaemonSet's transition validation correctly models Kubernetes semantics where only selector is immutable while template changes are the standard update path.
+===END_SUMMARY===

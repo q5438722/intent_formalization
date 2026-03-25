@@ -1,0 +1,52 @@
+[
+  {
+    "name": "retransmit_always_empty",
+    "target_fn": "retransmit_un_acked_packets",
+    "type": "behavioral",
+    "reason": "Would mean retransmit never produces any packets, making retransmission a no-op regardless of un-acked state",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "ackets: Seq<CPacket>)\n     |       ------------------------------------------------------------------------------------------- at the end of the function body\n...\n1119 |         packets.len() == 0,\n     |         ^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "count_zero_nonempty",
+    "target_fn": "un_acked_messages_for_dest_up_to",
+    "type": "boundary",
+    "reason": "With count=0 the index range is empty so the result set must be empty; non-empty would mean phantom packets appear from nowhere",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "-------------- at the end of the function body\n...\n1114 |         sd.un_acked_messages_for_dest_up_to(src, dst, 0) != Set::<Packet>::empty(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "wrong_src_in_unacked_dest",
+    "target_fn": "un_acked_messages_for_dest",
+    "type": "logical",
+    "reason": "All packets in un_acked_messages_for_dest are constrained to have p.src == src; a packet with wrong src would be a spoofed origin",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "ets/phi_3_wrong_src_in_unacked_dest.rs:1114:9\n     |\n1114 |         exists |p: Packet| sd.un_acked_messages_for_dest(src, dst).contains(p) && p.src != src,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "monotonicity_violated",
+    "target_fn": "un_acked_messages_for_dest_up_to",
+    "type": "logical",
+    "reason": "Increasing the count should only add packets; losing packets when scanning further would silently drop retransmissions",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "ody\n...\n1115 | /         !sd.un_acked_messages_for_dest_up_to(src, dst, c1).subset_of(\n1116 | |             sd.un_acked_messages_for_dest_up_to(src, dst, c2)),\n     | |______________________________________________________________^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "retransmit_preconditions_unsatisfiable",
+    "target_fn": "retransmit_un_acked_packets",
+    "type": "boundary",
+    "reason": "If the preconditions are contradictory the function can never be called, making the entire retransmission mechanism dead code",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "tions_unsatisfiable(sd: CSingleDelivery, src: EndPoint)\n     |       ----------------------------------------------------------------------------------- at the end of the function body\n...\n1114 |         false,\n     |         ^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

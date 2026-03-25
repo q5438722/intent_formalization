@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: vaddr_mapping_modified_choose_arbitrary_on_idle
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The preconditions are contradictory in practice. If `vaddr_mapping_is_being_modified(c, va)` holds, there exists a thread with a Map or Unmap state covering `va`. The `choose` operator picks a witness satisfying the predicate, so it cannot pick an Idle thread. The precondition forcing `choose_thread == thread` where `thread` is Idle creates a vacuously satisfiable but practically unreachable scenario — `choose` is deterministic and will select a valid witness.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: update_range_length_mismatch
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `update_range` with an empty `new` sequence correctly returns the original sequence — `s.subrange(0, 0) + Seq::empty() + s.subrange(0, s.len())` equals `s`. This is correct arithmetic behavior, not a spec gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: overlap_zero_size_reflexive
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The `overlap` function returns true for two zero-size regions at the same base via `region1.base == region2.base`. Mathematically, empty intervals do not overlap. This is a minor spec defect in the degenerate case.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: memop_valid_size_excludes_16
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is an intentional design choice. The spec models standard x86 scalar memory operations (1, 2, 4, 8 bytes). SIMD/AVX operations are out of scope for this MMU verification. Excluding 16-byte operations is a deliberate scoping decision, not a spec gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: is_in_mapped_region_phys_mem_bound_not_in_enabled
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The source code explicitly has a TODO comment acknowledging this gap: "This should arguably be something we require in step_Map_enabled so we'd know all mapped memory is valid." Without the check in `step_Map_enabled`, mappings can be created where the physical frame extends beyond physical memory, causing some virtual addresses within the mapping to fail `is_in_mapped_region` despite being in a valid mapping's virtual range.
+===VERDICT_END===
+
+===SUMMARY===
+Two true positives: the `overlap` zero-size reflexivity issue (minor boundary defect) and the missing physical memory bounds check in `step_Map_enabled` (acknowledged by a TODO comment in the source). Three false positives: the `choose` arbitrary branch is unreachable due to contradictory preconditions, `update_range` with empty sequence is correct, and excluding 16-byte operations is an intentional scoping decision.
+===END_SUMMARY===

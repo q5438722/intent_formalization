@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: max_phyaddr_width_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `MAX_PHYADDR_WIDTH` is `external_body` with its bounds asserted by an `axiom fn`. The value 52 is hardcoded but opaque to the verifier — the range `[32, 52]` is trusted without proof. This is the intentional design for hardware-dependent constants, but it is an unverified trust assumption.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: max_phyaddr_lower_bound
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Direct consequence of the verified `lemma_maxphyaddr_facts`. The 32-bit lower bound follows from the axiom `MAX_PHYADDR_WIDTH >= 32`, which correctly models x86-64's minimum physical address width.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: max_phyaddr_upper_bound
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Direct consequence of the verified `lemma_maxphyaddr_facts`. The 52-bit upper bound is the x86-64 architectural maximum for physical addresses per Intel/AMD specs.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: max_phyaddr_fits_usize
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Trivially follows from the 52-bit upper bound. A 52-bit value always fits in a 64-bit usize. The trust gap is already captured by φ1.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: max_phyaddr_spec_equals_exec
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The `when_used_as_spec` linkage is verified by the exec const's ensures clause and proof block, which calls the axiom and uses bit_vector reasoning to establish overflow safety. This is correct given the axiom.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: `MAX_PHYADDR_WIDTH` is an `external_body` constant with bounds asserted by an axiom function — the hardware-dependent value `[32, 52]` is trusted without proof. The other four candidates are false positives — they are correct consequences of the verified lemma and standard x86-64 physical address width constraints.
+===END_SUMMARY===

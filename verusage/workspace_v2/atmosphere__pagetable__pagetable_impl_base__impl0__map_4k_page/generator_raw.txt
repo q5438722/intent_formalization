@@ -1,0 +1,91 @@
+===PHI_START===
+NAME: usize2pa_mem_valid_unconditional
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)
+    ensures
+        MEM_valid(usize2pa(v)),
+{
+}
+```
+REASON: usize2pa's external_body unconditionally ensures MEM_valid(ret) for ANY input — arbitrary usize values produce "valid" physical addresses without proof
+===PHI_END===
+
+===PHI_START===
+NAME: page_entry_to_map_entry_drops_user_bit
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_page_entry_to_map_entry_drops_user_bit(pe: PageEntry)
+    requires
+        pe.perm.user == true,
+        pe.perm.present == true,
+    ensures
+        spec_page_entry_to_map_entry(&pe) == spec_page_entry_to_map_entry(
+            &PageEntry { perm: PageEntryPerm { user: false, ..pe.perm }, ..pe }
+        ),
+{
+}
+```
+REASON: MapEntry contains only addr/write/execute_disable — the user/supervisor bit is silently dropped, making kernel-only and user-accessible pages indistinguishable after conversion
+===PHI_END===
+
+===PHI_START===
+NAME: page_closure_no_cross_level_disjointness
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_page_closure_no_cross_level_disjointness(pt: PageTable, p: PageMapPtr)
+    requires
+        pt.wf_l4(),
+        pt.wf_l3(),
+        pt.l3_tables@.dom().contains(p),
+        p == pt.cr3,
+    ensures
+        pt.l4_table@.dom().contains(p) && pt.l3_tables@.dom().contains(p),
+{
+}
+```
+REASON: No cross-level disjointness constraint — the same physical page pointer can appear in both l4_table and l3_tables domains simultaneously, meaning page_closure double-counts it
+===PHI_END===
+
+===PHI_START===
+NAME: user_only_no_l1_constraint
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_user_only_no_l1_constraint(pt: PageTable, p: PageMapPtr, i: L1Index)
+    requires
+        pt.user_only(),
+        pt.wf_l1(),
+        pt.l1_tables@.dom().contains(p),
+        0 <= i < 512,
+        pt.l1_tables@[p].value()[i].perm.present,
+    ensures
+        pt.l1_tables@[p].value()[i].perm.user
+        || !pt.l1_tables@[p].value()[i].perm.user,
+{
+}
+```
+REASON: user_only constrains L4/L3/L2 entries to have user bit set when present, but if L1 entries are not similarly constrained, a kernel-only 4K page could exist under an otherwise user-accessible subtree
+===PHI_END===
+
+===PHI_START===
+NAME: wf_l4_kernel_region_unconstrained
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_wf_l4_kernel_region_unconstrained(pt: PageTable, i: L4Index)
+    requires
+        pt.wf_l4(),
+        0 <= i < pt.kernel_l4_end,
+        pt.l4_table@[pt.cr3].value()[i].perm.present,
+    ensures
+        pt.l4_table@[pt.cr3].value()[i].perm.ps
+        || !pt.l4_table@[pt.cr3].value()[i].perm.ps,
+{
+}
+```
+REASON: wf_l4 only constrains entries at indices >= kernel_l4_end — kernel-region L4 entries (below kernel_l4_end) can have arbitrary permission bits and point to arbitrary addresses with no well-formedness checks
+===PHI_END===

@@ -1,117 +1,93 @@
-# Specification Test Summary
+# Adversarial Proof Test Summary
 
-## File Under Test
-`kernel__create_and_share_pages__impl0__create_entry_and_share.rs`
+## Target: `create_entry_and_share` (kernel page sharing)
 
-Defines the `Kernel::create_entry_and_share` function which creates page table entries for a target process and shares a mapping from a source process's address space. Also defines `share_mapping` (external_body) and `create_entry` (external_body), along with numerous spec helper functions for page/VA validation, quota management, and address translation.
-
----
-
-## Correctness Results (correctness_tests.rs)
-
-All tests **PASS** (62 verified, 0 errors).
-
-| # | Test Name | Description | Expected | Actual |
-|---|-----------|-------------|----------|--------|
-| 1 | test_quota_subtract_zero | Quota subtract 0 preserves all fields | PASS | PASS |
-| 2 | test_quota_subtract_concrete_3 | Subtract 3 from mem_4k=10 gives 7 | PASS | PASS |
-| 3 | test_quota_subtract_exact | Subtract all mem_4k (3-3=0) | PASS | PASS |
-| 4 | test_page_ptr_valid_zero | ptr=0 is valid (aligned, in range) | PASS | PASS |
-| 5 | test_page_ptr_valid_4k_aligned | ptr=0x1000 is valid | PASS | PASS |
-| 6 | test_page_ptr_valid_large_aligned | ptr=0x10000 is valid | PASS | PASS |
-| 7 | test_page_index_valid_zero | index=0 is valid | PASS | PASS |
-| 8 | test_page_index_valid_near_max | index=NUM_PAGES-1 is valid | PASS | PASS |
-| 9 | test_page_entry_is_empty_true | All-zero PageEntry is empty | PASS | PASS |
-| 10 | test_page_entry_is_empty_false | Non-zero addr PageEntry is not empty | PASS | PASS |
-| 11 | test_spec_page_entry_to_map_entry_concrete | Correct field extraction | PASS | PASS |
-| 12 | test_page_index_2m_valid_concrete | 0 and 512 are 2M-valid indices | PASS | PASS |
-| 13 | test_page_index_truncate_2m_concrete | Truncation to 512 boundaries | PASS | PASS |
-| 14 | test_constants_consistent | NUM_PAGES, PCID_MAX, etc. correct | PASS | PASS |
-| 15 | test_page_ptr_valid_param_alignment | Valid ptr implies 0x1000-aligned | PASS | PASS |
-| 16 | test_page_index_valid_param_range | Valid index implies < NUM_PAGES | PASS | PASS |
-| 17 | test_quota_subtract_param | Parameterized: subtract k from quota | PASS | PASS |
-| 18 | test_page_ptr_to_index_concrete | ptr2index: 0→0, 0x1000→1, 0x2000→2 | PASS | PASS |
-| 19 | test_page_index_to_ptr_concrete | index2ptr: 0→0, 1→0x1000, 2→0x2000 | PASS | PASS |
-| 20 | test_page_ptr_2m_valid_concrete | 0 and 0x200000 are 2M-valid ptrs | PASS | PASS |
-| 21 | test_ret_bound_free_pages | ret≤3 ∧ free≥3 → free≥ret | PASS | PASS |
+This function creates a page table entry for a target process and shares a mapping from a source process's address space into the target's address space.
 
 ---
 
-## Completeness Results
+## Results Overview
 
-### Round 1: Precondition Violations (completeness_round1.rs)
-All tests **FAIL** (5 errors). Specs correctly reject invalid inputs.
+| Test Category | Total | Failed (Expected) | Passed (Unexpected) |
+|---|---|---|---|
+| Boundary Tests | 12 | 12 ✅ | 0 |
+| Behavioral Mutation Tests | 12 | 12 ✅ | 0 |
+| Logical Tests | 12 | 12 ✅ | 0 |
+| **Total** | **36** | **36** | **0** |
 
-| # | Test Name | What It Tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | test_page_ptr_valid_unaligned | page_ptr_valid(1) — not aligned | FAIL | FAIL |
-| 2 | test_page_ptr_valid_odd | page_ptr_valid(0x1001) — not aligned | FAIL | FAIL |
-| 3 | test_page_index_valid_at_max | page_index_valid(NUM_PAGES) — at bound | FAIL | FAIL |
-| 4 | test_page_index_2m_valid_unaligned | page_index_2m_valid(1) — not 512-aligned | FAIL | FAIL |
-| 5 | test_quota_subtract_overflow | Subtract more than available | FAIL | FAIL |
-
-### Round 2: Overly Strong Postconditions (completeness_round2.rs)
-All tests **FAIL** (5 errors). Specs don't guarantee overly tight bounds.
-
-| # | Test Name | What It Tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | test_overly_strong_page_bound | ptr/0x1000 < 100 (too tight) | FAIL | FAIL |
-| 2 | test_overly_strong_index_even | Valid index must be even | FAIL | FAIL |
-| 3 | test_overly_strong_quota_zero | Subtracted quota always 0 | FAIL | FAIL |
-| 4 | test_overly_strong_ptr_always_2m | Valid ptr must be 2M-aligned | FAIL | FAIL |
-| 5 | test_overly_strong_truncate_zero | Truncate always gives 0 | FAIL | FAIL |
-
-### Round 3: Negated Postconditions (completeness_round3.rs)
-All tests **FAIL** (5 errors). Specs correctly guarantee their stated properties.
-
-| # | Test Name | What It Tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | test_negated_page_ptr_valid_zero | !page_ptr_valid(0) | FAIL | FAIL |
-| 2 | test_negated_page_index_valid_zero | !page_index_valid(0) | FAIL | FAIL |
-| 3 | test_negated_page_entry_empty | !is_empty for empty entry | FAIL | FAIL |
-| 4 | test_negated_quota_subtract | Negate correct subtraction | FAIL | FAIL |
-| 5 | test_negated_map_entry_field | m.write==false when should be true | FAIL | FAIL |
-
-### Round 4: Wrong Specific Values (completeness_round4.rs)
-All tests **FAIL** (5 errors). Specs produce correct concrete values.
-
-| # | Test Name | What It Tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | test_wrong_ptr_to_index | ptr2index(0x2000)==3 (should be 2) | FAIL | FAIL |
-| 2 | test_wrong_index_to_ptr | index2ptr(2)==0x3000 (should be 0x2000) | FAIL | FAIL |
-| 3 | test_wrong_truncate_2m | truncate(513)==0 (should be 512) | FAIL | FAIL |
-| 4 | test_wrong_constant_num_pages | NUM_PAGES==1024 (should be 2M) | FAIL | FAIL |
-| 5 | test_wrong_map_entry_addr | m.addr==0x3000 (should be 0x2000) | FAIL | FAIL |
-
-### Round 5: Cross-Function Misuse & Edge Cases (completeness_round5.rs)
-All tests **FAIL** (5 errors). Specs correctly distinguish different functions/properties.
-
-| # | Test Name | What It Tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | test_ptr_index_confusion | ptr2index(x)==index2ptr(x) | FAIL | FAIL |
-| 2 | test_index_valid_implies_2m | index_valid → 2m_valid | FAIL | FAIL |
-| 3 | test_quota_subtract_wrong_field | Subtract changes mem_2m | FAIL | FAIL |
-| 4 | test_page_ptr_valid_implies_2m | ptr_valid → ptr_2m_valid | FAIL | FAIL |
-| 5 | test_truncate_2m_identity | truncate_2m is identity | FAIL | FAIL |
+**All 36 tests failed verification as expected.** No specification weaknesses were detected.
 
 ---
 
-## Overall Assessment
+## Boundary Tests (`boundary_tests.rs`)
 
-### Correctness
-The specs are **correct**. All 21 correctness tests pass verification, confirming that:
-- Helper spec functions (`page_ptr_valid`, `page_index_valid`, `spec_page_ptr2page_index`, etc.) produce expected results for concrete inputs
-- Parameterized properties hold for arbitrary valid inputs
-- `Quota::spec_subtract_mem_4k` correctly models quota deduction
-- The `create_entry_and_share` return bound (≤3) is consistent with free page accounting
+All 12 tests violate preconditions of `create_entry_and_share` and correctly fail:
 
-### Completeness
-The specs are **complete** (tight enough). All 25 completeness tests fail verification, confirming that:
-- Invalid inputs are correctly rejected (Round 1)
-- Overly strong claims are not provable (Round 2)
-- Negations of true properties fail (Round 3)
-- Incorrect concrete values are rejected (Round 4)
-- Cross-function confusion and false implications are rejected (Round 5)
+| # | Test | Precondition Violated |
+|---|---|---|
+| 1 | `test_boundary_zero_free_pages` | `free_pages >= 3` (free_pages=0) |
+| 2 | `test_boundary_two_free_pages` | `free_pages >= 3` (free_pages=2) |
+| 3 | `test_boundary_zero_quota` | `quota.mem_4k >= 3` (mem_4k=0) |
+| 4 | `test_boundary_quota_two` | `quota.mem_4k >= 3` (mem_4k=2) |
+| 5 | `test_boundary_src_proc_not_in_domain` | `proc_dom.contains(src_proc_ptr)` |
+| 6 | `test_boundary_target_proc_not_in_domain` | `proc_dom.contains(target_proc_ptr)` |
+| 7 | `test_boundary_src_va_zero_not_valid` | `va_4k_valid(src_va)` (va=0) |
+| 8 | `test_boundary_target_va_not_aligned` | `va_4k_valid(target_va)` (va=1) |
+| 9 | `test_boundary_target_va_already_mapped` | `target_va NOT in address space` |
+| 10 | `test_boundary_src_va_not_mapped` | `src_va IS in address space` |
+| 11 | `test_boundary_ref_counter_at_max` | `ref_counter <= usize::MAX - 1` |
+| 12 | `test_boundary_ret_exceeds_three` | `ret <= 3` (postcondition boundary) |
 
-### Spec Gaps Found
-**None.** No unexpected passes in completeness tests. The specifications appear well-formed and appropriately tight for the tested properties.
+---
+
+## Behavioral Mutation Tests (`behavioral_mutation_tests.rs`)
+
+All 12 tests mutate correct postconditions and correctly fail:
+
+| # | Test | Mutation Applied |
+|---|---|---|
+| 1 | `test_mutation_free_pages_unchanged` | Free pages stays same instead of decreasing |
+| 2 | `test_mutation_target_va_not_in_new_space` | target_va absent from new address space |
+| 3 | `test_mutation_shared_entry_addr_differs` | Shared entry addr differs from source |
+| 4 | `test_mutation_quota_unchanged_after_share` | Quota mem_4k unchanged after subtraction |
+| 5 | `test_mutation_other_proc_space_changes` | Non-target proc's address space changes |
+| 6 | `test_mutation_ref_counter_increases_by_two` | Ref counter +2 instead of +1 |
+| 7 | `test_mutation_other_page_ref_counter_changes` | Other page ref counters change |
+| 8 | `test_mutation_page_mapping_unchanged` | page_mapping for src page unchanged |
+| 9 | `test_mutation_page_mapping_domain_grows` | page_mapping domain gains new entry |
+| 10 | `test_mutation_proc_dom_grows` | proc_dom gains new process |
+| 11 | `test_mutation_page_mapped_status_flips` | page_is_mapped status flips |
+| 12 | `test_mutation_container_owned_pages_change` | Container owned pages change |
+
+---
+
+## Logical Tests (`logical_tests.rs`)
+
+All 12 tests assert unguaranteed properties and correctly fail:
+
+| # | Test | Unguaranteed Property |
+|---|---|---|
+| 1 | `test_logical_ret_always_positive` | ret >= 1 (spec allows ret=0) |
+| 2 | `test_logical_ret_always_exactly_three` | ret == 3 (spec only says ret <= 3) |
+| 3 | `test_logical_determinism` | Same inputs → same ret |
+| 4 | `test_logical_root_process_preserved` | Container root_process unchanged |
+| 5 | `test_logical_src_target_always_different` | src_proc != target_proc always |
+| 6 | `test_logical_va_always_different` | src_va != target_va always |
+| 7 | `test_logical_quota_positive_after` | quota.mem_4k > 0 after call |
+| 8 | `test_logical_io_mapping_domain_unchanged` | page_io_mapping domain unchanged |
+| 9 | `test_logical_explicit_mapped_count_unchanged` | Explicit count of mapped pages unchanged |
+| 10 | `test_logical_can_have_children_preserved` | Container can_have_children preserved |
+| 11 | `test_logical_va_valid_implies_page_ptr_valid` | VA validity ⇒ PA validity |
+| 12 | `test_logical_src_page_mapping_size_exactly_two` | Src page mapping has exactly 2 entries |
+
+---
+
+## Conclusion
+
+The specification for `create_entry_and_share` is **well-formed** against all 36 adversarial queries:
+
+- **Boundary constraints** are tight — invalid inputs (insufficient pages, quotas, unmapped VAs, overflow ref counters) are all rejected.
+- **Behavioral mutations** are caught — incorrect output relations (unchanged free pages, wrong ref counter delta, missing VA insertions) are all rejected.
+- **Logical overreach** is avoided — the spec does not inadvertently entail determinism, stronger bounds, cross-domain validity, or unspecified field preservation.
+
+No specification weaknesses were identified in this testing round.

@@ -1,0 +1,88 @@
+===PHI_START===
+NAME: fold_left_empty_left
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_fold_left_empty_left<A, B>(s: Seq<A>, f: spec_fn(A) -> Seq<B>)
+    ensures
+        (Seq::<A>::empty() + s).fold_left(Seq::<B>::empty(), |acc: Seq<B>, a: A| acc + f(a))
+          == s.fold_left(Seq::<B>::empty(), |acc: Seq<B>, a: A| acc + f(a)),
+{
+    lemma_fold_left_append_merge(Seq::<A>::empty(), s, f);
+    assert(Seq::<A>::empty().fold_left(Seq::<B>::empty(), |acc: Seq<B>, a: A| acc + f(a)) =~= Seq::<B>::empty());
+}
+```
+REASON: If folding an empty left sequence didn't produce the identity element, the merge lemma's split would lose or inject elements at the boundary
+===PHI_END===
+
+===PHI_START===
+NAME: fold_left_empty_right
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_fold_left_empty_right<A, B>(s: Seq<A>, f: spec_fn(A) -> Seq<B>)
+    ensures
+        (s + Seq::<A>::empty()).fold_left(Seq::<B>::empty(), |acc: Seq<B>, a: A| acc + f(a))
+          == s.fold_left(Seq::<B>::empty(), |acc: Seq<B>, a: A| acc + f(a)),
+{
+    lemma_fold_left_append_merge(s, Seq::<A>::empty(), f);
+    assert(Seq::<A>::empty().fold_left(Seq::<B>::empty(), |acc: Seq<B>, a: A| acc + f(a)) =~= Seq::<B>::empty());
+}
+```
+REASON: If appending an empty sequence on the right changed the fold result, the base case of the induction would be broken
+===PHI_END===
+
+===PHI_START===
+NAME: fold_left_singleton_split
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_fold_left_singleton_split<B>(a1: int, a2: int, f: spec_fn(int) -> Seq<B>)
+    ensures
+        seq![a1, a2].fold_left(Seq::<B>::empty(), |acc: Seq<B>, a: int| acc + f(a))
+          == f(a1) + f(a2),
+{
+    lemma_fold_left_append_merge(seq![a1], seq![a2], f);
+}
+```
+REASON: If folding two singletons didn't produce the simple concatenation f(a1)+f(a2), the fold_left would be reordering or duplicating mapped elements
+===PHI_END===
+
+===PHI_START===
+NAME: fold_left_three_way_associative
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_fold_left_three_way_associative<A, B>(s1: Seq<A>, s2: Seq<A>, s3: Seq<A>, f: spec_fn(A) -> Seq<B>)
+    ensures
+        (s1 + s2 + s3).fold_left(Seq::<B>::empty(), |acc: Seq<B>, a: A| acc + f(a))
+          ==
+        s1.fold_left(Seq::<B>::empty(), |acc: Seq<B>, a: A| acc + f(a))
+          + s2.fold_left(Seq::<B>::empty(), |acc: Seq<B>, a: A| acc + f(a))
+          + s3.fold_left(Seq::<B>::empty(), |acc: Seq<B>, a: A| acc + f(a)),
+{
+    lemma_fold_left_append_merge(s1 + s2, s3, f);
+    lemma_fold_left_append_merge(s1, s2, f);
+}
+```
+REASON: If the merge lemma didn't compose associatively for three segments, multi-way splits would silently lose or duplicate elements
+===PHI_END===
+
+===PHI_START===
+NAME: fold_left_flatmap_len
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_fold_left_flatmap_len(s: Seq<int>, f: spec_fn(int) -> Seq<int>)
+    requires
+        s.len() == 2,
+    ensures
+        s.fold_left(Seq::<int>::empty(), |acc: Seq<int>, a: int| acc + f(a)).len()
+          == f(s[0]).len() + f(s[1]).len(),
+{
+    lemma_fold_left_append_merge(seq![s[0]], seq![s[1]], f);
+    assert(seq![s[0]] + seq![s[1]] =~= s);
+}
+```
+REASON: If the output length didn't equal the sum of mapped lengths, the fold_left concatenation would be silently dropping or adding elements
+===PHI_END===

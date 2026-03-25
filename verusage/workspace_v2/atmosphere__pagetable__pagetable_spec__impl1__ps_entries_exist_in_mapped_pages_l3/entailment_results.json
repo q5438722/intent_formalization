@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize2pa_mem_valid_unconditional",
+    "type": "logical",
+    "code": "proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body unconditionally ensures MEM_valid(ret) for ANY input \u2014 arbitrary usize values produce \"valid\" physical addresses without proof",
+    "entailed": false,
+    "verus_output": "verusage/workspace_v2/atmosphere__pagetable__pagetable_spec__impl1__ps_entries_exist_in_mapped_pages_l3/phi_1_usize2pa_mem_valid_unconditional.rs:502:9\n    |\n500 | proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    |       --------------------------------------------------- at the end of the function body\n501 |     ensures\n502 |         MEM_valid(usize2pa(v)),\n    |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 14 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "resolve_l4_returns_some_for_kernel_region",
+    "type": "behavioral",
+    "code": "proof fn phi_2_resolve_l4_returns_some_for_kernel_region(pt: PageTable, l4i: L4Index)\n    requires\n        pt.wf_l4(),\n        0 <= l4i < pt.kernel_l4_end,\n    ensures\n        pt.spec_resolve_mapping_l4(l4i).is_Some(),\n{\n}",
+    "reason": "spec_resolve_mapping_l4 returns Some for ALL kernel-region indices (l4i < kernel_l4_end) regardless of whether the entry is actually present \u2014 the `|| l4i < self.kernel_l4_end` branch bypasses the present-bit check",
+    "entailed": true,
+    "verus_output": " | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_spec__impl1__ps_entries_exist_in_mapped_pages_l3/phi_2_resolve_l4_returns_some_for_kernel_region.rs:81:10\n   |\n81 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 15 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_closure_l4_l3_can_overlap",
+    "type": "logical",
+    "code": "proof fn phi_3_page_closure_l4_l3_can_overlap(pt: PageTable, p: PageMapPtr)\n    requires\n        pt.wf_l4(),\n        pt.wf_l3(),\n        pt.l3_tables@.dom().contains(p),\n        p == pt.cr3,\n    ensures\n        pt.l4_table@.dom().contains(p) && pt.l3_tables@.dom().contains(p),\n{\n}",
+    "reason": "No cross-level disjointness constraint \u2014 the same physical page can appear in both l4_table and l3_tables domains simultaneously",
+    "entailed": true,
+    "verus_output": ":10\n   |\n72 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_spec__impl1__ps_entries_exist_in_mapped_pages_l3/phi_3_page_closure_l4_l3_can_overlap.rs:81:10\n   |\n81 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 14 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_not_mapped_ignores_ps_entries",
+    "type": "behavioral",
+    "code": "proof fn phi_4_page_not_mapped_ignores_ps_entries(pt: PageTable, pa: PAddr)\n    requires\n        pt.mapping_4k().dom().len() == 0,\n        pt.mapping_2m().dom().len() == 0,\n        pt.mapping_1g().dom().len() == 0,\n    ensures\n        pt.page_not_mapped(pa),\n{\n}",
+    "reason": "page_not_mapped only checks mapping_4k/2m/1g Ghost fields \u2014 with empty mappings it vacuously returns true even if page table entries at L3/L2/L1 actually reference pa, decoupling the \"not mapped\" predicate from actual table contents",
+    "entailed": false,
+    "verus_output": "mosphere__pagetable__pagetable_spec__impl1__ps_entries_exist_in_mapped_pages_l3/phi_4_page_not_mapped_ignores_ps_entries.rs:506:9\n    |\n500 | proof fn phi_4_page_not_mapped_ignores_ps_entries(pt: PageTable, pa: PAddr)\n    |       --------------------------------------------------------------------- at the end of the function body\n...\n506 |         pt.page_not_mapped(pa),\n    |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 14 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "wf_mapping_1g_va_1g_valid_is_2m_valid",
+    "type": "logical",
+    "code": "proof fn phi_5_wf_mapping_1g_va_1g_valid_is_2m_valid(va: usize)\n    requires\n        spec_va_2m_valid(va),\n    ensures\n        va_1g_valid(va),\n{\n}",
+    "reason": "va_1g_valid has `when_used_as_spec(spec_va_2m_valid)` \u2014 a copy-paste bug that makes va_1g_valid resolve to spec_va_2m_valid, so wf_mapping_1g's constraint that mapped addresses satisfy va_1g_valid is silently weakened to 2M alignment",
+    "entailed": true,
+    "verus_output": "|\n72 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_spec__impl1__ps_entries_exist_in_mapped_pages_l3/phi_5_wf_mapping_1g_va_1g_valid_is_2m_valid.rs:81:10\n   |\n81 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 14 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

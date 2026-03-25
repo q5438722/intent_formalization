@@ -1,0 +1,84 @@
+===PHI_START===
+NAME: step_map_sound_no_existing_vmem_check
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_step_map_sound_no_existing_vmem_check(mappings: Map<nat, PTE>, inflights: Set<ThreadState>, vaddr: nat, pte: PTE)
+    requires
+        step_Map_sound(mappings, inflights, vaddr, pte),
+        candidate_mapping_overlaps_existing_vmem(mappings, vaddr, pte),
+    ensures
+        true,
+{
+}
+```
+REASON: `step_Map_sound` checks inflight vmem, existing pmem, and inflight pmem overlap — but does NOT check `candidate_mapping_overlaps_existing_vmem`, allowing a sound map that overlaps existing virtual memory
+===PHI_END===
+
+===PHI_START===
+NAME: max_phyaddr_width_weaker_than_constant
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_max_phyaddr_width_weaker_than_constant()
+    ensures
+        32 <= MAX_PHYADDR_WIDTH,
+        MAX_PHYADDR_WIDTH <= 52,
+        MAX_PHYADDR_WIDTH != 52,
+{
+    axiom_max_phyaddr_width_facts();
+}
+```
+REASON: `MAX_PHYADDR_WIDTH` is `external_body` set to 52 but the axiom only constrains it to `[32, 52]` — the SMT solver can assume any value in that range
+===PHI_END===
+
+===PHI_START===
+NAME: overlap_zero_size_reflexive
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_overlap_zero_size_reflexive(base: nat)
+    ensures
+        overlap(MemRegion { base: base, size: 0 }, MemRegion { base: base, size: 0 }),
+{
+}
+```
+REASON: Two zero-size regions at the same base are considered overlapping via `region1.base == region2.base` — empty intervals should not overlap
+===PHI_END===
+
+===PHI_START===
+NAME: step_map_enabled_no_size_zero_guard
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_step_map_enabled_no_size_zero_guard(inflight: Set<ThreadState>, map: Map<nat, PTE>, vaddr: nat, pte: PTE)
+    requires
+        step_Map_enabled(inflight, map, vaddr, pte),
+    ensures
+        pte.frame.size > 0,
+{
+}
+```
+REASON: `step_Map_enabled` constrains `pte.frame.size` to be one of `L3_ENTRY_SIZE`, `L2_ENTRY_SIZE`, or `L1_ENTRY_SIZE` — tests whether this implicitly prevents zero-size frames
+===PHI_END===
+
+===PHI_START===
+NAME: step_mapstart_unsound_allows_arbitrary_state
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_step_mapstart_unsound_allows_arbitrary_state(c: Constants, s1: State, s2: State, lbl: RLbl)
+    requires
+        lbl matches RLbl::MapStart { thread_id, vaddr, pte },
+        step_Map_enabled(s1.thread_state.values(), s1.mappings, vaddr, pte),
+        c.valid_thread(thread_id),
+        s1.thread_state[thread_id] === ThreadState::Idle,
+        !step_Map_sound(s1.mappings, s1.thread_state.values(), vaddr, pte),
+        step_MapStart(c, s1, s2, lbl),
+    ensures
+        !s2.sound,
+{
+}
+```
+REASON: When `step_Map_sound` fails, the system transitions to an unsound state — the entire state becomes untrusted rather than simply rejecting the operation, which is a permissive failure mode
+===PHI_END===

@@ -1,0 +1,37 @@
+[
+  {
+    "name": "extract_packets_trivially_empty",
+    "target_fn": "make_empty_event_results",
+    "type": "behavioral",
+    "code": "proof fn phi_1_extract_packets_trivially_empty(res: Ghost<EventResults>, arbitrary_ios: Seq<NetEvent>)\n    requires\n        res@.recvs == Seq::<NetEvent>::empty(),\n        res@.clocks == Seq::<NetEvent>::empty(),\n        res@.sends == Seq::<NetEvent>::empty(),\n        res@.ios == Seq::<NetEvent>::empty(),\n        extract_packets_from_abstract_ios(abstractify_raw_log_to_ios(res@.ios)) == Set::<Packet>::empty(),\n    ensures\n        extract_packets_from_abstract_ios(abstractify_raw_log_to_ios(arbitrary_ios)) == Set::<Packet>::empty(),\n{\n}",
+    "reason": "Would mean extract_packets_from_abstract_ios is vacuously empty for all inputs, rendering packet extraction useless"
+  },
+  {
+    "name": "abstractify_empty_inflates",
+    "target_fn": "make_empty_event_results",
+    "type": "boundary",
+    "code": "proof fn phi_2_abstractify_empty_inflates(res: Ghost<EventResults>)\n    requires\n        res@.recvs == Seq::<NetEvent>::empty(),\n        res@.clocks == Seq::<NetEvent>::empty(),\n        res@.sends == Seq::<NetEvent>::empty(),\n        res@.ios == Seq::<NetEvent>::empty(),\n        extract_packets_from_abstract_ios(abstractify_raw_log_to_ios(res@.ios)) == Set::<Packet>::empty(),\n    ensures\n        abstractify_raw_log_to_ios(res@.ios).len() > 0,\n{\n}",
+    "reason": "Would mean abstractify_raw_log_to_ios maps an empty sequence to a non-empty one, violating map_values length preservation"
+  },
+  {
+    "name": "single_event_packets_empty",
+    "target_fn": "make_empty_event_results",
+    "type": "logical",
+    "code": "proof fn phi_3_single_event_packets_empty(res: Ghost<EventResults>, evt: NetEvent)\n    requires\n        res@.recvs == Seq::<NetEvent>::empty(),\n        res@.clocks == Seq::<NetEvent>::empty(),\n        res@.sends == Seq::<NetEvent>::empty(),\n        res@.ios == Seq::<NetEvent>::empty(),\n        extract_packets_from_abstract_ios(abstractify_raw_log_to_ios(res@.ios)) == Set::<Packet>::empty(),\n    ensures\n        extract_packets_from_abstract_ios(abstractify_raw_log_to_ios(seq![evt])) == Set::<Packet>::empty(),\n{\n}",
+    "reason": "Would mean no single network event ever produces extractable packets, making the packet extraction pipeline trivially vacuous"
+  },
+  {
+    "name": "to_vec_always_empty",
+    "target_fn": "to_vec",
+    "type": "behavioral",
+    "code": "proof fn phi_4_to_vec_always_empty(m: CKeyHashMap, res: Seq<CKeyKV>)\n    requires\n        res =~= m.spec_to_vec(),\n    ensures\n        res.len() == 0,\n{\n}",
+    "reason": "Would mean spec_to_vec always produces an empty sequence regardless of map contents, completely breaking the key-value store conversion"
+  },
+  {
+    "name": "to_vec_bounded_by_one",
+    "target_fn": "to_vec",
+    "type": "boundary",
+    "code": "proof fn phi_5_to_vec_bounded_by_one(m: CKeyHashMap, res: Seq<CKeyKV>)\n    requires\n        res =~= m.spec_to_vec(),\n    ensures\n        res.len() <= 1,\n{\n}",
+    "reason": "Would mean the hashmap can never serialize to more than one key-value pair, silently losing all but one entry"
+  }
+]

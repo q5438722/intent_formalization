@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: create_key_namespace_diverges
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This models real Kubernetes API behavior where the URL path namespace (self.namespace) is authoritative, not the object body's metadata.namespace. The API server reconciles any mismatch by overwriting the object's namespace with the path namespace.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: update_key_ignores_obj_name
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Same Kubernetes pattern — the URL path (self.name, self.namespace) identifies the target resource, not the object payload's metadata. The API server uses the path to locate the resource and may overwrite the body's metadata fields. This is intentional modeling.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: get_then_update_key_ignores_obj_namespace
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Identical pattern to CreateRequest and UpdateRequest — the request-level namespace field models the URL path namespace which is authoritative in real Kubernetes. All four request types (Create, Update, UpdateStatus, GetThenUpdate) consistently use the same convention.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: controller_owner_ref_ignores_namespace
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This faithfully models real Kubernetes OwnerReference semantics — owner references contain kind, name, and uid but deliberately exclude namespace because owner references are namespace-scoped (owner must be in the same namespace as the owned object). UID provides global uniqueness, so cross-namespace collision with identical uid is impossible in practice since the API server assigns globally unique UIDs.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: unmarshal_skips_state_validation
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Unmarshal is intentionally separated from validation — it handles deserialization only, while state_validation is checked separately by the API server logic (via InstalledType.valid_object). The invariant `each_builtin_object_in_etcd_is_well_formed` ensures objects in etcd satisfy both unmarshallability and validity.
+===VERDICT_END===
+
+===SUMMARY===
+All five candidates are false positives. The request key namespace/name patterns (φ1–φ3) faithfully model Kubernetes API conventions where URL path parameters are authoritative over object body metadata. The controller_owner_ref omitting namespace (φ4) matches real Kubernetes OwnerReference semantics where references are namespace-scoped and uid provides global uniqueness. The unmarshal/validation separation (φ5) is an intentional design where deserialization and semantic validation are distinct concerns, with system-level invariants ensuring stored objects satisfy both.
+===END_SUMMARY===

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "filter_empty_of_empty_seq",
+    "type": "boundary",
+    "code": "proof fn phi_1_filter_empty_of_empty_seq(pred: spec_fn(int) -> bool)\n    ensures\n        Seq::<int>::empty().filter(pred).len() == 0,\n{\n    reveal(Seq::filter);\n}",
+    "reason": "tests that filtering an empty sequence produces empty \u2014 if filter is misaxiomatized on empty sequences this could fail",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "singleton_true_filter_nonempty",
+    "type": "boundary",
+    "code": "proof fn phi_2_singleton_true_filter_nonempty(v: int, pred: spec_fn(int) -> bool)\n    requires\n        pred(v),\n    ensures\n        seq![v].filter(pred).len() > 0,\n{\n    reveal(Seq::filter);\n}",
+    "reason": "a singleton sequence with an element satisfying pred should have nonempty filter \u2014 tests contrapositive of the lemma on minimal input",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "element_satisfying_pred_contradicts_empty_filter",
+    "type": "logical",
+    "code": "proof fn phi_3_element_satisfying_pred_contradicts_empty_filter(s: Seq<int>, pred: spec_fn(int) -> bool, e: int)\n    requires\n        s.filter(pred).len() == 0,\n        s.contains(e),\n    ensures\n        !pred(e),\n{\n    empty_filter_implies_seq_pred_false_on_all_elements(s, pred);\n}",
+    "reason": "directly tests the lemma's conclusion at a specific element \u2014 if the forall quantifier is mistriggered this specific instantiation could reveal a gap",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "push_pred_true_makes_filter_nonempty",
+    "type": "behavioral",
+    "code": "proof fn phi_4_push_pred_true_makes_filter_nonempty(s: Seq<int>, pred: spec_fn(int) -> bool, v: int)\n    requires\n        pred(v),\n    ensures\n        s.push(v).filter(pred).len() > 0,\n{\n    reveal(Seq::filter);\n}",
+    "reason": "appending an element satisfying pred should always produce nonempty filter \u2014 tests that filter interacts correctly with push regardless of original sequence",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "all_false_pred_implies_filter_len_zero",
+    "type": "logical",
+    "code": "proof fn phi_5_all_false_pred_implies_filter_len_zero(s: Seq<int>)\n    ensures\n        s.filter(|x: int| false).len() == 0,\n    decreases s.len(),\n{\n    reveal(Seq::filter);\n    if s.len() != 0 {\n        phi_5_all_false_pred_implies_filter_len_zero(s.drop_last());\n    }\n}",
+    "reason": "always-false predicate should yield empty filter on any sequence \u2014 tests the converse direction not proven by the lemma",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

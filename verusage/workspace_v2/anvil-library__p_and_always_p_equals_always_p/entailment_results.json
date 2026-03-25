@@ -1,0 +1,47 @@
+[
+  {
+    "name": "always_to_current_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_1_always_to_current_intensional_bridge(ex: Execution<int>, p: TempPred<int>)\n    requires\n        always(p).satisfied_by(ex),\n    ensures\n        p.satisfied_by(ex),\n{\n    always_to_current::<int>(ex, p);\n}",
+    "reason": "always_to_current is external_body extracting p at the current state from always(p)'s TempPred::new closure-wrapped forall (instantiated at suffix(0)) \u2014 intensional closure gap resolved without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "temp_pred_equality_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_2_temp_pred_equality_intensional_bridge(p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.entails(q),\n        q.entails(p),\n    ensures\n        p == q,\n{\n    temp_pred_equality::<int>(p, q);\n}",
+    "reason": "temp_pred_equality is external_body forcing intensional equality from mutual entailment \u2014 structurally distinct closures collapsed to equal without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "mutual_entailment_derives_false_if_distinct",
+    "type": "logical",
+    "code": "proof fn phi_3_mutual_entailment_derives_false_if_distinct(p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.entails(q),\n        q.entails(p),\n        p !== q,\n    ensures\n        false,\n{\n    temp_pred_equality::<int>(p, q);\n}",
+    "reason": "temp_pred_equality forces p == q from mutual entailment \u2014 if two preds are intensionally distinct but semantically equivalent, this derives false from the contradiction",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "and_always_idempotent_equality",
+    "type": "logical",
+    "code": "proof fn phi_4_and_always_idempotent_equality(p: TempPred<int>)\n    ensures\n        p.and(always(p)) == always(p),\n{\n    p_and_always_p_equals_always_p::<int>(p);\n}",
+    "reason": "p.and(always(p)) and always(p) are structurally distinct TempPred closures forced equal via temp_pred_equality \u2014 the intensional equality claim depends on both external_body axioms being sound",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "always_to_current_at_suffix",
+    "type": "boundary",
+    "code": "proof fn phi_5_always_to_current_at_suffix(ex: Execution<int>, p: TempPred<int>, i: nat)\n    requires\n        always(p).satisfied_by(ex.suffix(i)),\n    ensures\n        p.satisfied_by(ex.suffix(i)),\n{\n    always_to_current::<int>(ex.suffix(i), p);\n}",
+    "reason": "always_to_current applied at an arbitrary suffix extracts p at ex.suffix(i) \u2014 if the closure bridge between always's forall-over-suffixes and suffix(0) identity is unsound, this extends the unsoundness to any index",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

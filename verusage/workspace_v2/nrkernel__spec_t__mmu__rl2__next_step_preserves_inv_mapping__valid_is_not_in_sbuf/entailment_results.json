@@ -1,0 +1,47 @@
+[
+  {
+    "name": "read_from_mem_tso_equals_core_mem_read",
+    "type": "behavioral",
+    "code": "proof fn phi_1_read_from_mem_tso_equals_core_mem_read(state: State, core: Core, addr: usize)\n    ensures\n        state.read_from_mem_tso(core, addr) == state.pt_mem.write_seq(state.sbuf[core]).read(addr),\n{\n}",
+    "reason": "`read_from_mem_tso` should unfold to `core_mem(core).read(addr)` which is `pt_mem.write_seq(sbuf[core]).read(addr)` \u2014 tests definitional unfolding consistency",
+    "entailed": true,
+    "verus_output": "verification results:: 17 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "flags_combine_absorbs_supervisor",
+    "type": "behavioral",
+    "code": "proof fn phi_2_flags_combine_absorbs_supervisor(f: Flags)\n    requires\n        f.is_supervisor,\n    ensures\n        forall|g: Flags| f.combine(g).is_supervisor,\n{\n}",
+    "reason": "Once `is_supervisor` is true, combining with any flags keeps it true (OR absorbs true) \u2014 this means a supervisor-only directory entry makes the entire subtree supervisor-only, potentially too restrictive",
+    "entailed": true,
+    "verus_output": "nstantiate quantifiers;\n      the theorem prover instantiates a quantifier whenever some expression matches the\n      pattern specified by one of the quantifier's triggers.)\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__next_step_preserves_inv_mapping__valid_is_not_in_sbuf/phi_2_flags_combine_absorbs_supervisor.rs:1022:9\n     |\n1022 |         forall|g: Flags| f.combine(g).is_supervisor,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "flags_combine_restricts_writable",
+    "type": "behavioral",
+    "code": "proof fn phi_3_flags_combine_restricts_writable(f: Flags)\n    requires\n        !f.is_writable,\n    ensures\n        forall|g: Flags| !f.combine(g).is_writable,\n{\n}",
+    "reason": "Once `is_writable` is false, combining with any flags keeps it false (AND absorbs false) \u2014 a read-only directory makes the entire subtree read-only regardless of leaf permissions",
+    "entailed": true,
+    "verus_output": " instantiate quantifiers;\n      the theorem prover instantiates a quantifier whenever some expression matches the\n      pattern specified by one of the quantifier's triggers.)\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__next_step_preserves_inv_mapping__valid_is_not_in_sbuf/phi_3_flags_combine_restricts_writable.rs:1022:9\n     |\n1022 |         forall|g: Flags| !f.combine(g).is_writable,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "view_external_body_unconstrained",
+    "type": "logical",
+    "code": "proof fn phi_4_view_external_body_unconstrained(mem1: PTMem, mem2: PTMem)\n    requires\n        mem1.mem === mem2.mem,\n        mem1.pml4 == mem2.pml4,\n    ensures\n        mem1@ === mem2@,\n{\n}",
+    "reason": "`PTMem::view` is `external_body` \u2014 structural equality of inputs should imply equal outputs, but this is trusted without proof; the PTE interpretation could be nondeterministic",
+    "entailed": true,
+    "verus_output": "verification results:: 17 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "lemma_write_seq_idle_external_body_direct",
+    "type": "logical",
+    "code": "proof fn phi_5_lemma_write_seq_idle_external_body_direct(mem: PTMem, addr: usize)\n    ensures\n        mem.write_seq(seq![]).read(addr) == mem.read(addr),\n{\n}",
+    "reason": "`write_seq(seq![])` should be identity by fold_left base case \u2014 tests that even the trivial case (empty writes) preserves reads without needing the external_body lemma",
+    "entailed": true,
+    "verus_output": "verification results:: 17 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

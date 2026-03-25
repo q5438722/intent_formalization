@@ -1,0 +1,133 @@
+===PHI_START===
+NAME: update_change_2_non_queue_rid_droppable
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_update_change_2_non_queue_rid_droppable<DT: Dispatch>(
+    queue: Seq<ReqId>,
+    log: Map<LogIdx, LogEntry<DT>>,
+    nodeId: NodeId,
+    updates: Map<ReqId, UpdateState<DT>>,
+    rid: ReqId,
+    logLower: LogIdx,
+    logUpper: LogIdx,
+)
+    requires
+        logLower <= logUpper,
+        LogRangeMatchesQueue(queue, log, 0, logLower, logUpper, nodeId, updates),
+        updates.contains_key(rid),
+        !queue.contains(rid),
+    ensures
+        LogRangeMatchesQueue(queue, log, 0, logLower, logUpper, nodeId, updates.remove(rid)),
+{
+    LogRangeMatchesQueue_update_change_2(queue, log, 0, logLower, logUpper, nodeId, updates, updates.remove(rid));
+}
+```
+REASON: Any update entry not in the queue can be silently removed — the frame condition only guards queue-contained rids, allowing arbitrary mutation of non-queue entries
+===PHI_END===
+
+===PHI_START===
+NAME: update_change_2_empty_updates_all_remote
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_update_change_2_empty_updates_all_remote<DT: Dispatch>(
+    queue: Seq<ReqId>,
+    log: Map<LogIdx, LogEntry<DT>>,
+    nodeId: NodeId,
+    updates: Map<ReqId, UpdateState<DT>>,
+    logLower: LogIdx,
+    logUpper: LogIdx,
+)
+    requires
+        logLower <= logUpper,
+        queue.len() == 0,
+        LogRangeMatchesQueue(queue, log, 0, logLower, logUpper, nodeId, updates),
+    ensures
+        LogRangeMatchesQueue(queue, log, 0, logLower, logUpper, nodeId, Map::empty()),
+{
+    LogRangeMatchesQueue_update_change_2(queue, log, 0, logLower, logUpper, nodeId, updates, Map::empty());
+}
+```
+REASON: When the queue is empty (all remote entries), the updates map can be replaced with an entirely empty map — shows the match is completely independent of updates for all-remote ranges
+===PHI_END===
+
+===PHI_START===
+NAME: update_change_2_swap_non_queue_state
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_update_change_2_swap_non_queue_state<DT: Dispatch>(
+    queue: Seq<ReqId>,
+    log: Map<LogIdx, LogEntry<DT>>,
+    nodeId: NodeId,
+    updates: Map<ReqId, UpdateState<DT>>,
+    rid: ReqId,
+    new_state: UpdateState<DT>,
+    logLower: LogIdx,
+    logUpper: LogIdx,
+)
+    requires
+        logLower <= logUpper,
+        LogRangeMatchesQueue(queue, log, 0, logLower, logUpper, nodeId, updates),
+        updates.contains_key(rid),
+        !queue.contains(rid),
+    ensures
+        LogRangeMatchesQueue(queue, log, 0, logLower, logUpper, nodeId, updates.insert(rid, new_state)),
+{
+    LogRangeMatchesQueue_update_change_2(queue, log, 0, logLower, logUpper, nodeId, updates, updates.insert(rid, new_state));
+}
+```
+REASON: A non-queue rid's update state can be changed to any arbitrary state (Init, Applied, Done) without affecting the match — the frame condition is blind to non-queue entries
+===PHI_END===
+
+===PHI_START===
+NAME: local_entry_queue_rid_in_updates
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_local_entry_queue_rid_in_updates<DT: Dispatch>(
+    queue: Seq<ReqId>,
+    log: Map<LogIdx, LogEntry<DT>>,
+    nodeId: NodeId,
+    updates: Map<ReqId, UpdateState<DT>>,
+    logIdx: LogIdx,
+)
+    requires
+        LogContainsEntriesUpToHere(log, logIdx + 1),
+        log[logIdx].node_id == nodeId,
+        LogRangeMatchesQueue(queue, log, 0, logIdx, logIdx + 1, nodeId, updates),
+    ensures
+        queue.len() == 1,
+        updates.contains_key(queue[0]),
+        updates[queue[0]] is Placed,
+        updates[queue[0]].arrow_Placed_idx() == logIdx,
+{
+}
+```
+REASON: Single local log entry forces exactly one queue element in Placed state linking to that log index
+===PHI_END===
+
+===PHI_START===
+NAME: empty_log_range_exhausts_queue
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_empty_log_range_exhausts_queue<DT: Dispatch>(
+    queue: Seq<ReqId>,
+    log: Map<LogIdx, LogEntry<DT>>,
+    nodeId: NodeId,
+    updates: Map<ReqId, UpdateState<DT>>,
+    idx: LogIdx,
+    qi: nat,
+)
+    requires
+        qi <= queue.len(),
+        LogRangeMatchesQueue(queue, log, qi, idx, idx, nodeId, updates),
+    ensures
+        qi == queue.len(),
+{
+}
+```
+REASON: Empty log range forces queue index to equal queue length — base case of the recursion
+===PHI_END===

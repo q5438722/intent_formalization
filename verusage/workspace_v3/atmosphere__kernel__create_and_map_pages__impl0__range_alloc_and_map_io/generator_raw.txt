@@ -1,0 +1,76 @@
+===PHI_START===
+NAME: pa_always_zero
+TARGET_FN: range_alloc_and_map_io
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_pa_always_zero(v: usize)
+    ensures
+        spec_usize2pa(v) == 0usize,
+{
+}
+```
+REASON: If PA masking zeroes all addresses, range_alloc_and_map_io would map every IO page to physical address 0
+===PHI_END===
+
+===PHI_START===
+NAME: nonzero_produces_empty_entry
+TARGET_FN: range_alloc_and_map_io
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_nonzero_produces_empty_entry(v: usize)
+    requires
+        v != 0,
+    ensures
+        spec_usize2page_entry(v).is_empty(),
+{
+}
+```
+REASON: If non-zero usize values decode to empty page entries, IO page table entries created during mapping would all appear unmapped
+===PHI_END===
+
+===PHI_START===
+NAME: present_implies_write
+TARGET_FN: range_alloc_and_map_io
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_present_implies_write(v: usize)
+    ensures
+        spec_usize2page_entry_perm(v).present ==> spec_usize2page_entry_perm(v).write,
+{
+}
+```
+REASON: If every present page entry is writable, read-only IO mappings are impossible and memory protection for device MMIO regions is broken
+===PHI_END===
+
+===PHI_START===
+NAME: pa_preserves_all_bits
+TARGET_FN: range_alloc_and_map_io
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_pa_preserves_all_bits(v: usize)
+    ensures
+        spec_usize2pa(v) == v,
+{
+}
+```
+REASON: If PA masking is identity, permission and flag bits leak into physical addresses used for IO mappings, corrupting device memory targets
+===PHI_END===
+
+===PHI_START===
+NAME: present_implies_execute_disable
+TARGET_FN: range_alloc_and_map_io
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_present_implies_execute_disable(v: usize)
+    ensures
+        spec_usize2page_entry_perm(v).present ==> spec_usize2page_entry_perm(v).execute_disable,
+{
+}
+```
+REASON: If all present entries have execute-disable set, executable device MMIO regions mapped by range_alloc_and_map_io become non-executable
+===PHI_END===

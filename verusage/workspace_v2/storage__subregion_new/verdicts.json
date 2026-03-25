@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "new_ensures_inv_with_self_referential_perm",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`views_differ_only_where_subregion_allows(v, v, ...)` is trivially true since `v.state[addr] == v.state[addr]` for all addresses. Reflexivity is a correct property of equality."
+  },
+  {
+    "phi": "subregion_view_independent_of_outside_bytes",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`get_subregion_view` uses `subrange(start, start+len)` which only depends on bytes in `[start, start+len)`. If those bytes are equal, the subranges are extensionally equal. Correct by the subrange axiom."
+  },
+  {
+    "phi": "perm_check_holds_for_current_crash_states",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Instantiating the precondition's forall with `alt_region_view = wrpm@` works because `views_differ_only_where_subregion_allows(wrpm@, wrpm@, ...)` is trivially true (reflexivity). So `wrpm@.can_crash_as(crash_state)` triggers `perm.check_permission(crash_state)`. Correct by instantiation."
+  },
+  {
+    "phi": "get_subregion_view_idempotent",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`subrange(start, start+len).subrange(0, len)` equals `subrange(start, start+len)` by the vstd subrange-of-subrange axiom. Correct by definition."
+  },
+  {
+    "phi": "views_differ_symmetric_when_nothing_writable",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "With `is_writable = |_| false`, every address in `[start, start+len)` hits the `!is_writable_absolute_addr_fn(addr)` case, so `v1.state[addr] == v2.state[addr]` for all addresses in range. Equality is symmetric, so `v2.state[addr] == v1.state[addr]` holds too. Correct by symmetry of equality."
+  }
+]

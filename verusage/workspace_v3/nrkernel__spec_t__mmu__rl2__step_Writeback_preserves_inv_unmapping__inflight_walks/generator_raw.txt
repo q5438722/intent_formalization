@@ -1,0 +1,87 @@
+===PHI_START===
+NAME: align_exceeds_input
+TARGET_FN: align_to_usize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_align_exceeds_input(a: usize, b: usize)
+    requires
+        b > 0,
+    ensures
+        align_to_usize(a, b) > a,
+{
+}
+```
+REASON: Aligning down should never produce a value greater than the original input
+===PHI_END===
+
+===PHI_START===
+NAME: align_result_not_aligned
+TARGET_FN: align_to_usize
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_align_result_not_aligned(a: usize, b: usize)
+    requires
+        b > 0,
+    ensures
+        align_to_usize(a, b) % b != 0,
+{
+}
+```
+REASON: The result of align-down must itself be a multiple of the alignment; if not, the function is broken
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_input_changed
+TARGET_FN: align_to_usize
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_aligned_input_changed(a: usize, b: usize)
+    requires
+        b > 0,
+        aligned(a as nat, b as nat),
+    ensures
+        align_to_usize(a, b) != a,
+{
+}
+```
+REASON: If the input is already aligned, align_to_usize must be the identity; changing it would violate consistency with aligned
+===PHI_END===
+
+===PHI_START===
+NAME: align_unit_not_identity
+TARGET_FN: align_to_usize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_align_unit_not_identity(a: usize)
+    requires
+        true,
+    ensures
+        align_to_usize(a, 1usize) != a,
+{
+}
+```
+REASON: Alignment to 1 must be the identity since every integer is 1-aligned; failure here indicates a fundamental flaw
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_predecessor_also_aligned
+TARGET_FN: aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_aligned_predecessor_also_aligned(addr: nat, size: nat)
+    requires
+        size > 1,
+        addr > 0,
+        aligned(addr, size),
+    ensures
+        aligned((addr - 1) as nat, size),
+{
+}
+```
+REASON: If aligned(addr) implied aligned(addr-1) for size>1, the predicate would be vacuously true for all addresses
+===PHI_END===

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "tla_forall_always_implies_intensional_equality",
+    "type": "logical",
+    "code": "proof fn phi_1_tla_forall_always_implies_intensional_equality()\n    ensures\n        tla_forall(|a: int| always(TempPred::<int>::new(|ex: Execution<int>| true).implies(TempPred::<int>::new(|ex: Execution<int>| true)))).pred\n        == always(TempPred::<int>::new(|ex: Execution<int>| true).implies(tla_forall(|a: int| TempPred::<int>::new(|ex: Execution<int>| true)))).pred,\n{\n    tla_forall_always_implies_equality2::<int, int>(\n        TempPred::<int>::new(|ex: Execution<int>| true),\n        |a: int| TempPred::<int>::new(|ex: Execution<int>| true),\n    );\n}",
+    "reason": "tla_forall_always_implies_equality2 is external_body forcing intensional equality of structurally distinct TempPred closures \u2014 the LHS nests forall inside always inside forall while the RHS nests forall inside implies inside always, and equating their pred fields conflates extensional with intensional identity",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "implies_apply_closure_bridge",
+    "type": "logical",
+    "code": "proof fn phi_2_implies_apply_closure_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.satisfied_by(ex),\n        (p.pred)(ex) ==> (q.pred)(ex),\n    ensures\n        q.satisfied_by(ex),\n{\n    implies_apply::<int>(ex, p, q);\n}",
+    "reason": "implies_apply is external_body bridging the intensional gap between p.implies(q).satisfied_by(ex) (which goes through TempPred::new creating a fresh closure) and the direct implication \u2014 it silently resolves the closure-wrapping mismatch without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "spec_entails_tla_forall_vacuous",
+    "type": "boundary",
+    "code": "proof fn phi_3_spec_entails_tla_forall_vacuous()\n    ensures\n        TempPred::<int>::new(|ex: Execution<int>| false).entails(\n            tla_forall(|a: int| TempPred::<int>::new(|ex: Execution<int>| false))\n        ),\n{\n    assert forall |a: int| TempPred::<int>::new(|ex: Execution<int>| false).entails(\n        #[trigger] (|a: int| TempPred::<int>::new(|ex: Execution<int>| false))(a)\n    ) by {};\n    spec_entails_tla_forall::<int, int>(\n        TempPred::<int>::new(|ex: Execution<int>| false),\n        |a: int| TempPred::<int>::new(|ex: Execution<int>| false),\n    );\n}",
+    "reason": "spec_entails_tla_forall allows an unsatisfiable spec (always false) to entail tla_forall of anything vacuously \u2014 while logically valid, this means any property can be \"proven\" under a contradictory spec without warning",
+    "entailed": false,
+    "verus_output": "error: triggers cannot contain let/forall/exists/lambda/choose\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-library__always_implies_forall_intro/phi_3_spec_entails_tla_forall_vacuous.rs:113:21\n    |\n113 |         #[trigger] (|a: int| TempPred::<int>::new(|ex: Execution<int>| false))(a)\n    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "always_implies_forall_intro_empty_type",
+    "type": "boundary",
+    "code": "proof fn phi_4_always_implies_forall_intro_empty_type(spec: TempPred<int>, p: TempPred<int>)\n    ensures\n        valid(tla_forall(|a: int| always(p.implies(TempPred::<int>::new(|ex: Execution<int>| true))))),\n{\n    assert forall |ex: Execution<int>| #[trigger] tla_forall(|a: int| always(p.implies(TempPred::<int>::new(|ex: Execution<int>| true)))).satisfied_by(ex) by {\n        assert forall |a: int| #[trigger] (|a: int| always(p.implies(TempPred::<int>::new(|ex: Execution<int>| true))))(a).satisfied_by(ex) by {\n        }\n    };\n}",
+    "reason": "tla_forall over always(p implies true) is trivially valid for any p \u2014 combined with tla_forall_always_implies_equality2, this could equate a trivially-valid predicate with always(p implies tla_forall(const_true)) collapsing meaningful distinctions",
+    "entailed": false,
+    "verus_output": "l/exists/lambda/choose\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-library__always_implies_forall_intro/phi_4_always_implies_forall_intro_empty_type.rs:111:44\n    |\n111 | ...   assert forall |a: int| #[trigger] (|a: int| always(p.implies(TempPred::<int>::new(|ex: Execution<int>| true))))(a).satisfied_...\n    |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "equality_axiom_derives_false_if_distinct",
+    "type": "logical",
+    "code": "proof fn phi_5_equality_axiom_derives_false_if_distinct(p: TempPred<int>, a_to_q: spec_fn(int) -> TempPred<int>)\n    requires\n        tla_forall(|a: int| always(p.implies(a_to_q(a)))) != always(p.implies(tla_forall(a_to_q))),\n    ensures\n        false,\n{\n    tla_forall_always_implies_equality2::<int, int>(p, a_to_q);\n}",
+    "reason": "if any instance exists where the LHS and RHS of tla_forall_always_implies_equality2 are intensionally distinct (which is expected for different closure constructions), the external_body axiom forces equality and derives false \u2014 a direct soundness hole",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

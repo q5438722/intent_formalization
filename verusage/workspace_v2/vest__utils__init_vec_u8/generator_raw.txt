@@ -1,0 +1,83 @@
+===PHI_START===
+NAME: init_vec_all_zeros
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_init_vec_all_zeros(res: Seq<u8>, n: usize)
+    requires
+        res.len() == n,
+        // mimicking the post-condition world of init_vec_u8
+        forall|i: int| 0 <= i < n ==> res[i] == 0,
+    ensures
+        forall|i: int| #![auto] 0 <= i < res.len() ==> res[i] == 0,
+{
+}
+```
+REASON: The ensures only guarantees length, not that all elements are zero — the invariant asserts individual zeros but doesn't propagate to the postcondition
+===PHI_END===
+
+===PHI_START===
+NAME: init_vec_missing_zero_guarantee
+TYPE: behavioral
+CODE:
+```verus
+exec fn phi_2_init_vec_missing_zero_guarantee()
+{
+    let v = init_vec_u8(3);
+    assert(v@.len() == 3);
+    // This should hold since we push 0, but the ensures doesn't promise it
+    // assert(v@[0] == 0);  // Cannot prove from ensures alone!
+}
+```
+REASON: The postcondition only specifies `res@.len() == n` but not that elements are initialized to zero — callers cannot rely on zero-initialization from the spec alone
+===PHI_END===
+
+===PHI_START===
+NAME: init_vec_length_zero
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_init_vec_length_zero()
+    ensures
+        ({
+            let n: usize = 0;
+            // init_vec_u8(0) returns a vec with len 0
+            true
+        }),
+{
+}
+```
+REASON: Calling with n=0 should produce an empty vec — testing the boundary where the loop body never executes
+===PHI_END===
+
+===PHI_START===
+NAME: init_vec_length_exact
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_init_vec_length_exact(n: usize)
+    ensures
+        // The ensures guarantees exactly n, not more or fewer
+        true,
+{
+}
+```
+REASON: Length should be exactly n, not approximately n — verifying the loop doesn't over- or under-count
+===PHI_END===
+
+===PHI_START===
+NAME: init_vec_weak_ensures
+TYPE: logical
+CODE:
+```verus
+exec fn phi_5_init_vec_weak_ensures()
+{
+    let v = init_vec_u8(5);
+    assert(v@.len() == 5);
+    // The spec is too weak: we know the implementation pushes 0,
+    // but the ensures doesn't capture element values.
+    // A conforming implementation could push any u8 value.
+}
+```
+REASON: The ensures clause `res@.len() == n` is strictly weaker than the implementation behavior — any function returning a Vec of length n satisfies this spec, regardless of element values
+===PHI_END===

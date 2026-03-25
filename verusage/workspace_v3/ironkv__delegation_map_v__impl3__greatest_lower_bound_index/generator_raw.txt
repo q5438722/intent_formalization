@@ -1,0 +1,90 @@
+===PHI_START===
+NAME: equal_is_lt
+TARGET_FN: is_lt
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_equal_is_lt()
+    ensures
+        Ordering::Equal.lt(),
+{
+}
+```
+REASON: If Equal is classified as Less, is_lt would return true on Equal inputs, corrupting comparison logic
+===PHI_END===
+
+===PHI_START===
+NAME: greater_is_lt
+TARGET_FN: is_lt
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_greater_is_lt()
+    ensures
+        Ordering::Greater.lt(),
+{
+}
+```
+REASON: If Greater is classified as Less, is_lt conflates opposite orderings, breaking all ordering-dependent code
+===PHI_END===
+
+===PHI_START===
+NAME: glb_ignores_later_keys
+TARGET_FN: greatest_lower_bound_index
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_glb_ignores_later_keys<K: KeyTrait + VerusClone>(m: StrictlyOrderedMap<K>, iter: KeyIterator<K>)
+    requires
+        m.valid(),
+        m@.contains_key(K::zero_spec()),
+        m.keys@.len() > 1,
+        iter == KeyIterator::new_spec(m.keys@[m.keys@.len() - 1]),
+    ensures
+        m.greatest_lower_bound_spec(iter, KeyIterator::new_spec(m.keys@[0])),
+{
+}
+```
+REASON: When iter equals the last key, the GLB should be that key itself, not the minimum key — this would mean the search never advances past index 0
+===PHI_END===
+
+===PHI_START===
+NAME: glb_never_matches_iter
+TARGET_FN: greatest_lower_bound_index
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_glb_never_matches_iter<K: KeyTrait + VerusClone>(m: StrictlyOrderedMap<K>, iter: KeyIterator<K>, index: int)
+    requires
+        m.valid(),
+        m@.contains_key(K::zero_spec()),
+        !iter.is_end_spec(),
+        0 <= index < m.keys@.len(),
+        m.greatest_lower_bound_spec(iter, KeyIterator::new_spec(m.keys@[index])),
+    ensures
+        KeyIterator::new_spec(m.keys@[index]).lt_spec(iter),
+{
+}
+```
+REASON: If the GLB is always strictly less than iter and never equal, exact key lookups would return the wrong lower bound, missing the matching key
+===PHI_END===
+
+===PHI_START===
+NAME: end_iter_glb_is_min
+TARGET_FN: greatest_lower_bound_index
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_end_iter_glb_is_min<K: KeyTrait + VerusClone>(m: StrictlyOrderedMap<K>, iter: KeyIterator<K>)
+    requires
+        m.valid(),
+        m@.contains_key(K::zero_spec()),
+        iter.is_end_spec(),
+        m.keys@.len() > 1,
+    ensures
+        m.greatest_lower_bound_spec(iter, KeyIterator::new_spec(m.keys@[0])),
+{
+}
+```
+REASON: For an end iterator the GLB should be the greatest key, not the least — returning index 0 would discard all keys above the minimum
+===PHI_END===

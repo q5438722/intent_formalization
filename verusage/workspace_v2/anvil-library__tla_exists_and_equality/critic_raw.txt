@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: tla_exists_proved_by_witness_closure_bridge
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `tla_exists_proved_by_witness` is external_body bridging `a_to_p(witness).satisfied_by(ex)` to `tla_exists(a_to_p).satisfied_by(ex)` — requires resolving that `tla_exists`'s `TempPred::new` closure-wrapped existential evaluates consistently with the witness. Unverified trust assumption.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: temp_pred_equality_intensional_bridge
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `temp_pred_equality` is external_body forcing intensional `==` from mutual entailment. Structurally distinct closures collapsed to equal without proof — separate unverified trust assumption.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: mutual_entailment_derives_false_if_distinct
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: Direct soundness consequence of `temp_pred_equality` — if two TempPreds are intensionally distinct but semantically equivalent, this derives `false`.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: tla_exists_and_equality_bridge
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `∃a. p(a) ∧ q ≡ (∃a. p(a)) ∧ q` is a standard logical equivalence (q doesn't depend on a). This is a verified lemma with no new trust surface beyond φ1 and φ2.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: tla_exists_choose_witness_soundness
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Extracting a witness from `tla_exists` via `choose` is sound — `tla_exists`'s definition directly contains the existential, and SMT can resolve this without external_body axioms. No new trust surface.
+===VERDICT_END===
+
+===SUMMARY===
+Two true positives from independent external_body axioms: `tla_exists_proved_by_witness` (existential introduction through closure gap) and `temp_pred_equality` (intensional equality from semantic equivalence), plus a third demonstrating the soundness consequence of deriving false from distinct-but-equivalent preds. Two false positives: the exists-and distribution is a correct logical equivalence, and choose-witness extraction is sound SMT reasoning.
+===END_SUMMARY===

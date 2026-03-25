@@ -1,0 +1,47 @@
+[
+  {
+    "name": "empty_seq_vacuously_true",
+    "type": "boundary",
+    "code": "proof fn phi_1_empty_seq_vacuously_true(pred: spec_fn(int) -> bool)\n    ensures\n        forall |obj: int| #[trigger] Seq::<int>::empty().contains(obj) ==> pred(obj),\n{\n    true_pred_on_all_element_equal_to_pred_on_all_index(Seq::<int>::empty(), pred);\n}",
+    "reason": "empty sequence vacuously satisfies any predicate \u2014 tests that the biconditional handles the empty case correctly",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "index_form_implies_contains_form",
+    "type": "logical",
+    "code": "proof fn phi_2_index_form_implies_contains_form(s: Seq<int>, pred: spec_fn(int) -> bool)\n    requires\n        forall |i: int| 0 <= i < s.len() ==> pred(s[i]),\n    ensures\n        forall |obj: int| #[trigger] s.contains(obj) ==> pred(obj),\n{\n    true_pred_on_all_element_equal_to_pred_on_all_index(s, pred);\n}",
+    "reason": "tests the index-to-contains direction of the biconditional",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "contains_form_implies_index_form",
+    "type": "logical",
+    "code": "proof fn phi_3_contains_form_implies_index_form(s: Seq<int>, pred: spec_fn(int) -> bool)\n    requires\n        forall |obj: int| #[trigger] s.contains(obj) ==> pred(obj),\n    ensures\n        forall |i: int| 0 <= i < s.len() ==> pred(s[i]),\n{\n    true_pred_on_all_element_equal_to_pred_on_all_index(s, pred);\n}",
+    "reason": "tests the contains-to-index direction of the biconditional",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "singleton_pred_true",
+    "type": "boundary",
+    "code": "proof fn phi_4_singleton_pred_true(v: int, pred: spec_fn(int) -> bool)\n    requires\n        pred(v),\n    ensures\n        forall |obj: int| #[trigger] seq![v].contains(obj) ==> pred(obj),\n{\n    true_pred_on_all_element_equal_to_pred_on_all_index(seq![v], pred);\n}",
+    "reason": "singleton with pred true should satisfy the contains form \u2014 tests minimal nontrivial case",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "negated_pred_false_element_not_in_seq",
+    "type": "behavioral",
+    "code": "proof fn phi_5_negated_pred_false_element_not_in_seq(s: Seq<int>, pred: spec_fn(int) -> bool, e: int)\n    requires\n        forall |i: int| 0 <= i < s.len() ==> pred(s[i]),\n        !pred(e),\n    ensures\n        !s.contains(e),\n{\n    true_pred_on_all_element_equal_to_pred_on_all_index(s, pred);\n}",
+    "reason": "element failing pred should not be contained \u2014 tests contrapositive of the contains-form universal",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

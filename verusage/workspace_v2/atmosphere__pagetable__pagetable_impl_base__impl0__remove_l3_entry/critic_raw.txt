@@ -1,0 +1,17 @@
+===VERDICT_START===
+PHI: va_1g_valid_equals_va_2m_valid
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `va_1g_valid` has `#[verifier(when_used_as_spec(spec_va_2m_valid))]` — it should be `spec_va_1g_valid`. This copy-paste bug means in spec contexts `va_1g_valid(va)` resolves to `spec_va_2m_valid(va)` instead of `spec_va_1g_valid(va)`, silently weakening 1G address validation throughout `wf_mapping_1g` and any other spec usage.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: page_map_set_accepts_non_present_non_empty
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This PHI merely constructs a zero PageEntry and confirms it satisfies `is_empty()` — a tautology about the definition of `is_empty()`. It does not actually demonstrate that `page_map_set` accepts problematic inputs; the `present == false ==> is_empty()` precondition is a deliberate design choice matching the `present_or_zero` invariant maintained across all page table levels.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive found: `va_1g_valid` has a copy-paste bug using `when_used_as_spec(spec_va_2m_valid)` instead of `spec_va_1g_valid`, causing 1G VA validation to silently use the 2M mask in spec contexts. The other candidate is a tautology about PageEntry construction that confirms existing design rather than exposing a gap.
+===END_SUMMARY===

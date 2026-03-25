@@ -1,0 +1,79 @@
+===PHI_START===
+NAME: lemma_fold_left_push_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_lemma_fold_left_push_external_body()
+    ensures
+        seq![1int, 2].push(3).fold_left(0int, |acc: int, x: int| acc + x)
+            == (|acc: int, x: int| acc + x)(seq![1int, 2].fold_left(0int, |acc: int, x: int| acc + x), 3),
+{
+    lemma_fold_left_push(seq![1int, 2], 3, 0int, |acc: int, x: int| acc + x);
+}
+```
+REASON: `lemma_fold_left_push` is `external_body` with `unimplemented!()` — the fundamental fold-left-push equivalence is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: lemma_write_seq_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_lemma_write_seq_external_body(pt: PTMem, writes: Seq<(usize, usize)>)
+    ensures
+        pt.write_seq(writes).pml4 == pt.pml4,
+        pt.mem.dom().subset_of(pt.write_seq(writes).mem.dom()),
+{
+    pt.lemma_write_seq(writes);
+}
+```
+REASON: `lemma_write_seq` is `external_body` with `unimplemented!()` — pml4 preservation and domain monotonicity are trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: write_seq_push_depends_on_two_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_write_seq_push_depends_on_two_external_body(pt: PTMem, addr: usize, value: usize)
+    ensures
+        pt.write_seq(Seq::<(usize, usize)>::empty().push((addr, value)))
+            == (PTMem {
+                pml4: pt.pml4,
+                mem: pt.write_seq(Seq::<(usize, usize)>::empty()).mem.insert(addr, value),
+            }),
+{
+    pt.lemma_write_seq_push(Seq::<(usize, usize)>::empty(), addr, value);
+}
+```
+REASON: `lemma_write_seq_push` depends on both `lemma_fold_left_push` and `lemma_write_seq` (both external_body) — the push decomposition rests on two unverified trust assumptions
+===PHI_END===
+
+===PHI_START===
+NAME: write_seq_push_simplifies_to_write
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_write_seq_push_simplifies_to_write(pt: PTMem, addr: usize, value: usize)
+    ensures
+        pt.write_seq(seq![(addr, value)]) === pt.write(addr, value),
+{
+}
+```
+REASON: A single-element write_seq should equal a direct write — tests fold_left base case consistency
+===PHI_END===
+
+===PHI_START===
+NAME: write_seq_push_pml4_preserved
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_write_seq_push_pml4_preserved(pt: PTMem, writes: Seq<(usize, usize)>, addr: usize, value: usize)
+    ensures
+        pt.write_seq(writes.push((addr, value))).pml4 == pt.pml4,
+{
+    pt.lemma_write_seq_push(writes, addr, value);
+}
+```
+REASON: pml4 preservation through push relies on `lemma_write_seq_push` which transitively depends on two external_body lemmas
+===PHI_END===

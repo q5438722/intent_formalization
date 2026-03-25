@@ -1,0 +1,80 @@
+===PHI_START===
+NAME: write_seq_single_equals_write
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_write_seq_single_equals_write(pt: PTMem, addr: usize, value: usize)
+    ensures
+        pt.write_seq(seq![(addr, value)]) === pt.write(addr, value),
+{
+}
+```
+REASON: A single-element `write_seq` should equal a single `write` — tests that `fold_left` correctly reduces to the base case
+===PHI_END===
+
+===PHI_START===
+NAME: write_seq_first_commutes_with_disjoint
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_write_seq_first_commutes_with_disjoint(pt: PTMem, a1: usize, v1: usize, a2: usize, v2: usize)
+    requires
+        a1 != a2,
+    ensures
+        pt.write_seq(seq![(a1, v1), (a2, v2)]).mem[a1] == v1,
+        pt.write_seq(seq![(a1, v1), (a2, v2)]).mem[a2] == v2,
+{
+}
+```
+REASON: Disjoint writes should both be visible — tests that `write_seq` correctly applies all writes to distinct addresses
+===PHI_END===
+
+===PHI_START===
+NAME: write_seq_last_wins
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_write_seq_last_wins(pt: PTMem, addr: usize, v1: usize, v2: usize)
+    requires
+        v1 != v2,
+    ensures
+        pt.write_seq(seq![(addr, v1), (addr, v2)]).mem[addr] == v2,
+{
+}
+```
+REASON: When the same address is written twice, the last write wins — no conflict detection or error for duplicate writes to the same page table entry
+===PHI_END===
+
+===PHI_START===
+NAME: write_seq_preserves_unwritten
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_write_seq_preserves_unwritten(pt: PTMem, addr: usize, other: usize, value: usize)
+    requires
+        addr != other,
+        pt.mem.contains_key(other),
+    ensures
+        pt.write_seq(seq![(addr, value)]).mem[other] == pt.mem[other],
+{
+}
+```
+REASON: `write_seq` should not modify addresses not in the write sequence — tests that map insert only affects the target key
+===PHI_END===
+
+===PHI_START===
+NAME: write_seq_unbounded_expansion
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_write_seq_unbounded_expansion(pt: PTMem, addr: usize, value: usize)
+    requires
+        !pt.mem.contains_key(addr),
+    ensures
+        pt.write_seq(seq![(addr, value)]).mem.contains_key(addr),
+        !pt.mem.contains_key(addr),
+{
+}
+```
+REASON: `write_seq` can create entries at arbitrary addresses not in the original domain — no bounds checking on whether the address is within allocated page table regions
+===PHI_END===

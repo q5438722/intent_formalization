@@ -1,0 +1,17 @@
+===VERDICT_START===
+PHI: serialize_nonempty
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The `spec_serialize_helper` always returns either `seq![lo]` (base case) or `seq![set_high_8_bit!(lo)] + recursive_result`. Both branches produce at least one element. This is correct by the open spec definition.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: serialize_127_is_single_byte
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: For `v = 127u64`: `hi = 127 >> 7 == 0`, so the base case applies, returning `seq![take_low_7_bits!(127)]` = `seq![127u8]`. Correct by unfolding the open spec definition with bitvector arithmetic.
+===VERDICT_END===
+
+===SUMMARY===
+Both candidates are false positives. Serialize non-emptiness follows from the structure of `spec_serialize_helper` which always produces at least one byte in both branches. The 127 single-byte encoding follows directly from unfolding the spec with `127 >> 7 == 0`. No spec gaps found in the serialization logic.
+===END_SUMMARY===

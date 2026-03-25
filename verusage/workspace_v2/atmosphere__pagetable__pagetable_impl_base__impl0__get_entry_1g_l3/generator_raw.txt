@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: usize2pa_mem_valid_unconditional
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)
+    ensures
+        MEM_valid(usize2pa(v)),
+{
+}
+```
+REASON: usize2pa's external_body unconditionally ensures MEM_valid(ret) for ANY input — arbitrary usize values produce "valid" physical addresses without proof
+===PHI_END===
+
+===PHI_START===
+NAME: disjoint_l4_no_cross_level_check
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_disjoint_l4_no_cross_level_check(pt: PageTable, l4i: L4Index, p: PageMapPtr)
+    requires
+        pt.wf_l4(),
+        pt.wf_l3(),
+        pt.disjoint_l4(),
+        pt.kernel_l4_end <= l4i < 512,
+        pt.l4_table@[pt.cr3].value()[l4i].perm.present,
+        pt.l3_tables@.dom().contains(p),
+    ensures
+        pt.l4_table@[pt.cr3].value()[l4i].addr == p
+        || pt.l4_table@[pt.cr3].value()[l4i].addr != p,
+{
+}
+```
+REASON: disjoint_l4 only checks L4 entries don't alias each other, but never checks that L4 target addresses are disjoint from L2/L1 table addresses — cross-level aliasing is unconstrained
+===PHI_END===
+
+===PHI_START===
+NAME: l4_dom_singleton_cr3
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_l4_dom_singleton_cr3(pt: PageTable, p: PageMapPtr)
+    requires
+        pt.wf_l4(),
+        pt.l4_table@.dom().contains(p),
+    ensures
+        p == pt.cr3,
+{
+}
+```
+REASON: wf_l4 constrains l4_table domain to exactly {cr3} — only a single L4 table exists, meaning PCID-based multi-address-space sharing at the L4 level is impossible under this spec
+===PHI_END===
+
+===PHI_START===
+NAME: tlb_submap_no_staleness_check
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_tlb_submap_no_staleness_check(pt: PageTable, cpu: CpuId, va: VAddr)
+    requires
+        pt.tlb_wf(),
+        pt.tlb_submap_of_mapping(),
+        0 <= cpu < NUM_CPUS,
+        pt.tlb_mapping_4k@[cpu as int].dom().contains(va),
+    ensures
+        pt.mapping_4k@.dom().contains(va),
+        pt.tlb_mapping_4k@[cpu as int][va] == pt.mapping_4k@[va],
+{
+}
+```
+REASON: tlb_submap_of_mapping ensures TLB entries are always consistent submaps of current mappings — but real TLBs can hold stale entries after mapping changes until explicit flush, so this overly strong invariant may mask TLB shootdown bugs
+===PHI_END===
+
+===PHI_START===
+NAME: zero_entry_is_empty
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_zero_entry_is_empty()
+    ensures
+        usize2page_entry(0usize).is_empty(),
+{
+}
+```
+REASON: Relies on two independent external_body claims (usize2page_entry special-casing v==0 and usize2pa producing addr==0 for v==0) agreeing — if either is wrong the combined property is unsound
+===PHI_END===

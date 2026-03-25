@@ -1,0 +1,52 @@
+[
+  {
+    "name": "zero_size_alignment",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "reason": "Alignment with size 0 should be undefined/invalid, not trivially true via 0 % 0 == 0 in SMT",
+    "entailed": false,
+    "verified": 3,
+    "errors": 1,
+    "output_tail": "ize_alignment.rs:316:9\n    |\n312 | proof fn phi_1_zero_size_alignment(addr: nat)\n    |       --------------------------------------- at the end of the function body\n...\n316 |         aligned(addr, 0),\n    |         ^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "nonzero_zero_size_alignment",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "reason": "Any nonzero address being aligned to size 0 would indicate the spec fails to guard against zero divisor",
+    "entailed": false,
+    "verified": 3,
+    "errors": 1,
+    "output_tail": ":316:9\n    |\n312 | proof fn phi_2_nonzero_zero_size_alignment(addr: nat)\n    |       ----------------------------------------------- at the end of the function body\n...\n316 |         aligned(addr, 0),\n    |         ^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "upward_alignment_implication",
+    "target_fn": "aligned",
+    "type": "logical",
+    "reason": "4-alignment does not imply 8-alignment (e.g. addr=4), so this being provable would mean the spec is too weak",
+    "entailed": false,
+    "verified": 3,
+    "errors": 1,
+    "output_tail": "16:9\n    |\n312 | proof fn phi_3_upward_alignment_implication(addr: nat)\n    |       ------------------------------------------------ at the end of the function body\n...\n316 |         aligned(addr, 8),\n    |         ^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "off_by_one_aligned",
+    "target_fn": "aligned",
+    "type": "behavioral",
+    "reason": "Shifting an aligned address by 1 must break alignment for any size > 1; provability implies the spec is vacuous",
+    "entailed": false,
+    "verified": 3,
+    "errors": 1,
+    "output_tail": "f_by_one_aligned(addr: nat, size: nat)\n    |       ------------------------------------------------- at the end of the function body\n...\n317 |         aligned((addr + 1) as nat, size),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "product_sum_alignment",
+    "target_fn": "aligned",
+    "type": "logical",
+    "reason": "Divisibility by a product does not imply divisibility by the sum (e.g. 6 % 6 == 0 but 6 % 5 != 0)",
+    "entailed": false,
+    "verified": 3,
+    "errors": 1,
+    "output_tail": "oduct_sum_alignment(addr: nat, s1: nat, s2: nat)\n    |       ----------------------------------------------------------- at the end of the function body\n...\n318 |         aligned(addr, s1 + s2),\n    |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

@@ -1,0 +1,173 @@
+===PHI_START===
+NAME: blocked_thread_owning_proc_changes
+TARGET_FN: block_running_thread
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_blocked_thread_owning_proc_changes(
+    old_pm: ProcessManager, new_pm: ProcessManager,
+    thread_ptr: ThreadPtr, endpoint_index: EndpointIdx, ipc_payload: IPCPayLoad,
+)
+    requires
+        old_pm.wf(),
+        old_pm.thread_dom().contains(thread_ptr),
+        0 <= endpoint_index < MAX_NUM_ENDPOINT_DESCRIPTORS,
+        old_pm.get_thread(thread_ptr).endpoint_descriptors@[endpoint_index as int].is_Some(),
+        old_pm.get_thread(thread_ptr).state == ThreadState::RUNNING,
+        new_pm.wf(),
+        new_pm.thread_dom() == old_pm.thread_dom(),
+        new_pm.get_thread(thread_ptr).state == ThreadState::BLOCKED,
+        new_pm.get_thread(thread_ptr).endpoint_descriptors
+            =~= old_pm.get_thread(thread_ptr).endpoint_descriptors,
+        new_pm.get_thread(thread_ptr).ipc_payload =~= ipc_payload,
+    ensures
+        new_pm.get_thread(thread_ptr).owning_proc != old_pm.get_thread(thread_ptr).owning_proc,
+{
+}
+```
+REASON: Blocking a thread should not change its owning process; the spec does not explicitly preserve owning_proc for the target thread
+===PHI_END===
+
+===PHI_START===
+NAME: endpoint_queue_empty_after_push
+TARGET_FN: block_running_thread
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_endpoint_queue_empty_after_push(
+    old_pm: ProcessManager, new_pm: ProcessManager,
+    thread_ptr: ThreadPtr, endpoint_index: EndpointIdx,
+)
+    requires
+        old_pm.wf(),
+        old_pm.thread_dom().contains(thread_ptr),
+        0 <= endpoint_index < MAX_NUM_ENDPOINT_DESCRIPTORS,
+        old_pm.get_thread(thread_ptr).endpoint_descriptors@[endpoint_index as int].is_Some(),
+        old_pm.get_endpoint(
+            old_pm.get_thread(thread_ptr).endpoint_descriptors@[endpoint_index as int].unwrap(),
+        ).queue.len() < MAX_NUM_THREADS_PER_ENDPOINT,
+        old_pm.get_thread(thread_ptr).state == ThreadState::RUNNING,
+        new_pm.wf(),
+        new_pm.endpoint_dom() == old_pm.endpoint_dom(),
+        new_pm.thread_dom() == old_pm.thread_dom(),
+        new_pm.get_endpoint(
+            old_pm.get_thread(thread_ptr).endpoint_descriptors@[endpoint_index as int].unwrap(),
+        ).queue@ == old_pm.get_endpoint(
+            old_pm.get_thread(thread_ptr).endpoint_descriptors@[endpoint_index as int].unwrap(),
+        ).queue@.push(thread_ptr),
+    ensures
+        new_pm.get_endpoint(
+            old_pm.get_thread(thread_ptr).endpoint_descriptors@[endpoint_index as int].unwrap(),
+        ).queue@.len() == 0,
+{
+}
+```
+REASON: After pushing a thread onto the endpoint queue, queue length must be at least 1; an empty queue would indicate broken push semantics
+===PHI_END===
+
+===PHI_START===
+NAME: running_cpu_still_some_after_block
+TARGET_FN: block_running_thread
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_running_cpu_still_some_after_block(
+    old_pm: ProcessManager, new_pm: ProcessManager,
+    thread_ptr: ThreadPtr, endpoint_index: EndpointIdx, ipc_payload: IPCPayLoad,
+)
+    requires
+        old_pm.wf(),
+        old_pm.thread_dom().contains(thread_ptr),
+        old_pm.get_thread(thread_ptr).state == ThreadState::RUNNING,
+        new_pm.wf(),
+        new_pm.thread_dom() == old_pm.thread_dom(),
+        new_pm.get_thread(thread_ptr).state == ThreadState::BLOCKED,
+    ensures
+        new_pm.get_thread(thread_ptr).running_cpu.is_Some(),
+{
+}
+```
+REASON: A BLOCKED thread should not have a running CPU; if wf() allows this, the cpu-thread invariant (threads_cpu_wf) is too weak
+===PHI_END===
+
+===PHI_START===
+NAME: endpoint_rf_counter_changes
+TARGET_FN: block_running_thread
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_endpoint_rf_counter_changes(
+    old_pm: ProcessManager, new_pm: ProcessManager,
+    thread_ptr: ThreadPtr, endpoint_index: EndpointIdx, ipc_payload: IPCPayLoad,
+)
+    requires
+        old_pm.wf(),
+        old_pm.thread_dom().contains(thread_ptr),
+        0 <= endpoint_index < MAX_NUM_ENDPOINT_DESCRIPTORS,
+        old_pm.get_thread(thread_ptr).endpoint_descriptors@[endpoint_index as int].is_Some(),
+        old_pm.get_thread(thread_ptr).state == ThreadState::RUNNING,
+        new_pm.wf(),
+        new_pm.endpoint_dom() == old_pm.endpoint_dom(),
+        new_pm.thread_dom() == old_pm.thread_dom(),
+        new_pm.get_endpoint(
+            old_pm.get_thread(thread_ptr).endpoint_descriptors@[endpoint_index as int].unwrap(),
+        ).queue_state == old_pm.get_endpoint(
+            old_pm.get_thread(thread_ptr).endpoint_descriptors@[endpoint_index as int].unwrap(),
+        ).queue_state,
+        new_pm.get_endpoint(
+            old_pm.get_thread(thread_ptr).endpoint_descriptors@[endpoint_index as int].unwrap(),
+        ).owning_threads == old_pm.get_endpoint(
+            old_pm.get_thread(thread_ptr).endpoint_descriptors@[endpoint_index as int].unwrap(),
+        ).owning_threads,
+    ensures
+        new_pm.get_endpoint(
+            old_pm.get_thread(thread_ptr).endpoint_descriptors@[endpoint_index as int].unwrap(),
+        ).rf_counter != old_pm.get_endpoint(
+            old_pm.get_thread(thread_ptr).endpoint_descriptors@[endpoint_index as int].unwrap(),
+        ).rf_counter,
+{
+}
+```
+REASON: Blocking a thread on an endpoint should not change the endpoint's reference counter; the spec omits rf_counter preservation for the target endpoint
+===PHI_END===
+
+===PHI_START===
+NAME: endpoint_owning_container_changes
+TARGET_FN: block_running_thread
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_endpoint_owning_container_changes(
+    old_pm: ProcessManager, new_pm: ProcessManager,
+    thread_ptr: ThreadPtr, endpoint_index: EndpointIdx, ipc_payload: IPCPayLoad,
+)
+    requires
+        old_pm.wf(),
+        old_pm.thread_dom().contains(thread_ptr),
+        0 <= endpoint_index < MAX_NUM_ENDPOINT_DESCRIPTORS,
+        old_pm.get_thread(thread_ptr).endpoint_descriptors@[endpoint_index as int].is_Some(),
+        old_pm.get_thread(thread_ptr).state == ThreadState::RUNNING,
+        new_pm.wf(),
+        new_pm.endpoint_dom() == old_pm.endpoint_dom(),
+        new_pm.thread_dom() == old_pm.thread_dom(),
+        new_pm.get_endpoint(
+            old_pm.get_thread(thread_ptr).endpoint_descriptors@[endpoint_index as int].unwrap(),
+        ).queue_state == old_pm.get_endpoint(
+            old_pm.get_thread(thread_ptr).endpoint_descriptors@[endpoint_index as int].unwrap(),
+        ).queue_state,
+        new_pm.get_endpoint(
+            old_pm.get_thread(thread_ptr).endpoint_descriptors@[endpoint_index as int].unwrap(),
+        ).owning_threads == old_pm.get_endpoint(
+            old_pm.get_thread(thread_ptr).endpoint_descriptors@[endpoint_index as int].unwrap(),
+        ).owning_threads,
+    ensures
+        new_pm.get_endpoint(
+            old_pm.get_thread(thread_ptr).endpoint_descriptors@[endpoint_index as int].unwrap(),
+        ).owning_container != old_pm.get_endpoint(
+            old_pm.get_thread(thread_ptr).endpoint_descriptors@[endpoint_index as int].unwrap(),
+        ).owning_container,
+{
+}
+```
+REASON: Blocking a thread should not migrate the target endpoint to a different container; the spec preserves queue_state and owning_threads but omits owning_container
+===PHI_END===

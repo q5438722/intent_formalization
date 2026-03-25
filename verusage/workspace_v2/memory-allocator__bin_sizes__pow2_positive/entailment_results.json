@@ -1,0 +1,47 @@
+[
+  {
+    "name": "pow2_negative_is_one",
+    "type": "boundary",
+    "code": "proof fn phi_1_pow2_negative_is_one(e: int)\n    requires\n        e < 0,\n    ensures\n        pow2(e) == 1,\n{\n}",
+    "reason": "`pow2` returns 1 for all negative exponents \u2014 mathematically 2^(-n) is a fraction, so callers passing negative exponents by mistake silently get 1",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "pow2_non_injective_at_zero",
+    "type": "boundary",
+    "code": "proof fn phi_2_pow2_non_injective_at_zero()\n    ensures\n        pow2(0) == pow2(-1),\n{\n}",
+    "reason": "pow2(0) == pow2(-1) == 1 means the function is non-injective in the non-positive range \u2014 distinct exponents produce the same value, which could mask off-by-one errors",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "pow2_all_negative_equal",
+    "type": "boundary",
+    "code": "proof fn phi_3_pow2_all_negative_equal(a: int, b: int)\n    requires\n        a < 0,\n        b < 0,\n    ensures\n        pow2(a) == pow2(b),\n{\n}",
+    "reason": "All negative inputs to `pow2` are indistinguishable \u2014 the function collapses the entire negative domain to a single value, losing all information about the exponent",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "pow2_not_strictly_monotone",
+    "type": "behavioral",
+    "code": "proof fn phi_4_pow2_not_strictly_monotone(a: int, b: int)\n    requires\n        a < b,\n        b <= 0,\n    ensures\n        pow2(a) >= pow2(b),\n{\n}",
+    "reason": "`pow2` is not strictly increasing for non-positive inputs \u2014 `a < b` yet `pow2(a) == pow2(b)`, violating the expected strict monotonicity of exponential functions",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "pow2_zero_not_standard",
+    "type": "boundary",
+    "code": "proof fn phi_5_pow2_zero_not_standard(e: int)\n    requires\n        e <= 0,\n    ensures\n        pow2(e) == pow2(0),\n{\n}",
+    "reason": "`pow2(e) == pow2(0) == 1` for all e \u2264 0, meaning the base case swallows all non-positive inputs rather than just e=0 \u2014 a caller computing `pow2(e-1)` when e=1 gets the same result as `pow2(e-2)`, silently hiding errors",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

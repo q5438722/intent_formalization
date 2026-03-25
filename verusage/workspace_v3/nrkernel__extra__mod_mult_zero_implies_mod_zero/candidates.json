@@ -1,0 +1,37 @@
+[
+  {
+    "name": "zero_size_alignment_trivially_true",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "code": "proof fn phi_1_zero_size_alignment_trivially_true(addr: nat)\n    requires\n        addr >= 0,\n    ensures\n        aligned(addr, 0),\n{\n}",
+    "reason": "aligned(addr, 0) should not hold because alignment to zero is undefined, but nat%0 may be 0 in SMT making it vacuously true"
+  },
+  {
+    "name": "shift_by_one_preserves_alignment",
+    "target_fn": "aligned",
+    "type": "behavioral",
+    "code": "proof fn phi_2_shift_by_one_preserves_alignment(addr: nat, size: nat)\n    requires\n        size > 1,\n        aligned(addr, size),\n    ensures\n        aligned(addr + 1, size),\n{\n}",
+    "reason": "Adding 1 to an aligned address should break alignment for any size > 1, so this entailment would indicate the spec is vacuous or wrong"
+  },
+  {
+    "name": "double_size_always_preserves_alignment",
+    "target_fn": "aligned",
+    "type": "logical",
+    "code": "proof fn phi_3_double_size_always_preserves_alignment(addr: nat, size: nat)\n    requires\n        size > 0,\n        aligned(addr, size),\n    ensures\n        aligned(addr, 2 * size),\n{\n}",
+    "reason": "Alignment to size does not imply alignment to 2*size (e.g. 4 is aligned to 4 but not to 8), so this holding would mean the spec is too weak"
+  },
+  {
+    "name": "nonmultiple_is_aligned",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "code": "proof fn phi_4_nonmultiple_is_aligned(size: nat)\n    requires\n        size > 1,\n    ensures\n        aligned(size + 1, size),\n{\n}",
+    "reason": "size+1 is never a multiple of size when size>1, so this being provable would mean aligned accepts non-multiples"
+  },
+  {
+    "name": "offset_by_size_minus_one_still_aligned",
+    "target_fn": "aligned",
+    "type": "behavioral",
+    "code": "proof fn phi_5_offset_by_size_minus_one_still_aligned(addr: nat, size: nat)\n    requires\n        size > 1,\n        aligned(addr, size),\n    ensures\n        aligned((addr + size) - 1, size),\n{\n}",
+    "reason": "addr+size-1 is one less than the next aligned address, so it should NOT be aligned; provability would indicate the spec conflates adjacent boundaries"
+  }
+]

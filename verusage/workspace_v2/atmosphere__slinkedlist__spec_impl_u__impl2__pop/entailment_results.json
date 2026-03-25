@@ -1,0 +1,47 @@
+[
+  {
+    "name": "sll_len_without_wf_returns_value_list_len",
+    "type": "logical",
+    "code": "proof fn phi_1_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    ensures\n        sll.len() == sll.value_list_len,\n{\n}",
+    "reason": "StaticLinkedList::len's external_body unconditionally ensures l == self.value_list_len without requiring wf() \u2014 the raw field is exposed even for malformed lists",
+    "entailed": false,
+    "verus_output": "thout_wf_returns_value_list_len.rs:470:9\n    |\n468 | proof fn phi_1_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    |       -------------------------------------------------------------------------------------------------- at the end of the function body\n469 |     ensures\n470 |         sll.len() == sll.value_list_len,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pop_preserves_node_refs_for_remaining",
+    "type": "behavioral",
+    "code": "proof fn phi_2_pop_preserves_node_refs_for_remaining<T: Copy, const N: usize>(\n    old_sll: StaticLinkedList<T, N>,\n    new_sll: StaticLinkedList<T, N>,\n    ret: (T, SLLIndex),\n    v: T,\n)\n    requires\n        old_sll.wf(),\n        old_sll.len() > 0,\n        old_sll.unique(),\n        N > 2,\n        new_sll.wf(),\n        new_sll.len() == old_sll.len() - 1,\n        new_sll@ == old_sll@.skip(1),\n        ret.0 == old_sll@[0],\n        ret.1 == old_sll.get_node_ref(ret.0),\n        new_sll@.contains(v),\n        old_sll.get_node_ref(v) == new_sll.get_node_ref(v),\n    ensures\n        new_sll.get_node_ref(v) == old_sll.get_node_ref(v),\n{\n}",
+    "reason": "pop claims all remaining elements keep their node refs unchanged, but the popped element's node is moved to the free list \u2014 if node indices are reused, this invariant silently depends on the free list not corrupting value list node assignments",
+    "entailed": true,
+    "verus_output": "t is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__slinkedlist__spec_impl_u__impl2__pop/phi_2_pop_preserves_node_refs_for_remaining.rs:208:75\n    |\n208 |                 && self.arr_seq@[self.value_list@[i as int] as int].value.get_Some_0()\n    |                                                                           ^^^^^^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pop_ret_index_is_old_head",
+    "type": "behavioral",
+    "code": "proof fn phi_3_pop_ret_index_is_old_head<T: Copy, const N: usize>(\n    old_sll: StaticLinkedList<T, N>,\n    new_sll: StaticLinkedList<T, N>,\n    ret: (T, SLLIndex),\n)\n    requires\n        old_sll.wf(),\n        old_sll.len() > 0,\n        old_sll.unique(),\n        N > 2,\n        new_sll.wf(),\n        new_sll@ == old_sll@.skip(1),\n        ret.0 == old_sll@[0],\n        ret.1 == old_sll.get_node_ref(ret.0),\n    ensures\n        ret.1 == old_sll.value_list_head,\n{\n}",
+    "reason": "get_node_ref for the first element should return value_list@[0] which equals value_list_head \u2014 this couples the abstract get_node_ref to concrete list structure, leaking implementation details through the spec",
+    "entailed": true,
+    "verus_output": ": get_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__slinkedlist__spec_impl_u__impl2__pop/phi_3_pop_ret_index_is_old_head.rs:208:75\n    |\n208 |                 && self.arr_seq@[self.value_list@[i as int] as int].value.get_Some_0()\n    |                                                                           ^^^^^^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pop_single_element_result_empty",
+    "type": "boundary",
+    "code": "proof fn phi_4_pop_single_element_result_empty<T: Copy, const N: usize>(\n    old_sll: StaticLinkedList<T, N>,\n    new_sll: StaticLinkedList<T, N>,\n)\n    requires\n        old_sll.wf(),\n        old_sll.len() == 1,\n        old_sll.unique(),\n        N > 2,\n        new_sll.wf(),\n        new_sll.len() == old_sll.len() - 1,\n        new_sll@ == old_sll@.skip(1),\n    ensures\n        new_sll@.len() == 0,\n        new_sll.free_list_len == N,\n        new_sll.value_list_len == 0,\n{\n}",
+    "reason": "After popping the last element, all N nodes must be in the free list \u2014 wf() ensures free_list_len + value_list_len == N, so this is entailed but means the free list consumes all capacity with no slack",
+    "entailed": true,
+    "verus_output": "Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__slinkedlist__spec_impl_u__impl2__pop/phi_4_pop_single_element_result_empty.rs:208:75\n    |\n208 |                 && self.arr_seq@[self.value_list@[i as int] as int].value.get_Some_0()\n    |                                                                           ^^^^^^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "unique_quantifies_over_value_list_len",
+    "type": "logical",
+    "code": "proof fn phi_5_unique_quantifies_over_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    requires\n        sll.value_list_len == 3,\n        sll.spec_seq@.len() == 3,\n        sll.spec_seq@[0] != sll.spec_seq@[1],\n        sll.spec_seq@[0] != sll.spec_seq@[2],\n        sll.spec_seq@[1] != sll.spec_seq@[2],\n    ensures\n        sll.unique(),\n{\n}",
+    "reason": "unique() uses self.len() which unconditionally equals value_list_len (not spec_seq.len()) \u2014 without wf(), if value_list_len diverges from spec_seq.len(), the uniqueness quantifier range is wrong",
+    "entailed": true,
+    "verus_output": "t is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__slinkedlist__spec_impl_u__impl2__pop/phi_5_unique_quantifies_over_value_list_len.rs:208:75\n    |\n208 |                 && self.arr_seq@[self.value_list@[i as int] as int].value.get_Some_0()\n    |                                                                           ^^^^^^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

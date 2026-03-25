@@ -1,0 +1,160 @@
+===PHI_START===
+NAME: ret_not_page_ptr
+TARGET_FN: new_thread
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_ret_not_page_ptr(
+    old_pm: ProcessManager,
+    new_pm: ProcessManager,
+    proc_ptr: ProcPtr,
+    page_ptr: PagePtr,
+    ret: ThreadPtr,
+)
+    requires
+        old_pm.wf(),
+        old_pm.proc_dom().contains(proc_ptr),
+        old_pm.page_closure().contains(page_ptr) == false,
+        new_pm.wf(),
+        new_pm.page_closure() =~= old_pm.page_closure().insert(page_ptr),
+        new_pm.proc_dom() =~= old_pm.proc_dom(),
+        new_pm.endpoint_dom() == old_pm.endpoint_dom(),
+        new_pm.container_dom() == old_pm.container_dom(),
+        new_pm.thread_dom() == old_pm.thread_dom().insert(ret),
+    ensures
+        ret != page_ptr,
+{
+}
+```
+REASON: The spec should pin ret == page_ptr via the set algebra (page_closure grows by page_ptr, only thread_dom changes by ret), so proving ret != page_ptr would indicate an inconsistency.
+===PHI_END===
+
+===PHI_START===
+NAME: proc_thread_count_unchanged
+TARGET_FN: new_thread
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_proc_thread_count_unchanged(
+    old_pm: ProcessManager,
+    new_pm: ProcessManager,
+    proc_ptr: ProcPtr,
+    page_ptr: PagePtr,
+    ret: ThreadPtr,
+)
+    requires
+        old_pm.wf(),
+        old_pm.proc_dom().contains(proc_ptr),
+        old_pm.page_closure().contains(page_ptr) == false,
+        old_pm.get_proc(proc_ptr).owned_threads.len() < MAX_NUM_THREADS_PER_PROC,
+        new_pm.wf(),
+        new_pm.proc_dom() =~= old_pm.proc_dom(),
+        new_pm.container_dom() == old_pm.container_dom(),
+        new_pm.thread_dom() == old_pm.thread_dom().insert(ret),
+        new_pm.page_closure() =~= old_pm.page_closure().insert(page_ptr),
+        old_pm.get_proc(proc_ptr).pcid =~= new_pm.get_proc(proc_ptr).pcid,
+        old_pm.get_proc(proc_ptr).ioid =~= new_pm.get_proc(proc_ptr).ioid,
+    ensures
+        new_pm.get_proc(proc_ptr).owned_threads.len() == old_pm.get_proc(proc_ptr).owned_threads.len(),
+{
+}
+```
+REASON: Adding a thread should increase the owning proc's thread count; if the spec entails it stays the same, the postcondition is missing a thread-list-growth guarantee.
+===PHI_END===
+
+===PHI_START===
+NAME: ret_in_old_page_closure
+TARGET_FN: new_thread
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_ret_in_old_page_closure(
+    old_pm: ProcessManager,
+    new_pm: ProcessManager,
+    proc_ptr: ProcPtr,
+    page_ptr: PagePtr,
+    ret: ThreadPtr,
+)
+    requires
+        old_pm.wf(),
+        old_pm.proc_dom().contains(proc_ptr),
+        old_pm.page_closure().contains(page_ptr) == false,
+        new_pm.wf(),
+        new_pm.page_closure() =~= old_pm.page_closure().insert(page_ptr),
+        new_pm.thread_dom() == old_pm.thread_dom().insert(ret),
+        new_pm.proc_dom() =~= old_pm.proc_dom(),
+        new_pm.endpoint_dom() == old_pm.endpoint_dom(),
+        new_pm.container_dom() == old_pm.container_dom(),
+    ensures
+        old_pm.page_closure().contains(ret),
+{
+}
+```
+REASON: The returned pointer must be fresh (not in the old page closure); if the spec entails it was already present, it would alias an existing container/proc/thread/endpoint page.
+===PHI_END===
+
+===PHI_START===
+NAME: owning_container_procs_grew
+TARGET_FN: new_thread
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_owning_container_procs_grew(
+    old_pm: ProcessManager,
+    new_pm: ProcessManager,
+    proc_ptr: ProcPtr,
+    page_ptr: PagePtr,
+    ret: ThreadPtr,
+)
+    requires
+        old_pm.wf(),
+        old_pm.proc_dom().contains(proc_ptr),
+        old_pm.page_closure().contains(page_ptr) == false,
+        new_pm.wf(),
+        new_pm.proc_dom() =~= old_pm.proc_dom(),
+        new_pm.container_dom() == old_pm.container_dom(),
+        new_pm.thread_dom() == old_pm.thread_dom().insert(ret),
+        new_pm.page_closure() =~= old_pm.page_closure().insert(page_ptr),
+        old_pm.get_proc(proc_ptr).pcid =~= new_pm.get_proc(proc_ptr).pcid,
+    ensures
+        new_pm.get_container(new_pm.get_proc(proc_ptr).owning_container).owned_procs@.len()
+            > old_pm.get_container(old_pm.get_proc(proc_ptr).owning_container).owned_procs@.len(),
+{
+}
+```
+REASON: new_thread adds a thread, not a process; the owning container's proc list should not grow, so proving it did would reveal the spec allows a spurious proc-list mutation.
+===PHI_END===
+
+===PHI_START===
+NAME: existing_thread_owner_changed
+TARGET_FN: new_thread
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_existing_thread_owner_changed(
+    old_pm: ProcessManager,
+    new_pm: ProcessManager,
+    proc_ptr: ProcPtr,
+    page_ptr: PagePtr,
+    ret: ThreadPtr,
+    t_ptr: ThreadPtr,
+)
+    requires
+        old_pm.wf(),
+        old_pm.proc_dom().contains(proc_ptr),
+        old_pm.page_closure().contains(page_ptr) == false,
+        old_pm.thread_dom().contains(t_ptr),
+        t_ptr != ret,
+        new_pm.wf(),
+        new_pm.proc_dom() =~= old_pm.proc_dom(),
+        new_pm.container_dom() == old_pm.container_dom(),
+        new_pm.endpoint_dom() == old_pm.endpoint_dom(),
+        new_pm.thread_dom() == old_pm.thread_dom().insert(ret),
+        new_pm.page_closure() =~= old_pm.page_closure().insert(page_ptr),
+    ensures
+        new_pm.get_thread(t_ptr).owning_proc != old_pm.get_thread(t_ptr).owning_proc,
+{
+}
+```
+REASON: Existing threads should be unmodified by new_thread; if the spec entails an existing thread's owning_proc can change, there is a missing frame condition on the thread permissions.
+===PHI_END===

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "tso_empty_implies_all_sbufs_empty",
+    "type": "behavioral",
+    "code": "proof fn phi_1_tso_empty_implies_all_sbufs_empty(pre: State, c: Constants)\n    requires\n        pre.inv_sbuf_facts(c),\n        pre.writes.tso === set![],\n        c.valid_core(pre.writes.core),\n    ensures\n        pre.writer_sbuf() === seq![],\n{\n    lemma_writes_tso_empty_implies_sbuf_empty(pre, c, pre.writes.core);\n}",
+    "reason": "When TSO write set is empty, the writer's own sbuf should also be empty \u2014 tests that `writer_sbuf_subset_tso_writes` correctly constrains the writer core too",
+    "entailed": true,
+    "verus_output": "verification results:: 7 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "contains_fst_empty_seq",
+    "type": "behavioral",
+    "code": "proof fn phi_2_contains_fst_empty_seq(addr: usize)\n    ensures\n        !seq![(usize, usize)].contains_fst(addr),\n{\n}",
+    "reason": "An empty sequence should not contain any first-element \u2014 tests that `contains_fst` handles the empty case correctly",
+    "entailed": false,
+    "verus_output": "(addr),\n    |                ^^^^^ not a value\n\nerror[E0423]: expected value, found builtin type `usize`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_writes_tso_empty_implies_sbuf_empty/phi_2_contains_fst_empty_seq.rs:270:23\n    |\n270 |         !seq![(usize, usize)].contains_fst(addr),\n    |                       ^^^^^ not a value\n\nerror: aborting due to 2 previous errors\n\nFor more information about this error, try `rustc --explain E0423`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "sbuf_unique_implies_no_duplicate_contains",
+    "type": "logical",
+    "code": "proof fn phi_3_sbuf_unique_implies_no_duplicate_contains(state: State, i: int, j: int)\n    requires\n        state.writer_sbuf_entries_are_unique(),\n        0 <= i < state.writer_sbuf().len(),\n        0 <= j < state.writer_sbuf().len(),\n        state.writer_sbuf()[i].0 == state.writer_sbuf()[j].0,\n    ensures\n        i == j,\n{\n}",
+    "reason": "Address uniqueness in the writer sbuf should mean each address appears exactly once \u2014 tests that the forall quantifier correctly captures injectivity",
+    "entailed": true,
+    "verus_output": "verification results:: 7 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "valid_core_external_body_no_constraints",
+    "type": "logical",
+    "code": "proof fn phi_4_valid_core_external_body_no_constraints(c1: Constants, c2: Constants, core: Core)\n    requires\n        c1.valid_core(core),\n        c1.node_count == c2.node_count,\n        c1.core_count == c2.core_count,\n    ensures\n        c2.valid_core(core),\n{\n}",
+    "reason": "`valid_core` is `external_body` \u2014 it may depend on fields beyond `node_count`/`core_count` (like range_ptmem), but being opaque means Verus can't verify this relationship",
+    "entailed": false,
+    "verus_output": "spec_t__mmu__rl2__lemma_writes_tso_empty_implies_sbuf_empty/phi_4_valid_core_external_body_no_constraints.rs:274:9\n    |\n268 | proof fn phi_4_valid_core_external_body_no_constraints(c1: Constants, c2: Constants, core: Core)\n    |       ------------------------------------------------------------------------------------------ at the end of the function body\n...\n274 |         c2.valid_core(core),\n    |         ^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "history_pending_maps_unmaps_independent",
+    "type": "behavioral",
+    "code": "proof fn phi_5_history_pending_maps_unmaps_independent(h: History, va: usize, pte: PTE)\n    requires\n        h.pending_maps.contains_key(va),\n    ensures\n        h.pending_maps.contains_key(va) || h.pending_unmaps.contains_key(va),\n{\n}",
+    "reason": "`pending_maps` and `pending_unmaps` are independent Map fields with no mutual exclusion constraint \u2014 a vaddr could be in both maps simultaneously, which would be inconsistent",
+    "entailed": true,
+    "verus_output": "verification results:: 7 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

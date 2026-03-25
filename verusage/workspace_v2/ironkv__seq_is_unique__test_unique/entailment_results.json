@@ -1,0 +1,47 @@
+[
+  {
+    "name": "do_end_points_match_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_do_end_points_match_external_body(e1: EndPoint, e2: EndPoint)\n    requires\n        e1.id@ =~= e2.id@,\n    ensures\n        e1@ == e2@,\n{\n}",
+    "reason": "`do_end_points_match` is `external_body` with `unimplemented!()` \u2014 the exec body panics at runtime while the ensures clause is trusted without verification",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "empty_seq_is_unique",
+    "type": "boundary",
+    "code": "proof fn phi_2_empty_seq_is_unique()\n    ensures\n        seq_is_unique(abstractify_end_points(Vec::<EndPoint>::new())),\n{\n    reveal(seq_is_unique::<AbstractEndPoint>);\n}",
+    "reason": "If an empty sequence were not considered unique, the vacuous truth base case would be broken and `test_unique` would return incorrect results for empty inputs",
+    "entailed": false,
+    "verus_output": "error: cannot call function `alloc::vec::impl&%0::new` with mode exec\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__seq_is_unique__test_unique/phi_2_empty_seq_is_unique.rs:98:46\n   |\n98 |         seq_is_unique(abstractify_end_points(Vec::<EndPoint>::new())),\n   |                                              ^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "singleton_seq_is_unique",
+    "type": "boundary",
+    "code": "proof fn phi_3_singleton_seq_is_unique(e: EndPoint)\n    ensures\n        seq_is_unique(seq![e@]),\n{\n    reveal(seq_is_unique::<AbstractEndPoint>);\n}",
+    "reason": "If a single-element sequence were not unique, the uniqueness definition would be inconsistent with standard mathematical definitions",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "abstractify_preserves_length",
+    "type": "behavioral",
+    "code": "proof fn phi_4_abstractify_preserves_length(endpoints: Vec<EndPoint>)\n    ensures\n        abstractify_end_points(endpoints).len() == endpoints@.len(),\n{\n}",
+    "reason": "If abstractification changed the sequence length, the index-based uniqueness invariant in `test_unique` would be comparing against a differently-sized sequence, silently corrupting the uniqueness check",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "unique_implies_distinct_pair",
+    "type": "logical",
+    "code": "proof fn phi_5_unique_implies_distinct_pair(e1: EndPoint, e2: EndPoint)\n    requires\n        e1@.id != e2@.id,\n    ensures\n        seq_is_unique(seq![e1@, e2@]),\n{\n    reveal(seq_is_unique::<AbstractEndPoint>);\n}",
+    "reason": "If two endpoints with distinct IDs did not form a unique sequence, the `seq_is_unique` definition would contradict the intended meaning of uniqueness based on endpoint identity",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "size_of_bin_not_monotone",
+    "type": "behavioral",
+    "code": "proof fn phi_1_size_of_bin_not_monotone()\n    ensures\n        size_of_bin(8) <= size_of_bin(9),\n{\n    reveal(size_of_bin);\n}",
+    "reason": "The transition from linear bins (1\u20138) to exponential bins (9+) could have a non-monotone gap \u2014 bin 8 gives `8*8=64` while bin 9 gives `8*5*pow2(1)=80`, but if the formula is wrong the invariant `size_of_bin(i) <= size_of_bin(i+1)` could break",
+    "entailed": false,
+    "verus_output": "atisfied\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__bin_sizes__result_bounds_for_smallest_bitting_size/phi_1_size_of_bin_not_monotone.rs:101:9\n    |\n 99 | proof fn phi_1_size_of_bin_not_monotone()\n    |       ----------------------------------- at the end of the function body\n100 |     ensures\n101 |         size_of_bin(8) <= size_of_bin(9),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "smallest_bin_negative_size_is_bin1",
+    "type": "boundary",
+    "code": "proof fn phi_2_smallest_bin_negative_size_is_bin1()\n    ensures\n        smallest_bin_fitting_size(-100) == 1,\n        smallest_bin_fitting_size(0) == 1,\n{\n}",
+    "reason": "Negative and zero sizes map to bin 1 \u2014 callers passing invalid negative sizes get silently allocated instead of being rejected",
+    "entailed": false,
+    "verus_output": "me/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__bin_sizes__result_bounds_for_smallest_bitting_size/phi_2_smallest_bin_negative_size_is_bin1.rs:102:9\n    |\n 99 | proof fn phi_2_smallest_bin_negative_size_is_bin1()\n    |       --------------------------------------------- at the end of the function body\n...\n102 |         smallest_bin_fitting_size(0) == 1,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 2 previous errors\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "size_of_bin_huge_is_not_infinite",
+    "type": "logical",
+    "code": "proof fn phi_3_size_of_bin_huge_is_not_infinite()\n    ensures\n        size_of_bin(BIN_HUGE as int) == 8 * (524288 + 1),\n{\n    reveal(size_of_bin);\n}",
+    "reason": "BIN_HUGE's size is artificially capped at `8 * 524289 = 4194312` bytes rather than being unbounded \u2014 any allocation request above this value maps to BIN_HUGE but `size_of_bin(BIN_HUGE)` claims it fits, violating `size_of_bin(smallest_bin_fitting_size(size)) >= size` for sizes above 4194312",
+    "entailed": true,
+    "verus_output": "verification results:: 5 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "pow2_negative_is_one",
+    "type": "boundary",
+    "code": "proof fn phi_4_pow2_negative_is_one(e: int)\n    requires\n        e < 0,\n    ensures\n        pow2(e) == 1,\n{\n}",
+    "reason": "`pow2` returns 1 for all negative exponents \u2014 mathematically 2^(-n) is a fraction, so callers accidentally passing negative group indices to `size_of_bin` get silently wrong bin sizes",
+    "entailed": true,
+    "verus_output": "verification results:: 5 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "bounds_property_fails_above_huge",
+    "type": "behavioral",
+    "code": "proof fn phi_5_bounds_property_fails_above_huge()\n    ensures\n        smallest_bin_fitting_size(8 * 524288 + 1) == BIN_HUGE as int,\n        size_of_bin(BIN_HUGE as int) == 8 * (524288 + 1),\n        8 * 524288 + 1 <= size_of_bin(BIN_HUGE as int) as int,\n{\n    reveal(size_of_bin);\n}",
+    "reason": "Tests that the boundary case `size = 8*524288+1 = 4194305` just barely fits in BIN_HUGE's artificial cap \u2014 but `size = 8*524289+1 = 4194313` would exceed `size_of_bin(BIN_HUGE)`, breaking the `property_bounds_for_smallest_bitting_size` invariant for large sizes",
+    "entailed": false,
+    "verus_output": "uments to this function are incorrect\n    |\nnote: function defined here\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__bin_sizes__result_bounds_for_smallest_bitting_size/phi_5_bounds_property_fails_above_huge.rs:44:18\n    |\n 44 | pub open spec fn smallest_bin_fitting_size(size: int) -> int {\n    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^ ---------\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0308`.\n",
+    "timed_out": false
+  }
+]

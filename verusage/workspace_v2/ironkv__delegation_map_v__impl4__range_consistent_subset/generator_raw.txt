@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: range_consistent_vacuous_equal_bounds
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_range_consistent_vacuous_equal_bounds<K: KeyTrait + VerusClone>(dm: DelegationMap<K>, k: K, id: ID)
+    ensures
+        dm.range_consistent(&KeyIterator::new_spec(k), &KeyIterator::new_spec(k), &id),
+{
+    K::cmp_properties();
+}
+```
+REASON: When lo == hi, `between` requires `!ki.lt(lo) && ki.lt(hi)` which is unsatisfiable for ki=lo since that requires `ki.lt(ki)`, making range_consistent vacuously true for any destination — callers cannot distinguish "all keys agree" from "empty range"
+===PHI_END===
+
+===PHI_START===
+NAME: range_consistent_subset_widens_to_empty
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_range_consistent_subset_widens_to_empty<K: KeyTrait + VerusClone>(dm: DelegationMap<K>, lo: KeyIterator<K>, hi: KeyIterator<K>, id: ID)
+    requires
+        dm.range_consistent(&lo, &hi, &id),
+        hi.geq_spec(lo),
+    ensures
+        dm.range_consistent(&hi, &lo, &id),
+{
+    K::cmp_properties();
+}
+```
+REASON: `range_consistent_subset` allows shrinking a range by moving lo forward and hi backward — but if you swap lo and hi (making lo >= hi), the between predicate becomes vacuously true, so any range_consistent claim can be "reversed" into a vacuously true claim about the swapped empty range
+===PHI_END===
+
+===PHI_START===
+NAME: range_consistent_any_dst_for_end_end
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_range_consistent_any_dst_for_end_end<K: KeyTrait + VerusClone>(dm: DelegationMap<K>, id1: ID, id2: ID)
+    ensures
+        dm.range_consistent(&KeyIterator::<K> { k: None }, &KeyIterator::<K> { k: None }, &id1),
+        dm.range_consistent(&KeyIterator::<K> { k: None }, &KeyIterator::<K> { k: None }, &id2),
+{
+    K::cmp_properties();
+}
+```
+REASON: End iterators (None) make `lt_spec` false in both directions since `lt_spec` requires `!self.k.is_None()`, so between is vacuously false for any ki, making range_consistent trivially true for ANY two destinations simultaneously
+===PHI_END===
+
+===PHI_START===
+NAME: range_consistent_contradictory_dsts
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_range_consistent_contradictory_dsts<K: KeyTrait + VerusClone>(dm: DelegationMap<K>, k: K, id1: ID, id2: ID)
+    requires
+        id1@ != id2@,
+    ensures
+        dm.range_consistent(&KeyIterator::new_spec(k), &KeyIterator::new_spec(k), &id1),
+        dm.range_consistent(&KeyIterator::new_spec(k), &KeyIterator::new_spec(k), &id2),
+{
+    K::cmp_properties();
+}
+```
+REASON: A degenerate range [k, k) is simultaneously consistent with two different destinations that have different abstract views — this means range_consistent provides zero information about what `dm@[k]` actually is at the boundary point `k`
+===PHI_END===
+
+===PHI_START===
+NAME: range_consistent_subset_to_point
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_range_consistent_subset_to_point<K: KeyTrait + VerusClone>(dm: DelegationMap<K>, lo: KeyIterator<K>, hi: KeyIterator<K>, k: K, id: ID)
+    requires
+        dm.range_consistent(&lo, &hi, &id),
+        !KeyIterator::new_spec(k).lt_spec(lo),
+        KeyIterator::new_spec(k).lt_spec(hi),
+    ensures
+        dm@[k] == id@,
+{
+    K::cmp_properties();
+    assert(KeyIterator::between(lo, KeyIterator::new_spec(k), hi));
+}
+```
+REASON: Any key strictly within a range_consistent interval must map to the destination — this is correct by definition but confirms that range_consistent is NOT vacuous for proper intervals where lo < hi, providing a sanity counterpoint to the degenerate cases
+===PHI_END===

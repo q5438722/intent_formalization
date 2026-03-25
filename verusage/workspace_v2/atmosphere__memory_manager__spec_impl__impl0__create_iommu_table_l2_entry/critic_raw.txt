@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: resolve_l4_kernel_always_some
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is intentional design. Kernel L4 entries are shared across all address spaces and always treated as present in the resolution logic — the `l4i < self.kernel_l4_end` branch deliberately bypasses the present-bit check because kernel mappings are managed separately and assumed valid.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: is_empty_no_l4_dom_constraint
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures clause is just `true`, making this trivially valid regardless of preconditions. It demonstrates no actual spec gap — the preconditions are satisfiable but the property proved is vacuous.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: resolve_1g_l3_ps_not_checked_in_l3
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The preconditions are contradictory: `spec_resolve_mapping_1g_l3` checks `!ps` and returns None when ps==false, yet the precondition requires it to be Some while also requiring ps==false. This is vacuously true due to unsatisfiable preconditions, not a real spec issue.
+===VERDICT_END===
+
+===SUMMARY===
+All three candidates are false positives. `resolve_l4_kernel_always_some` reflects the intentional design that kernel entries bypass the present-bit check. `is_empty_no_l4_dom_constraint` has a trivial `ensures true` that proves nothing. `resolve_1g_l3_ps_not_checked_in_l3` has contradictory preconditions — `spec_resolve_mapping_1g_l3` explicitly returns None when ps==false, making the combination with `is_Some()` unsatisfiable and the property vacuously true.
+===END_SUMMARY===

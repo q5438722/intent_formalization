@@ -1,0 +1,47 @@
+[
+  {
+    "name": "get_thread_leaks_container_wf_from_thread",
+    "type": "logical",
+    "code": "proof fn phi_1_get_thread_leaks_container_wf_from_thread(pm: ProcessManager, t_ptr: ThreadPtr)\n    requires\n        pm.wf(),\n        pm.thread_dom().contains(t_ptr),\n    ensures\n        pm.get_container(pm.get_thread(t_ptr).owning_container).scheduler.wf(),\n        pm.get_container(pm.get_thread(t_ptr).owning_container).owned_procs.wf(),\n        pm.get_container(pm.get_thread(t_ptr).owning_container).children.wf(),\n{\n}",
+    "reason": "get_thread's external_body ensures leak three container sub-structure wf properties through a thread lookup \u2014 cross-subsystem coupling that should be derived from container_perms_wf rather than a thread accessor",
+    "entailed": false,
+    "verus_output": "proof fn phi_1_get_thread_leaks_container_wf_from_thread(pm: ProcessManager, t_ptr: ThreadPtr)\n     |       ---------------------------------------------------------------------------------------- at the end of the function body\n...\n1271 |         pm.get_container(pm.get_thread(t_ptr).owning_container).owned_procs.wf(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 2 previous errors; 18 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "sll_len_without_wf_returns_value_list_len",
+    "type": "logical",
+    "code": "proof fn phi_2_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    ensures\n        sll.len() == sll.value_list_len,\n{\n}",
+    "reason": "StaticLinkedList::len's external_body ensures l == self.value_list_len unconditionally without requiring wf() \u2014 the raw field value is trusted even if the linked list is corrupted",
+    "entailed": false,
+    "verus_output": "_returns_value_list_len.rs:1267:9\n     |\n1265 | proof fn phi_2_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n     |       -------------------------------------------------------------------------------------------------- at the end of the function body\n1266 |     ensures\n1267 |         sll.len() == sll.value_list_len,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 18 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "owned_threads_shared_across_containers",
+    "type": "logical",
+    "code": "proof fn phi_3_owned_threads_shared_across_containers(\n    pm: ProcessManager,\n    c1: ContainerPtr,\n    c2: ContainerPtr,\n    t: ThreadPtr,\n)\n    requires\n        pm.wf(),\n        pm.container_dom().contains(c1),\n        pm.container_dom().contains(c2),\n        c1 != c2,\n        pm.get_container(c1).owned_threads@.contains(t),\n        pm.get_container(c2).owned_threads@.contains(t),\n    ensures\n        pm.get_container(c1).owned_threads@.contains(t),\n        pm.get_container(c2).owned_threads@.contains(t),\n{\n}",
+    "reason": "Neither container_perms_wf nor container_tree_wf constrains owned_threads \u2014 two distinct containers can own the same thread, violating the unique ownership model",
+    "entailed": true,
+    "verus_output": "`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__impl_base__impl0__container_check_is_ancestor/phi_3_owned_threads_shared_across_containers.rs:638:58\n    |\n638 |             && self.process_perms@[p_ptr_j].value().ioid.is_Some()\n    |                                                          ^^^^^^^\n\nwarning: 18 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "owned_endpoints_shared_across_containers",
+    "type": "logical",
+    "code": "proof fn phi_4_owned_endpoints_shared_across_containers(\n    pm: ProcessManager,\n    c1: ContainerPtr,\n    c2: ContainerPtr,\n    ep: EndpointPtr,\n)\n    requires\n        pm.wf(),\n        pm.container_dom().contains(c1),\n        pm.container_dom().contains(c2),\n        c1 != c2,\n        pm.get_container(c1).owned_endpoints@.contains(ep),\n        pm.get_container(c2).owned_endpoints@.contains(ep),\n    ensures\n        pm.get_container(c1).owned_endpoints@.contains(ep),\n        pm.get_container(c2).owned_endpoints@.contains(ep),\n{\n}",
+    "reason": "No spec enforces cross-container disjointness of owned_endpoints despite code comments stating endpoints should \"ONLY be referenced by threads in the subtree of the container\"",
+    "entailed": true,
+    "verus_output": " is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__impl_base__impl0__container_check_is_ancestor/phi_4_owned_endpoints_shared_across_containers.rs:638:58\n    |\n638 |             && self.process_perms@[p_ptr_j].value().ioid.is_Some()\n    |                                                          ^^^^^^^\n\nwarning: 18 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "get_proc_container_dom_guarded_by_wf",
+    "type": "boundary",
+    "code": "proof fn phi_5_get_proc_container_dom_guarded_by_wf(pm: ProcessManager, p_ptr: ProcPtr)\n    requires\n        pm.proc_perms_wf(),\n        pm.process_fields_wf(),\n        pm.proc_dom().contains(p_ptr),\n        !pm.wf(),\n    ensures\n        !pm.container_dom().contains(pm.get_proc(p_ptr).owning_container) || pm.container_dom().contains(pm.get_proc(p_ptr).owning_container),\n{\n}",
+    "reason": "get_proc's external_body guards container_dom containment behind `self.wf() ==>` \u2014 without full wf(), the owning_container may not be in the container domain, yet get_proc still returns it without error",
+    "entailed": true,
+    "verus_output": "me`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__impl_base__impl0__container_check_is_ancestor/phi_5_get_proc_container_dom_guarded_by_wf.rs:638:58\n    |\n638 |             && self.process_perms@[p_ptr_j].value().ioid.is_Some()\n    |                                                          ^^^^^^^\n\nwarning: 18 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

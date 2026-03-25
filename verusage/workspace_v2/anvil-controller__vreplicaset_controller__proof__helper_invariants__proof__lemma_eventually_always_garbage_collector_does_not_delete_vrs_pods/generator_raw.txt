@@ -1,0 +1,96 @@
+===PHI_START===
+NAME: unmarshal_marshal_roundtrip
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_unmarshal_marshal_roundtrip<T: ResourceView>(o: T)
+    requires
+        T::unmarshal_spec(T::marshal_spec(o.spec())) is Ok,
+        T::unmarshal_status(T::marshal_status(o.status())) is Ok,
+    ensures
+        T::unmarshal(o.marshal()) is Ok,
+        T::unmarshal(o.marshal())->Ok_0.metadata() == o.metadata(),
+{
+}
+```
+REASON: marshal_spec/unmarshal_spec are uninterpreted with no roundtrip axiom — if this is entailed, it reveals the spec accidentally assumes marshalling preserves metadata identity without an explicit axiom
+===PHI_END===
+
+===PHI_START===
+NAME: unmarshal_spec_status_independent
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_unmarshal_spec_status_independent<T: ResourceView>(v1: Value, v2: Value)
+    requires
+        T::unmarshal_spec(v1) is Ok,
+        T::unmarshal_status(v2) is Ok,
+    ensures
+        T::unmarshal(DynamicObjectView {
+            kind: T::kind(),
+            metadata: ObjectMetaView::default(),
+            spec: v1,
+            status: v2,
+        }) is Ok,
+{
+}
+```
+REASON: unmarshal checks spec and status independently — any combination of individually-valid spec and status values produces a valid object, which may not hold if there are cross-field invariants
+===PHI_END===
+
+===PHI_START===
+NAME: allocator_ids_never_collide
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_allocator_ids_never_collide(a: ReconcileIdAllocator)
+    requires
+        true,
+    ensures
+        a.allocate().1 != a.allocate().0.allocate().1,
+{
+}
+```
+REASON: allocate returns the current counter then increments — successive allocations yield different IDs, but this relies on nat not wrapping; if entailed it confirms the spec assumes unbounded allocation without modeling resource exhaustion
+===PHI_END===
+
+===PHI_START===
+NAME: update_key_kind_from_obj_not_request
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_update_key_kind_from_obj_not_request(req: UpdateRequest, kind1: Kind, kind2: Kind)
+    requires
+        req.obj.kind == kind1,
+        kind1 != kind2,
+    ensures
+        req.key().kind != kind2,
+        req.key().kind == req.obj.kind,
+        req.key().name == req.name,
+        req.key().namespace == req.namespace,
+{
+}
+```
+REASON: UpdateRequest::key takes kind from self.obj.kind rather than having an independent kind field — a malformed request with mismatched obj.kind could target a different resource type than intended
+===PHI_END===
+
+===PHI_START===
+NAME: object_ref_ignores_uid
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_object_ref_ignores_uid<T: ResourceView>(o1: T, o2: T)
+    requires
+        o1.metadata().name == o2.metadata().name,
+        o1.metadata().namespace == o2.metadata().namespace,
+        o1.metadata().uid != o2.metadata().uid,
+        o1.metadata().name is Some,
+        o1.metadata().namespace is Some,
+        T::kind() == T::kind(),
+    ensures
+        o1.object_ref() == o2.object_ref(),
+{
+}
+```
+REASON: object_ref is (kind, name, namespace) with no uid — two distinct resource incarnations with different uids produce identical ObjectRefs, conflating their identity throughout the spec
+===PHI_END===

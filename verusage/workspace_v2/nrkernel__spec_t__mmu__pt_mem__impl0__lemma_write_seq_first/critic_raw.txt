@@ -1,0 +1,17 @@
+===VERDICT_START===
+PHI: write_seq_last_wins
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Last-write-wins is standard map semantics and the correct behavior for sequential page table writes. This models the physical reality that writing to the same memory location overwrites the previous value. Conflict detection is handled at higher abstraction layers.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: write_seq_unbounded_expansion
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `PTMem` is a low-level memory abstraction using `Map<usize, usize>`. Bounds checking on valid page table addresses is enforced at higher layers (directory invariants, allocated region tracking). The memory model itself correctly allows any write to expand the domain, as this is how map-based memory models work.
+===VERDICT_END===
+
+===SUMMARY===
+Both candidates are false positives. `PTMem` is a low-level spec abstraction where last-write-wins and unbounded domain expansion are correct by design. Address validity and write conflict detection are enforced at higher layers in the refinement stack.
+===END_SUMMARY===

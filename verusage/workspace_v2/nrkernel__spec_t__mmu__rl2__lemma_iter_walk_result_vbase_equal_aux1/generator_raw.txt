@@ -1,0 +1,83 @@
+===PHI_START===
+NAME: lemma_bits_align_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_lemma_bits_align_external_body(vaddr: usize)
+    ensures
+        l0_bits!(align_to_usize(vaddr, L1_ENTRY_SIZE)) == l0_bits!(vaddr),
+        l1_bits!(align_to_usize(vaddr, L1_ENTRY_SIZE)) == l1_bits!(vaddr),
+{
+    lemma_bits_align_to_usize(vaddr);
+}
+```
+REASON: `lemma_bits_align_to_usize` is `external_body` — all 13 bit-alignment preservation properties are trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: iter_walk_path_idempotent_via_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_iter_walk_path_idempotent_via_external_body(mem: PTMem, vaddr: usize)
+    ensures
+        iter_walk(mem, iter_walk(mem, vaddr).result().vaddr()).path == iter_walk(mem, vaddr).path,
+{
+    lemma_iter_walk_result_vbase_equal_aux1(mem, vaddr);
+}
+```
+REASON: `lemma_iter_walk_result_vbase_equal_aux1` depends on the external_body `lemma_bits_align_to_usize` — the walk idempotency proof chain is only as strong as the unverified bit-alignment lemma
+===PHI_END===
+
+===PHI_START===
+NAME: walk_next_l0_reads_pml4_offset
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_walk_next_l0_reads_pml4_offset(mem: PTMem, vaddr: usize)
+    ensures
+        ({
+            reveal(walk_next);
+            let w = walk_next(mem, Walk { vaddr, path: seq![], complete: false });
+            w.path.len() == 1
+            && w.path[0].0 == add(mem.pml4, mul(l0_bits!(vaddr), WORD_SIZE))
+        }),
+{
+    reveal(walk_next);
+}
+```
+REASON: The first walk step reads from pml4 + l0_bits * 8 — tests that the L0 entry address computation is correct and the walk always produces a 1-entry path after the first step
+===PHI_END===
+
+===PHI_START===
+NAME: all_mb0_bits_are_zero_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_all_mb0_bits_are_zero_external_body(entry: usize, layer: nat)
+    ensures
+        (PDE { entry, layer: Ghost(layer) }).all_mb0_bits_are_zero()
+        || !(PDE { entry, layer: Ghost(layer) }).all_mb0_bits_are_zero(),
+{
+}
+```
+REASON: `all_mb0_bits_are_zero` is `external_body` — the predicate governing PDE validity is entirely opaque with no specification
+===PHI_END===
+
+===PHI_START===
+NAME: walk_result_path_len1_page_arbitrary
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_walk_result_path_len1_page_arbitrary(walk: Walk)
+    requires
+        walk.path.len() == 1,
+        walk.path[0].1 is Page,
+        walk.complete,
+    ensures
+        walk.result() is Valid,
+{
+}
+```
+REASON: `Walk::result` handles path lengths 2, 3, 4 for Page entries but falls through to `arbitrary()` for path.len() == 1 — a single-entry Page walk has undefined result
+===PHI_END===

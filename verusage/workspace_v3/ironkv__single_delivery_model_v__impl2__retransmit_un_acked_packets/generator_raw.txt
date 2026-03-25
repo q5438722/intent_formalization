@@ -1,0 +1,96 @@
+===PHI_START===
+NAME: retransmit_always_empty
+TARGET_FN: retransmit_un_acked_packets
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_retransmit_always_empty(sd: CSingleDelivery, src: EndPoint, packets: Seq<CPacket>)
+    requires
+        sd.valid(),
+        src.abstractable(),
+        abstractify_seq_of_cpackets_to_set_of_sht_packets(packets) == sd@.un_acked_messages(src@),
+        outbound_packet_seq_is_valid(packets),
+        outbound_packet_seq_has_correct_srcs(packets, src@),
+        sd@.un_acked_messages(src@) == packets.map_values(|p: CPacket| p@).to_set(),
+        CSingleDelivery::packets_are_valid_messages(packets),
+    ensures
+        packets.len() == 0,
+{
+}
+```
+REASON: Would mean retransmit never produces any packets, making retransmission a no-op regardless of un-acked state
+===PHI_END===
+
+===PHI_START===
+NAME: count_zero_nonempty
+TARGET_FN: un_acked_messages_for_dest_up_to
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_count_zero_nonempty(sd: SingleDelivery<Message>, src: AbstractEndPoint, dst: AbstractEndPoint)
+    requires
+        sd.send_state.contains_key(dst),
+        sd.send_state[dst].un_acked.len() > 0,
+    ensures
+        sd.un_acked_messages_for_dest_up_to(src, dst, 0) != Set::<Packet>::empty(),
+{
+}
+```
+REASON: With count=0 the index range is empty so the result set must be empty; non-empty would mean phantom packets appear from nowhere
+===PHI_END===
+
+===PHI_START===
+NAME: wrong_src_in_unacked_dest
+TARGET_FN: un_acked_messages_for_dest
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_wrong_src_in_unacked_dest(sd: SingleDelivery<Message>, src: AbstractEndPoint, dst: AbstractEndPoint)
+    requires
+        sd.send_state.contains_key(dst),
+        sd.send_state[dst].un_acked.len() > 0,
+    ensures
+        exists |p: Packet| sd.un_acked_messages_for_dest(src, dst).contains(p) && p.src != src,
+{
+}
+```
+REASON: All packets in un_acked_messages_for_dest are constrained to have p.src == src; a packet with wrong src would be a spoofed origin
+===PHI_END===
+
+===PHI_START===
+NAME: monotonicity_violated
+TARGET_FN: un_acked_messages_for_dest_up_to
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_monotonicity_violated(sd: SingleDelivery<Message>, src: AbstractEndPoint, dst: AbstractEndPoint, c1: nat, c2: nat)
+    requires
+        sd.send_state.contains_key(dst),
+        c1 <= c2,
+        c2 <= sd.send_state[dst].un_acked.len(),
+    ensures
+        !sd.un_acked_messages_for_dest_up_to(src, dst, c1).subset_of(
+            sd.un_acked_messages_for_dest_up_to(src, dst, c2)),
+{
+}
+```
+REASON: Increasing the count should only add packets; losing packets when scanning further would silently drop retransmissions
+===PHI_END===
+
+===PHI_START===
+NAME: retransmit_preconditions_unsatisfiable
+TARGET_FN: retransmit_un_acked_packets
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_retransmit_preconditions_unsatisfiable(sd: CSingleDelivery, src: EndPoint)
+    requires
+        sd.valid(),
+        src.abstractable(),
+    ensures
+        false,
+{
+}
+```
+REASON: If the preconditions are contradictory the function can never be called, making the entire retransmission mechanism dead code
+===PHI_END===

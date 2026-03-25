@@ -1,0 +1,52 @@
+[
+  {
+    "name": "ret_page_was_mapped",
+    "target_fn": "alloc_page_4k_for_new_container",
+    "type": "behavioral",
+    "reason": "A free page returned by allocation should never have been in a mapped state \u2014 free and mapped must be disjoint under wf()",
+    "entailed": false,
+    "verified": 8,
+    "errors": 1,
+    "output_tail": "------------------------------------------------------------------------------ at the end of the function body\n...\n1030 |         old_self.page_is_mapped(ret_ptr),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  },
+  {
+    "name": "ret_ptr_is_zero",
+    "target_fn": "alloc_page_4k_for_new_container",
+    "type": "boundary",
+    "reason": "A valid page pointer should never be zero/null; if provable, page_ptr_valid is too weak",
+    "entailed": false,
+    "verified": 8,
+    "errors": 1,
+    "output_tail": "llocator, ret_ptr: PagePtr)\n     |       ------------------------------------------------------------------- at the end of the function body\n...\n1026 |         ret_ptr == 0usize,\n     |         ^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  },
+  {
+    "name": "ret_still_in_free_set",
+    "target_fn": "alloc_page_4k_for_new_container",
+    "type": "logical",
+    "reason": "After allocation the page must leave the free set; if provable, set-remove semantics or wf() is broken",
+    "entailed": false,
+    "verified": 8,
+    "errors": 1,
+    "output_tail": "---------------------------------------------------------- at the end of the function body\n...\n1029 |         new_self.free_pages_4k().contains(ret_ptr),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  },
+  {
+    "name": "ret_in_allocated_1g",
+    "target_fn": "alloc_page_4k_for_new_container",
+    "type": "behavioral",
+    "reason": "A page free at 4k granularity should not simultaneously be allocated at 1g granularity \u2014 cross-size disjointness must hold",
+    "entailed": false,
+    "verified": 8,
+    "errors": 1,
+    "output_tail": "------------------------------------------------ at the end of the function body\n...\n1030 |         old_self.allocated_pages_1g().contains(ret_ptr),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  },
+  {
+    "name": "ret_mapped_after_alloc",
+    "target_fn": "alloc_page_4k_for_new_container",
+    "type": "logical",
+    "reason": "A freshly allocated page must not appear in the mapped set; if provable, allocated and mapped states are conflated under wf()",
+    "entailed": false,
+    "verified": 8,
+    "errors": 1,
+    "output_tail": "------------------------------------------------------ at the end of the function body\n...\n1030 |         new_self.mapped_pages_4k().contains(ret_ptr),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  }
+]

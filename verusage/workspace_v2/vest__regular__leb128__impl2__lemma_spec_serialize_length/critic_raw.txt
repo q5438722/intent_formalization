@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: serialize_nonempty
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `spec_serialize_helper` always returns either `seq![lo]` (base case) or `seq![...] + recursive_result`. Both branches produce at least one element. Correct by the open spec structure.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: serialize_zero_is_single_zero
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: For `v = 0`: `lo = 0 & 0x7f = 0`, `hi = 0 >> 7 = 0`, so base case returns `seq![0u8]`. Correct by unfolding the open spec with bitvector facts.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: serialize_length_max_10
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The verified `lemma_spec_serialize_length` proves this using `reveal_with_fuel(10)` and a bitvector chain showing 10 right-shifts of 7 bits zeroes any u64. The proof is verified, not `external_body`. Correct.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: serialize_last_byte_below_0x80
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: In the base case (`hi == 0`), the last byte is `take_low_7_bits!(v)` which is `< 0x80` by bitvector. In the recursive case, the last byte comes from the recursive call. The inductive proof is verified. Correct.
+===VERDICT_END===
+
+===SUMMARY===
+All four candidates are false positives. They confirm correct properties of the LEB128 serialization spec: non-emptiness and last-byte termination follow from the recursive structure, zero encoding follows from unfolding the base case, and the 10-byte bound is proven by a verified lemma with bitvector reasoning. No spec gaps found.
+===END_SUMMARY===

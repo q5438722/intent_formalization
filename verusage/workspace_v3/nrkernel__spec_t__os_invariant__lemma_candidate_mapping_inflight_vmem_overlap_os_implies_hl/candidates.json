@@ -1,0 +1,37 @@
+[
+  {
+    "name": "aligned_zero_size",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "code": "proof fn phi_1_aligned_zero_size()\n    ensures\n        aligned(42, 0),\n{\n}",
+    "reason": "If aligned(addr, 0) is provable, the spec fails to guard against zero-size alignment (division by zero)"
+  },
+  {
+    "name": "upper_vaddr_equals_base",
+    "target_fn": "upper_vaddr",
+    "type": "behavioral",
+    "code": "proof fn phi_2_upper_vaddr_equals_base(arch: Arch, layer: nat, base: nat)\n    requires\n        arch.inv(),\n        layer < arch.layers.len(),\n    ensures\n        arch.upper_vaddr(layer, base) == base,\n{\n}",
+    "reason": "If upper_vaddr equals base under inv, the mapped address range is zero-sized, meaning no virtual addresses are covered"
+  },
+  {
+    "name": "entry_base_collision",
+    "target_fn": "entry_base",
+    "type": "logical",
+    "code": "proof fn phi_3_entry_base_collision(arch: Arch, layer: nat, base: nat, i: nat, j: nat)\n    requires\n        arch.inv(),\n        layer < arch.layers.len(),\n        i < arch.num_entries(layer),\n        j < arch.num_entries(layer),\n        i != j,\n    ensures\n        arch.entry_base(layer, base, i) == arch.entry_base(layer, base, j),\n{\n}",
+    "reason": "If distinct indices yield the same entry base, page table entries would collide and the translation structure is unsound"
+  },
+  {
+    "name": "entry_size_hierarchy_inversion",
+    "target_fn": "entry_size_is_next_layer_size",
+    "type": "logical",
+    "code": "proof fn phi_4_entry_size_hierarchy_inversion(arch: Arch, i: nat)\n    requires\n        arch.inv(),\n        i + 1 < arch.layers.len(),\n    ensures\n        arch.entry_size((i + 1) as nat) >= arch.entry_size(i),\n{\n}",
+    "reason": "If a child layer's entry size is >= its parent's, the hierarchical page table decomposition is broken"
+  },
+  {
+    "name": "inv_allows_zero_num_entries",
+    "target_fn": "inv",
+    "type": "boundary",
+    "code": "proof fn phi_5_inv_allows_zero_num_entries(arch: Arch, i: nat)\n    requires\n        arch.inv(),\n        i < arch.layers.len(),\n    ensures\n        arch.num_entries(i) == 0,\n{\n}",
+    "reason": "If inv permits a layer with zero entries, the architecture admits degenerate empty layers that cannot map any addresses"
+  }
+]

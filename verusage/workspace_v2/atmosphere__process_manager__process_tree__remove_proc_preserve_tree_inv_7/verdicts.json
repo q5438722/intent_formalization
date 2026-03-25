@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "remove_proc_owned_threads_unconstrained",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "The `remove_proc_ensures` spec constrains tree-structural fields (children, parent, subtree_set, uppertree_seq, depth) but the Process struct's `owned_threads` Ghost field is never mentioned in the removal postcondition. The removed proc may still exist in `new_proc_perms` with its `owned_threads` intact, meaning threads owned by a removed process have no cleanup guarantee \u2014 they become dangling references."
+  },
+  {
+    "phi": "remove_proc_subtree_set_not_cleaned",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "The `remove_proc_ensures` precondition requires that the removed proc is a leaf (no children, empty subtree_set) and specifies updates to the parent's subtree_set and uppertree sequences for remaining nodes. Since the proc being removed is a leaf, `remove_proc_ensures` likely constrains the parent's subtree_set to remove the proc_ptr, and the proved lemma `remove_proc_preserve_tree_inv_7` establishes `procs_linkedlist_wf` on the reduced domain \u2014 the parent cleanup is part of the spec's design."
+  },
+  {
+    "phi": "seq_remove_lemma_external_body_unsound",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The axiom states that removing element at index `i` from a no-duplicates sequence eliminates `s[i]` from the spliced result. This is a correct mathematical fact about sequences \u2014 if `s` has no duplicates and you splice out the unique occurrence at index `i`, the element cannot appear in the remaining subsequences. The external_body trust is warranted for this standard sequence property."
+  },
+  {
+    "phi": "remove_proc_sibling_uppertree_unchanged",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The `remove_proc_ensures` spec explicitly constrains that for all procs other than the removed one and its parent, their fields remain unchanged in `new_proc_perms`. Siblings' uppertree_seq values are preserved because the removal of a leaf process doesn't affect ancestry paths of other nodes. This is the expected and desirable frame condition."
+  }
+]

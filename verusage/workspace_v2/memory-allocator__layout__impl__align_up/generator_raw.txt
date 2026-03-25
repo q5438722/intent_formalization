@@ -1,0 +1,91 @@
+===PHI_START===
+NAME: bitand_rounding_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_bitand_rounding_external_body(x: usize, y: usize)
+    requires
+        y != 0,
+        y & sub(y, 1) == 0,
+    ensures
+        x & !sub(y, 1) == (x / y) * y,
+{
+    bitand_with_mask_gives_rounding(x, y);
+}
+```
+REASON: `bitand_with_mask_gives_rounding` is `external_body` — the bitwise rounding equivalence for power-of-two alignment is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: mul_mod_right_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_mul_mod_right_external_body(a: int, b: int)
+    requires
+        b != 0,
+    ensures
+        (a * b) % b == 0,
+{
+    mul_mod_right(a, b);
+}
+```
+REASON: `mul_mod_right` is `external_body` — the modular arithmetic property is trusted without proof and used to establish `res % y == 0` in `align_up`
+===PHI_END===
+
+===PHI_START===
+NAME: align_up_equals_x_when_aligned
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_align_up_equals_x_when_aligned()
+    ensures
+        ({
+            let x: usize = 128;
+            let y: usize = 64;
+            let res = ((x + y - 1) as int / y as int) * y;
+            res == x
+        }),
+{
+}
+```
+REASON: When `x` is already aligned to `y`, `align_up` returns `x` unchanged — verifying this is expected behavior, not a gap
+===PHI_END===
+
+===PHI_START===
+NAME: align_up_zero_input
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_align_up_zero_input()
+    ensures
+        ({
+            let x: usize = 0;
+            let y: usize = 16;
+            let res = ((x + y - 1) as int / y as int) * y;
+            res == 0
+        }),
+{
+}
+```
+REASON: `align_up(0, y)` returns 0 — `(0 + 15) / 16 * 16 == 0`, so aligning zero up gives zero; this is correct but could be surprising if a caller expects a non-zero aligned result
+===PHI_END===
+
+===PHI_START===
+NAME: align_up_overflow_boundary
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_align_up_overflow_boundary(x: usize, y: usize)
+    requires
+        y != 0,
+        x + y - 1 <= usize::MAX,
+    ensures
+        ((x + y - 1) as int / y as int) * y <= usize::MAX,
+{
+    assert(0 <= ((x + y - 1) as int / y as int) * y <= x + y - 1) by(nonlinear_arith)
+        requires y > 0, x >= 0;
+}
+```
+REASON: The result is bounded by `x + y - 1 <= usize::MAX`, so the aligned-up value fits in `usize` — but the precondition `x + y - 1 <= usize::MAX` is the caller's burden, and if it's not checked at runtime, `x + mask` could overflow
+===PHI_END===

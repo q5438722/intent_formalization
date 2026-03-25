@@ -1,0 +1,91 @@
+===PHI_START===
+NAME: is_bit_set_not0_no_bound
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_is_bit_set_not0_no_bound(j: usize)
+    requires
+        j >= 64,
+    ensures
+        is_bit_set(!0usize, j),
+{
+    lemma_is_bit_set();
+}
+```
+REASON: `is_bit_set(!0usize, j)` is axiomatized for ALL `j: usize` with no `j < 64` guard — for `j >= 64`, `1usize << j` wraps, so the axiom asserts properties about out-of-range bit positions
+===PHI_END===
+
+===PHI_START===
+NAME: or_bit_set_no_bound
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_or_bit_set_no_bound(a: usize, b: usize, j: usize)
+    requires
+        j >= 64,
+    ensures
+        is_bit_set(a | b, j) <==> is_bit_set(a, j) || is_bit_set(b, j),
+{
+    lemma_is_bit_set();
+}
+```
+REASON: The OR biconditional has no `j < 64` guard — for out-of-range positions where `1usize << j` wraps, this axiom produces conclusions about wrapped bit operations
+===PHI_END===
+
+===PHI_START===
+NAME: and_bit_set_no_bound
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_and_bit_set_no_bound(a: usize, b: usize, j: usize)
+    requires
+        j >= 64,
+    ensures
+        is_bit_set(a & b, j) <==> is_bit_set(a, j) && is_bit_set(b, j),
+{
+    lemma_is_bit_set();
+}
+```
+REASON: The AND biconditional has no `j < 64` guard — for out-of-range bit positions, `1usize << j` wraps around and the axiom asserts equivalences that don't correspond to real bit semantics
+===PHI_END===
+
+===PHI_START===
+NAME: lemma_view_no_range_guard
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_lemma_view_no_range_guard(cm: &CommitMask, i: int)
+    requires
+        cm@.contains(i),
+    ensures
+        ({
+            let a = i / usize::BITS as int;
+            let b = (i % usize::BITS as int) as usize;
+            &&& a * 64 + b == i
+            &&& is_bit_set(cm.mask[a], b)
+        }),
+{
+    cm.lemma_view();
+}
+```
+REASON: `lemma_view`'s first ensures decomposes any `i` in `self@` without guarding `0 <= a < 8` — for `i >= 512` or `i < 0`, `a` falls outside `[0,8)` making `self.mask[a]` an out-of-bounds spec access
+===PHI_END===
+
+===PHI_START===
+NAME: create_full_ensures_negative_excluded
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_create_full_ensures_negative_excluded(cm: &CommitMask)
+    requires
+        cm@ == Set::new(|i: int| 0 <= i < COMMIT_MASK_BITS),
+    ensures
+        !cm@.contains(-1),
+        !cm@.contains(512),
+        cm@.contains(0),
+        cm@.contains(511),
+{
+}
+```
+REASON: Verifies the boundaries of `create_full`'s ensures — if the set predicate were off-by-one or included negative indices, this would fail, confirming the ensures range is correct
+===PHI_END===

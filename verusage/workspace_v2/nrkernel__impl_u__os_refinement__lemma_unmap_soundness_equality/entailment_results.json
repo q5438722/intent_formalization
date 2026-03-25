@@ -1,0 +1,47 @@
+[
+  {
+    "name": "ptmem_view_external_body_write_invisible",
+    "type": "logical",
+    "code": "proof fn phi_1_ptmem_view_external_body_write_invisible(pt: PTMem, addr: usize, value: usize)\n    requires\n        true,\n    ensures\n        pt.write(addr, value)@ === pt@,\n{\n}",
+    "reason": "`PTMem::view` is `external_body` with no postconditions \u2014 writes to page table memory have no observable effect on the PTE interpretation",
+    "entailed": false,
+    "verus_output": "oundness_equality/phi_1_ptmem_view_external_body_write_invisible.rs:1034:9\n     |\n1030 | proof fn phi_1_ptmem_view_external_body_write_invisible(pt: PTMem, addr: usize, value: usize)\n     |       --------------------------------------------------------------------------------------- at the end of the function body\n...\n1034 |         pt.write(addr, value)@ === pt@,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "rl3_interp_external_body_collapses",
+    "type": "logical",
+    "code": "proof fn phi_2_rl3_interp_external_body_collapses(s1: crate::rl3::State, s2: crate::rl3::State)\n    requires\n        true,\n    ensures\n        s1.interp() === s2.interp(),\n{\n}",
+    "reason": "`rl3::State::interp` is `external_body` closed spec \u2014 completely opaque with no postconditions, so any two rl3 states map to the same rl2 state",
+    "entailed": false,
+    "verus_output": "_unmap_soundness_equality/phi_2_rl3_interp_external_body_collapses.rs:1034:9\n     |\n1030 | proof fn phi_2_rl3_interp_external_body_collapses(s1: crate::rl3::State, s2: crate::rl3::State)\n     |       ----------------------------------------------------------------------------------------- at the end of the function body\n...\n1034 |         s1.interp() === s2.interp(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "step_unmap_sound_empty_inflights",
+    "type": "behavioral",
+    "code": "proof fn phi_3_step_unmap_sound_empty_inflights(s: crate::hlspec::State, vaddr: nat, pte_size: nat)\n    requires\n        s.thread_state.dom().finite(),\n        s.thread_state.values() === Set::empty(),\n    ensures\n        crate::hlspec::step_Unmap_sound(s, vaddr, pte_size),\n{\n}",
+    "reason": "With no in-flight threads, any unmap is trivially sound \u2014 the negation of an exists over an empty set is always true, so `step_Unmap_sound` provides no real safety check",
+    "entailed": true,
+    "verus_output": "atches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__impl_u__os_refinement__lemma_unmap_soundness_equality/phi_3_step_unmap_sound_empty_inflights.rs:587:49\n    |\n587 |             let size = if result is Ok { result.get_Ok_0().frame.size } else { 0 };\n    |                                                 ^^^^^^^^\n    |\n    = note: `#[warn(deprecated)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "unmap_sound_ignores_existing_mappings",
+    "type": "behavioral",
+    "code": "proof fn phi_4_unmap_sound_ignores_existing_mappings(s: crate::hlspec::State, vaddr: nat, pte: PTE)\n    requires\n        s.mappings.contains_pair(vaddr, pte),\n        s.thread_state.values() === Set::empty(),\n        s.thread_state.dom().finite(),\n    ensures\n        crate::hlspec::step_Unmap_sound(s, vaddr + pte.frame.size + 1, 1),\n{\n}",
+    "reason": "`step_Unmap_sound` only checks inflight vmem overlap \u2014 it does not verify that the vaddr being unmapped actually exists in `s.mappings`, allowing unmaps of non-existent addresses",
+    "entailed": true,
+    "verus_output": "s` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__impl_u__os_refinement__lemma_unmap_soundness_equality/phi_4_unmap_sound_ignores_existing_mappings.rs:587:49\n    |\n587 |             let size = if result is Ok { result.get_Ok_0().frame.size } else { 0 };\n    |                                                 ^^^^^^^^\n    |\n    = note: `#[warn(deprecated)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "overlap_asymmetric_at_boundary",
+    "type": "boundary",
+    "code": "proof fn phi_5_overlap_asymmetric_at_boundary(a: nat, sz: nat)\n    requires\n        sz > 0,\n    ensures\n        overlap(MemRegion { base: a, size: sz }, MemRegion { base: a + sz, size: 0 }),\n        !overlap(MemRegion { base: a + sz, size: 0 }, MemRegion { base: a, size: sz }),\n{\n}",
+    "reason": "`overlap` is asymmetric at boundary points \u2014 a zero-size region at the exclusive upper bound is detected as overlapping in one direction but not the reverse",
+    "entailed": false,
+    "verus_output": "5_overlap_asymmetric_at_boundary.rs:1034:9\n     |\n1030 | proof fn phi_5_overlap_asymmetric_at_boundary(a: nat, sz: nat)\n     |       -------------------------------------------------------- at the end of the function body\n...\n1034 |         overlap(MemRegion { base: a, size: sz }, MemRegion { base: a + sz, size: 0 }),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

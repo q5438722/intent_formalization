@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: trivial_not_found
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The spec allows returning (512, 0) for any input, satisfying the postcondition vacuously since the forall over an empty range is trivially true. This means the function could always claim "no run found" without actually scanning. The spec lacks a completeness guarantee (e.g., count == 0 implies no set bits from idx onward).
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: run_before_search
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures clause places no constraint relating `next_idx` to `idx`. The spec allows returning a run starting before the search position, violating the implicit forward-scan contract. The source comments even acknowledge this: `//forall |t| idx <= t < next_idx ==> !self@.contains(t)` is commented out.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: non_maximal_run
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The spec guarantees that returned bits are set but not that the count is maximal. A conforming implementation could return count=1 when the actual contiguous run is longer. The source comments explicitly acknowledge this: "Likewise we could have a condition that `count` is not smaller than necessary."
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: skipped_earlier_run
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: Since the spec doesn't require `next_idx` to be the first set bit at or after `idx`, it allows skipping an earlier run entirely. This is the same root cause as run_before_search — the commented-out `forall |t| idx <= t < next_idx ==> !self@.contains(t)` would prevent this.
+===VERDICT_END===
+
+===SUMMARY===
+All four properties are true positives exposing genuine spec weaknesses in `next_run`. The ensures clause only guarantees bounds and that returned positions are set bits — it lacks three key properties the authors themselves identified in comments: (1) completeness (if bits exist, they must be found), (2) forward-scan (result must be at or after idx), and (3) maximality (count must be the full contiguous run length). These gaps mean callers cannot rely on the function actually scanning forward or returning useful results, even though the implementation does behave correctly.
+===END_SUMMARY===

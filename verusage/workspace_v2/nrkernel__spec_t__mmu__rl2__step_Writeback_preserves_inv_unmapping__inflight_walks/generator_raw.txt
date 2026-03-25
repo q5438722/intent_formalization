@@ -1,0 +1,76 @@
+===PHI_START===
+NAME: memop_valid_size_excludes_3
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_memop_valid_size_excludes_3()
+    ensures
+        !(MemOp::Load { size: 3, result: LoadResult::Pagefault }).valid_op_size(),
+{
+}
+```
+REASON: `valid_op_size` only allows 1, 2, 4, 8 — a 3-byte operation is rejected; tests that the size whitelist doesn't accidentally include non-power-of-2 sizes which x86 doesn't support as atomic memory operations
+===PHI_END===
+
+===PHI_START===
+NAME: update_range_at_zero_replaces_prefix
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_update_range_at_zero_replaces_prefix(s: Seq<u8>, new: Seq<u8>)
+    requires
+        new.len() <= s.len(),
+    ensures
+        update_range(s, 0, new).len() == s.len(),
+        forall|i: int| 0 <= i < new.len() ==> update_range(s, 0, new)[i] == new[i],
+        forall|i: int| new.len() <= i < s.len() ==> #[trigger] update_range(s, 0, new)[i] == s[i],
+{
+}
+```
+REASON: `update_range` at index 0 should replace the prefix and preserve the suffix — tests that the subrange+concat construction correctly handles the boundary; incorrect slicing would corrupt physical memory updates
+===PHI_END===
+
+===PHI_START===
+NAME: walk_result_vaddr_invalid_returns_input
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_walk_result_vaddr_invalid_returns_input(vaddr: usize)
+    ensures
+        WalkResult::Invalid { vaddr }.vaddr() == vaddr,
+{
+}
+```
+REASON: For invalid walks, `vaddr()` should return the original queried address — tests that the Invalid variant faithfully records the input; if it returned a different address, error handling would target the wrong virtual address
+===PHI_END===
+
+===PHI_START===
+NAME: combine_flags_disable_execute_propagates
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_combine_flags_disable_execute_propagates(f1: Flags, f2: Flags)
+    requires
+        f1.disable_execute,
+    ensures
+        f1.combine(f2).disable_execute,
+{
+}
+```
+REASON: `combine` uses OR for `disable_execute` — a single NX-flagged directory entry in the walk chain forces the final mapping to be non-executable; if this propagation failed, code execution from non-executable pages would be allowed
+===PHI_END===
+
+===PHI_START===
+NAME: lemma_write_seq_pml4_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_lemma_write_seq_pml4_external_body(mem: PTMem, writes: Seq<(usize, usize)>)
+    ensures
+        mem.write_seq(writes).pml4 == mem.pml4,
+{
+    mem.lemma_write_seq(writes);
+}
+```
+REASON: `lemma_write_seq` is `external_body` — pml4 preservation through arbitrary write sequences is asserted without proof; if `write_seq` could modify pml4, the page table root would shift silently
+===PHI_END===

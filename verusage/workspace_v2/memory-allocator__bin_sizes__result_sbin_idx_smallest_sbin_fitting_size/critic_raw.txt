@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: smallest_sbin_negative_valid
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `smallest_sbin_fitting_size` returns negative values for negative inputs with no precondition guard. The function should either have a `requires i >= 0` or clamp negative inputs, since producing invalid sbin indices silently could propagate errors to callers.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: smallest_sbin_zero_is_zero
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: medium
+REASONING: Mapping size 0 to sbin 0 is reasonable — a zero-size segment request getting the smallest bin is standard allocator behavior. The value `valid_sbin_idx(0)` confirms it's within the valid range.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: property_sbin_fails_negative
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is the same issue as φ1 viewed from the property-checking side. The property correctly reports that negative inputs produce invalid indices — this is the property checker working as intended, not a spec gap. The `check_sbin_idx` function is meant to be called with non-negative ranges.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: pow2_negative_is_one
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `pow2` returning 1 for all negative exponents is mathematically non-standard (2^(-n) should be fractional). While `pow2` is only called with non-negative arguments in this file's core logic, the definition silently masks errors if ever called with negative values.
+===VERDICT_END===
+
+===SUMMARY===
+Two true positives: `smallest_sbin_fitting_size` lacks a precondition guarding against negative inputs, silently returning invalid sbin indices; and `pow2` returns 1 for negative exponents, a non-standard choice that could mask bugs. Two false positives: mapping size 0 to sbin 0 is reasonable allocator behavior, and the property checker correctly identifying negative inputs as invalid is the system working as designed.
+===END_SUMMARY===

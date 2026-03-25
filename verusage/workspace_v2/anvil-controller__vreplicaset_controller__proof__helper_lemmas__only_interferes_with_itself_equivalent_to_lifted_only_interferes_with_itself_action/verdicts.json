@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "create_key_namespace_disagrees_with_obj",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "CreateRequest::key uses self.namespace rather than self.obj.metadata.namespace, so these can diverge. This means the key used for storage lookups may not match the object's own namespace metadata, which is a real inconsistency risk. However, in practice the API server likely normalizes this \u2014 the concern is that the spec doesn't enforce agreement."
+  },
+  {
+    "phi": "interference_check_ignores_uid",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The interference predicate matches on owner_ref.name and kind but never checks uid. In Kubernetes, a resource can be deleted and recreated with the same name but a different uid, making uid the true identity. This means the interference check cannot distinguish between the old and new VReplicaSet, which is a genuine spec weakness."
+  },
+  {
+    "phi": "create_interference_ignores_uid",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Same root cause as the delete case \u2014 the create interference predicate checks owner_ref.name but not owner_ref.uid. A recreated VRS with the same name would pass the interference check for a different VRS instance, allowing cross-generation interference. This is the same uid-blindness issue manifesting in the create path."
+  },
+  {
+    "phi": "lifted_action_trivially_holds_on_stuttering",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "In TLA+-style specifications, action predicates are expected to hold on stuttering steps (where the state doesn't change). The lifted action checks the state invariant on both s and s_prime independently, which is standard \u2014 stuttering steps preserving invariants is a fundamental TLA+ property, not a weakness."
+  },
+  {
+    "phi": "object_ref_name_eq_ignores_uid",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "ObjectRef is defined as (kind, name, namespace) without uid, making it unable to distinguish between different incarnations of a resource with the same name. This is the structural root cause behind the interference check issues \u2014 the spec's identity model is name-based rather than uid-based, which conflates distinct resource instances throughout the verification."
+  }
+]

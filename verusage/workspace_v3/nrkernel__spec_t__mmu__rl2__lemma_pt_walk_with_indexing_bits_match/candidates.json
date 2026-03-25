@@ -1,0 +1,37 @@
+[
+  {
+    "name": "align_exceeds_input",
+    "target_fn": "align_to_usize",
+    "type": "boundary",
+    "code": "proof fn phi_1_align_exceeds_input(a: usize, b: usize)\n    requires\n        b > 0,\n        a >= b,\n    ensures\n        align_to_usize(a, b) > a,\n{\n}",
+    "reason": "Aligning down should never produce a value larger than the original input"
+  },
+  {
+    "name": "result_not_multiple",
+    "target_fn": "align_to_usize",
+    "type": "behavioral",
+    "code": "proof fn phi_2_result_not_multiple(a: usize, b: usize)\n    requires\n        b > 0,\n        a < 0xFFFF_FFFF_FFFF_FFFFusize,\n    ensures\n        align_to_usize(a, b) % b != 0,\n{\n}",
+    "reason": "The core contract of alignment is that the result is a multiple of b; violating this means alignment is broken"
+  },
+  {
+    "name": "not_idempotent",
+    "target_fn": "align_to_usize",
+    "type": "logical",
+    "code": "proof fn phi_3_not_idempotent(a: usize, b: usize)\n    requires\n        b > 0,\n        a >= a % b,\n    ensures\n        align_to_usize(align_to_usize(a, b), b) != align_to_usize(a, b),\n{\n}",
+    "reason": "Aligning an already-aligned value again must be a no-op; failure means the function is not a true projection"
+  },
+  {
+    "name": "already_aligned_changes",
+    "target_fn": "align_to_usize",
+    "type": "boundary",
+    "code": "proof fn phi_4_already_aligned_changes(a: usize, b: usize)\n    requires\n        b > 0,\n        a % b == 0,\n    ensures\n        align_to_usize(a, b) != a,\n{\n}",
+    "reason": "When the input is already a multiple of b the result must equal the input; any deviation is a bug"
+  },
+  {
+    "name": "gap_too_large",
+    "target_fn": "align_to_usize",
+    "type": "behavioral",
+    "code": "proof fn phi_5_gap_too_large(a: usize, b: usize)\n    requires\n        b > 0,\n        a >= b,\n    ensures\n        a - align_to_usize(a, b) >= b,\n{\n}",
+    "reason": "The distance between the input and its aligned value must be strictly less than b; a gap >= b means a closer aligned address was skipped"
+  }
+]

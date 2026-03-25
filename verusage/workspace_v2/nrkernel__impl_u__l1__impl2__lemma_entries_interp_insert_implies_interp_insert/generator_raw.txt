@@ -1,0 +1,118 @@
+===PHI_START===
+NAME: insert_implies_interp_aux_insert_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_insert_implies_interp_aux_insert_external_body(d1: Directory, d2: Directory, idx: nat, vaddr: nat, pte: PTE)
+    requires
+        d1.inv(),
+        d2.inv(),
+        idx < d1.entries.len(),
+        d1.arch == d2.arch,
+        d1.layer == d2.layer,
+        d1.base_vaddr == d2.base_vaddr,
+        d2.entries[idx as int].interp(d1.entry_base(idx))
+            == d1.entries[idx as int].interp(d1.entry_base(idx)).insert(vaddr, pte),
+        forall|j: nat| j < d1.entries.len() && j != idx
+            ==> (#[trigger] d1.entries[j as int]).interp(d1.entry_base(j))
+                        == d2.entries[j as int].interp(d1.entry_base(j)),
+    ensures
+        d2.interp_aux(0) === d1.interp_aux(0).insert(vaddr, pte),
+{
+    d1.lemma_entries_interp_insert_implies_interp_aux_insert(d2, idx, vaddr, pte, 0);
+}
+```
+REASON: `lemma_entries_interp_insert_implies_interp_aux_insert` is `external_body` — the inductive proof that single-entry map insertion propagates to interp_aux is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: insert_propagates_to_interp
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_insert_propagates_to_interp(d1: Directory, d2: Directory, idx: nat, vaddr: nat, pte: PTE)
+    requires
+        d1.inv(),
+        d2.inv(),
+        idx < d1.entries.len(),
+        d1.arch == d2.arch,
+        d1.layer == d2.layer,
+        d1.base_vaddr == d2.base_vaddr,
+        d2.entries[idx as int].interp(d1.entry_base(idx))
+            == d1.entries[idx as int].interp(d1.entry_base(idx)).insert(vaddr, pte),
+        forall|j: nat| j < d1.entries.len() && j != idx
+            ==> (#[trigger] d1.entries[j as int]).interp(d1.entry_base(j))
+                        == d2.entries[j as int].interp(d1.entry_base(j)),
+    ensures
+        d2.interp() === d1.interp().insert(vaddr, pte),
+{
+    d1.lemma_entries_interp_insert_implies_interp_insert(d2, idx, vaddr, pte);
+}
+```
+REASON: Full interp insertion depends on the external_body axiom — if the inductive step were wrong, map insertions could silently corrupt other entries
+===PHI_END===
+
+===PHI_START===
+NAME: insert_past_idx_identity
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_insert_past_idx_identity(d1: Directory, d2: Directory, idx: nat, vaddr: nat, pte: PTE, i: nat)
+    requires
+        d1.inv(),
+        d2.inv(),
+        idx < d1.entries.len(),
+        i > idx,
+        i <= d1.entries.len(),
+        d1.arch == d2.arch,
+        d1.layer == d2.layer,
+        d1.base_vaddr == d2.base_vaddr,
+        d2.entries[idx as int].interp(d1.entry_base(idx))
+            == d1.entries[idx as int].interp(d1.entry_base(idx)).insert(vaddr, pte),
+        forall|j: nat| i <= j < d1.entries.len() && j != idx
+            ==> (#[trigger] d1.entries[j as int]).interp(d1.entry_base(j))
+                        == d2.entries[j as int].interp(d1.entry_base(j)),
+    ensures
+        d2.interp_aux(i) === d1.interp_aux(i),
+{
+    d1.lemma_entries_interp_insert_implies_interp_aux_insert(d2, idx, vaddr, pte, i);
+}
+```
+REASON: The external_body claims interp_aux is unchanged past the insertion index — the `idx < i` branch returns identity without proving entry-by-entry equivalence
+===PHI_END===
+
+===PHI_START===
+NAME: page_frame_size_matches
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_page_frame_size_matches(d: Directory, i: nat)
+    requires
+        d.inv(),
+        i < d.entries.len(),
+        d.entries[i as int] is Page,
+    ensures
+        d.entries[i as int]->Page_0.frame.size == d.entry_size(),
+{
+}
+```
+REASON: Page frame sizes must match entry size — tests the `pages_match_entry_size` invariant
+===PHI_END===
+
+===PHI_START===
+NAME: subdirectory_base_computed
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_subdirectory_base_computed(d: Directory, i: nat)
+    requires
+        d.inv(),
+        i < d.entries.len(),
+        d.entries[i as int] is Directory,
+    ensures
+        d.entries[i as int]->Directory_0.base_vaddr == d.base_vaddr + i * d.entry_size(),
+{
+}
+```
+REASON: Subdirectory base address is computed from parent — tests the `directories_are_in_next_layer` invariant
+===PHI_END===

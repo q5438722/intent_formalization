@@ -1,0 +1,85 @@
+===PHI_START===
+NAME: parse_empty_is_none
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_parse_empty_is_none()
+    ensures
+        UnsignedLEB128.spec_parse(seq![]).is_none(),
+{
+}
+```
+REASON: Parsing an empty sequence should fail — if it succeeded, the parser would produce values from no input
+===PHI_END===
+
+===PHI_START===
+NAME: parse_continuation_only_fails
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_parse_continuation_only_fails(b: u8)
+    requires
+        b >= 0x80,
+    ensures
+        UnsignedLEB128.spec_parse(seq![b]).is_none(),
+{
+}
+```
+REASON: A single continuation byte with no following data should fail — if it succeeded, truncated LEB128 encodings would silently produce values
+===PHI_END===
+
+===PHI_START===
+NAME: parse_non_canonical_zero_rejected
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_parse_non_canonical_zero_rejected()
+    ensures
+        UnsignedLEB128.spec_parse(seq![0x80u8, 0x00u8]).is_none(),
+{
+}
+```
+REASON: The encoding 0x80 0x00 represents 0 non-canonically (v2==0 fails `0 < v2`) — if accepted, the same value would have multiple encodings breaking injectivity
+===PHI_END===
+
+===PHI_START===
+NAME: parse_high_bit_result_greater_than_one
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_parse_high_bit_result_greater_than_one(s: Seq<u8>)
+    requires
+        s.len() > 0,
+        s[0] as u8 >= 0x80,
+        UnsignedLEB128.spec_parse(s).is_some(),
+    ensures
+        UnsignedLEB128.spec_parse(s).unwrap().1 > 1,
+{
+    UnsignedLEB128.lemma_spec_parse_non_zero(s);
+}
+```
+REASON: When the first byte has high bit set and parse succeeds, the result must be > 1 — this is proven by a verified lemma, but the bound `> 1` rather than `>= 128` seems surprisingly weak; if the lower bound were actually higher, the lemma would be hiding a tighter invariant
+===PHI_END===
+
+===PHI_START===
+NAME: parse_value_fits_consumed_bits
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_parse_value_fits_consumed_bits(s: Seq<u8>, n: int, v: UInt)
+    requires
+        s.len() > 0,
+        UnsignedLEB128.spec_parse(s) == Some((n, v)),
+    ensures
+        n >= 1,
+    decreases s.len(),
+{
+    if is_high_8_bit_set!(s[0]) {
+        if let Some((n2, v2)) = UnsignedLEB128.spec_parse(s.drop_first()) {
+            phi_5_parse_value_fits_consumed_bits(s.drop_first(), n2, v2);
+        }
+    }
+}
+```
+REASON: The consumed byte count must be at least 1 — if n could be 0 or negative, the parser would not make progress, potentially causing infinite loops in sequential combinators
+===PHI_END===

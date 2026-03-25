@@ -1,0 +1,52 @@
+[
+  {
+    "name": "existing_mapping_lost",
+    "target_fn": "map_4k_page",
+    "type": "behavioral",
+    "reason": "If map_4k_page silently removes a pre-existing 4k mapping at a different VA, it corrupts the address space",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "    |\n1447 | |     other_va: VAddr,\n1448 | | )\n     | |_- at the end of the function body\n...\n1457 |           !new_mapping_4k.dom().contains(other_va),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 64 warnings emitted\n\n"
+  },
+  {
+    "name": "4k_2m_mapping_conflict",
+    "target_fn": "map_4k_page",
+    "type": "boundary",
+    "reason": "If the same L2 entry simultaneously resolves as both a 2m large page and an L1 table pointer, the page table is incoherent",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "nction body\n...\n1464 |           new_pt.spec_resolve_mapping_2m_l2(target_l4i, target_l3i, target_l2i).is_Some(),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 67 warnings emitted\n\n"
+  },
+  {
+    "name": "write_permission_flipped",
+    "target_fn": "map_4k_page",
+    "type": "logical",
+    "reason": "If the stored write permission is the opposite of what was requested, memory protection is silently violated",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "---- recommendation not met\n...\n1455 |         new_mapping_4k[spec_index2va((target_l4i, target_l3i, target_l2i, target_l1i))].write == false,\n     |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error; 64 warnings emitted\n\n"
+  },
+  {
+    "name": "spurious_mapping_appears",
+    "target_fn": "map_4k_page",
+    "type": "behavioral",
+    "reason": "If mapping one 4k page causes unrelated VAs to become mapped, arbitrary memory becomes accessible",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "..    |\n1447 | |     other_va: VAddr,\n1448 | | )\n     | |_- at the end of the function body\n...\n1457 |           new_mapping_4k.dom().contains(other_va),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 64 warnings emitted\n\n"
+  },
+  {
+    "name": "mapped_addr_mismatch",
+    "target_fn": "map_4k_page",
+    "type": "logical",
+    "reason": "If the physical address stored in the mapping differs from the requested address, the page table maps to wrong physical memory",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "endation not met\n...\n1455 |         new_mapping_4k[spec_index2va((target_l4i, target_l3i, target_l2i, target_l1i))].addr != target_entry.addr,\n     |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error; 64 warnings emitted\n\n"
+  }
+]

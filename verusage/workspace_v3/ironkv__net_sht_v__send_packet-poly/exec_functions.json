@@ -1,0 +1,10 @@
+[
+  {
+    "name": "send_packet",
+    "code": "pub fn send_packet(cpacket: &CPacket, netc: &mut NetClient) -> (rc: (bool, Ghost<Option<NetEvent>>))\nrequires\n    old(netc).ok(),\n    outbound_packet_is_valid(cpacket),\n    cpacket.src@ == old(netc).my_end_point(), // OutboundPacketsSeqHasCorrectSrc\nensures\n    netc.my_end_point() == old(netc).my_end_point(),\n    ({\n        let (ok, Ghost(net_event)) = rc;\n        {\n    &&& netc.ok() <==> ok\n    &&& ok ==> net_event is Some\n    &&& ok ==> netc.history() == old(netc).history() + seq![net_event.unwrap()]\n    &&& ok ==> rc.1@ is Some && send_log_entry_reflects_packet(net_event.unwrap(), &cpacket)\n                && is_marshalable_data(net_event.unwrap())\n        }\n    })\n{\n    let mut buf: Vec<u8> = Vec::new();\n    cpacket.msg.serialize(&mut buf);\n    // witness that buf@.len() < 2^64\n    let _ = buf.len();\n    match netc.send(&cpacket.dst, &buf)\n    {\n        Ok(_) => {\n            let ghost lpacket = LPacket::<AbstractEndPoint, Seq<u8>>{ dst: cpacket.dst@, src: cpacket.src@, msg: buf@ };\n            let ghost net_event = LIoOp::Send{s:  lpacket};\n\n            proof {\n                assert_seqs_equal!( buf@ == cpacket.msg.ghost_serialize() );\n                assert(net_packet_bound(buf@));\n                let purported_cpacket = sht_demarshal_data(buf@);\n                sht_marshal_data_injective( &cpacket.msg, &purported_cpacket );\n            }\n            (true, Ghost(Some(net_event)))\n        },\n        Err(_) => {\n            (false, Ghost(None))\n        }\n    }\n}"
+  },
+  {
+    "name": "to_vec",
+    "code": "#[verifier(external_body)]\n    #[verifier(when_used_as_spec(spec_to_vec))]\n    pub fn to_vec(&self) -> (res: Vec<CKeyKV>)\n    {unimplemented!()}"
+  }
+]

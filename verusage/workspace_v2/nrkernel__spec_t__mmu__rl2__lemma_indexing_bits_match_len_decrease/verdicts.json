@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "indexing_bits_match_zero_trivial",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "len=0 meaning \"no levels to match\" is the correct base case. All implications `len > k ==> ...` are vacuously true when len=0. This is standard and intentional."
+  },
+  {
+    "phi": "indexing_bits_match_reflexive",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Reflexivity is a basic correctness property of any equality-based predicate. An address should always match itself at every level."
+  },
+  {
+    "phi": "indexing_bits_match_ignores_low_12",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Bits 0-11 are the page offset, not part of any page table index. Two addresses in the same 4KB page should follow identical page table walks. This is correct x86 semantics."
+  },
+  {
+    "phi": "indexing_bits_match_len5_constrains_nothing_extra",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "The predicate saturates at len=4 \u2014 any len > 4 is equivalent to len=4 because no additional constraints are added. If a caller passes len=5 expecting stricter matching (e.g., a 5-level paging extension like LA57), the predicate silently accepts it with no extra checks. This is a spec weakness for future extensibility."
+  },
+  {
+    "phi": "indexing_bits_match_ignores_high_bits",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "Bits 48-63 are not checked by `indexing_bits_match`. On x86-64, bits 48-63 must be a sign-extension of bit 47 for canonical addresses. Non-canonical addresses differing only in bits 48-63 would be considered matching, which could mask canonicality violations if the predicate is used without a separate canonical address check."
+  }
+]

@@ -1,0 +1,37 @@
+[
+  {
+    "name": "aligned_zero_size",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "code": "proof fn phi_1_aligned_zero_size(addr: nat)\n    ensures\n        aligned(addr, 0),\n{\n}",
+    "reason": "aligned with size 0 involves division by zero and should never hold; provability here indicates unsound handling of modulo-zero"
+  },
+  {
+    "name": "alignment_doubles",
+    "target_fn": "aligned",
+    "type": "behavioral",
+    "code": "proof fn phi_2_alignment_doubles(a: nat, b: nat)\n    requires\n        aligned(a, b),\n        b > 0,\n    ensures\n        aligned(a, 2 * b),\n{\n}",
+    "reason": "alignment to b does not imply alignment to 2*b (e.g. aligned(4,4) but not aligned(4,8)); provability means the spec is too strong"
+  },
+  {
+    "name": "shift_one_preserves_alignment",
+    "target_fn": "aligned",
+    "type": "logical",
+    "code": "proof fn phi_3_shift_one_preserves_alignment(a: nat, b: nat)\n    requires\n        aligned(a, b),\n        b > 1,\n    ensures\n        aligned((a + 1) as nat, b),\n{\n}",
+    "reason": "adding 1 to an aligned address must break alignment for any size > 1; provability reveals a broken modular-arithmetic spec"
+  },
+  {
+    "name": "product_size_alignment",
+    "target_fn": "aligned",
+    "type": "logical",
+    "code": "proof fn phi_4_product_size_alignment(a: nat, b: nat, c: nat)\n    requires\n        aligned(a, b),\n        aligned(a, c),\n        b > 0,\n        c > 0,\n        b != c,\n    ensures\n        aligned(a, b * c),\n{\n}",
+    "reason": "aligned to b and c individually does not imply aligned to b*c (e.g. aligned(12,4) and aligned(12,6) but not aligned(12,24)); provability signals a flawed compositionality assumption"
+  },
+  {
+    "name": "nonmultiple_aligned",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "code": "proof fn phi_5_nonmultiple_aligned(b: nat)\n    requires\n        b > 1,\n    ensures\n        aligned(1, b),\n{\n}",
+    "reason": "1 is never a multiple of any b > 1 so aligned(1, b) must be false; provability means the spec incorrectly classifies non-aligned addresses as aligned"
+  }
+]

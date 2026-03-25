@@ -1,0 +1,78 @@
+===PHI_START===
+NAME: is_end_true_for_some
+TARGET_FN: is_end
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_is_end_true_for_some<K: KeyTrait + VerusClone>(k: K)
+    ensures
+        KeyIterator::<K>::new_spec(k).is_end_spec(),
+{
+}
+```
+REASON: If an iterator wrapping Some(k) reports is_end as true, non-end iterators would be indistinguishable from end iterators
+===PHI_END===
+
+===PHI_START===
+NAME: is_end_false_for_none
+TARGET_FN: is_end
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_is_end_false_for_none<K: KeyTrait + VerusClone>()
+    ensures
+        !(KeyIterator::<K> { k: None }).is_end_spec(),
+{
+}
+```
+REASON: If a None-iterator reports is_end as false, callers would attempt to dereference a nonexistent key
+===PHI_END===
+
+===PHI_START===
+NAME: new_get_roundtrip_fails
+TARGET_FN: get
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_new_get_roundtrip_fails<K: KeyTrait + VerusClone>(k: K)
+    ensures ({
+        let ki = KeyIterator::<K>::new_spec(k);
+        !(*ki.get_spec() == k)
+    }),
+{
+}
+```
+REASON: If get_spec on new_spec(k) does not return k, the accessor loses the stored key value
+===PHI_END===
+
+===PHI_START===
+NAME: get_conflates_distinct_keys
+TARGET_FN: get
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_get_conflates_distinct_keys<K: KeyTrait + VerusClone>(k1: K, k2: K)
+    requires
+        !(k1 == k2),
+    ensures
+        *KeyIterator::<K>::new_spec(k1).get_spec() == *KeyIterator::<K>::new_spec(k2).get_spec(),
+{
+}
+```
+REASON: If get_spec maps distinct keys to the same value, the iterator cannot faithfully distinguish different keys
+===PHI_END===
+
+===PHI_START===
+NAME: is_end_indistinguishable_some_none
+TARGET_FN: is_end
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_is_end_indistinguishable_some_none<K: KeyTrait + VerusClone>(k: K)
+    ensures
+        KeyIterator::<K>::new_spec(k).is_end_spec() == (KeyIterator::<K> { k: None }).is_end_spec(),
+{
+}
+```
+REASON: If is_end_spec returns the same value for Some and None variants, the end-of-iteration check is completely broken
+===PHI_END===

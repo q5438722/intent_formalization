@@ -1,0 +1,52 @@
+[
+  {
+    "name": "all_addrs_writable",
+    "target_fn": "new_with_condition",
+    "type": "behavioral",
+    "reason": "If entailed, the writable-address predicate is vacuous and every address becomes writable, defeating the write-restriction mechanism entirely.",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "all |addr: int| 0 <= addr < region_view.len() ==> #[trigger] is_writable_absolute_addr_fn(addr),\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 3 warnings emitted\n\n"
+  },
+  {
+    "name": "len_forced_zero",
+    "target_fn": "new_with_condition",
+    "type": "boundary",
+    "reason": "If entailed, only zero-length subregions can ever be created, rendering the subregion abstraction useless.",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "53 | |     perm: &Perm,\n354 | |     start: u64,\n...   |\n357 | |     condition: spec_fn(Seq<u8>) -> bool,\n358 | | )\n    | |_- at the end of the function body\n...\n362 |           len == 0,\n    |           ^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 3 warnings emitted\n\n"
+  },
+  {
+    "name": "subregion_spans_full_region",
+    "target_fn": "new_with_condition",
+    "type": "logical",
+    "reason": "If entailed, subregions must always cover the entire memory region, preventing any partial-region isolation.",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "  condition: spec_fn(Seq<u8>) -> bool,\n358 | | )\n    | |_- at the end of the function body\n...\n362 |           len == region_view.len() && start == 0u64,\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 3 warnings emitted\n\n"
+  },
+  {
+    "name": "perm_allows_all_states",
+    "target_fn": "new_with_condition",
+    "type": "behavioral",
+    "reason": "If entailed, the permission check is vacuous\u2014every possible memory state is permitted\u2014eliminating all crash-safety guarantees.",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "\n362 |           forall |s: Seq<u8>| s.len() == region_view.len() ==> #[trigger] perm.check_permission(s),\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 3 warnings emitted\n\n"
+  },
+  {
+    "name": "no_outstanding_writes",
+    "target_fn": "new_with_condition",
+    "type": "logical",
+    "reason": "If entailed, the spec forbids any pending writes in the region, making crash behavior trivially deterministic and the persistence model overly restrictive.",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "= i < region_view.len() ==> (#[trigger] region_view.state[i]).outstanding_write is None,\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 3 warnings emitted\n\n"
+  }
+]

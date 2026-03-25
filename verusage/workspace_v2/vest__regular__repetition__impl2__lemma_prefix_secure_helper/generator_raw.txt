@@ -1,0 +1,89 @@
+===PHI_START===
+NAME: prefix_secure_external_body_trait
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_prefix_secure_external_body_trait<C: SecureSpecCombinator>(c: &C, s1: Seq<u8>, s2: Seq<u8>)
+    requires
+        c.requires(),
+        C::is_prefix_secure(),
+        c.spec_parse(s1).is_some(),
+    ensures
+        c.spec_parse(s1 + s2) == c.spec_parse(s1),
+{
+    c.lemma_prefix_secure(s1, s2);
+}
+```
+REASON: `SecureSpecCombinator::lemma_prefix_secure` is `external_body` with `unimplemented!()` at the trait level — the foundational prefix security property is an unverified trust assumption
+===PHI_END===
+
+===PHI_START===
+NAME: repeatn_prefix_secure_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_repeatn_prefix_secure_external_body<C: SecureSpecCombinator>(c: &RepeatN<C>, s1: Seq<u8>, s2: Seq<u8>)
+    requires
+        c.requires(),
+        RepeatN::<C>::is_prefix_secure(),
+        c.spec_parse(s1).is_some(),
+    ensures
+        c.spec_parse(s1 + s2) == c.spec_parse(s1),
+{
+    c.lemma_prefix_secure(s1, s2);
+}
+```
+REASON: `RepeatN::lemma_prefix_secure` is `external_body` despite a verified `lemma_prefix_secure_helper` existing — the trait obligation bypasses the actual proof
+===PHI_END===
+
+===PHI_START===
+NAME: parse_length_helper_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_parse_length_helper_external_body<C: SecureSpecCombinator>(c: &RepeatN<C>, s: Seq<u8>, n: usize, m: int, vs: Seq<C::Type>)
+    requires
+        c.requires(),
+        c.spec_parse_helper(s, n) == Some((m, vs)),
+    ensures
+        0 <= m <= s.len(),
+{
+    c.lemma_parse_length_helper(s, n);
+}
+```
+REASON: `lemma_parse_length_helper` is `external_body` with `unimplemented!()` — the parse length bound used as a dependency in `lemma_prefix_secure_helper` is itself unverified
+===PHI_END===
+
+===PHI_START===
+NAME: parse_zero_always_succeeds
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_parse_zero_always_succeeds<C: SecureSpecCombinator>(c: &RepeatN<C>, s: Seq<u8>)
+    requires
+        c.1 == 0usize,
+    ensures
+        c.spec_parse(s) == Some((0int, seq![])),
+{
+}
+```
+REASON: Parsing zero repetitions always succeeds on any input — the combinator produces a result without examining any bytes
+===PHI_END===
+
+===PHI_START===
+NAME: prefix_secure_helper_verified_but_unused
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_prefix_secure_helper_verified_but_unused<C: SecureSpecCombinator>(c: &RepeatN<C>, s1: Seq<u8>, s2: Seq<u8>)
+    requires
+        c.requires(),
+        c.spec_parse_helper(s1, c.1).is_some(),
+    ensures
+        c.spec_parse_helper(s1 + s2, c.1) == c.spec_parse_helper(s1, c.1),
+{
+    c.lemma_prefix_secure_helper(s1, s2, c.1);
+}
+```
+REASON: The verified `lemma_prefix_secure_helper` proves prefix security for `spec_parse_helper` but depends on the `external_body` `lemma_parse_length_helper` — if the length bound were wrong, this "verified" proof would be unsound
+===PHI_END===

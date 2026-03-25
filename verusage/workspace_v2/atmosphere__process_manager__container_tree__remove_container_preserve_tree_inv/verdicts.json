@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "remove_container_preserves_inv_external_body_trusted",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "All 7 `remove_container_preserve_tree_inv_*` lemmas are `external_body`, meaning the entire proof that container removal preserves tree invariants is axiomatically trusted. This is a real soundness gap \u2014 any bug in the `remove_container_ensures` spec would go undetected."
+  },
+  {
+    "phi": "removed_container_owned_threads_leaked",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`remove_container_ensures` never requires `owned_threads@ =~= Set::empty()` as a precondition. The container is removed from the domain while potentially still owning threads, which are silently orphaned with no transfer or cleanup requirement."
+  },
+  {
+    "phi": "removed_container_owned_endpoints_leaked",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "Same pattern \u2014 `remove_container_ensures` never requires `owned_endpoints@ =~= Set::empty()`. Endpoints are silently orphaned when the container is removed, violating the code comment's intent that endpoints should only be referenced within the subtree."
+  },
+  {
+    "phi": "removed_container_owned_procs_leaked",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`remove_container_ensures` never requires `owned_procs@ =~= Seq::empty()`. Processes are silently orphaned when the container is removed from the domain."
+  },
+  {
+    "phi": "parent_subtree_not_shrunk_after_remove",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The spec explicitly handles this correctly. `remove_container_ensures` includes: for all `c_ptr` in `uppertree_seq`, `new_container_perms[c_ptr].subtree_set@ =~= old_container_perms[c_ptr].subtree_set@.remove(container_ptr)`. The ensures merely restates what the spec already guarantees \u2014 this is a desirable property, not a gap."
+  }
+]

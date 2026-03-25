@@ -1,0 +1,47 @@
+[
+  {
+    "name": "always_unfold_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_1_always_unfold_intensional_bridge(ex: Execution<int>, p: TempPred<int>, i: nat)\n    requires\n        always(p).satisfied_by(ex),\n    ensures\n        p.satisfied_by(ex.suffix(i)),\n{\n    always_unfold::<int>(ex, p);\n}",
+    "reason": "always_unfold is external_body bridging always's TempPred::new closure-wrapped forall to a bare forall in ensures \u2014 intensionally distinct formulations equated without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "tla_forall_unfold_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_2_tla_forall_unfold_intensional_bridge(ex: Execution<int>, a_to_p: spec_fn(int) -> TempPred<int>, a: int)\n    requires\n        tla_forall(a_to_p).satisfied_by(ex),\n    ensures\n        a_to_p(a).satisfied_by(ex),\n{\n    tla_forall_unfold::<int, int>(ex, a_to_p);\n}",
+    "reason": "tla_forall_unfold is external_body bridging tla_forall's TempPred::new closure-wrapped forall to a bare forall \u2014 resolves closure identity gap without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "temp_pred_equality_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_3_temp_pred_equality_intensional_bridge(p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.entails(q),\n        q.entails(p),\n    ensures\n        p == q,\n{\n    temp_pred_equality::<int>(p, q);\n}",
+    "reason": "temp_pred_equality is external_body forcing intensional equality from mutual entailment \u2014 structurally distinct closures collapsed to equal without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "mutual_entailment_derives_false_if_distinct",
+    "type": "logical",
+    "code": "proof fn phi_4_mutual_entailment_derives_false_if_distinct(p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.entails(q),\n        q.entails(p),\n        p !== q,\n    ensures\n        false,\n{\n    temp_pred_equality::<int>(p, q);\n}",
+    "reason": "temp_pred_equality forces p == q from mutual entailment \u2014 if two preds are intensionally distinct but semantically equivalent this derives false",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "tla_forall_always_equality_bridge",
+    "type": "logical",
+    "code": "proof fn phi_5_tla_forall_always_equality_bridge(a_to_p: spec_fn(int) -> TempPred<int>)\n    ensures\n        tla_forall(|a: int| always(a_to_p(a))) == always(tla_forall(a_to_p)),\n{\n    tla_forall_always_equality::<int, int>(a_to_p);\n}",
+    "reason": "tla_forall_always_equality chains all three external_body axioms to force intensional equality between tla_forall(|a| always(p(a))) and always(tla_forall(p)) \u2014 structurally distinct nested closures collapsed",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

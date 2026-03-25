@@ -1,0 +1,89 @@
+===PHI_START===
+NAME: result_exceeds_input
+TARGET_FN: align_to_usize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_result_exceeds_input(a: usize, b: usize)
+    requires
+        b > 0,
+    ensures
+        align_to_usize(a, b) > a,
+{
+}
+```
+REASON: Aligning down should never produce a value strictly greater than the original input
+===PHI_END===
+
+===PHI_START===
+NAME: zero_aligns_to_nonzero
+TARGET_FN: align_to_usize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_zero_aligns_to_nonzero(b: usize)
+    requires
+        b > 0,
+    ensures
+        align_to_usize(0usize, b) != 0usize,
+{
+}
+```
+REASON: Zero is a multiple of every positive integer so aligning zero must yield zero
+===PHI_END===
+
+===PHI_START===
+NAME: result_not_multiple_of_alignment
+TARGET_FN: align_to_usize
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_result_not_multiple_of_alignment(a: usize, b: usize)
+    requires
+        b > 0,
+        a <= usize::MAX,
+    ensures
+        align_to_usize(a, b) % b != 0,
+{
+}
+```
+REASON: The whole purpose of alignment is to produce a multiple of b; failing that means the spec is wrong
+===PHI_END===
+
+===PHI_START===
+NAME: not_idempotent
+TARGET_FN: align_to_usize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_not_idempotent(a: usize, b: usize)
+    requires
+        b > 0,
+        a % b == 0,
+    ensures
+        align_to_usize(a, b) != a,
+{
+}
+```
+REASON: Aligning a value that is already a multiple of b should be a no-op; changing it indicates a broken spec
+===PHI_END===
+
+===PHI_START===
+NAME: offset_within_block_differs
+TARGET_FN: align_to_usize
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_offset_within_block_differs(a: usize, b: usize, offset: usize)
+    requires
+        b > 0,
+        a % b == 0,
+        0 < offset < b,
+        a as int + offset as int <= usize::MAX as int,
+    ensures
+        align_to_usize((a + offset) as usize, b) != a,
+{
+}
+```
+REASON: Any address within the same aligned block should round down to the block base; disagreement reveals a spec error
+===PHI_END===

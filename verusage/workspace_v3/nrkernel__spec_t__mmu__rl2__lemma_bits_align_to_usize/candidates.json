@@ -1,0 +1,37 @@
+[
+  {
+    "name": "result_always_zero",
+    "target_fn": "align_to_usize",
+    "type": "behavioral",
+    "code": "proof fn phi_1_result_always_zero(a: usize, b: usize)\n    requires\n        b > 0,\n        a >= a % b,\n    ensures\n        align_to_usize(a, b) == 0usize,\n{\n}",
+    "reason": "Alignment collapsing every address to zero would destroy all address information"
+  },
+  {
+    "name": "aligned_input_changes",
+    "target_fn": "align_to_usize",
+    "type": "boundary",
+    "code": "proof fn phi_2_aligned_input_changes(a: usize, b: usize)\n    requires\n        b > 0,\n        a % b == 0,\n        a > 0,\n    ensures\n        align_to_usize(a, b) != a,\n{\n}",
+    "reason": "Already-aligned addresses must be fixed points; changing them violates idempotency"
+  },
+  {
+    "name": "result_exceeds_input",
+    "target_fn": "align_to_usize",
+    "type": "logical",
+    "code": "proof fn phi_3_result_exceeds_input(a: usize, b: usize)\n    requires\n        b > 0,\n        a >= a % b,\n        a > 0,\n    ensures\n        align_to_usize(a, b) > a,\n{\n}",
+    "reason": "Downward alignment must never produce a value larger than the original address"
+  },
+  {
+    "name": "alignment_not_multiple",
+    "target_fn": "align_to_usize",
+    "type": "logical",
+    "code": "proof fn phi_4_alignment_not_multiple(a: usize, b: usize)\n    requires\n        b > 0,\n        a >= a % b,\n    ensures\n        align_to_usize(a, b) % b != 0usize,\n{\n}",
+    "reason": "The fundamental invariant of alignment is that the result is a multiple of the alignment size"
+  },
+  {
+    "name": "off_by_one_subtraction",
+    "target_fn": "align_to_usize",
+    "type": "behavioral",
+    "code": "proof fn phi_5_off_by_one_subtraction(a: usize, b: usize)\n    requires\n        b > 0,\n        a >= b,\n        a % b != 0,\n    ensures\n        align_to_usize(a, b) == sub(a, b),\n{\n}",
+    "reason": "Subtracting the full alignment size instead of just the remainder would be an off-by-one bug"
+  }
+]

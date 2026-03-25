@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: insert_page_implies_interp_aux_insert_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `lemma_interp_of_entry_insert_implies_interp_aux_insert` is `external_body` with `unimplemented!()` body — the inductive proof that inserting a mapping into one entry's interpretation propagates correctly through the `interp_aux` union chain is trusted without proof.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: page_insert_overwrites_existing_mapping
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Direct consequence of the same external_body axiom captured by φ1 combined with standard `Map::insert` semantics. The commented-out precondition was intentionally removed — `Map::insert` overwrites by definition, and the axiom correctly models this.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: page_insert_base_not_entry_base
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is correct by open spec unfolding: `NodeEntry::Page(pte).interp(entry_base(j))` returns `map![entry_base(j) => pte]`, so the singleton map trivially contains `entry_base(j)`. The `base` parameter in the insert lemma is separate from this — no spec gap here.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: inv_no_base_vaddr_alignment
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The commented-out `aligned(self.base_vaddr, self.entry_size() * self.num_entries())` in `well_formed()` means `inv()` accepts any `base_vaddr` including misaligned values like 7. On real x86 page tables, directory base virtual addresses must be aligned to entry boundaries.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: page_frame_base_unconstrained
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `inv()` via `pages_match_entry_size` constrains `frame.size == entry_size()` but has no constraint on `frame.base`. The commented-out `self.frames_aligned()` suggests frame alignment was intended but disabled — any arbitrary physical address is accepted as a valid page frame base.
+===VERDICT_END===
+
+===SUMMARY===
+Three true positives: the `external_body` insert propagation axiom is trusted without proof, the commented-out base_vaddr alignment allows misaligned directory bases, and the commented-out frames_aligned allows arbitrary physical frame bases. Two false positives: the overwrite behavior is a standard consequence of Map::insert semantics, and the page entry containing its base key is trivially correct by open spec definition.
+===END_SUMMARY===

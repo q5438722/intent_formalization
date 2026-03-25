@@ -1,0 +1,89 @@
+===PHI_START===
+NAME: null_addr_valid
+TARGET_FN: va_4k_valid
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_null_addr_valid()
+    ensures
+        spec_va_4k_valid(0usize),
+{
+}
+```
+REASON: Address zero (null pointer) should never be a valid 4K virtual address
+===PHI_END===
+
+===PHI_START===
+NAME: empty_range_trivially_valid
+TARGET_FN: va_4k_range_valid
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_empty_range_trivially_valid(va: usize)
+    requires
+        spec_va_4k_valid(va),
+    ensures
+        spec_va_4k_range_valid(va, 0usize),
+{
+}
+```
+REASON: A zero-length range being unconditionally valid could mask bugs where callers assume non-empty ranges
+===PHI_END===
+
+===PHI_START===
+NAME: add_range_not_injective
+TARGET_FN: va_add_range
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_add_range_not_injective(va: usize, i: usize, j: usize)
+    requires
+        spec_va_4k_valid(va),
+        va + 100 * 4096 < usize::MAX,
+        0 <= i < 100,
+        0 <= j < 100,
+        i != j,
+    ensures
+        spec_va_add_range(va, i) == spec_va_add_range(va, j),
+{
+}
+```
+REASON: Distinct offsets mapping to the same address would break no_duplicates invariant of VaRange4K
+===PHI_END===
+
+===PHI_START===
+NAME: userspace_addr_accepted
+TARGET_FN: va_4k_valid
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_userspace_addr_accepted()
+    ensures
+        spec_va_4k_valid(0x1000usize),
+{
+}
+```
+REASON: A low user-space address (L4 index 0) passing kernel-space validation would be a security violation
+===PHI_END===
+
+===PHI_START===
+NAME: new_zero_len_wf
+TARGET_FN: new
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_new_zero_len_wf(va: VAddr)
+    requires
+        spec_va_4k_valid(va),
+        spec_va_4k_range_valid(va, 0usize),
+        va < usize::MAX,
+    ensures
+        ({
+            let s = Seq::<VAddr>::new(0 as nat, |i: int| spec_va_add_range(va, i as usize));
+            s.len() == 0 && s.no_duplicates()
+        }),
+{
+}
+```
+REASON: VaRange4K::new accepting len=0 and producing a trivially well-formed empty range could hide logic errors in callers that assume non-empty ranges
+===PHI_END===

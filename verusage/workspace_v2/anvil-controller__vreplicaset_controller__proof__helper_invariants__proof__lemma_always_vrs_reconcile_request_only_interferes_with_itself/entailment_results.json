@@ -1,0 +1,47 @@
+[
+  {
+    "name": "controller_state_exists_without_model",
+    "type": "boundary",
+    "code": "proof fn phi_1_controller_state_exists_without_model(cluster: Cluster, spec: TempPred<ClusterState>, controller_id: int)\n    requires\n        spec.entails(lift_state(cluster.init())),\n        spec.entails(always(lift_action(cluster.next()))),\n    ensures\n        spec.entails(always(lift_state(Cluster::there_is_the_controller_state(controller_id)))),\n{\n}",
+    "reason": "lemma_always_there_is_the_controller_state requires controller_models.contains_key(controller_id) \u2014 without that precondition, an unregistered controller should NOT be guaranteed to have state",
+    "entailed": false,
+    "verus_output": "mpPred<ClusterState>, controller_id: int)\n     |       ------------------------------------------------------------------------------------------------------------------ at the end of the function body\n...\n4673 |         spec.entails(always(lift_state(Cluster::there_is_the_controller_state(controller_id)))),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "unmarshal_spec_roundtrip_on_arbitrary_value",
+    "type": "logical",
+    "code": "proof fn phi_2_unmarshal_spec_roundtrip_on_arbitrary_value<T: ResourceView>(v: Value)\n    requires\n        T::unmarshal_spec(v) is Ok,\n    ensures\n        T::marshal_spec(T::unmarshal_spec(v)->Ok_0) == v,\n{\n}",
+    "reason": "only marshal\u2192unmarshal roundtrip is axiomatized (via external_body), not the reverse direction unmarshal\u2192marshal \u2014 uninterpreted functions should not entail this stronger bijectivity",
+    "entailed": false,
+    "verus_output": "_unmarshal_spec_roundtrip_on_arbitrary_value.rs:4672:9\n     |\n4668 | proof fn phi_2_unmarshal_spec_roundtrip_on_arbitrary_value<T: ResourceView>(v: Value)\n     |       ------------------------------------------------------------------------------- at the end of the function body\n...\n4672 |         T::marshal_spec(T::unmarshal_spec(v)->Ok_0) == v,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "cr_states_unmarshallable_for_wrong_reconciler",
+    "type": "behavioral",
+    "code": "proof fn phi_3_cr_states_unmarshallable_for_wrong_reconciler<S: Marshallable, K: CustomResourceView>(\n    cluster: Cluster, spec: TempPred<ClusterState>, controller_id: int\n)\n    requires\n        spec.entails(lift_state(cluster.init())),\n        spec.entails(always(lift_action(cluster.next()))),\n        cluster.controller_models.contains_key(controller_id),\n        // NOTE: no requirement that the installed reconcile_model matches\n    ensures\n        spec.entails(always(lift_state(Cluster::cr_states_are_unmarshallable::<S, K>(controller_id)))),\n{\n}",
+    "reason": "lemma_always_cr_states_are_unmarshallable requires the reconcile_model to match the installed one \u2014 without that coupling, arbitrary local states need not be unmarshallable as S",
+    "entailed": false,
+    "verus_output": "allable, K: CustomResourceView>(\n     |  _______-\n4669 | |     cluster: Cluster, spec: TempPred<ClusterState>, controller_id: int\n4670 | | )\n     | |_- at the end of the function body\n...\n4677 |           spec.entails(always(lift_state(Cluster::cr_states_are_unmarshallable::<S, K>(controller_id)))),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "marshal_preserves_integrity_implies_unmarshal_total",
+    "type": "logical",
+    "code": "proof fn phi_4_marshal_preserves_integrity_implies_unmarshal_total<T: ResourceView>(obj: DynamicObjectView)\n    requires\n        obj.kind == T::kind(),\n    ensures\n        T::unmarshal(obj) is Ok,\n{\n}",
+    "reason": "marshal_preserves_integrity is external_body and only guarantees unmarshal(marshal(o)) succeeds \u2014 it does NOT make unmarshal total on all DynamicObjectViews with matching kind since unmarshal_spec/unmarshal_status may fail",
+    "entailed": false,
+    "verus_output": "arshal_preserves_integrity_implies_unmarshal_total.rs:4672:9\n     |\n4668 | proof fn phi_4_marshal_preserves_integrity_implies_unmarshal_total<T: ResourceView>(obj: DynamicObjectView)\n     |       ----------------------------------------------------------------------------------------------------- at the end of the function body\n...\n4672 |         T::unmarshal(obj) is Ok,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "allocate_produces_unique_ids_across_allocators",
+    "type": "behavioral",
+    "code": "proof fn phi_5_allocate_produces_unique_ids_across_allocators(a1: ReconcileIdAllocator, a2: ReconcileIdAllocator)\n    requires\n        a1 != a2,\n    ensures\n        a1.allocate().1 != a2.allocate().1,\n{\n}",
+    "reason": "allocate returns the current counter value \u2014 two distinct allocators may differ only in other fields or have the same counter, so distinct allocators do NOT imply distinct allocated IDs",
+    "entailed": true,
+    "verus_output": " `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__helper_invariants__proof__lemma_always_vrs_reconcile_request_only_interferes_with_itself/phi_5_allocate_produces_unique_ids_across_allocators.rs:689:1\n    |\n689 | / #[is_variant]\n690 | | pub enum BuiltinControllersStep {\n691 | |     RunGarbageCollector,\n692 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

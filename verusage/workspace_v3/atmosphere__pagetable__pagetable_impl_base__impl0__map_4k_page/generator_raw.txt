@@ -1,0 +1,159 @@
+Looking at the `map_4k_page` function's requires/ensures, I'll generate 5 candidate undesirable properties testing different aspects of its specification.
+
+===PHI_START===
+NAME: existing_mapping_lost
+TARGET_FN: map_4k_page
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_existing_mapping_lost(
+    old_mapping_4k: Map<VAddr, MapEntry>,
+    new_mapping_4k: Map<VAddr, MapEntry>,
+    target_l4i: L4Index,
+    target_l3i: L3Index,
+    target_l2i: L2Index,
+    target_l1i: L1Index,
+    target_entry: MapEntry,
+    other_va: VAddr,
+)
+    requires
+        new_mapping_4k =~= old_mapping_4k.insert(
+            spec_index2va((target_l4i, target_l3i, target_l2i, target_l1i)),
+            target_entry,
+        ),
+        old_mapping_4k.dom().contains(other_va),
+        other_va != spec_index2va((target_l4i, target_l3i, target_l2i, target_l1i)),
+    ensures
+        !new_mapping_4k.dom().contains(other_va),
+{
+}
+```
+REASON: If map_4k_page silently removes a pre-existing 4k mapping at a different VA, it corrupts the address space
+===PHI_END===
+
+===PHI_START===
+NAME: 4k_2m_mapping_conflict
+TARGET_FN: map_4k_page
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_4k_2m_mapping_conflict(
+    old_pt: PageTable,
+    new_pt: PageTable,
+    target_l4i: L4Index,
+    target_l3i: L3Index,
+    target_l2i: L2Index,
+    target_l1i: L1Index,
+    target_l1_p: PageMapPtr,
+    target_entry: MapEntry,
+)
+    requires
+        old_pt.wf(),
+        old_pt.kernel_l4_end <= target_l4i < 512,
+        0 <= target_l3i < 512,
+        0 <= target_l2i < 512,
+        0 <= target_l1i < 512,
+        old_pt.spec_resolve_mapping_l2(target_l4i, target_l3i, target_l2i).is_Some(),
+        old_pt.spec_resolve_mapping_l2(target_l4i, target_l3i, target_l2i).get_Some_0().addr == target_l1_p,
+        new_pt.wf(),
+        new_pt.mapping_2m() =~= old_pt.mapping_2m(),
+        new_pt.mapping_4k@ =~= old_pt.mapping_4k@.insert(
+            spec_index2va((target_l4i, target_l3i, target_l2i, target_l1i)),
+            target_entry,
+        ),
+    ensures
+        new_pt.spec_resolve_mapping_2m_l2(target_l4i, target_l3i, target_l2i).is_Some(),
+{
+}
+```
+REASON: If the same L2 entry simultaneously resolves as both a 2m large page and an L1 table pointer, the page table is incoherent
+===PHI_END===
+
+===PHI_START===
+NAME: write_permission_flipped
+TARGET_FN: map_4k_page
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_write_permission_flipped(
+    old_mapping_4k: Map<VAddr, MapEntry>,
+    new_mapping_4k: Map<VAddr, MapEntry>,
+    target_l4i: L4Index,
+    target_l3i: L3Index,
+    target_l2i: L2Index,
+    target_l1i: L1Index,
+    target_entry: MapEntry,
+)
+    requires
+        new_mapping_4k =~= old_mapping_4k.insert(
+            spec_index2va((target_l4i, target_l3i, target_l2i, target_l1i)),
+            target_entry,
+        ),
+        target_entry.write == true,
+    ensures
+        new_mapping_4k[spec_index2va((target_l4i, target_l3i, target_l2i, target_l1i))].write == false,
+{
+}
+```
+REASON: If the stored write permission is the opposite of what was requested, memory protection is silently violated
+===PHI_END===
+
+===PHI_START===
+NAME: spurious_mapping_appears
+TARGET_FN: map_4k_page
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_spurious_mapping_appears(
+    old_mapping_4k: Map<VAddr, MapEntry>,
+    new_mapping_4k: Map<VAddr, MapEntry>,
+    target_l4i: L4Index,
+    target_l3i: L3Index,
+    target_l2i: L2Index,
+    target_l1i: L1Index,
+    target_entry: MapEntry,
+    other_va: VAddr,
+)
+    requires
+        new_mapping_4k =~= old_mapping_4k.insert(
+            spec_index2va((target_l4i, target_l3i, target_l2i, target_l1i)),
+            target_entry,
+        ),
+        !old_mapping_4k.dom().contains(other_va),
+        other_va != spec_index2va((target_l4i, target_l3i, target_l2i, target_l1i)),
+    ensures
+        new_mapping_4k.dom().contains(other_va),
+{
+}
+```
+REASON: If mapping one 4k page causes unrelated VAs to become mapped, arbitrary memory becomes accessible
+===PHI_END===
+
+===PHI_START===
+NAME: mapped_addr_mismatch
+TARGET_FN: map_4k_page
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_mapped_addr_mismatch(
+    old_mapping_4k: Map<VAddr, MapEntry>,
+    new_mapping_4k: Map<VAddr, MapEntry>,
+    target_l4i: L4Index,
+    target_l3i: L3Index,
+    target_l2i: L2Index,
+    target_l1i: L1Index,
+    target_entry: MapEntry,
+)
+    requires
+        new_mapping_4k =~= old_mapping_4k.insert(
+            spec_index2va((target_l4i, target_l3i, target_l2i, target_l1i)),
+            target_entry,
+        ),
+        page_ptr_valid(target_entry.addr),
+    ensures
+        new_mapping_4k[spec_index2va((target_l4i, target_l3i, target_l2i, target_l1i))].addr != target_entry.addr,
+{
+}
+```
+REASON: If the physical address stored in the mapping differs from the requested address, the page table maps to wrong physical memory
+===PHI_END===

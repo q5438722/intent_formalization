@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: owned_endpoints_shared_across_containers
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The ensures restates preconditions, but the preconditions are simultaneously satisfiable — neither `container_perms_wf` nor `container_tree_wf` places any constraint on `owned_endpoints`. The code comments explicitly describe unique ownership intent ("each endpoint can ONLY be referenced by threads in the subtree"), yet no spec enforces endpoint disjointness.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: scheduler_contains_non_owned_thread
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The spec never relates `scheduler` contents to `owned_threads`. A container's scheduler can contain threads not in its `owned_threads` set, breaking the containment model where only owned threads should be schedulable.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: subtree_transitivity_unsound_without_dom
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is a desirable property. `container_subtree_set_wf` requires `sub_c_ptr`'s depth strictly greater than `c_ptr`'s depth. Since a container cannot have depth strictly greater than itself, no container can be in its own subtree — this is the standard definition of a proper subtree (excluding self) and prevents cycles.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: root_parent_unconstrained
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures `is_None() || is_Some()` is a tautology (law of excluded middle) — it verifies trivially regardless of spec content. While the observation about root's parent being unconstrained may have merit, this PHI fails to demonstrate it since the ensures proves nothing.
+===VERDICT_END===
+
+===SUMMARY===
+Two true positives identify missing constraints on container-owned resources: `owned_endpoints` lacks cross-container disjointness despite comments describing unique ownership, and `scheduler` is unconstrained relative to `owned_threads`, allowing scheduling of non-owned threads. The subtree irreflexivity is a desirable property (proper subtree semantics), and the root parent PHI is a tautology that proves nothing about the spec.
+===END_SUMMARY===

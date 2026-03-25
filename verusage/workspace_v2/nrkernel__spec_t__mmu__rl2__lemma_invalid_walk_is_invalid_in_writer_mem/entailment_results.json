@@ -1,0 +1,47 @@
+[
+  {
+    "name": "valid_core_external_body_unconstrained",
+    "type": "logical",
+    "code": "proof fn phi_1_valid_core_external_body_unconstrained(c: Constants, core1: Core, core2: Core)\n    requires\n        core1.node_id == core2.node_id,\n        core1.core_id == core2.core_id,\n    ensures\n        c.valid_core(core1) == c.valid_core(core2),\n{\n}",
+    "reason": "`valid_core` is `external_body` with `unimplemented!()` \u2014 completely opaque, so identical cores could theoretically get different validity results",
+    "entailed": true,
+    "verus_output": "repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_invalid_walk_is_invalid_in_writer_mem/phi_1_valid_core_external_body_unconstrained.rs:242:9\n    |\n242 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "memories_disjoint_implies_range_ordering",
+    "type": "boundary",
+    "code": "proof fn phi_2_memories_disjoint_implies_range_ordering(c: Constants)\n    requires\n        c.memories_disjoint(),\n    ensures\n        c.range_mem.1 < c.range_ptmem.0,\n        c.range_ptmem.0 < c.range_ptmem.1,\n{\n}",
+    "reason": "`memories_disjoint` uses strict ordering to separate physical memory and page table memory ranges \u2014 tests that the gap between ranges is at least 1 byte, which may be too weak (no alignment requirement)",
+    "entailed": true,
+    "verus_output": "pr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_invalid_walk_is_invalid_in_writer_mem/phi_2_memories_disjoint_implies_range_ordering.rs:242:9\n    |\n242 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "in_ptmem_range_zero_size",
+    "type": "boundary",
+    "code": "proof fn phi_3_in_ptmem_range_zero_size(c: Constants, addr: nat)\n    requires\n        c.memories_disjoint(),\n        c.range_ptmem.0 <= addr,\n        addr <= c.range_ptmem.1,\n    ensures\n        c.in_ptmem_range(addr, 0),\n{\n}",
+    "reason": "`in_ptmem_range` with size=0 is satisfied for any address within or at the boundary \u2014 a zero-size region at the end of ptmem range passes the check, which may allow degenerate empty regions",
+    "entailed": true,
+    "verus_output": "n renamed to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_invalid_walk_is_invalid_in_writer_mem/phi_3_in_ptmem_range_zero_size.rs:242:9\n    |\n242 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "core_mem_writer_sbuf_relationship",
+    "type": "behavioral",
+    "code": "proof fn phi_4_core_mem_writer_sbuf_relationship(pre: State)\n    ensures\n        pre.core_mem(pre.writes.core) == pre.writer_mem(),\n{\n}",
+    "reason": "`writer_mem` should be equivalent to `core_mem(writes.core)` \u2014 tests that the inline helper correctly aliases the writer's view of page table memory",
+    "entailed": true,
+    "verus_output": " to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_invalid_walk_is_invalid_in_writer_mem/phi_4_core_mem_writer_sbuf_relationship.rs:242:9\n    |\n242 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pt_walk_agrees_with_core_mem_walk",
+    "type": "logical",
+    "code": "proof fn phi_5_pt_walk_agrees_with_core_mem_walk(pre: State, core: Core, vaddr: usize)\n    requires\n        pre.sbuf[core].len() == 0,\n    ensures\n        pre.core_mem(core).pt_walk(vaddr) == pre.pt_mem.pt_walk(vaddr),\n{\n}",
+    "reason": "When a core's store buffer is empty, its view of page table memory should equal the global view \u2014 tests that `write_seq` of an empty sequence is identity",
+    "entailed": true,
+    "verus_output": " to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_invalid_walk_is_invalid_in_writer_mem/phi_5_pt_walk_agrees_with_core_mem_walk.rs:242:9\n    |\n242 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

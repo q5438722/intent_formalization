@@ -1,0 +1,47 @@
+[
+  {
+    "name": "owned_endpoints_shared_across_containers",
+    "type": "logical",
+    "code": "proof fn phi_1_owned_endpoints_shared_across_containers(pm: ProcessManager, c1: ContainerPtr, c2: ContainerPtr, e: EndpointPtr)\n    requires\n        pm.container_perms_wf(),\n        pm.container_tree_wf(),\n        pm.container_dom().contains(c1),\n        pm.container_dom().contains(c2),\n        c1 != c2,\n        pm.get_container(c1).owned_endpoints@.contains(e),\n    ensures\n        !pm.get_container(c2).owned_endpoints@.contains(e),\n{\n}",
+    "reason": "The `owned_endpoints` Ghost field has no cross-container disjointness constraint in any well-formedness predicate, allowing two distinct containers to claim the same endpoint",
+    "entailed": false,
+    "verus_output": "endpoints_shared_across_containers(pm: ProcessManager, c1: ContainerPtr, c2: ContainerPtr, e: EndpointPtr)\n     |       ------------------------------------------------------------------------------------------------------------------------- at the end of the function body\n...\n2872 |         !pm.get_container(c2).owned_endpoints@.contains(e),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 31 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "endpoint_owning_container_not_in_dom",
+    "type": "logical",
+    "code": "proof fn phi_2_endpoint_owning_container_not_in_dom(pm: ProcessManager, e_ptr: EndpointPtr)\n    requires\n        pm.wf(),\n        pm.endpoint_dom().contains(e_ptr),\n    ensures\n        pm.container_dom().contains(pm.get_endpoint(e_ptr).owning_container),\n{\n}",
+    "reason": "Endpoint has an `owning_container` field but there may be no well-formedness predicate ensuring it points to a valid container in the container domain",
+    "entailed": false,
+    "verus_output": "\n     |\n2863 | proof fn phi_2_endpoint_owning_container_not_in_dom(pm: ProcessManager, e_ptr: EndpointPtr)\n     |       ------------------------------------------------------------------------------------- at the end of the function body\n...\n2868 |         pm.container_dom().contains(pm.get_endpoint(e_ptr).owning_container),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 31 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "get_endpoint_ptr_by_idx_some_implies_owned",
+    "type": "behavioral",
+    "code": "proof fn phi_3_get_endpoint_ptr_by_idx_some_implies_owned(pm: ProcessManager, t_ptr: ThreadPtr, idx: EndpointIdx)\n    requires\n        pm.wf(),\n        pm.thread_dom().contains(t_ptr),\n        0 <= idx < MAX_NUM_ENDPOINT_DESCRIPTORS,\n        pm.get_endpoint_ptr_by_endpoint_idx(t_ptr, idx).is_Some(),\n    ensures\n        pm.get_endpoint(pm.get_endpoint_ptr_by_endpoint_idx(t_ptr, idx).unwrap()).owning_threads@.contains((t_ptr, idx)),\n{\n}",
+    "reason": "A thread's endpoint descriptor pointing to an endpoint should imply that endpoint's `owning_threads` set includes that (thread, index) pair \u2014 if this isn't entailed, the bidirectional ownership invariant is missing",
+    "entailed": false,
+    "verus_output": "  |       ----------------------------------------------------------------------------------------------------------- at the end of the function body\n...\n2870 |         pm.get_endpoint(pm.get_endpoint_ptr_by_endpoint_idx(t_ptr, idx).unwrap()).owning_threads@.contains((t_ptr, idx)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 32 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "owned_threads_shared_across_containers",
+    "type": "logical",
+    "code": "proof fn phi_4_owned_threads_shared_across_containers(pm: ProcessManager, c1: ContainerPtr, c2: ContainerPtr, t: ThreadPtr)\n    requires\n        pm.container_perms_wf(),\n        pm.container_tree_wf(),\n        pm.container_dom().contains(c1),\n        pm.container_dom().contains(c2),\n        c1 != c2,\n        pm.get_container(c1).owned_threads@.contains(t),\n    ensures\n        !pm.get_container(c2).owned_threads@.contains(t),\n{\n}",
+    "reason": "The `owned_threads` Ghost field on Container lacks any cross-container disjointness constraint, allowing two distinct containers to simultaneously claim ownership of the same thread",
+    "entailed": false,
+    "verus_output": "phi_4_owned_threads_shared_across_containers(pm: ProcessManager, c1: ContainerPtr, c2: ContainerPtr, t: ThreadPtr)\n     |       --------------------------------------------------------------------------------------------------------------------- at the end of the function body\n...\n2872 |         !pm.get_container(c2).owned_threads@.contains(t),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 31 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "get_proc_container_dom_without_full_wf",
+    "type": "logical",
+    "code": "proof fn phi_5_get_proc_container_dom_without_full_wf(pm: ProcessManager, proc_ptr: ProcPtr)\n    requires\n        pm.proc_perms_wf(),\n        pm.process_fields_wf(),\n        pm.proc_dom().contains(proc_ptr),\n        !pm.wf(),\n    ensures\n        pm.container_dom().contains(pm.get_proc(proc_ptr).owning_container),\n{\n}",
+    "reason": "get_proc's external_body ensures `self.wf() ==> container_dom.contains(ret.owning_container)` \u2014 when wf is false the implication is vacuously true, so the container_dom membership is NOT guaranteed, yet the SMT solver might derive it from other constraints leaking through the weaker preconditions",
+    "entailed": false,
+    "verus_output": "\n     |\n2863 | proof fn phi_5_get_proc_container_dom_without_full_wf(pm: ProcessManager, proc_ptr: ProcPtr)\n     |       -------------------------------------------------------------------------------------- at the end of the function body\n...\n2870 |         pm.container_dom().contains(pm.get_proc(proc_ptr).owning_container),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 31 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

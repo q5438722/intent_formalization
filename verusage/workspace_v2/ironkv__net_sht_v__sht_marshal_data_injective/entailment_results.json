@@ -1,0 +1,47 @@
+[
+  {
+    "name": "serialize_injective_without_marshalable",
+    "type": "logical",
+    "code": "proof fn phi_1_serialize_injective_without_marshalable(a: usize, b: usize)\n    requires\n        !a.is_marshalable(),\n        !b.is_marshalable(),\n        a.ghost_serialize() == b.ghost_serialize(),\n    ensures\n        a.view_equal(&b),\n{\n    a.lemma_serialize_injective(&b);\n}",
+    "reason": "The trait-level `lemma_serialize_injective` is external_body requiring `is_marshalable` for both arguments, but for usize the impl's external_body has no preconditions \u2014 it may assert injectivity even for non-marshalable values (usize > u64::MAX) where `ghost_serialize` is underspecified",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "ghost_serialize_trait_uninterpreted_collision",
+    "type": "logical",
+    "code": "proof fn phi_2_ghost_serialize_trait_uninterpreted_collision()\n    ensures\n        Option::<Vec<u8>>::None.ghost_serialize() != (Option::<Vec<u8>>::Some(Vec::<u8>::new())).ghost_serialize(),\n{\n}",
+    "reason": "None serializes as `seq![0]` (1 byte) while Some(empty) serializes as `seq![1] + usize_serialize(0)` (9 bytes) \u2014 this should hold, but `ghost_serialize` is external_body at the trait level, so the open spec impls must actually be used for this to verify",
+    "entailed": false,
+    "verus_output": "ll function `alloc::vec::impl&%0::new` with mode exec\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__net_sht_v__sht_marshal_data_injective/phi_2_ghost_serialize_trait_uninterpreted_collision.rs:756:79\n    |\n756 |         Option::<Vec<u8>>::None.ghost_serialize() != (Option::<Vec<u8>>::Some(Vec::<u8>::new())).ghost_serialize(),\n    |                                                                               ^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "view_equal_not_transitive_option",
+    "type": "logical",
+    "code": "proof fn phi_3_view_equal_not_transitive_option(a: Option<Vec<u8>>, b: Option<Vec<u8>>, c: Option<Vec<u8>>)\n    requires\n        a.view_equal(&b),\n        b.view_equal(&c),\n    ensures\n        a.view_equal(&c),\n{\n}",
+    "reason": "`view_equal` is used as an equivalence relation in `lemma_serialize_injective` but transitivity is never axiomatized \u2014 if an impl's `view_equal` is not transitive, chaining injectivity results would be unsound",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "serialize_injective_implies_view_not_equality",
+    "type": "logical",
+    "code": "proof fn phi_4_serialize_injective_implies_view_not_equality(a: u64, b: u64)\n    requires\n        a.is_marshalable(),\n        b.is_marshalable(),\n        a.view_equal(&b),\n    ensures\n        a == b,\n{\n}",
+    "reason": "For u64, `view_equal` is defined as `self@ === other@` which should imply actual equality \u2014 but if the SMT solver derives `a == b` from `view_equal` for all types via the external_body injectivity lemma, it could over-constrain types where view_equal is intentionally weaker than structural equality",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "tuple_serialize_prefix_ambiguity",
+    "type": "behavioral",
+    "code": "proof fn phi_5_tuple_serialize_prefix_ambiguity(a1: u64, a2: Vec<u8>, b1: u64, b2: Vec<u8>)\n    requires\n        (a1, a2).is_marshalable(),\n        (b1, b2).is_marshalable(),\n        (a1, a2).ghost_serialize() == (b1, b2).ghost_serialize(),\n    ensures\n        a1.ghost_serialize() == b1.ghost_serialize(),\n{\n    (a1, a2).lemma_serialize_injective(&(b1, b2));\n}",
+    "reason": "Tuple serialization concatenates without length prefixes \u2014 the external_body injectivity lemma asserts `view_equal` from equal serializations, but splitting the concatenated bytes back into components requires fixed-length first elements; if the first element has variable length, the split point is ambiguous",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

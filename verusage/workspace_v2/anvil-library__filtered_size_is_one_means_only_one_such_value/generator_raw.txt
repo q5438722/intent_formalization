@@ -1,0 +1,80 @@
+===PHI_START===
+NAME: len_zero_iff_empty_multiset
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_len_zero_iff_empty_multiset(m: Multiset<int>)
+    requires
+        m.len() == 0,
+    ensures
+        m =~= Multiset::empty(),
+{
+    len_is_zero_means_count_for_each_value_is_zero(m);
+}
+```
+REASON: len_is_zero_means_count_for_each_value_is_zero is external_body — if its axiom is too strong or interacts unexpectedly with Multiset extensionality, it could force equality with empty that bypasses actual multiset reasoning
+===PHI_END===
+
+===PHI_START===
+NAME: filter_true_is_identity
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_filter_true_is_identity(m: Multiset<int>)
+    ensures
+        m.filter(|v: int| true).len() == m.len(),
+{
+}
+```
+REASON: if filter with always-true predicate doesn't preserve length, the filter axiomatization would be inconsistent — tests whether filter's len interacts correctly with the identity case
+===PHI_END===
+
+===PHI_START===
+NAME: filter_false_is_empty
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_filter_false_is_empty(m: Multiset<int>)
+    ensures
+        m.filter(|v: int| false).len() == 0,
+{
+    filtered_size_is_zero_means_no_such_value(m, |v: int| false);
+}
+```
+REASON: filter with always-false should yield empty — relies on filtered_size_is_zero external_body axiom being sound
+===PHI_END===
+
+===PHI_START===
+NAME: filtered_one_unique_witness
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_filtered_one_unique_witness(m: Multiset<int>, f: spec_fn(int) -> bool, v: int, u: int)
+    requires
+        m.filter(f).len() == 1,
+        m.contains(v) && f(v),
+        m.contains(u) && f(u),
+    ensures
+        u == v,
+{
+    filtered_size_is_one_means_only_one_such_value(m, f);
+}
+```
+REASON: tests that the uniqueness clause of filtered_size_is_one actually forces all matching elements equal — if the proof has a gap, distinct v and u satisfying the filter could coexist
+===PHI_END===
+
+===PHI_START===
+NAME: contains_implies_positive_count
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_contains_implies_positive_count(m: Multiset<int>, v: int)
+    requires
+        m.contains(v),
+    ensures
+        m.count(v) >= 1,
+{
+}
+```
+REASON: contains and count must agree — if contains is axiomatized independently of count, a multiset could "contain" an element with zero count, breaking the len_is_zero axiom's foundation
+===PHI_END===

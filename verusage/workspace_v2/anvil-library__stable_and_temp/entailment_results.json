@@ -1,0 +1,20 @@
+[
+  {
+    "name": "stable_unfold_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_1_stable_unfold_intensional_bridge(ex: Execution<int>, p: TempPred<int>)\n    requires\n        stable(p).satisfied_by(ex),\n    ensures\n        p.satisfied_by(ex) ==> forall |i: nat| p.satisfied_by(#[trigger] ex.suffix(i)),\n{\n    stable_unfold::<int>(ex, p);\n}",
+    "reason": "stable_unfold is external_body bridging stable(p)'s nested closure (p.implies(always(p)) wrapped in TempPred::new) to a bare implication with forall \u2014 intensionally distinct formulations equated without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "stable_and_valid",
+    "type": "logical",
+    "code": "proof fn phi_2_stable_and_valid(p: TempPred<int>, q: TempPred<int>)\n    requires\n        valid(stable(p)),\n        valid(stable(q)),\n    ensures\n        valid(stable(p.and(q))),\n{\n    stable_and_temp::<int>(p, q);\n}",
+    "reason": "stable_and_temp derives stability of conjunction from component stability \u2014 chains stable_unfold's closure bridge twice plus resolves p.and(q)'s TempPred::new conjunction closure against always's forall closure",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

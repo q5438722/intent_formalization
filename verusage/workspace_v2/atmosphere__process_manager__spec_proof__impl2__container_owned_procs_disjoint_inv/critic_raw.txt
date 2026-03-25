@@ -1,0 +1,17 @@
+===VERDICT_START===
+PHI: owned_cpus_shared_across_containers
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The `container_cpu_wf` spec establishes a precise bijection: if a container's `owned_cpus` contains `cpu`, then `cpu_list[cpu].owning_container == c_ptr`, and conversely. Since `owning_container` is a single value per CPU, two distinct containers cannot both satisfy `cpu_list[cpu].owning_container == c1` and `cpu_list[cpu].owning_container == c2`. This disjointness is an intentional and desirable consequence of the ownership model.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: inactive_cpu_owning_container_unconstrained
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The `container_cpu_wf` predicate universally quantifies over all CPUs (`0 <= cpu_i < NUM_CPUS`) requiring each to have a valid `owning_container` in `container_dom`, regardless of active status. This is a deliberate design choice — every CPU is always owned by some container, and activity status only governs whether it has a current thread. The property confirms the spec works as written.
+===VERDICT_END===
+
+===SUMMARY===
+Both candidates are false positives. The CPU ownership disjointness across containers is a correct consequence of the `container_cpu_wf` bijection (each CPU has exactly one `owning_container` value, so the reverse mapping naturally enforces exclusivity). The inactive CPU having a valid owning container is intentional — the spec assigns every CPU to a container unconditionally, with `cpus_wf` only constraining that inactive CPUs have no `current_thread`. Neither finding reveals a spec gap.
+===END_SUMMARY===

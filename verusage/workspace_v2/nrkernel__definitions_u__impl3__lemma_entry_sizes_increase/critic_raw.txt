@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: entry_size_decreases_with_depth
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Monotonically non-increasing entry sizes across layers is the correct and intended property of a hierarchical page table. The fully verified `lemma_entry_sizes_increase` proves this from the invariant.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: adjacent_entry_size_geq
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Direct instantiation of the verified lemma at adjacent layers. This is the base case and a correct property — parent entry size must be at least child entry size.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: entry_size_equal_when_num_entries_one
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: medium
+REASONING: When `num_entries(i+1) == 1`, the invariant gives `entry_size(i) == entry_size(i+1) * 1`. While this creates a redundant nesting level, the `Arch` type is a generic architecture description and `inv()` intentionally permits degenerate configurations. The x86-specific `x86_arch_spec` would never have `num_entries == 1`.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: inv_single_layer_any_entry_size
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: medium
+REASONING: A single-layer architecture with non-standard entry size satisfying `inv()` is expected — `inv()` is a generic structural invariant, not an x86-specific constraint. The only bounds are `0 < entry_size <= X86_MAX_ENTRY_SIZE` and `0 < num_entries <= X86_NUM_ENTRIES`, which `{7, 3}` satisfies.
+===VERDICT_END===
+
+===SUMMARY===
+All four candidates are false positives. The monotonicity properties are correct consequences of the fully verified `lemma_entry_sizes_increase`. The degenerate configuration cases (`num_entries == 1`, non-power-of-two single layer) are permitted by design — `Arch::inv()` is intentionally a generic structural invariant, not an x86-specific one.
+===END_SUMMARY===

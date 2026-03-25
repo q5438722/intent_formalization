@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "external_body_insert_no_key_guard",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The `external_body` lemma `lemma_interp_of_entry_insert_implies_interp_aux_insert` has the `!self.interp_aux(i).contains_key(base)` precondition commented out. Without this guard, the lemma claims `interp_aux(i).insert(base, pte) == update(j,n).interp_aux(i)` even when `base` already exists in `interp_aux` from a lower-indexed entry \u2014 but `union_prefer_right` would make the lower-indexed entry's value take precedence over the inserted one, so the equality may not hold. This is a potential soundness gap in the external_body axiom."
+  },
+  {
+    "phi": "inv_allows_unaligned_base_vaddr",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The alignment check on `base_vaddr` is explicitly commented out in `well_formed()`. A directory with `base_vaddr = 1` passes `inv()`, which is a known spec gap visible in the source."
+  },
+  {
+    "phi": "update_interp_insert_overwrites_existing",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This demonstrates the concrete consequence of \u03c61's missing guard: the external_body lemma allows proving that modifying entry j overwrites a mapping at `base` that was contributed by a lower-indexed entry (which should take priority under `union_prefer_right`). This could produce incorrect results if `base` was mapped by entry i < j, since `union_prefer_right` gives entry i precedence."
+  },
+  {
+    "phi": "interp_aux_shadows_later_entries",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is the correct, expected behavior of `union_prefer_right` \u2014 lower-indexed entries take priority over higher-indexed ones by definition. While the invariant lacks a disjointness check, the shadowing behavior itself is the intended semantics of the map union operation and not a spec gap in isolation."
+  }
+]

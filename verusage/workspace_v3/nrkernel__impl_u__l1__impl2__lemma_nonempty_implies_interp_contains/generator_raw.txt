@@ -1,0 +1,93 @@
+===PHI_START===
+NAME: inv_allows_zero_layers
+TARGET_FN: Arch::inv
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_inv_allows_zero_layers(arch: Arch)
+    requires
+        arch.layers.len() == 0,
+    ensures
+        arch.inv(),
+{
+}
+```
+REASON: Arch::inv should require at least one layer; a zero-layer architecture is degenerate and unusable for address translation
+===PHI_END===
+
+===PHI_START===
+NAME: entry_base_overlap
+TARGET_FN: Arch::entry_base
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_entry_base_overlap(arch: Arch, layer: nat, base: nat, i: nat, j: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+        i < arch.num_entries(layer),
+        j < arch.num_entries(layer),
+        i != j,
+    ensures
+        arch.entry_base(layer, base, i) == arch.entry_base(layer, base, j),
+{
+}
+```
+REASON: Distinct entry indices at the same layer must map to distinct base addresses; overlap would corrupt address translation
+===PHI_END===
+
+===PHI_START===
+NAME: interp_of_entry_key_overlap
+TARGET_FN: Directory::interp
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_interp_of_entry_key_overlap(d: Directory, i: nat, j: nat, va: nat)
+    requires
+        d.inv(),
+        i < d.entries.len(),
+        j < d.entries.len(),
+        i != j,
+        d.interp_of_entry(i).contains_key(va),
+    ensures
+        d.interp_of_entry(j).contains_key(va),
+{
+}
+```
+REASON: Two different directory entries should never map the same virtual address; overlapping keys would cause ambiguous translations
+===PHI_END===
+
+===PHI_START===
+NAME: well_formed_allows_zero_entries
+TARGET_FN: Directory::well_formed
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_well_formed_allows_zero_entries(d: Directory)
+    requires
+        d.well_formed(),
+    ensures
+        d.num_entries() == 0,
+{
+}
+```
+REASON: A well-formed directory with zero entries is degenerate; well_formed should guarantee at least one slot via arch.inv
+===PHI_END===
+
+===PHI_START===
+NAME: contains_zero_entry_size
+TARGET_FN: Arch::contains_entry_size_at_index_atleast
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_contains_zero_entry_size(arch: Arch)
+    requires
+        arch.inv(),
+        arch.layers.len() > 0,
+    ensures
+        arch.contains_entry_size_at_index_atleast(0, 0),
+{
+}
+```
+REASON: Under a valid arch invariant all entry sizes are positive, so finding an entry_size of 0 would indicate an inconsistent spec
+===PHI_END===

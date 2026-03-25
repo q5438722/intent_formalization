@@ -1,0 +1,47 @@
+[
+  {
+    "name": "two_mul_bit1_negative_y",
+    "type": "boundary",
+    "code": "proof fn phi_1_two_mul_bit1_negative_y(x1: int)\n    ensures\n        (2 * x1 + 1) / (2 * (-1)) == x1 / (-1),\n{\n    two_mul_with_bit1(x1, -1);\n}",
+    "reason": "The lemma accepts negative `y1` \u2014 for `y1 = -1`, `(2*x+1)/(-2)` equals `x/(-1)` under Euclidean division, which may differ from truncation division expectations",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "two_mul_bit1_negative_x",
+    "type": "boundary",
+    "code": "proof fn phi_2_two_mul_bit1_negative_x(y1: int)\n    requires\n        y1 != 0,\n    ensures\n        (2 * (-1) + 1) / (2 * y1) == (-1) / y1,\n{\n    two_mul_with_bit1(-1, y1);\n}",
+    "reason": "With `x1 = -1`, `(2*(-1)+1) = -1` and `-1 / (2*y1)` should equal `(-1) / y1` \u2014 for Euclidean division with positive `y1`, both are -1, but the equality is non-obvious",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "div_assoc_odd_step",
+    "type": "logical",
+    "code": "proof fn phi_3_div_assoc_odd_step(x1: int, y1: int)\n    requires\n        y1 != 0,\n    ensures\n        (2 * x1 + 1) / (2 * y1) == ((2 * x1 + 1) / 2) / y1,\n{\n    assert((2 * x1 + 1) / (2 * y1) == ((2 * x1 + 1) / 2) / y1) by(nonlinear_arith)\n        requires y1 != 0;\n}",
+    "reason": "The intermediate division-associativity step `(2k+1)/(2y) == ((2k+1)/2)/y` is asserted via `nonlinear_arith` \u2014 relies on Z3's handling of Euclidean division which could be incorrect for edge cases",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "odd_div_2_floors",
+    "type": "logical",
+    "code": "proof fn phi_4_odd_div_2_floors(x1: int)\n    ensures\n        (2 * x1 + 1) / 2 == x1,\n{\n}",
+    "reason": "`(2*x+1)/2 == x` under Euclidean division \u2014 for negative `x1`, `(2*(-3)+1)/2 = -5/2` under Euclidean division gives `-3`, which equals `x1`; this is correct but the floor-toward-negative-infinity behavior may surprise",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "two_mul_bit1_chain_to_4",
+    "type": "logical",
+    "code": "proof fn phi_5_two_mul_bit1_chain_to_4(x1: int, y1: int)\n    requires\n        y1 != 0,\n    ensures\n        (4 * x1 + 1) / (4 * y1) == x1 / y1,\n{\n    two_mul_with_bit1(2 * x1, 2 * y1);\n    assert(2 * (2 * x1) + 1 == 4 * x1 + 1) by(nonlinear_arith);\n    assert(2 * (2 * y1) == 4 * y1) by(nonlinear_arith);\n    two_mul_with_bit1(x1, y1);\n    assert((2 * x1) / (2 * y1) == x1 / y1);\n    // need: (2*(2*x1) + 1) / (2*(2*y1)) == (2*x1) / (2*y1)\n    // which is what the first call gives\n}",
+    "reason": "Chaining the lemma yields `(4x+1)/(4y) == x/y` \u2014 combining two applications, the `+1` remainder propagates through two levels of halving",
+    "entailed": false,
+    "verus_output": "verification results:: 4 verified, 1 errors\nerror: assertion failed\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__layout__two_mul_with_bit1/phi_5_two_mul_bit1_chain_to_4.rs:30:12\n   |\n30 |     assert((2 * x1) / (2 * y1) == x1 / y1);\n   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ assertion failed\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

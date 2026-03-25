@@ -1,0 +1,37 @@
+[
+  {
+    "name": "new_iterator_always_end",
+    "target_fn": "is_end",
+    "type": "behavioral",
+    "code": "proof fn phi_1_new_iterator_always_end<K: KeyTrait + VerusClone>(k: K)\n    ensures\n        KeyIterator::new_spec(k).is_end_spec(),\n{\n}",
+    "reason": "If a freshly constructed Some(k) iterator reports is_end, then is_end cannot distinguish live iterators from exhausted ones"
+  },
+  {
+    "name": "none_iterator_not_end",
+    "target_fn": "is_end",
+    "type": "boundary",
+    "code": "proof fn phi_2_none_iterator_not_end<K: KeyTrait + VerusClone>(ki: KeyIterator<K>)\n    requires\n        ki.k.is_None(),\n    ensures\n        !ki.is_end_spec(),\n{\n}",
+    "reason": "If a None-valued iterator is not considered at-end, the is_end spec inverts the intended semantics"
+  },
+  {
+    "name": "get_conflates_distinct_keys",
+    "target_fn": "get",
+    "type": "logical",
+    "code": "proof fn phi_3_get_conflates_distinct_keys<K: KeyTrait + VerusClone>(a: K, b: K)\n    requires\n        a.cmp_spec(b).ne(),\n    ensures\n        *KeyIterator::new_spec(a).get_spec() == *KeyIterator::new_spec(b).get_spec(),\n{\n}",
+    "reason": "If get_spec returns the same value for two distinct keys, the spec fails to preserve key identity"
+  },
+  {
+    "name": "get_returns_wrong_value",
+    "target_fn": "get",
+    "type": "behavioral",
+    "code": "proof fn phi_4_get_returns_wrong_value<K: KeyTrait + VerusClone>(k: K, k2: K)\n    requires\n        k.cmp_spec(k2).ne(),\n        !KeyIterator::new_spec(k).is_end_spec(),\n    ensures\n        *KeyIterator::new_spec(k).get_spec() == k2,\n{\n}",
+    "reason": "If get_spec on Some(k) can equal an arbitrary different key k2, the ensures clause is too weak to pin the return value"
+  },
+  {
+    "name": "get_precondition_vacuous",
+    "target_fn": "get",
+    "type": "boundary",
+    "code": "proof fn phi_5_get_precondition_vacuous<K: KeyTrait + VerusClone>(ki: KeyIterator<K>)\n    requires\n        !ki.is_end_spec(),\n    ensures\n        false,\n{\n}",
+    "reason": "If the requires of get is unsatisfiable, then get's contract is vacuously true and can never be usefully called"
+  }
+]

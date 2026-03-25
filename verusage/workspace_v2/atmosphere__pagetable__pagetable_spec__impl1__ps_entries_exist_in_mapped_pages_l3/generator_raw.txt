@@ -1,0 +1,83 @@
+===PHI_START===
+NAME: usize2pa_mem_valid_unconditional
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)
+    ensures
+        MEM_valid(usize2pa(v)),
+{
+}
+```
+REASON: usize2pa's external_body unconditionally ensures MEM_valid(ret) for ANY input — arbitrary usize values produce "valid" physical addresses without proof
+===PHI_END===
+
+===PHI_START===
+NAME: resolve_l4_returns_some_for_kernel_region
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_resolve_l4_returns_some_for_kernel_region(pt: PageTable, l4i: L4Index)
+    requires
+        pt.wf_l4(),
+        0 <= l4i < pt.kernel_l4_end,
+    ensures
+        pt.spec_resolve_mapping_l4(l4i).is_Some(),
+{
+}
+```
+REASON: spec_resolve_mapping_l4 returns Some for ALL kernel-region indices (l4i < kernel_l4_end) regardless of whether the entry is actually present — the `|| l4i < self.kernel_l4_end` branch bypasses the present-bit check
+===PHI_END===
+
+===PHI_START===
+NAME: page_closure_l4_l3_can_overlap
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_page_closure_l4_l3_can_overlap(pt: PageTable, p: PageMapPtr)
+    requires
+        pt.wf_l4(),
+        pt.wf_l3(),
+        pt.l3_tables@.dom().contains(p),
+        p == pt.cr3,
+    ensures
+        pt.l4_table@.dom().contains(p) && pt.l3_tables@.dom().contains(p),
+{
+}
+```
+REASON: No cross-level disjointness constraint — the same physical page can appear in both l4_table and l3_tables domains simultaneously
+===PHI_END===
+
+===PHI_START===
+NAME: page_not_mapped_ignores_ps_entries
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_page_not_mapped_ignores_ps_entries(pt: PageTable, pa: PAddr)
+    requires
+        pt.mapping_4k().dom().len() == 0,
+        pt.mapping_2m().dom().len() == 0,
+        pt.mapping_1g().dom().len() == 0,
+    ensures
+        pt.page_not_mapped(pa),
+{
+}
+```
+REASON: page_not_mapped only checks mapping_4k/2m/1g Ghost fields — with empty mappings it vacuously returns true even if page table entries at L3/L2/L1 actually reference pa, decoupling the "not mapped" predicate from actual table contents
+===PHI_END===
+
+===PHI_START===
+NAME: wf_mapping_1g_va_1g_valid_is_2m_valid
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_wf_mapping_1g_va_1g_valid_is_2m_valid(va: usize)
+    requires
+        spec_va_2m_valid(va),
+    ensures
+        va_1g_valid(va),
+{
+}
+```
+REASON: va_1g_valid has `when_used_as_spec(spec_va_2m_valid)` — a copy-paste bug that makes va_1g_valid resolve to spec_va_2m_valid, so wf_mapping_1g's constraint that mapped addresses satisfy va_1g_valid is silently weakened to 2M alignment
+===PHI_END===

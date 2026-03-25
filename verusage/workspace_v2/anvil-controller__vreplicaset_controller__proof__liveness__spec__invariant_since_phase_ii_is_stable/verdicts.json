@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "resp_matches_req_is_symmetric",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The property merely confirms that resp_msg_matches_req_msg enforces dst/src swap and rpc_id equality, which is exactly what the spec intends. The \"same host\" concern is a non-issue \u2014 the content variant matching (APIResponse vs APIRequest, or ExternalResponse vs ExternalRequest) plus the system's message routing invariants prevent self-matching in practice."
+  },
+  {
+    "phi": "scheduled_deletion_timestamp_redundant",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The redundancy is real but harmless \u2014 unmarshal copies metadata verbatim, so checking deletion_timestamp on both raw and unmarshalled forms is indeed equivalent. This is defensive specification style, not a spec gap. The predicate correctly ensures no deletion timestamp exists on scheduled objects."
+  },
+  {
+    "phi": "pending_req_xor_allows_both_absent",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The invariant is explicitly named `_if_has_pending_req_msg` \u2014 vacuous truth when pending_req_msg is None is intentional by design. The predicate guards on `has_pending_req_msg` which requires `pending_req_msg is Some`, so the None case is deliberately excluded from the constraint. Reconcile states with no pending message are handled by other invariants."
+  },
+  {
+    "phi": "reconcile_spec_uid_no_status_check",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is intentional \u2014 the predicate is specifically named `has_spec_and_uid_as`, not `has_spec_status_and_uid_as`. In Kubernetes controller reconciliation, the controller reacts to spec changes and drives status to match; status is expected to diverge and is not relevant for triggering reconciliation identity."
+  },
+  {
+    "phi": "object_ref_ignores_uid",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This faithfully models Kubernetes semantics where API operations use (kind, name, namespace) as the resource key. UID is used separately for ownership (OwnerReferenceView includes uid) and identity checks (the_object_in_reconcile_has_spec_and_uid_as checks uid). The ObjectRef type correctly serves as the API-level key."
+  }
+]

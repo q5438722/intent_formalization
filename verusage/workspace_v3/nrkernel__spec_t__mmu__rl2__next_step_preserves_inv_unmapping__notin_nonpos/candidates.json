@@ -1,0 +1,37 @@
+[
+  {
+    "name": "align_exceeds_input",
+    "target_fn": "align_to_usize",
+    "type": "behavioral",
+    "code": "proof fn phi_1_align_exceeds_input(a: usize, b: usize)\n    requires\n        b > 0,\n    ensures\n        align_to_usize(a, b) > a,\n{\n}",
+    "reason": "Aligning down should never produce a value strictly greater than the original input"
+  },
+  {
+    "name": "align_result_not_aligned",
+    "target_fn": "align_to_usize",
+    "type": "behavioral",
+    "code": "proof fn phi_2_align_result_not_aligned(a: usize, b: usize)\n    requires\n        b > 0,\n    ensures\n        align_to_usize(a, b) % b != 0,\n{\n}",
+    "reason": "The result of align_to_usize should always be a multiple of b; failing this means alignment is broken"
+  },
+  {
+    "name": "aligned_identity_broken",
+    "target_fn": "aligned",
+    "type": "logical",
+    "code": "proof fn phi_3_aligned_identity_broken(a: usize, b: usize)\n    requires\n        b > 0,\n        aligned(a as nat, b as nat),\n    ensures\n        align_to_usize(a, b) != a,\n{\n}",
+    "reason": "If a is already aligned to b, align_to_usize should be the identity; disagreement indicates inconsistency"
+  },
+  {
+    "name": "align_gap_exceeds_modulus",
+    "target_fn": "align_to_usize",
+    "type": "boundary",
+    "code": "proof fn phi_4_align_gap_exceeds_modulus(a: usize, b: usize)\n    requires\n        b > 0,\n    ensures\n        a - align_to_usize(a, b) >= b,\n{\n}",
+    "reason": "The distance from a to its aligned-down value must be less than b; a gap >= b means a full unit was lost"
+  },
+  {
+    "name": "zero_never_aligned",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "code": "proof fn phi_5_zero_never_aligned(b: usize)\n    requires\n        b > 0,\n    ensures\n        !aligned(0 as nat, b as nat),\n{\n}",
+    "reason": "Zero is divisible by every nonzero value, so it must always be considered aligned; denying this is unsound"
+  }
+]

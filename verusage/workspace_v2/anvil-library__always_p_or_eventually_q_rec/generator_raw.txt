@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: execution_equality_forces_fn_equality
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_execution_equality_forces_fn_equality(f: spec_fn(nat) -> int, g: spec_fn(nat) -> int)
+    requires
+        forall |i: nat| #[trigger] f(i) == g(i),
+    ensures
+        f == g,
+{
+    let ex1 = Execution { nat_to_state: f };
+    let ex2 = Execution { nat_to_state: g };
+    execution_equality::<int>(ex1, ex2);
+}
+```
+REASON: execution_equality is external_body forcing intensional equality of spec_fn from pointwise extensional equivalence — two structurally distinct closures are collapsed to equal
+===PHI_END===
+
+===PHI_START===
+NAME: suffix_zero_equals_self
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_suffix_zero_equals_self(ex: Execution<int>)
+    ensures
+        ex.suffix(0) == ex,
+{
+    execution_equality::<int>(ex, ex.suffix(0));
+}
+```
+REASON: ex.suffix(0) creates closure |i| f(i+0) intensionally distinct from ex — execution_equality silently equates these without proof
+===PHI_END===
+
+===PHI_START===
+NAME: suffix_composition_equals_addition
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_suffix_composition_equals_addition(ex: Execution<int>, i: nat, j: nat)
+    ensures
+        ex.suffix(i).suffix(j) == ex.suffix(i + j),
+{
+    execution_equality::<int>(ex.suffix(i).suffix(j), ex.suffix(i + j));
+}
+```
+REASON: doubly-nested suffix creates a closure intensionally distinct from single-offset suffix — execution_equality collapses them without proof, and the recursive proof depends on this at the base case
+===PHI_END===
+
+===PHI_START===
+NAME: rec_induction_missing_step_check
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_rec_induction_missing_step_check(ex: Execution<int>, next: TempPred<int>, p: TempPred<int>, q: TempPred<int>, i: nat)
+    requires
+        forall |idx| p.satisfied_by(ex.suffix(idx)) && next.satisfied_by(ex.suffix(idx)) ==> p.satisfied_by(ex.suffix(idx + 1)) || q.satisfied_by(ex.suffix(idx + 1)),
+        forall |idx| next.satisfied_by(#[trigger] ex.suffix(idx)),
+        forall |idx| !q.satisfied_by(#[trigger] ex.suffix(idx)),
+        p.satisfied_by(ex),
+    ensures
+        p.satisfied_by(ex.suffix(i)) && p.satisfied_by(ex.suffix(i + 1)),
+{
+    always_p_or_eventually_q_rec::<int>(ex, next, p, q, i);
+    always_p_or_eventually_q_rec::<int>(ex, next, p, q, i + 1);
+}
+```
+REASON: the inductive step relies on suffix(i-1) stepping to suffix(i) but the proof never explicitly invokes the step precondition — the SMT solver must silently resolve that p.satisfied_by(ex.suffix(i-1)) + next + !q implies p.satisfied_by(ex.suffix(i)) through the intensional suffix gap
+===PHI_END===
+
+===PHI_START===
+NAME: rec_base_case_depends_on_execution_equality
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_rec_base_case_depends_on_execution_equality(ex: Execution<int>, p: TempPred<int>)
+    requires
+        p.satisfied_by(ex),
+    ensures
+        p.satisfied_by(ex.suffix(0)),
+{
+    execution_equality::<int>(ex, ex.suffix(0));
+}
+```
+REASON: the base case i=0 of the induction transfers p from ex to ex.suffix(0) solely through execution_equality — without this external_body axiom, the base case would fail due to intensional closure mismatch
+===PHI_END===

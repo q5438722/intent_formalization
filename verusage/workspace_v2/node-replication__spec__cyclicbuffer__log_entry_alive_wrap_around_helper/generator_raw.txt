@@ -1,0 +1,104 @@
+===PHI_START===
+NAME: log_entry_idx_wraps_modulo
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_log_entry_idx_wraps_modulo(logical: LogicalLogIdx, buffer_size: nat)
+    requires
+        buffer_size > 0,
+    ensures
+        log_entry_idx(logical, buffer_size) == log_entry_idx(logical + buffer_size as int, buffer_size),
+{
+}
+```
+REASON: Two logical indices separated by exactly buffer_size map to the same physical index — the cyclic buffer cannot distinguish them physically
+===PHI_END===
+
+===PHI_START===
+NAME: alive_value_flips_on_wrap
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_alive_value_flips_on_wrap(logical: LogicalLogIdx, buffer_size: nat)
+    requires
+        buffer_size > 0,
+    ensures
+        log_entry_alive_value(logical, buffer_size) != log_entry_alive_value(logical + buffer_size as int, buffer_size),
+{
+    assert(((logical + buffer_size as int) / buffer_size as int) == ((logical / buffer_size as int) + 1)) by (nonlinear_arith)
+        requires buffer_size > 0;
+}
+```
+REASON: Adjacent epochs at the same physical slot have opposite alive values — the liveness check relies solely on this toggle bit with no sequence number or generation counter
+===PHI_END===
+
+===PHI_START===
+NAME: is_alive_same_phys_different_logical
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_is_alive_same_phys_different_logical(
+    alive_bits: Map<LogIdx, bool>,
+    logical1: LogicalLogIdx,
+    logical2: LogicalLogIdx,
+    buffer_size: nat,
+)
+    requires
+        buffer_size > 0,
+        logical2 == logical1 + 2 * (buffer_size as int),
+        forall|i: nat| i < buffer_size <==> alive_bits.contains_key(i),
+    ensures
+        log_entry_is_alive(alive_bits, logical1, buffer_size) == log_entry_is_alive(alive_bits, logical2, buffer_size),
+{
+    assert(log_entry_idx(logical1, buffer_size) == log_entry_idx(logical2, buffer_size));
+    assert(log_entry_alive_value(logical1, buffer_size) == log_entry_alive_value(logical2, buffer_size)) by {
+        assert(((logical1 + 2 * buffer_size as int) / buffer_size as int) == ((logical1 / buffer_size as int) + 2)) by (nonlinear_arith)
+            requires buffer_size > 0;
+    };
+}
+```
+REASON: Entries 2*buffer_size apart are indistinguishable by the alive check — both map to the same physical slot with the same alive value, meaning the spec cannot detect if the buffer wraps around twice
+===PHI_END===
+
+===PHI_START===
+NAME: log_entry_idx_negative_logical
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_log_entry_idx_negative_logical(buffer_size: nat)
+    requires
+        buffer_size > 0,
+    ensures
+        log_entry_idx(-1, buffer_size) == (buffer_size - 1) as nat,
+{
+}
+```
+REASON: Negative logical indices produce valid physical indices via Verus int modulo — the spec accepts negative log positions without any guard
+===PHI_END===
+
+===PHI_START===
+NAME: wrap_around_helper_shift_equivalence
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_wrap_around_helper_shift_equivalence(
+    alive_bits: Map<LogIdx, bool>,
+    buffer_size: nat,
+    low: nat,
+    high: nat,
+)
+    requires
+        buffer_size == LOG_SIZE,
+        forall|i: nat| i < buffer_size <==> alive_bits.contains_key(i),
+        low <= high <= low + buffer_size,
+        forall|i: int| low <= i < high ==> !log_entry_is_alive(alive_bits, add_buffersize(i, buffer_size), buffer_size),
+    ensures
+        forall|i: int| low <= i < high ==> !log_entry_is_alive(alive_bits, i + buffer_size as int, buffer_size),
+{
+    assert forall|i: int| low <= i < high implies !log_entry_is_alive(alive_bits, i + buffer_size as int, buffer_size) by {
+        assert(!log_entry_is_alive(alive_bits, add_buffersize(i, buffer_size), buffer_size));
+    }
+}
+```
+REASON: `add_buffersize(i, buffer_size)` is definitionally equal to `i + buffer_size` — the helper function adds no semantic value and the trigger indirection could mask quantifier matching issues
+===PHI_END===

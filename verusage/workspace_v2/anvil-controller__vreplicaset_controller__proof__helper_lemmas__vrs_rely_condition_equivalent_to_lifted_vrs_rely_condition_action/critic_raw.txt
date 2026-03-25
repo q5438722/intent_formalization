@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: lifted_action_no_transition_constraint
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is standard TLA+-style encoding. The rely condition is a state predicate (constraining in-flight messages), not a transition relation. Checking it on both s and s_prime independently is the correct way to express that the rely holds before and after each step, which is exactly what always(lift_state(...)) means. The "action" wrapper is just a packaging convenience for the equivalence proof.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: rely_create_allows_none_owner_refs
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The rely checks whether the created pod carries a VRS controller owner reference, but when owner_references is None, the negated conjunction is trivially satisfied. This means other controllers can freely create ownerless pods that a VRS could later adopt, bypassing the create-time interference protection. Whether this is intentional depends on whether pod adoption is modeled elsewhere, but the rely alone does not prevent it.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: equivalence_proof_ignores_cluster_param
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is by design in rely-guarantee reasoning. The rely constrains *other* controllers' behavior, not the VRS controller itself. The VRS controller's own model entry is irrelevant to the rely condition — its behavior is constrained by the guarantee side, not the rely side. Two clusters differing only in the VRS controller's own model correctly produce identical rely conditions.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: empty_cluster_rely_trivially_true
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: With no other controllers registered, there are no other controllers to constrain, so a vacuously true rely is correct. The rely-guarantee framework only constrains registered controller models; unmodeled components are outside its scope by design. A cluster with zero controllers has no interference sources to guard against.
+===VERDICT_END===
+
+===SUMMARY===
+Three of the four candidates are false positives reflecting correct rely-guarantee design patterns: the action formulation correctly checks state predicates on both pre/post states, the rely intentionally excludes the controller's own model, and an empty cluster correctly has a vacuous rely. The one true positive (φ2) identifies that the create rely permits pods with no owner references, which could be subsequently adopted by a VRS — this is a gap in the create-time interference check that may allow indirect ownership transfer if pod adoption is not separately guarded.
+===END_SUMMARY===

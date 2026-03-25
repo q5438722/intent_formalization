@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: remove_container_preserves_owned_threads_overlap
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: Neither `container_tree_wf` nor `remove_container_ensures` constrains `owned_threads` disjointness. After container removal, the new_container_perms still allows two distinct containers to claim the same thread — the resource ownership gap persists through the removal operation.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: remove_container_no_resource_cleanup
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `remove_container_ensures` removes `container_ptr` from the domain (`!new_container_perms.dom().contains(container_ptr)`) but has no postcondition about transferring or releasing its `owned_threads`, `owned_endpoints`, or `owned_procs`. Resources owned by the removed container are silently lost with no spec-level accounting.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: unique_implys_no_duplicates_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: This is an `external_body` proof bridging `unique()` (defined over `spec_seq` and `value_list_len`) to `Seq::no_duplicates()`. The `unique` spec uses `self.len()` which resolves to `spec_len` → `self@.len()`, but `len()`'s external_body unconditionally returns `value_list_len` — the connection between these representations is entirely trusted without proof.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: root_container_parent_unconstrained
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `container_root_wf` sets `depth == 0` for root and requires non-root nodes to have `parent.is_Some()`, but never asserts `root.parent.is_None()`. The root can carry a spurious parent pointer, which could cause confusion in upward traversal or invariant reasoning.
+===VERDICT_END===
+
+===SUMMARY===
+All four candidates are true positives. Two relate to the `remove_container_ensures` spec: it removes a container from the domain but never constrains resource ownership fields (`owned_threads`, `owned_endpoints`, `owned_procs`) — neither ensuring disjointness in the new state nor requiring resource transfer/cleanup for the removed container. The `unique_implys_no_duplicates` external_body creates a trusted but unverified bridge between two representation layers of `StaticLinkedList`. The root container's parent field remains unconstrained by `container_root_wf`, allowing a spurious parent pointer on the root node.
+===END_SUMMARY===

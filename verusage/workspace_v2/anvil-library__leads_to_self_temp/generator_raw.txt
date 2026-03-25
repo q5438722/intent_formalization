@@ -1,0 +1,80 @@
+===PHI_START===
+NAME: eventually_proved_by_witness_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_eventually_proved_by_witness_intensional_bridge(ex: Execution<int>, p: TempPred<int>, witness_idx: nat)
+    requires
+        p.satisfied_by(ex.suffix(witness_idx)),
+    ensures
+        eventually(p).satisfied_by(ex),
+{
+    eventually_proved_by_witness::<int>(ex, p, witness_idx);
+}
+```
+REASON: eventually_proved_by_witness is external_body introducing a concrete witness into eventually's TempPred::new existential closure — bridges the intensional gap between a known witness and the closure-wrapped exists
+===PHI_END===
+
+===PHI_START===
+NAME: execution_equality_forces_fn_equality
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_execution_equality_forces_fn_equality(f: spec_fn(nat) -> int, g: spec_fn(nat) -> int)
+    requires
+        forall |i: nat| #[trigger] f(i) == g(i),
+    ensures
+        f == g,
+{
+    let ex1 = Execution { nat_to_state: f };
+    let ex2 = Execution { nat_to_state: g };
+    execution_equality::<int>(ex1, ex2);
+}
+```
+REASON: execution_equality forces intensional equality of spec_fn from pointwise extensional equivalence — structurally distinct closures collapsed to equal without proof
+===PHI_END===
+
+===PHI_START===
+NAME: suffix_zero_equals_self
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_suffix_zero_equals_self(ex: Execution<int>)
+    ensures
+        ex.suffix(0) == ex,
+{
+    execution_equality::<int>(ex.suffix(0), ex);
+}
+```
+REASON: suffix(0) produces a fresh closure |i| f(i + 0) which is intensionally distinct from f — execution_equality silently collapses this gap, deriving structural identity from pointwise equivalence
+===PHI_END===
+
+===PHI_START===
+NAME: suffix_composition_equals_addition
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_suffix_composition_equals_addition(ex: Execution<int>, a: nat, b: nat)
+    ensures
+        ex.suffix(a).suffix(b) == ex.suffix(a + b),
+{
+    execution_equality::<int>(ex.suffix(a).suffix(b), ex.suffix(a + b));
+}
+```
+REASON: suffix(a).suffix(b) nests two closures |i| (|j| f(j+a))(i+b) while suffix(a+b) has |i| f(i+a+b) — execution_equality forces intensional equality of structurally distinct nested closures
+===PHI_END===
+
+===PHI_START===
+NAME: leads_to_self_any_pred
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_leads_to_self_any_pred(p: TempPred<int>)
+    ensures
+        valid(p.leads_to(p)),
+{
+    leads_to_self_temp::<int>(p);
+}
+```
+REASON: leads_to_self_temp derives valid(p.leads_to(p)) relying on both external_body axioms — if either axiom is unsound the reflexive leads_to property could be incorrectly established for any predicate
+===PHI_END===

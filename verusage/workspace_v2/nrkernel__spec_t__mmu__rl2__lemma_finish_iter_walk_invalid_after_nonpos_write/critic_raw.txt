@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: all_mb0_bits_are_zero_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: low
+REASONING: `all_mb0_bits_are_zero` is `external_body` with no spec, used in the critical `PDE::view` to determine entry validity. However, this specific φ only proves `P || !P` (tautology), so it doesn't actually demonstrate the external_body gap. The underlying trust assumption is real but the test is trivial.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: flags_combine_not_commutative_supervisor
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `combine` uses AND for `is_writable` and OR for `is_supervisor`/`disable_execute` — all three operations are commutative. This commutativity is correct and expected behavior.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: walk_result_path_len_1_arbitrary
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `Walk::result` handles path lengths 2, 3, 4 but falls through to `arbitrary()` for path.len() == 1. Since `walk_next` at layer 0 can produce a `Page` entry (setting `complete: true`) with path.len() == 1, the result is unspecified. While x86-64 doesn't support L0 huge pages, the spec doesn't prevent this case and `arbitrary()` could yield `Valid` with garbage values.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: finish_iter_walk_nonpos_write_preserves_invalid
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is a correct and already-proven lemma in the source code (`lemma_finish_iter_walk_invalid_after_nonpos_write`). Clearing a P bit (making an entry non-present) can only make walks more invalid, never less — an invalid walk stays invalid because clearing P bits removes directory references, it doesn't create new valid paths.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: flags_from_bits_supervisor_inverted
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The inversion `is_supervisor = !flag_US` correctly matches x86 semantics — the US bit being set (1) means user-mode access is allowed, which means the page is NOT supervisor-only. This is the standard Intel interpretation.
+===VERDICT_END===
+
+===SUMMARY===
+Two true positives: `all_mb0_bits_are_zero` is an external_body predicate critical to PDE interpretation (though the test is trivially a tautology), and `Walk::result` falls through to `arbitrary()` for path.len() == 1 Page entries, leaving L0 page walk results undefined. Three false positives: flags combine commutativity is correct, the invalid-after-nonpos-write lemma is already proven in the source, and the US→is_supervisor inversion matches x86 hardware semantics.
+===END_SUMMARY===

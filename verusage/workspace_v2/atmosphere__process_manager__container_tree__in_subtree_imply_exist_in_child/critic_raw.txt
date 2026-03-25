@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: owned_endpoints_shared_across_containers
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The ensures merely restates preconditions, but the key finding is that the preconditions are simultaneously satisfiable. Neither `container_perms_wf` nor `container_tree_wf` constrains `owned_endpoints` at all, yet the code comments explicitly describe unique ownership semantics for endpoints within container subtrees.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: scheduler_contains_non_owned_thread
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The ensures restates a precondition, but the preconditions are satisfiable together — no spec relates `scheduler` contents to `owned_threads`. A container can schedule threads it doesn't own, which breaks the containment model where only owned threads should be schedulable.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: owned_procs_wf_missing
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures `owned_procs.wf() || !owned_procs.wf()` is a tautology (law of excluded middle) — it proves nothing about the spec and would verify with any preconditions. While the observation that `container_perms_wf` doesn't require `owned_procs.wf()` may be valid, this PHI doesn't demonstrate it.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: depth_unbounded_no_max
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures simply restates the precondition — it's trivially true. More importantly, unbounded depth is expected in a general tree data structure. The `CONTAINER_CHILD_LIST_LEN` bounds branching factor (max children per node), not tree depth; arbitrarily deep trees with bounded branching are standard.
+===VERDICT_END===
+
+===SUMMARY===
+Two true positives found: `owned_endpoints` lacks cross-container disjointness despite comments describing unique ownership, and `scheduler` contents are unconstrained relative to `owned_threads`, allowing scheduling of non-owned threads. The other two are false positives — `owned_procs_wf_missing` uses a tautological ensures that proves nothing, and unbounded tree depth is expected behavior for a tree with bounded branching factor.
+===END_SUMMARY===

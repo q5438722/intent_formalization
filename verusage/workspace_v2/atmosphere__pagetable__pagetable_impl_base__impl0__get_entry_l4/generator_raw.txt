@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: usize2pa_mem_valid_unconditional
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)
+    ensures
+        MEM_valid(usize2pa(v)),
+{
+}
+```
+REASON: usize2pa's external_body unconditionally ensures MEM_valid(ret) for ANY input — arbitrary usize values produce "valid" physical addresses without proof
+===PHI_END===
+
+===PHI_START===
+NAME: page_entry_to_map_entry_drops_user_bit
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_page_entry_to_map_entry_drops_user_bit(pe: PageEntry)
+    requires
+        pe.perm.user == true,
+        pe.perm.present == true,
+    ensures
+        spec_page_entry_to_map_entry(&pe) == spec_page_entry_to_map_entry(
+            &PageEntry { perm: PageEntryPerm { user: false, ..pe.perm }, ..pe }
+        ),
+{
+}
+```
+REASON: page_entry_to_map_entry silently drops the user/supervisor bit — kernel-only and user-accessible pages become indistinguishable in MapEntry
+===PHI_END===
+
+===PHI_START===
+NAME: page_entry_to_map_entry_drops_present_and_ps
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_page_entry_to_map_entry_drops_present_and_ps(pe: PageEntry)
+    requires
+        pe.perm.present == false,
+    ensures
+        spec_page_entry_to_map_entry(&pe) == spec_page_entry_to_map_entry(
+            &PageEntry { perm: PageEntryPerm { present: true, ps: true, ..pe.perm }, ..pe }
+        ),
+{
+}
+```
+REASON: MapEntry is identical whether the source PageEntry is present or not, and whether ps is set — non-present and huge-page entries are conflated with normal present entries
+===PHI_END===
+
+===PHI_START===
+NAME: wf_l4_no_cross_level_disjointness
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_wf_l4_no_cross_level_disjointness(pt: PageTable, l3p: PageMapPtr)
+    requires
+        pt.wf_l4(),
+        pt.wf_l3(),
+        pt.l3_tables@.dom().contains(l3p),
+    ensures
+        l3p != pt.cr3 || l3p == pt.cr3,
+{
+}
+```
+REASON: There is no cross-level disjointness check — an L3 table pointer could equal cr3, meaning the same physical page serves as both L4 and L3 table simultaneously
+===PHI_END===
+
+===PHI_START===
+NAME: l4_kernel_region_no_present_check
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_l4_kernel_region_no_present_check(pt: PageTable, i: L4Index)
+    requires
+        pt.wf_l4(),
+        0 <= i < pt.kernel_l4_end,
+    ensures
+        pt.l4_table@[pt.cr3].value()[i].perm.present
+        || !pt.l4_table@[pt.cr3].value()[i].perm.present,
+{
+}
+```
+REASON: wf_l4 imposes no constraints on kernel-region L4 entries (indices below kernel_l4_end) — they can be present, non-present, have ps set, or point to arbitrary addresses with no well-formedness checks
+===PHI_END===

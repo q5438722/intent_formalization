@@ -1,0 +1,92 @@
+===PHI_START===
+NAME: seq_to_set_is_finite_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_seq_to_set_is_finite_external_body(seq: Seq<ReqId>)
+    ensures
+        seq_to_set(seq).finite(),
+{
+    seq_to_set_is_finite(seq);
+}
+```
+REASON: `seq_to_set_is_finite` is `external_body` — finiteness of `Set::new(|a| seq.contains(a))` is trusted without proof, and the set comprehension could in principle capture elements outside the sequence indices
+===PHI_END===
+
+===PHI_START===
+NAME: combiner_request_ids_infinite_arbitrary
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_combiner_request_ids_infinite_arbitrary(
+    combiners: Map<NodeId, CombinerState>,
+    s: Set<ReqId>,
+)
+    requires
+        !combiners.dom().finite(),
+    ensures
+        combiner_request_ids(combiners) === s,
+{
+}
+```
+REASON: When the domain is infinite, `combiner_request_ids` returns `arbitrary()` which can equal any set — an infinite combiner map yields unconstrained request IDs
+===PHI_END===
+
+===PHI_START===
+NAME: combiner_ready_contributes_empty
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_combiner_ready_contributes_empty(
+    node_id: NodeId,
+)
+    ensures
+        CombinerState::Ready.queued_ops() === Seq::<ReqId>::empty(),
+{
+}
+```
+REASON: A `Ready` combiner contributes empty queued_ops — but it still participates in the `combiner_request_ids` fold, potentially masking that Ready combiners should not be in the map at all
+===PHI_END===
+
+===PHI_START===
+NAME: combiner_request_ids_empty_map
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_combiner_request_ids_empty_map()
+    ensures
+        combiner_request_ids(Map::empty()) === Set::<ReqId>::empty(),
+{
+}
+```
+REASON: Empty combiner map yields empty request IDs — tests that the base case of the fold-over-choose produces exactly the empty set
+===PHI_END===
+
+===PHI_START===
+NAME: combiner_request_ids_superset_of_single
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_combiner_request_ids_superset_of_single(
+    combiners: Map<NodeId, CombinerState>,
+    nid: NodeId,
+)
+    requires
+        combiners.dom().finite(),
+        combiners.contains_key(nid),
+    ensures
+        seq_to_set(combiners[nid].queued_ops()).subset_of(combiner_request_ids(combiners)),
+{
+    if combiners.dom().len() == 1 {
+        assert(combiners.dom().choose() == nid);
+    } else {
+        let chosen = combiners.dom().choose();
+        if chosen == nid {
+        } else {
+            combiner_request_ids_superset_of_single(combiners.remove(chosen), nid);
+        }
+    }
+}
+```
+REASON: Each node's queued_ops is a subset of the aggregate — tests that the nondeterministic `choose()`-based fold correctly accumulates all nodes' contributions
+===PHI_END===

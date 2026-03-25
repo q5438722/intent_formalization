@@ -1,0 +1,37 @@
+[
+  {
+    "name": "alloc_ret_still_in_free_set",
+    "target_fn": "alloc_page_4k",
+    "type": "behavioral",
+    "code": "proof fn phi_1_alloc_ret_still_in_free_set(pre: PageAllocator, post: PageAllocator, ret_ptr: PagePtr)\n    requires\n        pre.wf(),\n        pre.free_pages_4k.len() > 0,\n        post.wf(),\n        post.free_pages_4k() =~= pre.free_pages_4k().remove(ret_ptr),\n        pre.free_pages_4k().contains(ret_ptr),\n        page_ptr_valid(ret_ptr),\n    ensures\n        post.free_pages_4k().contains(ret_ptr),\n{\n}",
+    "reason": "Allocated page remaining in the free set means double-use is possible, violating memory safety"
+  },
+  {
+    "name": "alloc_single_free_still_nonempty",
+    "target_fn": "alloc_page_4k",
+    "type": "boundary",
+    "code": "proof fn phi_2_alloc_single_free_still_nonempty(pre: PageAllocator, post: PageAllocator, ret_ptr: PagePtr)\n    requires\n        pre.wf(),\n        pre.free_pages_4k.len() == 1,\n        post.wf(),\n        post.free_pages_4k.len() == pre.free_pages_4k.len() - 1,\n    ensures\n        post.free_pages_4k.len() > 0,\n{\n}",
+    "reason": "If allocating the last free page leaves the free list non-empty, the length tracking is inconsistent"
+  },
+  {
+    "name": "alloc_page_becomes_mapped",
+    "target_fn": "alloc_page_4k",
+    "type": "logical",
+    "code": "proof fn phi_3_alloc_page_becomes_mapped(pre: PageAllocator, post: PageAllocator, ret_ptr: PagePtr)\n    requires\n        pre.wf(),\n        pre.free_pages_4k.len() > 0,\n        post.wf(),\n        post.mapped_pages_4k() =~= pre.mapped_pages_4k(),\n        pre.free_pages_4k().contains(ret_ptr),\n        !pre.page_is_mapped(ret_ptr),\n        page_ptr_valid(ret_ptr),\n    ensures\n        post.mapped_pages_4k().contains(ret_ptr),\n{\n}",
+    "reason": "A freshly allocated page appearing in the mapped set would bypass the mapping protocol and page-table setup"
+  },
+  {
+    "name": "alloc_4k_removes_free_2m_page",
+    "target_fn": "alloc_page_4k",
+    "type": "behavioral",
+    "code": "proof fn phi_4_alloc_4k_removes_free_2m_page(pre: PageAllocator, post: PageAllocator, ret_ptr: PagePtr)\n    requires\n        pre.wf(),\n        pre.free_pages_4k.len() > 0,\n        post.wf(),\n        post.free_pages_2m() =~= pre.free_pages_2m(),\n        post.free_pages_1g() =~= pre.free_pages_1g(),\n    ensures\n        exists|p: PagePtr| pre.free_pages_2m().contains(p) && !post.free_pages_2m().contains(p),\n{\n}",
+    "reason": "A 4k allocation corrupting the 2m free pool would break size-class isolation and leak large pages"
+  },
+  {
+    "name": "alloc_does_not_grow_allocated",
+    "target_fn": "alloc_page_4k",
+    "type": "logical",
+    "code": "proof fn phi_5_alloc_does_not_grow_allocated(pre: PageAllocator, post: PageAllocator, ret_ptr: PagePtr)\n    requires\n        pre.wf(),\n        pre.free_pages_4k.len() > 0,\n        post.wf(),\n        post.allocated_pages_4k() =~= pre.allocated_pages_4k().insert(ret_ptr),\n        pre.allocated_pages_4k().contains(ret_ptr) == false,\n        page_ptr_valid(ret_ptr),\n    ensures\n        post.allocated_pages_4k() =~= pre.allocated_pages_4k(),\n{\n}",
+    "reason": "If the allocated set is unchanged after insertion of a new element, allocation is a no-op and the page is lost"
+  }
+]

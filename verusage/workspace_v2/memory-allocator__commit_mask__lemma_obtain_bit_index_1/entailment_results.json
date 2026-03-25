@@ -1,0 +1,47 @@
+[
+  {
+    "name": "obtain_bit_aux_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_obtain_bit_aux_external_body(a: u64, hi: u64) -> (i: u64)\n    requires\n        a != 0,\n        hi <= 64,\n        a >> hi == 0,\n    ensures\n        i < hi,\n        is_bit_set!(a, i),\n{\n    lemma_obtain_bit_index_1_aux(a, hi)\n}",
+    "reason": "`lemma_obtain_bit_index_1_aux` is `external_body` \u2014 the existence of a set bit index below `hi` in a nonzero value is trusted without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "obtain_bit_hi_1_forces_bit_0",
+    "type": "boundary",
+    "code": "proof fn phi_2_obtain_bit_hi_1_forces_bit_0(a: u64) -> (i: u64)\n    requires\n        a != 0,\n        a >> 1 == 0,\n    ensures\n        i == 0,\n        is_bit_set!(a, 0u64),\n{\n    let i = lemma_obtain_bit_index_1_aux(a, 1);\n    i\n}",
+    "reason": "With `hi=1`, the only valid index is 0 \u2014 the external_body axiom forces `is_bit_set(a, 0)` for any nonzero `a` with `a >> 1 == 0`, which should only be `a == 1`; if the axiom is wrong this narrows incorrectly",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "is_bit_set_opaque_reveal",
+    "type": "logical",
+    "code": "proof fn phi_3_is_bit_set_opaque_reveal(a: usize, b: usize)\n    requires\n        b < 64,\n        a & (1usize << b) == (1usize << b),\n    ensures\n        is_bit_set(a, b),\n{\n    reveal(is_bit_set);\n}",
+    "reason": "`is_bit_set` is a non-opaque spec fn whose body is `a & (1usize << b) == (1usize << b)` \u2014 revealing it should be equivalent to the body, but if bitvector reasoning interacts unexpectedly with the spec definition, this could fail or succeed unsoundly",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "obtain_bit_index_any_nonzero",
+    "type": "behavioral",
+    "code": "proof fn phi_4_obtain_bit_index_any_nonzero(a: usize)\n    requires\n        a != 0,\n    ensures\n        exists|b: usize| b < 64 && is_bit_set(a, b),\n{\n    let b = lemma_obtain_bit_index_1(a);\n}",
+    "reason": "The lemma claims any nonzero usize has a set bit below 64 \u2014 this relies on `global size_of usize == 8` and the external_body axiom; if either is wrong for a target platform, this existential is unsound",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "obtain_bit_aux_hi_zero_vacuous",
+    "type": "boundary",
+    "code": "proof fn phi_5_obtain_bit_aux_hi_zero_vacuous(a: u64)\n    requires\n        a != 0,\n        0u64 <= 64u64,\n        a >> 0 == 0,\n    ensures\n        false,\n{\n    let i = lemma_obtain_bit_index_1_aux(a, 0);\n    assert(i < 0) by { }\n}",
+    "reason": "With `hi=0` and `a >> 0 == 0` (meaning `a == 0`), the preconditions `a != 0` and `a >> 0 == 0` are contradictory \u2014 but if the external_body axiom doesn't handle this edge correctly, it could derive `false` from a satisfiable-looking precondition",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

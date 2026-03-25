@@ -1,0 +1,47 @@
+[
+  {
+    "name": "execution_equality_forces_fn_equality",
+    "type": "logical",
+    "code": "proof fn phi_1_execution_equality_forces_fn_equality(f: spec_fn(nat) -> int, g: spec_fn(nat) -> int)\n    requires\n        forall |i: nat| #[trigger] f(i) == g(i),\n    ensures\n        f == g,\n{\n    let ex1 = Execution { nat_to_state: f };\n    let ex2 = Execution { nat_to_state: g };\n    execution_equality::<int>(ex1, ex2);\n}",
+    "reason": "execution_equality is external_body forcing intensional equality of spec_fn from pointwise extensional equivalence \u2014 two structurally distinct closures are collapsed to equal",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "leads_to_from_trivial_implies",
+    "type": "behavioral",
+    "code": "proof fn phi_2_leads_to_from_trivial_implies(spec: TempPred<int>, p: TempPred<int>)\n    requires\n        spec.entails(always(p.implies(p))),\n    ensures\n        spec.entails(p.leads_to(p)),\n{\n    always_implies_to_leads_to::<int>(spec, p, p);\n}",
+    "reason": "any p trivially leads_to itself via always(p\u2192p) which is always true \u2014 leads_to(p,p) is vacuously derivable for every p, potentially masking real liveness obligations",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "always_unfold_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_3_always_unfold_intensional_bridge(ex: Execution<int>, p: TempPred<int>, i: nat)\n    requires\n        always(p).satisfied_by(ex),\n    ensures\n        p.satisfied_by(ex.suffix(i)),\n{\n    always_unfold::<int>(ex, p);\n}",
+    "reason": "always_unfold is external_body bridging the forall embedded inside always's TempPred::new closure and a bare forall in the ensures \u2014 intensionally distinct formulations equated without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "implies_apply_closure_bridge",
+    "type": "logical",
+    "code": "proof fn phi_4_implies_apply_closure_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.satisfied_by(ex),\n        (p.pred)(ex) ==> (q.pred)(ex),\n    ensures\n        q.satisfied_by(ex),\n{\n    implies_apply::<int>(ex, p, q);\n}",
+    "reason": "implies_apply is external_body bridging p.implies(q).satisfied_by(ex) through TempPred::new closure wrapping and direct implication \u2014 silently resolves closure identity mismatch",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "leads_to_vacuous_under_false_spec",
+    "type": "boundary",
+    "code": "proof fn phi_5_leads_to_vacuous_under_false_spec(p: TempPred<int>, q: TempPred<int>)\n    ensures\n        TempPred::<int>::new(|ex: Execution<int>| false).entails(p.leads_to(q)),\n{\n}",
+    "reason": "an unsatisfiable spec vacuously entails every leads_to property \u2014 any liveness claim under a contradictory spec is trivially true, which could hide specification errors",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

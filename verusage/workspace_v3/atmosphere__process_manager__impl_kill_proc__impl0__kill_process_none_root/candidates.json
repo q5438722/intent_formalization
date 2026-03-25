@@ -1,0 +1,37 @@
+[
+  {
+    "name": "parent_also_removed",
+    "target_fn": "kill_process_none_root",
+    "type": "behavioral",
+    "code": "proof fn phi_1_parent_also_removed(old_pm: ProcessManager, new_pm: ProcessManager, proc_ptr: ProcPtr)\n    requires\n        old_pm.wf(),\n        old_pm.proc_dom().contains(proc_ptr),\n        old_pm.get_proc(proc_ptr).owned_threads@ == Seq::<ThreadPtr>::empty(),\n        old_pm.get_proc(proc_ptr).children@ == Seq::<ProcPtr>::empty(),\n        old_pm.get_proc(proc_ptr).depth != 0,\n        new_pm.wf(),\n        new_pm.proc_dom() == old_pm.proc_dom().remove(proc_ptr),\n    ensures\n        !new_pm.proc_dom().contains(old_pm.get_proc(proc_ptr).parent.unwrap()),\n{\n}",
+    "reason": "Killing a leaf process should never remove its parent from the process domain"
+  },
+  {
+    "name": "parent_children_fully_cleared",
+    "target_fn": "kill_process_none_root",
+    "type": "boundary",
+    "code": "proof fn phi_2_parent_children_fully_cleared(old_pm: ProcessManager, new_pm: ProcessManager, proc_ptr: ProcPtr)\n    requires\n        old_pm.wf(),\n        old_pm.proc_dom().contains(proc_ptr),\n        old_pm.get_proc(proc_ptr).owned_threads@ == Seq::<ThreadPtr>::empty(),\n        old_pm.get_proc(proc_ptr).children@ == Seq::<ProcPtr>::empty(),\n        old_pm.get_proc(proc_ptr).depth != 0,\n        new_pm.wf(),\n        new_pm.proc_dom() == old_pm.proc_dom().remove(proc_ptr),\n        new_pm.get_proc(old_pm.get_proc(proc_ptr).parent.unwrap()).children@ =~=\n            old_pm.get_proc(old_pm.get_proc(proc_ptr).parent.unwrap()).children@.remove_value(proc_ptr),\n        new_pm.get_proc(old_pm.get_proc(proc_ptr).parent.unwrap()).children.len() ==\n            old_pm.get_proc(old_pm.get_proc(proc_ptr).parent.unwrap()).children.len() - 1,\n    ensures\n        new_pm.get_proc(old_pm.get_proc(proc_ptr).parent.unwrap()).children@ =~= Seq::<ProcPtr>::empty(),\n{\n}",
+    "reason": "Parent should only lose the killed child, not have all its children cleared"
+  },
+  {
+    "name": "container_dom_shrinks",
+    "target_fn": "kill_process_none_root",
+    "type": "logical",
+    "code": "proof fn phi_3_container_dom_shrinks(old_pm: ProcessManager, new_pm: ProcessManager, proc_ptr: ProcPtr, ret_page: PagePtr)\n    requires\n        old_pm.wf(),\n        old_pm.proc_dom().contains(proc_ptr),\n        old_pm.get_proc(proc_ptr).owned_threads@ == Seq::<ThreadPtr>::empty(),\n        old_pm.get_proc(proc_ptr).children@ == Seq::<ProcPtr>::empty(),\n        old_pm.get_proc(proc_ptr).depth != 0,\n        new_pm.wf(),\n        new_pm.proc_dom() == old_pm.proc_dom().remove(proc_ptr),\n        new_pm.page_closure() =~= old_pm.page_closure().remove(ret_page),\n        old_pm.page_closure().contains(ret_page),\n        old_pm.container_dom().contains(ret_page) == false,\n    ensures\n        exists|c: ContainerPtr| old_pm.container_dom().contains(c) && !new_pm.container_dom().contains(c),\n{\n}",
+    "reason": "Killing a process must never remove any container from the container domain"
+  },
+  {
+    "name": "endpoint_dom_shrinks",
+    "target_fn": "kill_process_none_root",
+    "type": "behavioral",
+    "code": "proof fn phi_4_endpoint_dom_shrinks(old_pm: ProcessManager, new_pm: ProcessManager, proc_ptr: ProcPtr)\n    requires\n        old_pm.wf(),\n        old_pm.proc_dom().contains(proc_ptr),\n        old_pm.get_proc(proc_ptr).owned_threads@ == Seq::<ThreadPtr>::empty(),\n        old_pm.get_proc(proc_ptr).children@ == Seq::<ProcPtr>::empty(),\n        old_pm.get_proc(proc_ptr).depth != 0,\n        new_pm.wf(),\n        new_pm.container_dom() == old_pm.container_dom(),\n        new_pm.proc_dom() == old_pm.proc_dom().remove(proc_ptr),\n        new_pm.thread_dom() == old_pm.thread_dom(),\n    ensures\n        exists|e: EndpointPtr| old_pm.endpoint_perms@.dom().contains(e) && !new_pm.endpoint_perms@.dom().contains(e),\n{\n}",
+    "reason": "Killing a threadless childless process should never destroy any endpoint"
+  },
+  {
+    "name": "returned_page_differs_from_proc",
+    "target_fn": "kill_process_none_root",
+    "type": "boundary",
+    "code": "proof fn phi_5_returned_page_differs_from_proc(old_pm: ProcessManager, new_pm: ProcessManager, proc_ptr: ProcPtr, ret_page: PagePtr)\n    requires\n        old_pm.wf(),\n        old_pm.proc_dom().contains(proc_ptr),\n        old_pm.get_proc(proc_ptr).owned_threads@ == Seq::<ThreadPtr>::empty(),\n        old_pm.get_proc(proc_ptr).children@ == Seq::<ProcPtr>::empty(),\n        old_pm.get_proc(proc_ptr).depth != 0,\n        new_pm.wf(),\n        new_pm.container_dom() == old_pm.container_dom(),\n        new_pm.proc_dom() == old_pm.proc_dom().remove(proc_ptr),\n        new_pm.thread_dom() == old_pm.thread_dom(),\n        new_pm.page_closure() =~= old_pm.page_closure().remove(ret_page),\n        old_pm.page_closure().contains(ret_page),\n        old_pm.container_dom().contains(ret_page) == false,\n        old_pm.memory_disjoint(),\n        new_pm.memory_disjoint(),\n    ensures\n        ret_page != proc_ptr,\n{\n}",
+    "reason": "The freed page should be the process's own backing page, not some unrelated page"
+  }
+]

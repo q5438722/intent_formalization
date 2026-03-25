@@ -1,0 +1,52 @@
+[
+  {
+    "name": "inv_allows_zero_layers",
+    "target_fn": "Arch::inv",
+    "type": "boundary",
+    "reason": "A zero-layer architecture satisfying inv() would allow degenerate page table structures that map no addresses",
+    "entailed": true,
+    "verified": 11,
+    "errors": 0,
+    "output_tail": "verification results:: 11 verified, 0 errors\n\n"
+  },
+  {
+    "name": "entry_base_non_injective",
+    "target_fn": "Arch::entry_base",
+    "type": "behavioral",
+    "reason": "Non-injective entry bases would allow distinct page table entries to map overlapping virtual address regions",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": "-------------------------------- at the end of the function body\n...\n265 |         arch.entry_base(layer, base, i) == arch.entry_base(layer, base, j),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "consecutive_entries_not_contiguous",
+    "target_fn": "Arch::entry_base",
+    "type": "behavioral",
+    "reason": "Non-contiguous entry bases would leave unmapped gaps in the virtual address space between consecutive entries",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": "       arch.entry_base(layer, base, (i + 1) as nat) != arch.entry_base(layer, base, i) + arch.entry_size(layer),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "page_frame_size_mismatch",
+    "target_fn": "Directory::pages_match_entry_size",
+    "type": "logical",
+    "reason": "Page frames with sizes mismatching the layer entry size would cause incorrect address translation boundaries",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": "---------------------------------------------------- at the end of the function body\n...\n263 |         d.entries[i as int]->Page_0.frame.size != d.entry_size(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "subdir_bases_overlap",
+    "target_fn": "Directory::directories_are_in_next_layer",
+    "type": "logical",
+    "reason": "Subdirectories sharing the same base virtual address would cause ambiguous overlapping translations in the page table walk",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": "he function body\n...\n266 |         d.entries[i as int]->Directory_0.base_vaddr == d.entries[j as int]->Directory_0.base_vaddr,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

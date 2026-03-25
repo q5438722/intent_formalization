@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: walk_next_external_body_unconstrained
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `walk_next` is `external_body` with `unimplemented!()` — the entire page table walk stepping function is completely opaque and unverified. Since `iter_walk` depends on it, all walk results inherit this trust gap. This is a fundamental unverified assumption in the MMU specification.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: lemma_aux1_external_body_path_equality
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `lemma_iter_walk_result_vbase_equal_aux1` is `external_body` with `unimplemented!()` — the path equality property (walking from an aligned result vaddr produces the same path) is asserted without proof. This is an unverified trust assumption in the walk idempotency chain.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: lemma_aux2_external_body_vaddr_idempotent
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `lemma_iter_walk_result_vbase_equal_aux2` is `external_body` with `unimplemented!()` — the vaddr idempotency property is asserted without proof. Combined with aux1, the entire `lemma_iter_walk_result_vbase_equal` is built on two unverified assumptions.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: flags_eagerly_computed_beyond_path
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: In Verus spec mode, out-of-bounds indexing on `Seq` returns an arbitrary value but doesn't cause unsoundness — the result is never used because the `if path.len() == 2` branch selects `flags1`. The final flags value is correct for the actual path length.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: walk_result_invalid_aligns_to_page
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: For a page-aligned vaddr, `align_to_usize(vaddr, PAGE_SIZE) == vaddr` is trivially correct. The alignment behavior for non-aligned addresses is intentional — invalid walk results report at page granularity, which matches x86 page fault semantics.
+===VERDICT_END===
+
+===SUMMARY===
+Three true positives: `walk_next` is entirely `external_body` making the core walk mechanism unverified, and both auxiliary lemmas (`aux1` path equality, `aux2` vaddr idempotency) are `external_body` trust assumptions without proof. Two false positives: eager flag computation beyond path length is safe in spec mode, and page-aligned invalid vaddr reporting is correct x86 semantics.
+===END_SUMMARY===

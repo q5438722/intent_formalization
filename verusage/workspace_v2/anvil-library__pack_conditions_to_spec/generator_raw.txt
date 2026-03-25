@@ -1,0 +1,85 @@
+===PHI_START===
+NAME: leads_to_unfold_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_leads_to_unfold_intensional_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>, i: nat)
+    requires
+        p.leads_to(q).satisfied_by(ex),
+    ensures
+        p.implies(eventually(q)).satisfied_by(ex.suffix(i)),
+{
+    leads_to_unfold::<int>(ex, p, q);
+}
+```
+REASON: leads_to_unfold is external_body bridging always's TempPred::new closure-wrapped forall to a bare forall in ensures — intensionally distinct formulations equated without proof
+===PHI_END===
+
+===PHI_START===
+NAME: implies_apply_closure_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_implies_apply_closure_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>)
+    requires
+        p.satisfied_by(ex),
+        (p.pred)(ex) ==> (q.pred)(ex),
+    ensures
+        q.satisfied_by(ex),
+{
+    implies_apply::<int>(ex, p, q);
+}
+```
+REASON: implies_apply is external_body bridging p.implies(q).satisfied_by(ex) through TempPred::new closure wrapping — resolves closure identity mismatch without proof
+===PHI_END===
+
+===PHI_START===
+NAME: always_propagate_forwards_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_always_propagate_forwards_intensional_bridge(ex: Execution<int>, p: TempPred<int>, i: nat, j: nat)
+    requires
+        always(p).satisfied_by(ex),
+    ensures
+        always(p).satisfied_by(ex.suffix(i)),
+{
+    always_propagate_forwards::<int>(ex, p, i);
+}
+```
+REASON: always_propagate_forwards is external_body shifting always(p) to a suffix — requires resolving that forall over ex.suffix(i).suffix(j) equals forall over ex.suffix(i+j) through intensional closure gaps
+===PHI_END===
+
+===PHI_START===
+NAME: pack_conditions_weakens_spec
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_pack_conditions_weakens_spec(spec: TempPred<int>, c: TempPred<int>, p: TempPred<int>, q: TempPred<int>)
+    requires
+        spec.entails(p.and(c).leads_to(q)),
+    ensures
+        spec.and(always(c)).entails(p.leads_to(q)),
+{
+    pack_conditions_to_spec::<int>(spec, c, p, q);
+}
+```
+REASON: pack_conditions_to_spec strengthens the spec with always(c) to remove c from the leads_to antecedent — if always(c) is unsatisfiable this vacuously proves any leads_to, silently discarding the condition
+===PHI_END===
+
+===PHI_START===
+NAME: false_spec_any_leads_to
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_false_spec_any_leads_to(p: TempPred<int>, q: TempPred<int>)
+    requires
+        TempPred::<int>::new(|ex: Execution<int>| false).entails(p.and(TempPred::new(|ex: Execution<int>| false)).leads_to(q)),
+    ensures
+        TempPred::<int>::new(|ex: Execution<int>| false).and(always(TempPred::new(|ex: Execution<int>| false))).entails(p.leads_to(q)),
+{
+    pack_conditions_to_spec::<int>(TempPred::new(|ex: Execution<int>| false), TempPred::new(|ex: Execution<int>| false), p, q);
+}
+```
+REASON: an unsatisfiable spec vacuously satisfies all entailment premises — pack_conditions_to_spec propagates vacuous truth producing arbitrary leads_to conclusions
+===PHI_END===

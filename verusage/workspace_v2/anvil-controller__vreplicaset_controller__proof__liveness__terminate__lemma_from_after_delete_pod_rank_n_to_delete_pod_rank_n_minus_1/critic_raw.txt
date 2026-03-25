@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: marshal_preserves_integrity_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `marshal_preserves_integrity` is `#[verifier::external_body]` with `unimplemented!()` — the marshal/unmarshal roundtrip is axiomatically assumed without proof. All downstream integrity reasoning is trusted, not verified.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: unmarshal_ignores_state_validation
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is standard Kubernetes design. Unmarshalling is pure deserialization; state validation is a separate admission-time concern. Coupling validation into unmarshal would conflate parsing with policy enforcement.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: marshal_spec_not_injective
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `marshal_spec` is `uninterp spec fn` — Verus treats uninterpreted functions as injective (equal outputs require equal inputs). The requires clause `s1 != s2 && marshal_spec(s1) == marshal_spec(s2)` is unsatisfiable, making this vacuously true. No real non-injectivity is demonstrated.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: object_ref_ignores_uid
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `ObjectRef` is intentionally a (kind, name, namespace) triple — this is the standard Kubernetes resource identity model. UID-based disambiguation is handled separately through owner references and garbage collection, not through ObjectRef lookups.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: update_key_ignores_obj_namespace
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `UpdateRequest::key()` derives namespace from `self.namespace` rather than `self.obj.metadata.namespace`. If these diverge, the object is stored under a key inconsistent with its own metadata. The same pattern appears in `UpdateStatusRequest::key()`.
+===VERDICT_END===
+
+===SUMMARY===
+Of the 5 candidates, 2 are true positives. `marshal_preserves_integrity_external_body` identifies a real soundness gap: the marshal/unmarshal roundtrip axiom is entirely trusted via `external_body` with no proof. `update_key_ignores_obj_namespace` flags a genuine spec concern where request-level namespace can silently disagree with the embedded object's metadata namespace. The remaining 3 are false positives: unmarshal intentionally omits state validation (by design), `marshal_spec` non-injectivity is vacuously true due to uninterpreted function semantics, and `object_ref` ignoring UID is standard Kubernetes identity semantics.
+===END_SUMMARY===

@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: aligned_zero_size
+TARGET_FN: aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_aligned_zero_size(addr: nat)
+    ensures
+        aligned(addr, 0),
+{
+}
+```
+REASON: If aligned(addr, 0) is always true, any address is vacuously "aligned" to size zero, which is meaningless and could mask alignment-check bugs.
+===PHI_END===
+
+===PHI_START===
+NAME: inv_allows_empty_arch
+TARGET_FN: inv
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_inv_allows_empty_arch(a: Arch)
+    requires
+        a.layers.len() == 0,
+    ensures
+        a.inv(),
+{
+}
+```
+REASON: If an architecture with zero layers satisfies inv(), the invariant is too weak—an empty page table hierarchy is nonsensical and would let downstream proofs vacuously hold.
+===PHI_END===
+
+===PHI_START===
+NAME: upper_vaddr_equals_base
+TARGET_FN: upper_vaddr
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_upper_vaddr_equals_base(a: Arch, layer: nat, base: nat)
+    requires
+        a.inv(),
+        layer < a.layers.len(),
+    ensures
+        a.upper_vaddr(layer, base) == base,
+{
+}
+```
+REASON: If upper_vaddr equals the base, the mapped address range has zero size, meaning the layer maps nothing—defeating the purpose of the page table level.
+===PHI_END===
+
+===PHI_START===
+NAME: entry_base_ignores_base
+TARGET_FN: entry_base
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_entry_base_ignores_base(a: Arch, layer: nat, base: nat)
+    requires
+        a.inv(),
+        layer < a.layers.len(),
+        base > 0,
+    ensures
+        a.entry_base(layer, base, 0) != base,
+{
+}
+```
+REASON: entry_base at index 0 must equal the base address; if it doesn't, the arithmetic is broken and all derived virtual addresses would be shifted incorrectly.
+===PHI_END===
+
+===PHI_START===
+NAME: child_layer_entry_not_smaller
+TARGET_FN: entry_size_is_next_layer_size
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_child_layer_entry_not_smaller(a: Arch, i: nat)
+    requires
+        a.inv(),
+        i + 1 < a.layers.len(),
+    ensures
+        a.entry_size((i + 1) as nat) >= a.entry_size(i),
+{
+}
+```
+REASON: In a well-formed page table hierarchy, inner layers must map strictly smaller regions than outer layers; if a child layer's entry_size is >= the parent's, the hierarchical decomposition is violated.
+===PHI_END===

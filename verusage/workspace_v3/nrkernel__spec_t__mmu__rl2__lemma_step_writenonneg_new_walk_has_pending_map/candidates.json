@@ -1,0 +1,37 @@
+[
+  {
+    "name": "align_exceeds_input",
+    "target_fn": "align_to_usize",
+    "type": "behavioral",
+    "code": "proof fn phi_1_align_exceeds_input(a: usize, b: usize)\n    requires\n        b > 0,\n        a < usize::MAX,\n    ensures\n        align_to_usize(a, b) > a,\n{\n}",
+    "reason": "Aligning down should never produce a value exceeding the original input"
+  },
+  {
+    "name": "align_zero_nonzero",
+    "target_fn": "align_to_usize",
+    "type": "boundary",
+    "code": "proof fn phi_2_align_zero_nonzero(b: usize)\n    requires\n        b > 0,\n    ensures\n        align_to_usize(0usize, b) != 0usize,\n{\n}",
+    "reason": "Aligning zero down to any positive alignment must yield zero"
+  },
+  {
+    "name": "align_result_not_aligned",
+    "target_fn": "aligned",
+    "type": "logical",
+    "code": "proof fn phi_3_align_result_not_aligned(a: usize, b: usize)\n    requires\n        b > 0,\n        a >= b,\n    ensures\n        !aligned(align_to_usize(a, b) as nat, b as nat),\n{\n}",
+    "reason": "The result of align_to_usize must itself be aligned to the given boundary"
+  },
+  {
+    "name": "aligned_input_changes",
+    "target_fn": "align_to_usize",
+    "type": "logical",
+    "code": "proof fn phi_4_aligned_input_changes(a: usize, b: usize)\n    requires\n        b > 0,\n        aligned(a as nat, b as nat),\n    ensures\n        align_to_usize(a, b) != a,\n{\n}",
+    "reason": "An already-aligned address must be a fixed point of align_to_usize"
+  },
+  {
+    "name": "align_gap_exceeds_step",
+    "target_fn": "align_to_usize",
+    "type": "boundary",
+    "code": "proof fn phi_5_align_gap_exceeds_step(a: usize, b: usize)\n    requires\n        b > 0,\n        a >= b,\n    ensures\n        (a - align_to_usize(a, b)) >= b,\n{\n}",
+    "reason": "The rounding-down distance must be strictly less than the alignment granularity"
+  }
+]

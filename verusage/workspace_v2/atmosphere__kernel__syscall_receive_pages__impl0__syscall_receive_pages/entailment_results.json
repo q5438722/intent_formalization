@@ -1,0 +1,47 @@
+[
+  {
+    "name": "get_proc_ensures_owned_threads_wf_without_full_wf",
+    "type": "logical",
+    "code": "proof fn phi_1_get_proc_ensures_owned_threads_wf_without_full_wf(pm: ProcessManager, p_ptr: ProcPtr)\n    requires\n        pm.proc_perms_wf(),\n        pm.process_fields_wf(),\n        pm.proc_dom().contains(p_ptr),\n    ensures\n        pm.get_proc(p_ptr).owned_threads.wf(),\n{\n}",
+    "reason": "`get_proc`'s external_body ensures `ret.owned_threads.wf()` unconditionally (not gated on `self.wf()`), so it leaks structural invariants from weaker preconditions than the spec intends",
+    "entailed": true,
+    "verus_output": "[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__kernel__syscall_receive_pages__impl0__syscall_receive_pages/phi_1_get_proc_ensures_owned_threads_wf_without_full_wf.rs:203:10\n    |\n203 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: 28 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "get_thread_leaks_container_scheduler_wf",
+    "type": "logical",
+    "code": "proof fn phi_2_get_thread_leaks_container_scheduler_wf(pm: ProcessManager, t_ptr: ThreadPtr)\n    requires\n        pm.wf(),\n        pm.thread_dom().contains(t_ptr),\n    ensures\n        pm.get_container(pm.get_thread(t_ptr).owning_container).scheduler.wf(),\n        pm.get_container(pm.get_thread(t_ptr).owning_container).owned_procs.wf(),\n        pm.get_container(pm.get_thread(t_ptr).owning_container).children.wf(),\n{\n}",
+    "reason": "`get_thread`'s external_body ensures wf of the owning container's scheduler/procs/children \u2014 this couples thread lookup to container invariants that should be established independently via `container_fields_wf`",
+    "entailed": false,
+    "verus_output": "3 | proof fn phi_2_get_thread_leaks_container_scheduler_wf(pm: ProcessManager, t_ptr: ThreadPtr)\n     |       -------------------------------------------------------------------------------------- at the end of the function body\n...\n3349 |         pm.get_container(pm.get_thread(t_ptr).owning_container).owned_procs.wf(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 2 previous errors; 28 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "get_proc_ensures_container_dom_from_wf",
+    "type": "behavioral",
+    "code": "proof fn phi_3_get_proc_ensures_container_dom_from_wf(pm: ProcessManager, p_ptr: ProcPtr)\n    requires\n        pm.proc_perms_wf(),\n        pm.process_fields_wf(),\n        pm.proc_dom().contains(p_ptr),\n        pm.wf(),\n    ensures\n        pm.container_dom().contains(pm.get_proc(p_ptr).owning_container),\n{\n}",
+    "reason": "`get_proc`'s external_body ensures `self.wf() ==> self.container_dom().contains(ret.owning_container)` \u2014 this cross-subsystem containment guarantee is asserted by the accessor rather than by a dedicated relational invariant",
+    "entailed": false,
+    "verus_output": "wf.rs:3350:9\n     |\n3343 | proof fn phi_3_get_proc_ensures_container_dom_from_wf(pm: ProcessManager, p_ptr: ProcPtr)\n     |       ----------------------------------------------------------------------------------- at the end of the function body\n...\n3350 |         pm.container_dom().contains(pm.get_proc(p_ptr).owning_container),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 28 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "thread_inv_external_body_unchecked",
+    "type": "logical",
+    "code": "proof fn phi_4_thread_inv_external_body_unchecked(pm: ProcessManager, t_ptr: ThreadPtr)\n    requires\n        pm.wf(),\n        pm.thread_dom().contains(t_ptr),\n    ensures\n        pm.proc_dom().contains(pm.get_thread(t_ptr).owning_proc),\n        pm.get_proc(pm.get_thread(t_ptr).owning_proc).owning_container == pm.get_thread(t_ptr).owning_container,\n{\n}",
+    "reason": "`thread_inv` is `external_body` \u2014 the thread-to-process ownership consistency (proc contains thread, proc's container matches thread's container) is axiomatically assumed without proof",
+    "entailed": false,
+    "verus_output": "d(pm: ProcessManager, t_ptr: ThreadPtr)\n     |       --------------------------------------------------------------------------------- at the end of the function body\n...\n3349 |         pm.get_proc(pm.get_thread(t_ptr).owning_proc).owning_container == pm.get_thread(t_ptr).owning_container,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 2 previous errors; 28 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "endpoint_inv_queue_threads_in_dom",
+    "type": "behavioral",
+    "code": "proof fn phi_5_endpoint_inv_queue_threads_in_dom(pm: ProcessManager, e_ptr: EndpointPtr, i: int)\n    requires\n        pm.wf(),\n        pm.endpoint_dom().contains(e_ptr),\n        0 <= i < pm.get_endpoint(e_ptr).queue.len(),\n    ensures\n        pm.thread_dom().contains(pm.get_endpoint(e_ptr).queue@[i]),\n        pm.get_thread(pm.get_endpoint(e_ptr).queue@[i]).state == ThreadState::BLOCKED,\n{\n    pm.endpoint_inv();\n}",
+    "reason": "`endpoint_inv` is `external_body` \u2014 the guarantee that all threads in an endpoint queue are valid and BLOCKED is trusted without proof, which could mask invariant violations during concurrent queue manipulation",
+    "entailed": true,
+    "verus_output": "10\n    |\n194 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__kernel__syscall_receive_pages__impl0__syscall_receive_pages/phi_5_endpoint_inv_queue_threads_in_dom.rs:203:10\n    |\n203 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: 28 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

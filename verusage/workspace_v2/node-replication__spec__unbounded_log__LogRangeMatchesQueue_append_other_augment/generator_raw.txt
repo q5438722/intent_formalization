@@ -1,0 +1,126 @@
+===PHI_START===
+NAME: append_other_augment_extends_range
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_append_other_augment_extends_range<DT: Dispatch>(
+    queue: Seq<ReqId>,
+    log: Map<LogIdx, LogEntry<DT>>,
+    nodeId: NodeId,
+    updates: Map<ReqId, UpdateState<DT>>,
+    new_updates: Map<ReqId, UpdateState<DT>>,
+    new_rid: ReqId,
+    log_entry: LogEntry<DT>,
+    logUpper: LogIdx,
+)
+    requires
+        LogContainsEntriesUpToHere(log, logUpper),
+        log_entry.node_id != nodeId,
+        new_updates.contains_key(new_rid),
+        new_updates[new_rid] === (UpdateState::Placed { op: log_entry.op, idx: logUpper }),
+        !queue.contains(new_rid),
+        forall |rid| #[trigger] updates.contains_key(rid) && rid != new_rid ==> new_updates.contains_key(rid) && new_updates[rid] === updates[rid],
+        LogRangeMatchesQueue(queue, log, 0, 0, logUpper, nodeId, updates),
+    ensures ({
+        let new_log = log.insert(logUpper, log_entry);
+        LogRangeMatchesQueue(queue, new_log, 0, 0, logUpper + 1, nodeId, new_updates)
+    }),
+{
+    LogRangeMatchesQueue_append_other_augment(queue, log, log.insert(logUpper, log_entry), 0, 0, logUpper, nodeId, updates, new_updates, new_rid, log_entry);
+}
+```
+REASON: Appending a remote entry extends the log range by 1 without changing the queue — tests the augment variant that both preserves existing entries and extends the range
+===PHI_END===
+
+===PHI_START===
+NAME: remote_entry_no_queue_consumption
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_remote_entry_no_queue_consumption<DT: Dispatch>(
+    queue: Seq<ReqId>,
+    log: Map<LogIdx, LogEntry<DT>>,
+    nodeId: NodeId,
+    remoteId: NodeId,
+    updates: Map<ReqId, UpdateState<DT>>,
+    logIdx: LogIdx,
+)
+    requires
+        LogContainsEntriesUpToHere(log, logIdx + 1),
+        log[logIdx].node_id == remoteId,
+        remoteId != nodeId,
+        LogRangeMatchesQueue(queue, log, 0, logIdx, logIdx + 1, nodeId, updates),
+    ensures
+        queue.len() == 0,
+{
+}
+```
+REASON: A single remote entry skips the queue entirely — the recursion steps to `[logIdx+1, logIdx+1)` which forces `queueIndex == queue.len()`
+===PHI_END===
+
+===PHI_START===
+NAME: local_entry_placed_idx_link
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_local_entry_placed_idx_link<DT: Dispatch>(
+    queue: Seq<ReqId>,
+    log: Map<LogIdx, LogEntry<DT>>,
+    nodeId: NodeId,
+    updates: Map<ReqId, UpdateState<DT>>,
+    logIdx: LogIdx,
+)
+    requires
+        LogContainsEntriesUpToHere(log, logIdx + 1),
+        log[logIdx].node_id == nodeId,
+        LogRangeMatchesQueue(queue, log, 0, logIdx, logIdx + 1, nodeId, updates),
+    ensures
+        queue.len() == 1,
+        updates.contains_key(queue[0]),
+        updates[queue[0]] is Placed,
+        updates[queue[0]].arrow_Placed_idx() == logIdx,
+{
+}
+```
+REASON: A single local entry links exactly one queue element's Placed index to the log position — tests the core matching invariant
+===PHI_END===
+
+===PHI_START===
+NAME: empty_range_exhausts_queue
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_empty_range_exhausts_queue<DT: Dispatch>(
+    queue: Seq<ReqId>,
+    log: Map<LogIdx, LogEntry<DT>>,
+    nodeId: NodeId,
+    updates: Map<ReqId, UpdateState<DT>>,
+    idx: LogIdx,
+    qi: nat,
+)
+    requires
+        qi <= queue.len(),
+        LogRangeMatchesQueue(queue, log, qi, idx, idx, nodeId, updates),
+    ensures
+        qi == queue.len(),
+{
+}
+```
+REASON: Empty log range forces queue index to equal queue length — base case of the recursion
+===PHI_END===
+
+===PHI_START===
+NAME: dispatch_trait_trusted_no_constraints
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_dispatch_trait_trusted_no_constraints<DT: Dispatch>(op: DT::WriteOperation, nid: NodeId)
+    ensures ({
+        let e = LogEntry::<DT> { op, node_id: nid };
+        e.node_id == nid
+    }),
+{
+}
+```
+REASON: `Dispatch` is `#[verus::trusted]` — associated types are unconstrained, meaning any implementation could introduce unsound type relationships
+===PHI_END===

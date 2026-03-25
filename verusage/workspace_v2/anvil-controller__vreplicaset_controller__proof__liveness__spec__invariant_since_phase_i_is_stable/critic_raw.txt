@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: crash_disabled_ignores_other_controllers
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures clause is a tautology (`P || !P`), so this proves nothing about the spec. The observation that crash_disabled is per-controller is intentional — the liveness proof's `invariants_since_phase_i` only needs to assume the specific controller doesn't crash, matching how Kubernetes controllers operate independently.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: stable_always_external_body_unsound
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: This is a real soundness gap. `always_p_is_stable` with `#[verifier::external_body]` lets you prove `valid(stable(always(lift_state(|s| false))))` — that falsehood is stably always true. While the lemma's postcondition is mathematically correct (always(p) is indeed stable for any p), the external_body means Verus trusts this without checking, and the same pattern applies to `stable_and_temp`. Any bug in these assumed lemmas would silently compromise the entire temporal logic proof chain.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: object_ref_collision_in_schedule
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This mirrors real Kubernetes semantics where resources are identified by (kind, name, namespace) — the API server enforces uniqueness at this level, so two live objects with the same kind/name/namespace cannot coexist. UID distinguishes incarnations across delete-recreate, but the scheduling map keyed by ObjectRef correctly reflects that at any point in time, only one incarnation exists for a given key. The `the_object_in_schedule_has_spec_and_uid_as` predicate additionally checks uid to ensure the scheduled object matches the expected incarnation.
+===VERDICT_END===
+
+===SUMMARY===
+Of three verified candidates, only `stable_always_external_body_unsound` is a true positive — it demonstrates that the `#[verifier::external_body]` annotations on temporal logic lemmas (`always_p_is_stable`, `stable_and_temp`) create an unverified trust boundary. While the mathematical claims are correct, the external_body mechanism means any implementation error would silently propagate unsoundness through the entire stability proof chain. The other two candidates are false positives: `crash_disabled_ignores_other_controllers` has a tautological ensures clause proving nothing, and `object_ref_collision_in_schedule` reflects intentional Kubernetes API semantics where resources are uniquely identified by kind+name+namespace.
+===END_SUMMARY===

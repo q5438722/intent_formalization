@@ -1,0 +1,47 @@
+[
+  {
+    "name": "execution_equality_forces_fn_equality",
+    "type": "logical",
+    "code": "proof fn phi_1_execution_equality_forces_fn_equality(f: spec_fn(nat) -> int, g: spec_fn(nat) -> int)\n    requires\n        forall |i: nat| #[trigger] f(i) == g(i),\n    ensures\n        f == g,\n{\n    let ex1 = Execution { nat_to_state: f };\n    let ex2 = Execution { nat_to_state: g };\n    execution_equality::<int>(ex1, ex2);\n}",
+    "reason": "execution_equality forces intensional equality of spec_fn from pointwise extensional equivalence \u2014 two structurally distinct closures are collapsed to equal without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "suffix_zero_equals_self",
+    "type": "boundary",
+    "code": "proof fn phi_2_suffix_zero_equals_self(ex: Execution<int>)\n    ensures\n        ex.suffix(0) == ex,\n{\n    assert forall |i: nat| #[trigger] (ex.suffix(0).nat_to_state)(i) == (ex.nat_to_state)(i) by {\n        assert((ex.suffix(0).nat_to_state)(i) == (ex.nat_to_state)(i + 0));\n    };\n    execution_equality::<int>(ex.suffix(0), ex);\n}",
+    "reason": "suffix(0) creates a fresh closure |i| f(i+0) which is intensionally distinct from f \u2014 execution_equality silently bridges this without the SMT solver proving closure identity",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "suffix_composition_equals_addition",
+    "type": "boundary",
+    "code": "proof fn phi_3_suffix_composition_equals_addition(ex: Execution<int>, a: nat, b: nat)\n    ensures\n        ex.suffix(a).suffix(b) == ex.suffix(a + b),\n{\n    assert forall |i: nat| #[trigger] (ex.suffix(a).suffix(b).nat_to_state)(i) == (ex.suffix(a + b).nat_to_state)(i) by {\n        assert((ex.suffix(a).suffix(b).nat_to_state)(i) == (ex.nat_to_state)(i + b + a));\n        assert((ex.suffix(a + b).nat_to_state)(i) == (ex.nat_to_state)(i + (a + b)));\n    };\n    execution_equality::<int>(ex.suffix(a).suffix(b), ex.suffix(a + b));\n}",
+    "reason": "suffix(a).suffix(b) nests two closure wrappers while suffix(a+b) has one \u2014 execution_equality collapses the intensionally distinct nested closures to equal",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "eventually_unfold_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_4_eventually_unfold_intensional_bridge(ex: Execution<int>, p: TempPred<int>, i: nat)\n    requires\n        p.satisfied_by(ex.suffix(i)),\n    ensures\n        eventually(p).satisfied_by(ex),\n{\n    eventually_unfold::<int>(ex, p);\n}",
+    "reason": "eventually_unfold is external_body extracting the existential from eventually's TempPred::new closure \u2014 this bridges the intensional gap, and the proof should fail since the requires don't establish eventually(p).satisfied_by(ex)",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "eventually_propagate_to_zero",
+    "type": "behavioral",
+    "code": "proof fn phi_5_eventually_propagate_to_zero(ex: Execution<int>, p: TempPred<int>, i: nat)\n    requires\n        p.satisfied_by(ex.suffix(i)),\n    ensures\n        eventually(p).satisfied_by(ex),\n{\n    assert(eventually(p).satisfied_by(ex.suffix(0))) by {\n        assert(p.satisfied_by(ex.suffix(0).suffix(i)));\n        execution_equality::<int>(ex.suffix(0).suffix(i), ex.suffix(i));\n    };\n    execution_equality::<int>(ex.suffix(0), ex);\n}",
+    "reason": "combining execution_equality to equate suffix(0) with self and suffix(0).suffix(i) with suffix(i) lets us inject witness i into eventually's closure for any execution \u2014 the external_body axiom does all the real work",
+    "entailed": false,
+    "verus_output": "verification results:: 1 verified, 1 errors\nerror: assertion failed\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-library__eventually_propagate_backwards/phi_5_eventually_propagate_to_zero.rs:92:16\n   |\n92 |         assert(p.satisfied_by(ex.suffix(0).suffix(i)));\n   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ assertion failed\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

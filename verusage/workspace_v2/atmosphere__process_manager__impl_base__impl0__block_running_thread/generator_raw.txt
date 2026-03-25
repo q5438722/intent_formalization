@@ -1,0 +1,95 @@
+===PHI_START===
+NAME: get_proc_leaks_container_dom_without_wf
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_get_proc_leaks_container_dom_without_wf(pm: ProcessManager, proc_ptr: ProcPtr)
+    requires
+        pm.proc_perms_wf(),
+        pm.process_fields_wf(),
+        pm.proc_dom().contains(proc_ptr),
+        !pm.wf(),
+    ensures
+        pm.container_dom().contains(pm.get_proc(proc_ptr).owning_container),
+{
+}
+```
+REASON: get_proc's external_body ensures `self.wf() ==> container_dom contains owning_container` but the ensures clause is guarded by wf() — yet the spec_get_proc inline spec has no such guarantee, creating a gap between the exec ensures and the spec recommends
+===PHI_END===
+
+===PHI_START===
+NAME: get_thread_leaks_container_scheduler_wf
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_get_thread_leaks_container_scheduler_wf(pm: ProcessManager, t_ptr: ThreadPtr)
+    requires
+        pm.wf(),
+        pm.thread_dom().contains(t_ptr),
+    ensures
+        pm.get_container(pm.get_thread(t_ptr).owning_container).scheduler.wf(),
+        pm.get_container(pm.get_thread(t_ptr).owning_container).owned_procs.wf(),
+        pm.get_container(pm.get_thread(t_ptr).owning_container).children.wf(),
+{
+}
+```
+REASON: get_thread's external_body ensures wf() for scheduler/owned_procs/children of the owning container — these should follow from wf() invariants, but being in external_body means they're trusted without proof and could mask missing invariant clauses
+===PHI_END===
+
+===PHI_START===
+NAME: owned_threads_shared_across_containers
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_owned_threads_shared_across_containers(
+    pm: ProcessManager,
+    c1: ContainerPtr,
+    c2: ContainerPtr,
+    t: ThreadPtr,
+)
+    requires
+        pm.wf(),
+        pm.container_dom().contains(c1),
+        pm.container_dom().contains(c2),
+        c1 != c2,
+        pm.get_container(c1).owned_threads@.contains(t),
+        pm.get_container(c2).owned_threads@.contains(t),
+    ensures
+        true,
+{
+}
+```
+REASON: No disjointness constraint on owned_threads across containers — two containers can claim the same thread simultaneously despite the resource ownership model requiring exclusive ownership
+===PHI_END===
+
+===PHI_START===
+NAME: sll_len_without_wf_returns_value_list_len
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)
+    ensures
+        sll.len() == sll.value_list_len,
+{
+}
+```
+REASON: StaticLinkedList::len's external_body unconditionally ensures l == self.value_list_len without requiring wf() — the raw internal field is exposed even for malformed lists, bypassing the well-formedness abstraction
+===PHI_END===
+
+===PHI_START===
+NAME: inactive_cpu_has_arbitrary_owning_container
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_inactive_cpu_has_arbitrary_owning_container(pm: ProcessManager, cpu_i: CpuId)
+    requires
+        pm.wf(),
+        0 <= cpu_i < NUM_CPUS,
+        pm.cpu_list@[cpu_i as int].active == false,
+    ensures
+        pm.container_dom().contains(pm.cpu_list@[cpu_i as int].owning_container),
+{
+}
+```
+REASON: container_cpu_wf requires ALL cpus (active or not) to have owning_container in container_dom — inactive CPUs should arguably have no meaningful owning_container, yet the spec forces a valid container binding even when the CPU is not running
+===PHI_END===

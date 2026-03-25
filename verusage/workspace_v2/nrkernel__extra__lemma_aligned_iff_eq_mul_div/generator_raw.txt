@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: aligned_iff_mul_div
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_aligned_iff_mul_div(a: nat, b: nat)
+    requires
+        b > 0,
+    ensures
+        aligned(a, b) <==> a == b * (a / b),
+{
+    lemma_aligned_iff_eq_mul_div(a, b);
+}
+```
+REASON: The biconditional between alignment and division roundtrip — direct consequence of the verified lemma
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_implies_div_exact
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_aligned_implies_div_exact(a: nat, b: nat)
+    requires
+        b > 0,
+        aligned(a, b),
+    ensures
+        a == b * (a / b),
+{
+    lemma_aligned_iff_eq_mul_div(a, b);
+}
+```
+REASON: Forward direction — when aligned, division is exact with no remainder
+===PHI_END===
+
+===PHI_START===
+NAME: mul_div_implies_aligned
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_mul_div_implies_aligned(a: nat, b: nat)
+    requires
+        b > 0,
+        a == b * (a / b),
+    ensures
+        aligned(a, b),
+{
+    lemma_aligned_iff_eq_mul_div(a, b);
+}
+```
+REASON: Reverse direction — exact division roundtrip implies alignment
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_zero
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_aligned_zero(b: nat)
+    requires
+        b > 0,
+    ensures
+        aligned(0, b),
+{
+}
+```
+REASON: Zero is aligned to everything — boundary test of the `%` definition
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_multiple
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_aligned_multiple(a: nat, b: nat)
+    requires
+        b > 0,
+    ensures
+        aligned(a * b, b),
+{
+    assert(a * b % b == 0) by (nonlinear_arith)
+        requires b > 0;
+}
+```
+REASON: Any multiple of `b` is aligned to `b` — tests that multiples satisfy the alignment predicate
+===PHI_END===

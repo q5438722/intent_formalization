@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: lemma_entry_sizes_aligned_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `lemma_entry_sizes_aligned` is `external_body` with `unimplemented!()` body — the alignment of coarser layer entry sizes to finer ones is trusted without proof. While mathematically correct (follows from `entry_size(i) = entry_size(i+1) * num_entries(i+1)`), the inductive proof is missing.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: self_aligned
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Self-alignment (`x % x == 0`) is trivially true for any nonzero nat, and `inv()` ensures `entry_size > 0`. While it happens to go through the external_body, this is a correct mathematical tautology.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: aligned_auto_instantiation
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is just an instantiation of `lemma_entry_sizes_aligned_auto` at specific indices. The trust gap is already captured by φ1; this adds no new information.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: adjacent_layers_divisible
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: For adjacent layers, `entry_size(i) == entry_size(i+1) * num_entries(i+1)` is directly stated in `inv()` via `entry_size_is_next_layer_size`. Divisibility follows trivially from `(a*b) % a == 0`. The external_body is not needed for this case.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: aligned_transitive_via_external
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is a direct call to `lemma_entry_sizes_aligned(i, k)` — the same external_body axiom already flagged by φ1. It adds no additional trust gap beyond what φ1 captures.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: `lemma_entry_sizes_aligned` is an `external_body` axiom that trusts the inductive alignment proof between arbitrary layer pairs without verification. The other four candidates are false positives — self-alignment is a tautology, adjacent-layer divisibility follows directly from the `inv()` invariant, and the remaining two are redundant instantiations of the same external_body.
+===END_SUMMARY===

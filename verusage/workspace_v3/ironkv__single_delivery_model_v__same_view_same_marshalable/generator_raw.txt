@@ -1,0 +1,88 @@
+===PHI_START===
+NAME: to_vec_always_empty
+TARGET_FN: to_vec
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_to_vec_always_empty(m: CKeyHashMap)
+    requires
+        m.is_marshalable(),
+    ensures
+        m.spec_to_vec().len() == 0,
+{
+}
+```
+REASON: If entailed, to_vec would always return an empty vector regardless of map contents, losing all entries.
+===PHI_END===
+
+===PHI_START===
+NAME: to_vec_len_always_one
+TARGET_FN: to_vec
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_to_vec_len_always_one(m: CKeyHashMap)
+    requires
+        m.is_marshalable(),
+    ensures
+        m.spec_to_vec().len() <= 1,
+{
+}
+```
+REASON: If entailed, to_vec collapses any multi-entry map to at most one element, silently discarding data.
+===PHI_END===
+
+===PHI_START===
+NAME: to_vec_ignores_map_contents
+TARGET_FN: to_vec
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_to_vec_ignores_map_contents(m1: CKeyHashMap, m2: CKeyHashMap)
+    requires
+        m1.is_marshalable(),
+        m2.is_marshalable(),
+    ensures
+        m1.spec_to_vec() =~= m2.spec_to_vec(),
+{
+}
+```
+REASON: If entailed, to_vec produces identical output for any two maps, meaning the result is independent of actual contents.
+===PHI_END===
+
+===PHI_START===
+NAME: to_vec_not_marshalable
+TARGET_FN: to_vec
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_to_vec_not_marshalable(m: CKeyHashMap)
+    requires
+        m.is_marshalable(),
+        m.spec_to_vec().len() > 0,
+    ensures
+        !m.spec_to_vec().is_marshalable(),
+{
+}
+```
+REASON: If entailed, the result of to_vec on a marshalable map is itself not marshalable, breaking serialization round-trips.
+===PHI_END===
+
+===PHI_START===
+NAME: to_vec_view_equal_symmetric_fail
+TARGET_FN: to_vec
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_to_vec_view_equal_symmetric_fail(m1: CKeyHashMap, m2: CKeyHashMap)
+    requires
+        m1.is_marshalable(),
+        m2.is_marshalable(),
+        m1.view_equal(&m2),
+    ensures
+        !(m1.spec_to_vec() =~= m2.spec_to_vec()),
+{
+}
+```
+REASON: If entailed, view-equal maps produce different to_vec results, violating the extensional equality contract.
+===PHI_END===

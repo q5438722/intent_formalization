@@ -1,0 +1,82 @@
+This round includes `MemOp`, `valid_op_size`, `update_range`, `Polarity`, `MAX_BASE`, `X86_MAX_ENTRY_SIZE`, and the opaque `PTMem::view` with `is_base_pt_walk`. Let me find fresh angles.
+
+===PHI_START===
+NAME: max_base_exceeds_usize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_max_base_exceeds_usize(va: usize)
+    ensures
+        (va as nat) < MAX_BASE,
+{
+}
+```
+REASON: `MAX_BASE = 512^3 * 4096 * 512 = 256TB` which exceeds `usize::MAX` on 64-bit — if this verifies, ALL usize vaddrs are in range and the `vaddr < MAX_BASE` check in `is_base_pt_walk` is vacuous
+===PHI_END===
+
+===PHI_START===
+NAME: update_range_length_preserved
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_update_range_length_preserved(s: Seq<u8>, idx: int, new: Seq<u8>)
+    requires
+        0 <= idx,
+        idx + new.len() <= s.len(),
+    ensures
+        update_range(s, idx, new).len() == s.len(),
+{
+}
+```
+REASON: `update_range` concatenates three subranges — tests that the total length is preserved, which is correct but foundational for memory operation semantics
+===PHI_END===
+
+===PHI_START===
+NAME: valid_op_size_excludes_3
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_valid_op_size_excludes_3(op: MemOp)
+    requires
+        op.valid_op_size(),
+    ensures
+        op.op_size() != 3,
+{
+}
+```
+REASON: `valid_op_size` allows only 1/2/4/8 — tests that 3-byte operations are excluded; if the spec is too permissive, invalid memory access sizes could be admitted
+===PHI_END===
+
+===PHI_START===
+NAME: is_base_pt_walk_vbase_alignment
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_is_base_pt_walk_vbase_alignment(mem: PTMem, va: usize)
+    requires
+        mem.is_base_pt_walk(va),
+        mem.pt_walk(va).path.len() == 4,
+    ensures
+        aligned(va as nat, L3_ENTRY_SIZE as nat),
+{
+}
+```
+REASON: For L3 (4KB) pages, `is_base_pt_walk` requires `vbase == vaddr` where `vbase = align_to_usize(vaddr, L3_ENTRY_SIZE)` — this forces vaddr to be page-aligned, potentially excluding valid non-aligned base addresses
+===PHI_END===
+
+===PHI_START===
+NAME: all_mb0_bits_are_zero_gates_pde_validity
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_all_mb0_bits_are_zero_gates_pde_validity(entry: usize, layer: nat)
+    requires
+        entry & 1 == 1,
+        !(PDE { entry, layer: Ghost(layer) }).all_mb0_bits_are_zero(),
+    ensures
+        (PDE { entry, layer: Ghost(layer) })@ is Invalid,
+{
+}
+```
+REASON: `all_mb0_bits_are_zero` is `external_body` and gates the PDE view — when it returns false, entries with P bit set are still treated as Invalid, but the predicate's behavior is completely unverified
+===PHI_END===

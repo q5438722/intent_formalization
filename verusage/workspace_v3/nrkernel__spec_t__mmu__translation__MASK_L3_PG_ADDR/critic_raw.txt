@@ -1,0 +1,19 @@
+Looking at this carefully, I need to verify the mathematical properties of the bitmask construction.
+
+`bitmask_inc!(12, MAX_PHYADDR_WIDTH - 1)` expands to:
+```
+(!(!0usize << (MAX_PHYADDR_WIDTH - 12))) << 12
+```
+
+This sets exactly bits [12, MAX_PHYADDR_WIDTH − 1] — no more, no less. The highest set bit is at position MAX_PHYADDR_WIDTH − 1, which is strictly below MAX_PHYADDR_WIDTH. Therefore `MASK_L3_PG_ADDR_SPEC >> MAX_PHYADDR_WIDTH` is always 0 for any value in [32, 52].
+
+===VERDICT_START===
+PHI: high_bits_above_phyaddr_set
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The macro `bitmask_inc!(12, MAX_PHYADDR_WIDTH - 1)` by construction sets only bits [12, MAX_PHYADDR_WIDTH−1]. The highest set bit is at position MAX_PHYADDR_WIDTH−1, so right-shifting by MAX_PHYADDR_WIDTH always yields 0 for any value in [32, 52]. The claimed property (`!= 0`) contradicts the mathematical definition of the mask and does not reflect a real spec deficiency.
+===VERDICT_END===
+
+===SUMMARY===
+The single candidate property `high_bits_above_phyaddr_set` is a false positive. The bitmask macro `bitmask_inc!(12, MAX_PHYADDR_WIDTH - 1)` sets bits from position 12 through MAX_PHYADDR_WIDTH−1 inclusive, which are all strictly below MAX_PHYADDR_WIDTH. For every valid value of MAX_PHYADDR_WIDTH in [32, 52], shifting the mask right by MAX_PHYADDR_WIDTH produces 0, directly contradicting the `!= 0` claim. The spec is correct: no bits at or above the physical address width are set, so the mask cannot produce invalid physical addresses from this cause.
+===END_SUMMARY===

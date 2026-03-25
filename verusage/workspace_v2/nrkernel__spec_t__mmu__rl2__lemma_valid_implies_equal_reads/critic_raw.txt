@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: lemma_write_seq_idle_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `lemma_write_seq_idle` is `external_body` with `unimplemented!()` — the frame property (writes to disjoint addresses don't affect reads) requires an inductive proof over `fold_left` that is not verified. This is a key lemma used by `lemma_valid_implies_equal_reads`.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: non_writer_core_mem_equals_pt_mem
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `non_writer_sbufs_are_empty` gives `self.sbuf[core] === seq![]`, so `core_mem(core) == pt_mem.write_seq(seq![])`. `seq![].fold_left(pt_mem, f)` returns `pt_mem` by the base case of `fold_left`. This is correct by definition.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: valid_implies_equal_reads_uses_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: This is a transitive trust assumption — `lemma_valid_implies_equal_reads` is a verified proof, but its body calls `lemma_write_seq_idle` which is `external_body`. The TSO consistency guarantee is only as strong as the unverified frame lemma.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: contains_fst_implies_exists_entry
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `contains_fst` is defined as `exists|i| 0 <= i < self.len() && self[i] == (fst, self[i].1)`. If `self[i] == (fst, self[i].1)`, then `self[i].0 == fst` by tuple projection. This is a correct logical consequence of the definition.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: inv_mapping_valid_not_in_sbuf_contrapositive
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is the straightforward contrapositive of `inv_mapping__valid_is_not_in_sbuf`: the invariant says `P_bit_set ==> !in_sbuf`, so `in_sbuf ==> !P_bit_set`. This is a correct logical transformation, not a spec gap.
+===VERDICT_END===
+
+===SUMMARY===
+Two true positives: `lemma_write_seq_idle` is an external_body frame lemma trusting that writes to disjoint addresses preserve reads without proof, and `lemma_valid_implies_equal_reads` transitively depends on this unverified assumption for its TSO consistency guarantee. Three false positives: non-writer core_mem identity follows from fold_left base case, contains_fst decomposition is correct by tuple projection, and the contrapositive of the sbuf invariant is a standard logical equivalence.
+===END_SUMMARY===

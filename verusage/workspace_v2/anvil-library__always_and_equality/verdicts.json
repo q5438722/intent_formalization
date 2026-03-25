@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "temp_pred_equality_collapses_extensional",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The external_body axiom forces `p == q` (and hence `p.pred == q.pred`) from mutual entailment alone. This asserts intensional equality of `spec_fn` from extensional equivalence \u2014 a genuinely unverified assumption that could be unsound if Verus's SMT encoding ever distinguishes closures that agree on all inputs."
+  },
+  {
+    "phi": "always_unfold_suffix_equivalence",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "The `always` definition wraps a `forall` inside a new closure via `TempPred::new`, producing a different `spec_fn` than a bare quantifier over `p.satisfied_by(ex.suffix(i))`. The external_body `always_unfold` bridges this intensional gap without proof. While semantically correct, it is an unverified trust assumption."
+  },
+  {
+    "phi": "always_and_commutativity_propagates",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is a straightforward consequence of the already-proven `always_and_equality` plus commutativity of `and`. Given the axioms in the file, this is an expected and desirable derived property \u2014 it adds no new trust surface beyond what \u03c61 already identifies."
+  },
+  {
+    "phi": "valid_false_from_external_body_chain",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is the sharpest finding. The precondition `p != q` is satisfiable for extensionally equivalent but intensionally distinct TempPreds (e.g., two `TempPred::new` calls with different but logically equivalent closures). Combined with `temp_pred_equality` forcing `p == q`, this derives `false` \u2014 a direct soundness hole. The axiom implicitly asserts that no two distinct closures can be extensionally equivalent, which is false in general."
+  }
+]

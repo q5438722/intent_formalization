@@ -1,0 +1,47 @@
+[
+  {
+    "name": "new_map_all_keys_same_endpoint",
+    "type": "behavioral",
+    "code": "proof fn phi_1_new_map_all_keys_same_endpoint<K: KeyTrait + VerusClone>(k1: K, k2: K, k_zero: K, id_zero: ID)\n    requires\n        k_zero == K::zero_spec(),\n        id_zero@.valid_physical_address(),\n    ensures\n        ({\n            let s = DelegationMap::<K>::new(k_zero, id_zero);\n            s@[k1] == s@[k2]\n        }),\n{\n}",
+    "reason": "After construction, every key maps to the same endpoint \u2014 the delegation map has no ability to distinguish keys at creation, meaning the initial state is maximally degenerate and callers cannot set per-key delegations at construction time",
+    "entailed": false,
+    "verus_output": "                                ^^^^^^^^^^\n\nerror: cannot call function `phi_1_new_map_all_keys_same_endpoint::DelegationMap::new` with mode exec\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__delegation_map_v__impl4__new/phi_1_new_map_all_keys_same_endpoint.rs:225:21\n    |\n225 |             let s = DelegationMap::<K>::new(k_zero, id_zero);\n    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error; 8 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "set_external_body_gap_false_oracle",
+    "type": "logical",
+    "code": "proof fn phi_2_set_external_body_gap_false_oracle<K: KeyTrait + VerusClone>(som: StrictlyOrderedMap<K>, k: K, v: ID, lo: KeyIterator<K>, hi: KeyIterator<K>)\n    requires\n        som.valid(),\n        lo.lt_spec(KeyIterator::new_spec(k)),\n        KeyIterator::new_spec(k).lt_spec(hi),\n    ensures\n        ({\n            let mut som2 = som;\n            som2.set(k, v);\n            !som2.gap(lo, hi)\n        }),\n{\n}",
+    "reason": "`StrictlyOrderedMap::set` is external_body and its gap postcondition claims inserting key `k` breaks any gap containing `k` \u2014 but since this is unverified, a buggy implementation could claim gaps exist where they don't",
+    "entailed": false,
+    "verus_output": "                                                                                       ^^^^^^^^^^\n\nerror: cannot call function `phi_2_set_external_body_gap_false_oracle::StrictlyOrderedMap::set` with mode exec\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__delegation_map_v__impl4__new/phi_2_set_external_body_gap_false_oracle.rs:227:13\n    |\n227 |             som2.set(k, v);\n    |             ^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error; 8 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "valid_physical_address_large_bound",
+    "type": "boundary",
+    "code": "proof fn phi_3_valid_physical_address_large_bound()\n    ensures\n        (AbstractEndPoint { id: Seq::new(0xFFFFF - 1, |i: int| 0u8) }).valid_physical_address(),\n{\n}",
+    "reason": "An endpoint with nearly 1MB of ID data (0xFFFFF - 1 = 1048574 bytes) is considered a valid physical address \u2014 the 0x100000 bound is very large and may not correspond to actual network address constraints",
+    "entailed": false,
+    "verus_output": "(0xFFFFF - 1, |i: int| 0u8) }).valid_physical_address(),\n    |                                 -------- ^^^^^^^^^^^ expected `nat`, found `int`\n    |                                 |\n    |                                 arguments to this function are incorrect\n    |\nnote: associated function defined here\n   --> /home/runner/work/verus/verus/source/vstd/seq.rs:42:25\n\nerror: aborting due to 1 previous error; 8 warnings emitted\n\nFor more information about this error, try `rustc --explain E0308`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "delegation_map_valid_no_key_trait_constraints",
+    "type": "logical",
+    "code": "proof fn phi_4_delegation_map_valid_no_key_trait_constraints<K: KeyTrait + VerusClone>(dm: DelegationMap<K>, k: K)\n    requires\n        dm.valid(),\n    ensures\n        dm@.dom().contains(k),\n{\n}",
+    "reason": "`valid()` requires `self@.dom().is_full()` meaning every possible key is in the domain \u2014 there is no way to have a valid delegation map that doesn't map every key, which means the spec cannot express partial delegation",
+    "entailed": true,
+    "verus_output": "hes` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__delegation_map_v__impl4__new/phi_4_delegation_map_valid_no_key_trait_constraints.rs:210:91\n    |\n210 |       || (!self.k.is_None() && !other.k.is_None() && self.k.get_Some_0().cmp_spec(other.k.get_Some_0()).lt())\n    |                                                                                           ^^^^^^^^^^\n\nwarning: 8 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "new_external_body_empty_map_trusted",
+    "type": "logical",
+    "code": "proof fn phi_5_new_external_body_empty_map_trusted<K: KeyTrait + VerusClone>()\n    ensures\n        ({\n            let s = StrictlyOrderedMap::<K>::new();\n            s@ == Map::<K, ID>::empty()\n        }),\n{\n}",
+    "reason": "`StrictlyOrderedMap::new` is external_body and asserts the ghost map is empty \u2014 if the implementation returns a non-empty map, the ghost state would be desynchronized from actual state, silently introducing unsoundness in all downstream gap and containment reasoning",
+    "entailed": false,
+    "verus_output": "                                     ^^^^^^^^^^\n\nerror: cannot call function `phi_5_new_external_body_empty_map_trusted::StrictlyOrderedMap::new` with mode exec\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__delegation_map_v__impl4__new/phi_5_new_external_body_empty_map_trusted.rs:222:21\n    |\n222 |             let s = StrictlyOrderedMap::<K>::new();\n    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error; 8 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "view_equal_external_body_unsound",
+    "type": "logical",
+    "code": "proof fn phi_1_view_equal_external_body_unsound(x: &CSingleMessage, y: &CSingleMessage)\n    requires\n        x@ == y@,\n    ensures\n        x.view_equal(y),\n{\n    CSingleMessage::view_equal_spec();\n}",
+    "reason": "`view_equal_spec` is an external_body axiom asserting `view_equal <==> (x@ == y@)` \u2014 but `view_equal` is defined structurally by the Marshalable derive macro while `@` uses the semantic view function; these two equivalences are asserted without proof and could disagree for concrete variants",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "lemma_same_views_chain_marshalable_leak",
+    "type": "logical",
+    "code": "proof fn phi_2_lemma_same_views_chain_marshalable_leak(x: &CSingleMessage, y: &CSingleMessage)\n    requires\n        x@ == y@,\n        x.is_marshalable(),\n    ensures\n        y.is_marshalable(),\n        x.ghost_serialize() == y.ghost_serialize(),\n{\n    CSingleMessage::view_equal_spec();\n    x.lemma_same_views_serialize_the_same(y);\n}",
+    "reason": "Chaining `view_equal_spec` (external_body: view equality implies view_equal) with `lemma_same_views_serialize_the_same` (external_body: view_equal implies same serialization) creates a transitive chain of two unverified axioms \u2014 if either is wrong, messages with the same abstract view but different concrete structure would be treated as having identical serializations",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "ghost_serialize_external_body_ignores_open_spec",
+    "type": "logical",
+    "code": "proof fn phi_3_ghost_serialize_external_body_ignores_open_spec(x: u64, y: u64)\n    requires\n        x.view_equal(&y),\n    ensures\n        x.ghost_serialize() == y.ghost_serialize(),\n{\n    x.lemma_same_views_serialize_the_same(&y);\n}",
+    "reason": "The trait-level `ghost_serialize` is declared `external_body` with a default body, but concrete impls like `u64` provide open spec definitions \u2014 the `lemma_same_views_serialize_the_same` is also external_body at every impl, so the serialization equality is never actually verified even when the open spec bodies would make it trivially provable",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "tuple_serialize_ambiguous_no_injectivity",
+    "type": "behavioral",
+    "code": "proof fn phi_4_tuple_serialize_ambiguous_no_injectivity(a: (Vec<u8>, Vec<u8>), b: (Vec<u8>, Vec<u8>))\n    requires\n        a.is_marshalable(),\n        b.is_marshalable(),\n        a.ghost_serialize() == b.ghost_serialize(),\n    ensures\n        a.0@ == b.0@ && a.1@ == b.1@,\n{\n}",
+    "reason": "Tuple serialization concatenates `self.0.ghost_serialize() + self.1.ghost_serialize()` \u2014 for `(Vec<u8>, Vec<u8>)` each component has a length prefix so this should be injective, but no injectivity lemma is proved; if it fails, distinct tuples could have identical serializations breaking protocol correctness",
+    "entailed": false,
+    "verus_output": "_v__same_view_same_marshalable/phi_4_tuple_serialize_ambiguous_no_injectivity.rs:729:9\n    |\n723 | proof fn phi_4_tuple_serialize_ambiguous_no_injectivity(a: (Vec<u8>, Vec<u8>), b: (Vec<u8>, Vec<u8>))\n    |       ----------------------------------------------------------------------------------------------- at the end of the function body\n...\n729 |         a.0@ == b.0@ && a.1@ == b.1@,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "option_none_some_empty_serialize_distinct",
+    "type": "boundary",
+    "code": "proof fn phi_5_option_none_some_empty_serialize_distinct(x: Option<Vec<u8>>)\n    requires\n        x is None,\n    ensures\n        x.ghost_serialize() == seq![0u8],\n        x.ghost_serialize() != (Some(Vec::<u8>::new())).ghost_serialize(),\n{\n}",
+    "reason": "`None` serializes to `seq![0]` and `Some(empty_vec)` serializes to `seq![1] + empty_vec.ghost_serialize()` \u2014 if the length prefix of empty vec happened to produce a byte sequence starting with 0, deserialization could confuse None with Some(empty), though the tag byte difference should prevent this",
+    "entailed": false,
+    "verus_output": "error: cannot call function `alloc::vec::impl&%0::new` with mode exec\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__single_delivery_model_v__same_view_same_marshalable/phi_5_option_none_some_empty_serialize_distinct.rs:728:38\n    |\n728 |         x.ghost_serialize() != (Some(Vec::<u8>::new())).ghost_serialize(),\n    |                                      ^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

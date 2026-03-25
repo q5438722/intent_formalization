@@ -1,0 +1,139 @@
+Looking at the `new_endpoint` function's specification, I'll generate 5 candidate undesirable properties testing its requires/ensures for vacuity, frame conditions, and behavioral correctness.
+
+===PHI_START===
+NAME: vacuous_spec
+TARGET_FN: new_endpoint
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_vacuous_spec(old_pm: &ProcessManager, new_pm: &ProcessManager, thread_ptr: ThreadPtr, endpoint_index: EndpointIdx, page_ptr_1: PagePtr)
+    requires
+        old_pm.wf(),
+        old_pm.thread_dom().contains(thread_ptr),
+        0 <= endpoint_index < MAX_NUM_ENDPOINT_DESCRIPTORS,
+        old_pm.get_thread(thread_ptr).endpoint_descriptors@[endpoint_index as int].is_None(),
+        old_pm.page_closure().contains(page_ptr_1) == false,
+        old_pm.get_container(old_pm.get_thread(thread_ptr).owning_container).quota.mem_4k > 0,
+        new_pm.wf(),
+        new_pm.page_closure() =~= old_pm.page_closure().insert(page_ptr_1),
+        new_pm.proc_dom() =~= old_pm.proc_dom(),
+        new_pm.endpoint_dom() == old_pm.endpoint_dom().insert(page_ptr_1),
+        new_pm.container_dom() == old_pm.container_dom(),
+        new_pm.thread_dom() == old_pm.thread_dom(),
+        new_pm.get_endpoint(page_ptr_1).queue@ =~= Seq::<ThreadPtr>::empty(),
+        new_pm.get_endpoint(page_ptr_1).queue_state =~= EndpointState::SEND,
+        new_pm.get_endpoint(page_ptr_1).rf_counter =~= 1,
+        new_pm.get_endpoint(page_ptr_1).owning_container =~= old_pm.get_thread(thread_ptr).owning_container,
+        new_pm.get_endpoint(page_ptr_1).owning_threads@ =~= Set::<(ThreadPtr, EndpointIdx)>::empty().insert((thread_ptr, endpoint_index)),
+        new_pm.get_thread(thread_ptr).endpoint_descriptors@ =~= old_pm.get_thread(thread_ptr).endpoint_descriptors@.update(endpoint_index as int, Some(page_ptr_1)),
+    ensures
+        false,
+{
+}
+```
+REASON: If provable, the combined pre/postconditions are contradictory, making the spec vacuously true and useless
+===PHI_END===
+
+===PHI_START===
+NAME: owning_threads_empty
+TARGET_FN: new_endpoint
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_owning_threads_empty(old_pm: &ProcessManager, new_pm: &ProcessManager, thread_ptr: ThreadPtr, endpoint_index: EndpointIdx, page_ptr_1: PagePtr)
+    requires
+        old_pm.wf(),
+        old_pm.thread_dom().contains(thread_ptr),
+        0 <= endpoint_index < MAX_NUM_ENDPOINT_DESCRIPTORS,
+        old_pm.get_thread(thread_ptr).endpoint_descriptors@[endpoint_index as int].is_None(),
+        old_pm.page_closure().contains(page_ptr_1) == false,
+        old_pm.get_container(old_pm.get_thread(thread_ptr).owning_container).quota.mem_4k > 0,
+        new_pm.wf(),
+        new_pm.endpoint_dom() == old_pm.endpoint_dom().insert(page_ptr_1),
+        new_pm.get_endpoint(page_ptr_1).owning_threads@ =~= Set::<(ThreadPtr, EndpointIdx)>::empty().insert((thread_ptr, endpoint_index)),
+        new_pm.get_endpoint(page_ptr_1).rf_counter =~= 1,
+    ensures
+        new_pm.get_endpoint(page_ptr_1).owning_threads@ =~= Set::<(ThreadPtr, EndpointIdx)>::empty(),
+{
+}
+```
+REASON: If provable, the new endpoint has no owning thread despite the creating thread being registered, breaking reference tracking
+===PHI_END===
+
+===PHI_START===
+NAME: existing_endpoint_modified
+TARGET_FN: new_endpoint
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_existing_endpoint_modified(old_pm: &ProcessManager, new_pm: &ProcessManager, thread_ptr: ThreadPtr, endpoint_index: EndpointIdx, page_ptr_1: PagePtr, other_ep: EndpointPtr)
+    requires
+        old_pm.wf(),
+        old_pm.thread_dom().contains(thread_ptr),
+        old_pm.page_closure().contains(page_ptr_1) == false,
+        old_pm.endpoint_dom().contains(other_ep),
+        old_pm.get_container(old_pm.get_thread(thread_ptr).owning_container).quota.mem_4k > 0,
+        new_pm.wf(),
+        new_pm.endpoint_dom() == old_pm.endpoint_dom().insert(page_ptr_1),
+        forall|e_ptr: EndpointPtr|
+            #![trigger new_pm.get_endpoint(e_ptr)]
+            old_pm.endpoint_dom().contains(e_ptr) ==> old_pm.get_endpoint(e_ptr) =~= new_pm.get_endpoint(e_ptr),
+    ensures
+        new_pm.get_endpoint(other_ep).rf_counter != old_pm.get_endpoint(other_ep).rf_counter,
+{
+}
+```
+REASON: If provable, creating a new endpoint silently corrupts an existing endpoint's reference count, violating the frame condition
+===PHI_END===
+
+===PHI_START===
+NAME: other_descriptor_changed
+TARGET_FN: new_endpoint
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_other_descriptor_changed(old_pm: &ProcessManager, new_pm: &ProcessManager, thread_ptr: ThreadPtr, endpoint_index: EndpointIdx, page_ptr_1: PagePtr, other_index: EndpointIdx)
+    requires
+        old_pm.wf(),
+        old_pm.thread_dom().contains(thread_ptr),
+        0 <= endpoint_index < MAX_NUM_ENDPOINT_DESCRIPTORS,
+        0 <= other_index < MAX_NUM_ENDPOINT_DESCRIPTORS,
+        endpoint_index != other_index,
+        old_pm.get_thread(thread_ptr).endpoint_descriptors@[endpoint_index as int].is_None(),
+        old_pm.page_closure().contains(page_ptr_1) == false,
+        old_pm.get_container(old_pm.get_thread(thread_ptr).owning_container).quota.mem_4k > 0,
+        new_pm.wf(),
+        new_pm.thread_dom() == old_pm.thread_dom(),
+        new_pm.get_thread(thread_ptr).endpoint_descriptors@ =~= old_pm.get_thread(thread_ptr).endpoint_descriptors@.update(endpoint_index as int, Some(page_ptr_1)),
+    ensures
+        new_pm.get_thread(thread_ptr).endpoint_descriptors@[other_index as int] != old_pm.get_thread(thread_ptr).endpoint_descriptors@[other_index as int],
+{
+}
+```
+REASON: If provable, updating one endpoint descriptor slot corrupts a different slot, indicating an off-by-one or aliasing bug in the spec
+===PHI_END===
+
+===PHI_START===
+NAME: container_children_changed
+TARGET_FN: new_endpoint
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_container_children_changed(old_pm: &ProcessManager, new_pm: &ProcessManager, thread_ptr: ThreadPtr, endpoint_index: EndpointIdx, page_ptr_1: PagePtr)
+    requires
+        old_pm.wf(),
+        old_pm.thread_dom().contains(thread_ptr),
+        0 <= endpoint_index < MAX_NUM_ENDPOINT_DESCRIPTORS,
+        old_pm.page_closure().contains(page_ptr_1) == false,
+        old_pm.get_container(old_pm.get_thread(thread_ptr).owning_container).quota.mem_4k > 0,
+        new_pm.wf(),
+        new_pm.container_dom() == old_pm.container_dom(),
+        old_pm.get_container(old_pm.get_thread(thread_ptr).owning_container).children == new_pm.get_container(old_pm.get_thread(thread_ptr).owning_container).children,
+        old_pm.get_container(old_pm.get_thread(thread_ptr).owning_container).scheduler == new_pm.get_container(old_pm.get_thread(thread_ptr).owning_container).scheduler,
+    ensures
+        new_pm.get_container(old_pm.get_thread(thread_ptr).owning_container).children@ != old_pm.get_container(old_pm.get_thread(thread_ptr).owning_container).children@,
+{
+}
+```
+REASON: If provable, endpoint creation mutates the owning container's children list, violating containment isolation and the frame condition on unrelated container fields
+===PHI_END===

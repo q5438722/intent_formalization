@@ -1,0 +1,76 @@
+===PHI_START===
+NAME: pow2_negative_is_one
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_pow2_negative_is_one(e: int)
+    requires
+        e < 0,
+    ensures
+        pow2(e) == 1,
+{
+}
+```
+REASON: `pow2` returns 1 for all negative exponents — mathematically 2^(-n) is a fraction, so callers passing negative exponents by mistake silently get 1
+===PHI_END===
+
+===PHI_START===
+NAME: pow2_non_injective_at_zero
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_pow2_non_injective_at_zero()
+    ensures
+        pow2(0) == pow2(-1) && pow2(-1) == pow2(-100),
+{
+}
+```
+REASON: All non-positive inputs collapse to 1, making `pow2` non-injective below 1 — could mask off-by-one errors near e=0 boundaries
+===PHI_END===
+
+===PHI_START===
+NAME: div2_no_upper_bound_on_x
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_div2_no_upper_bound_on_x(y: int)
+    requires
+        y > 0,
+    ensures
+        u64::MAX as int / (y * 2) == (u64::MAX as int / y) / 2,
+{
+    div2(u64::MAX, y);
+}
+```
+REASON: `div2` takes `x: u64` but `y: int` with no upper bound — `y * 2` can exceed u64 range, making the lemma applicable to divisions by values that don't fit in machine words
+===PHI_END===
+
+===PHI_START===
+NAME: mul_assoc_smuggles_commutativity
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_mul_assoc_smuggles_commutativity(x: nat, y: nat)
+    ensures
+        x * y == y * x,
+{
+    mul_assoc(x, y, 1);
+}
+```
+REASON: `mul_assoc` ensures `(x*y)*z == y*(x*z)` which encodes commutativity — setting z=1 directly yields `x*y == y*x`, which may let proofs go through for unintended reasons
+===PHI_END===
+
+===PHI_START===
+NAME: shift_is_div_zero_shift_identity
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_shift_is_div_zero_shift_identity(x: u64)
+    ensures
+        x >> 0u64 == x as nat,
+{
+    shift_is_div(x, 0);
+}
+```
+REASON: Right-shifting by 0 is identity — trivially true but if `shift_is_div` were unsound it would allow equating arbitrary bit-shift results with division, so this tests the base case soundness
+===PHI_END===

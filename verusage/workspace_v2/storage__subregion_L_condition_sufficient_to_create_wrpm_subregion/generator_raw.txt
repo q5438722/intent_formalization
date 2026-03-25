@@ -1,0 +1,121 @@
+===PHI_START===
+NAME: condition_transfer_vacuous_empty
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_condition_transfer_vacuous_empty(
+    region_view: PersistentMemoryRegionView,
+    start: u64,
+    len: nat,
+    is_writable_absolute_addr_fn: spec_fn(int) -> bool,
+)
+    requires
+        region_view.len() == 0,
+        len == 0,
+        start == 0,
+    ensures
+        forall |alt_region_view: PersistentMemoryRegionView, alt_crash_state: Seq<u8>| {
+            &&& #[trigger] alt_region_view.can_crash_as(alt_crash_state)
+            &&& region_view.len() == alt_region_view.len()
+            &&& views_differ_only_where_subregion_allows(region_view, alt_region_view, start as nat, len,
+                                                       is_writable_absolute_addr_fn)
+        } ==> alt_crash_state.len() == 0,
+{
+}
+```
+REASON: Empty regions make all predicates vacuously true — if the proof relied on non-vacuous reasoning, the empty case could slip through without checking real crash consistency
+===PHI_END===
+
+===PHI_START===
+NAME: views_differ_vacuous_all_writable
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_views_differ_vacuous_all_writable(
+    v1: PersistentMemoryRegionView,
+    v2: PersistentMemoryRegionView,
+    start: nat,
+    len: nat,
+)
+    requires
+        v1.len() == v2.len(),
+        start == 0,
+        len == v1.len(),
+    ensures
+        views_differ_only_where_subregion_allows(v1, v2, start, len, |addr: int| true),
+{
+}
+```
+REASON: When the entire region is writable, `views_differ_only_where_subregion_allows` is vacuously true for any two views — if the condition transfer doesn't restrict the writable range, any view mutation is silently permitted
+===PHI_END===
+
+===PHI_START===
+NAME: memories_differ_reflexive
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_memories_differ_reflexive(
+    mem: Seq<u8>,
+    start: nat,
+    len: nat,
+    is_writable: spec_fn(int) -> bool,
+)
+    requires
+        start + len <= mem.len(),
+    ensures
+        memories_differ_only_where_subregion_allows(mem, mem, start, len, is_writable),
+{
+}
+```
+REASON: Any memory should differ from itself only where allowed (trivially, since it doesn't differ anywhere) — if reflexivity failed, the condition transfer would reject identity transitions
+===PHI_END===
+
+===PHI_START===
+NAME: crash_state_constructed_in_proof_may_not_be_unique
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_crash_state_constructed_in_proof_may_not_be_unique(
+    view: PersistentMemoryRegionView,
+    s1: Seq<u8>,
+    s2: Seq<u8>,
+)
+    requires
+        view.can_crash_as(s1),
+        view.can_crash_as(s2),
+        s1.len() == s2.len() == view.len(),
+        view.len() >= 16,
+    ensures
+        forall |addr: int| 0 <= addr < view.len() && view.state[addr].outstanding_write.is_none()
+            ==> s1[addr] == #[trigger] s2[addr],
+{
+}
+```
+REASON: Two crash states must agree on all bytes without outstanding writes — if they could disagree at clean addresses, the crash model would be nondeterministic even for stable data, undermining crash recovery correctness
+===PHI_END===
+
+===PHI_START===
+NAME: condition_not_closed_under_arbitrary_writes
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_condition_not_closed_under_arbitrary_writes(
+    b: PersistentMemoryByte,
+)
+    requires
+        b.outstanding_write.is_none(),
+        b.state_at_last_flush == 0,
+    ensures
+        ({
+            let view = PersistentMemoryRegionView {
+                state: seq![b, b, b, b, b, b, b, b],
+            };
+            let s1 = seq![0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8];
+            let s2 = seq![0u8, 0u8, 0u8, 0u8, 42u8, 42u8, 42u8, 42u8];
+            !memories_differ_only_where_subregion_allows(s1, s2, 0, 4, |addr: int| true)
+        }),
+{
+}
+```
+REASON: Writes outside the subregion range [start, start+len) should not be allowed — if `memories_differ_only_where_subregion_allows` permitted changes outside the subregion, the permission transfer would be unsound
+===PHI_END===

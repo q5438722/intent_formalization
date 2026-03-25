@@ -1,0 +1,88 @@
+===PHI_START===
+NAME: union_always_empty
+TARGET_FN: set
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_union_always_empty(pre_self: CommitMask, other: CommitMask, post_self: CommitMask)
+    requires
+        post_self@ == pre_self@.union(other@),
+    ensures
+        post_self@ =~= Set::<int>::empty(),
+{
+}
+```
+REASON: Union should not always produce an empty set; this would mean set() discards all information.
+===PHI_END===
+
+===PHI_START===
+NAME: loses_original_elements
+TARGET_FN: set
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_loses_original_elements(pre_self: CommitMask, other: CommitMask, post_self: CommitMask, i: int)
+    requires
+        post_self@ == pre_self@.union(other@),
+        pre_self@.contains(i),
+        !other@.contains(i),
+    ensures
+        !post_self@.contains(i),
+{
+}
+```
+REASON: An element present in old(self) but not in other must still be in the result; losing it means set() is not a true union.
+===PHI_END===
+
+===PHI_START===
+NAME: result_equals_only_other
+TARGET_FN: set
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_result_equals_only_other(pre_self: CommitMask, other: CommitMask, post_self: CommitMask)
+    requires
+        post_self@ == pre_self@.union(other@),
+    ensures
+        post_self@ =~= other@,
+{
+}
+```
+REASON: The result equalling only `other@` would mean set() overwrites rather than unions, dropping all pre-existing bits.
+===PHI_END===
+
+===PHI_START===
+NAME: union_not_idempotent
+TARGET_FN: set
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_union_not_idempotent(m: CommitMask, post: CommitMask)
+    requires
+        post@ == m@.union(m@),
+    ensures
+        !(post@ =~= m@),
+{
+}
+```
+REASON: Union of a mask with itself must equal itself (idempotence); failure indicates the spec allows set() to corrupt data in the self-union case.
+===PHI_END===
+
+===PHI_START===
+NAME: spurious_element_added
+TARGET_FN: set
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_spurious_element_added(pre_self: CommitMask, other: CommitMask, post_self: CommitMask, i: int)
+    requires
+        post_self@ == pre_self@.union(other@),
+        !pre_self@.contains(i),
+        !other@.contains(i),
+    ensures
+        post_self@.contains(i),
+{
+}
+```
+REASON: An element absent from both operands must not appear in the result; its presence would mean set() introduces phantom bits.
+===PHI_END===

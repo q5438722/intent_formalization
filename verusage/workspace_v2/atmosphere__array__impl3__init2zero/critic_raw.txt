@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: set_external_body_ar_ghost_desync
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The `set` external_body ensures only constrain `self.seq@` (the Ghost field). The concrete `ar: [A;N]` is never mentioned in any ensures, so there is no formal guarantee the runtime array is updated. This is a real ghost-runtime desync gap inherent to the Array abstraction.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: init2zero_usize_only_not_generic
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This PHI merely shows an empty array vacuously satisfies `wf()` — that's standard behavior. The fact that `init2zero` is only for `usize` is a design choice, not a spec gap. The property proven is trivially true and reveals no issue.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: set_overwrites_without_old_value_constraint
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is just `Seq::update` semantics — updating index `i` with `v2` yields `v2` at index `i`. That two writes to the same index lose the first value is standard array behavior, not a spec gap. No system requires write-history tracking for a simple array.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: wf_only_checks_length_not_content
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Two arrays with `arr1.seq@ =~= arr2.seq@` have extensionally equal ghost sequences, so element-wise equality follows from `Seq` axioms. The concrete `ar` fields differing is the same ghost-runtime desync already captured by PHI 1 — this PHI itself just proves a tautology about extensional equality.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: set_no_bounds_on_value
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Rust arrays can store any value of type `A` — for `usize`, all values including `usize::MAX` are valid. There is no domain restriction needed. This is standard `Seq::update` semantics, not a spec gap.
+===VERDICT_END===
+
+===SUMMARY===
+Four of the five candidates are false positives reflecting standard properties of vstd sequences, Rust type semantics, and vacuous truth over empty collections. The one true positive (`set_external_body_ar_ghost_desync`) identifies a real architectural gap: `Array::set`'s external_body ensures only constrain the `Ghost<Seq<A>>` field with no specification linking the concrete `ar: [A;N]` runtime field to the ghost state, meaning all verified properties hold over ghost state only with no formal guarantee of runtime correctness.
+===END_SUMMARY===

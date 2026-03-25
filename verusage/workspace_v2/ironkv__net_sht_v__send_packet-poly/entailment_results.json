@@ -1,0 +1,47 @@
+[
+  {
+    "name": "demarshal_invalid_message_is_marshalable",
+    "type": "logical",
+    "code": "proof fn phi_1_demarshal_invalid_message_is_marshalable(data: Seq<u8>)\n    requires\n        !(exists |v: CSingleMessage| v.is_marshalable() && v.ghost_serialize() == data),\n    ensures\n        sht_demarshal_data(data).is_marshalable(),\n{\n}",
+    "reason": "`sht_demarshal_data` uses `choose` with only `recommends` \u2014 when no valid CSingleMessage deserializes to the data, the chosen value is arbitrary and may satisfy `is_marshalable`, allowing downstream code to treat garbage data as valid",
+    "entailed": false,
+    "verus_output": "lization/verusage/workspace_v2/ironkv__net_sht_v__send_packet-poly/phi_1_demarshal_invalid_message_is_marshalable.rs:915:9\n    |\n911 | proof fn phi_1_demarshal_invalid_message_is_marshalable(data: Seq<u8>)\n    |       ---------------------------------------------------------------- at the end of the function body\n...\n915 |         sht_demarshal_data(data).is_marshalable(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "serialize_append_allows_arbitrary_growth",
+    "type": "behavioral",
+    "code": "proof fn phi_2_serialize_append_allows_arbitrary_growth(v: u64, data: Vec<u8>)\n    requires\n        v.is_marshalable(),\n        data@.len() == 0,\n    ensures\n        v.ghost_serialize().len() == 8,\n{\n    lemma_auto_spec_u64_to_from_le_bytes();\n}",
+    "reason": "The `serialize` trait ensures `data` grows by exactly `ghost_serialize().len()` bytes, but `ghost_serialize` is external_body at the trait level \u2014 if an impl's open spec disagrees with the external_body exec, the ensures are vacuously satisfied",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "csingle_message_ack_tag_collision",
+    "type": "behavioral",
+    "code": "proof fn phi_3_csingle_message_ack_tag_collision()\n    ensures\n        (CSingleMessage::Ack { ack_seqno: 0u64 }).ghost_serialize()[0] != (CSingleMessage::InvalidMessage {}).ghost_serialize()[0],\n{\n}",
+    "reason": "CSingleMessage::Ack has tag 1 and InvalidMessage has tag 2 \u2014 if the macro assigned the same tag, deserialization would be ambiguous; verifying distinct first bytes confirms tag uniqueness",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "cmessage_delegate_shard_tag_distinct",
+    "type": "behavioral",
+    "code": "proof fn phi_4_cmessage_delegate_shard_tag_distinct(kr: KeyRange<CKey>, ep: EndPoint, h: CKeyHashMap)\n    requires\n        (CMessage::Shard { kr, recipient: ep }).is_marshalable(),\n        (CMessage::Delegate { range: kr, h }).is_marshalable(),\n    ensures\n        (CMessage::Shard { kr, recipient: ep }).ghost_serialize() != (CMessage::Delegate { range: kr, h }).ghost_serialize(),\n{\n}",
+    "reason": "Shard (tag=4) and Delegate (tag=5) share similar structure (KeyRange + payload) \u2014 if tags collided or serialization was ambiguous, a Shard message could be misinterpreted as Delegate",
+    "entailed": false,
+    "verus_output": "ndPoint, h: CKeyHashMap)\n    |       ----------------------------------------------------------------------------------------------- at the end of the function body\n...\n916 |         (CMessage::Shard { kr, recipient: ep }).ghost_serialize() != (CMessage::Delegate { range: kr, h }).ghost_serialize(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "abstractify_net_packet_ignores_invalid",
+    "type": "logical",
+    "code": "proof fn phi_5_abstractify_net_packet_ignores_invalid(net: NetPacket)\n    requires\n        !(exists |v: CSingleMessage| v.is_marshalable() && v.ghost_serialize() == net.msg),\n    ensures\n        abstractify_net_packet_to_sht_packet(net).msg == sht_demarshal_data(net.msg)@,\n{\n}",
+    "reason": "`abstractify_net_packet_to_sht_packet` always calls `sht_demarshal_data` which uses `choose` \u2014 even when no valid deserialization exists, it produces an arbitrary abstract packet that downstream protocol reasoning may treat as legitimate",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

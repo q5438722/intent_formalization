@@ -1,0 +1,20 @@
+[
+  {
+    "phi": "container_map_4k_allows_double_ownership",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "The ensures clause is not a tautology \u2014 it requires both containment predicates to hold simultaneously under the assumption that both are in the preconditions, which Verus confirms is satisfiable. The real issue is that `container_map_4k` is a Ghost field with no disjointness constraint in the visible spec, meaning two distinct containers can claim the same page. A well-formed allocator should enforce exclusive page ownership across containers."
+  },
+  {
+    "phi": "mapped_pages_not_subset_of_allocated",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The ensures clause trivially restates the precondition (`mapped_pages_4k().contains(p)` implies itself). This proves nothing about the relationship between mapped and allocated pages. While the observation about missing subset constraints may be valid, this PHI doesn't demonstrate it."
+  },
+  {
+    "phi": "free_pages_overlap_allocated",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The ensures clause merely conjoins the two preconditions, which is trivially true given the requires clause. This doesn't demonstrate that the spec *allows* overlap \u2014 it only shows that assuming overlap doesn't lead to contradiction, which is vacuously true for any pair of independent predicates. A meaningful test would derive `false` or an absurd consequence from the overlap assumption, or show overlap is constructible from wf()."
+  }
+]

@@ -1,0 +1,73 @@
+===PHI_START===
+NAME: injective_map_values_finite
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_injective_map_values_finite(m: Map<int, int>)
+    requires
+        m.dom().finite(),
+        m.is_injective(),
+    ensures
+        m.values().finite(),
+{
+    injective_finite_map_implies_dom_len_is_equal_to_values_len(m);
+}
+```
+REASON: the lemma ensures len equality which implicitly requires values().finite() — if values could be infinite with a defined len, this would be a gap
+===PHI_END===
+
+===PHI_START===
+NAME: empty_map_zero_values
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_empty_map_zero_values()
+    ensures
+        Map::<int, int>::empty().values().len() == 0,
+{
+    injective_finite_map_implies_dom_len_is_equal_to_values_len(Map::<int, int>::empty());
+}
+```
+REASON: empty map is trivially injective — tests whether the spec correctly handles the base case without producing nonsensical len for empty values set
+===PHI_END===
+
+===PHI_START===
+NAME: singleton_map_values_len_one
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_singleton_map_values_len_one(k: int, v: int)
+    ensures
+        Map::<int, int>::empty().insert(k, v).values().len() == 1,
+{
+    let m = Map::<int, int>::empty().insert(k, v);
+    assert(m.dom().finite());
+    assert(m.is_injective());
+    injective_finite_map_implies_dom_len_is_equal_to_values_len(m);
+}
+```
+REASON: tests singleton boundary — if the recursive decomposition mishandles single-element maps, the values len could be wrong
+===PHI_END===
+
+===PHI_START===
+NAME: non_injective_map_fewer_values
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_non_injective_map_fewer_values(k1: int, k2: int, v: int)
+    requires
+        k1 != k2,
+    ensures
+        ({
+            let m = Map::<int, int>::empty().insert(k1, v).insert(k2, v);
+            m.values().len() < m.dom().len()
+        }),
+{
+    let m = Map::<int, int>::empty().insert(k1, v).insert(k2, v);
+    assert(m.dom().finite());
+    assert(m.dom().len() == 2);
+    assert(m.values() =~= Set::empty().insert(v));
+    assert(m.values().len() == 1);
+}
+```
+REASON: non

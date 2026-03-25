@@ -1,0 +1,99 @@
+Here are 5 candidate undesirable properties for `compare_slice`:
+
+===PHI_START===
+NAME: always_returns_true
+TARGET_FN: compare_slice
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_always_returns_true(x: Seq<u8>, y: Seq<u8>, res: bool)
+    requires
+        res == (x =~= y),
+    ensures
+        res == true,
+{
+    // If provable, the spec cannot distinguish equal from unequal slices
+}
+```
+REASON: The spec would be vacuous if compare_slice always returns true regardless of inputs
+===PHI_END===
+
+===PHI_START===
+NAME: always_returns_false
+TARGET_FN: compare_slice
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_always_returns_false(x: Seq<u8>, y: Seq<u8>, res: bool)
+    requires
+        res == (x =~= y),
+    ensures
+        res == false,
+{
+    // If provable, the spec never reports equality
+}
+```
+REASON: The spec would be vacuous if compare_slice always returns false regardless of inputs
+===PHI_END===
+
+===PHI_START===
+NAME: different_lengths_equal
+TARGET_FN: compare_slice
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_different_lengths_equal(x: Seq<u8>, y: Seq<u8>, res: bool)
+    requires
+        res == (x =~= y),
+        x.len() == 2,
+        y.len() == 3,
+    ensures
+        res == true,
+{
+    // If provable, the spec ignores length differences
+}
+```
+REASON: Slices of different lengths should never be considered equal by the spec
+===PHI_END===
+
+===PHI_START===
+NAME: single_diff_still_equal
+TARGET_FN: compare_slice
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_single_diff_still_equal(x: Seq<u8>, y: Seq<u8>, res: bool)
+    requires
+        res == (x =~= y),
+        x.len() == 2,
+        y.len() == 2,
+        x[0] == y[0],
+        x[1] != y[1],
+    ensures
+        res == true,
+{
+    // If provable, the spec misses element-wise differences
+}
+```
+REASON: Slices differing at even one position should not be reported as equal
+===PHI_END===
+
+===PHI_START===
+NAME: equal_slices_return_false
+TARGET_FN: compare_slice
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_equal_slices_return_false(x: Seq<u8>, y: Seq<u8>, res: bool)
+    requires
+        res == (x =~= y),
+        x.len() == y.len(),
+        forall|i: int| 0 <= i < x.len() ==> x[i] == y[i],
+    ensures
+        res == false,
+{
+    // If provable, the spec says identical slices are unequal
+}
+```
+REASON: Elementwise-identical slices must be reported as equal, not unequal
+===PHI_END===

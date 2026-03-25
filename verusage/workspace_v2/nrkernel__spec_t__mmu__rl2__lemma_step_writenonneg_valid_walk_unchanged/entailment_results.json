@@ -1,0 +1,47 @@
+[
+  {
+    "name": "write_seq_pml4_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_write_seq_pml4_external_body(mem: PTMem, writes: Seq<(usize, usize)>)\n    ensures\n        mem.write_seq(writes).pml4 == mem.pml4,\n{\n    mem.lemma_write_seq(writes);\n}",
+    "reason": "`lemma_write_seq` is `external_body` \u2014 pml4 preservation across write sequences is trusted without proof",
+    "entailed": true,
+    "verus_output": "named to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_step_writenonneg_valid_walk_unchanged/phi_1_write_seq_pml4_external_body.rs:267:9\n    |\n267 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "ptmem_view_external_body",
+    "type": "logical",
+    "code": "proof fn phi_2_ptmem_view_external_body(mem1: PTMem, mem2: PTMem)\n    requires\n        mem1.mem === mem2.mem,\n        mem1.pml4 == mem2.pml4,\n    ensures\n        mem1@ === mem2@,\n{\n}",
+    "reason": "`PTMem::view` is `external_body` \u2014 the PTE interpretation function is entirely opaque and unverified",
+    "entailed": true,
+    "verus_output": "n renamed to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_step_writenonneg_valid_walk_unchanged/phi_2_ptmem_view_external_body.rs:267:9\n    |\n267 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pt_walk_unrelated_write_at_pml4",
+    "type": "behavioral",
+    "code": "proof fn phi_3_pt_walk_unrelated_write_at_pml4(mem: PTMem, vaddr: usize, addr: usize, value: usize)\n    requires\n        addr != add(mem.pml4, mul(l0_bits!(vaddr), WORD_SIZE)),\n        mem.mem.contains_key(add(mem.pml4, mul(l0_bits!(vaddr), WORD_SIZE))),\n        mem.read(add(mem.pml4, mul(l0_bits!(vaddr), WORD_SIZE))) & 1 == 0,\n    ensures\n        mem.write(addr, value).pt_walk(vaddr).path.len() == mem.pt_walk(vaddr).path.len(),\n{\n}",
+    "reason": "Writing to an unrelated address when the L0 entry is non-present should not change the walk path length \u2014 tests that pt_walk only depends on addresses it actually reads",
+    "entailed": false,
+    "verus_output": "_unrelated_write_at_pml4(mem: PTMem, vaddr: usize, addr: usize, value: usize)\n    |       --------------------------------------------------------------------------------------------- at the end of the function body\n...\n807 |         mem.write(addr, value).pt_walk(vaddr).path.len() == mem.pt_walk(vaddr).path.len(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "memories_disjoint_no_overlap_boundary",
+    "type": "boundary",
+    "code": "proof fn phi_4_memories_disjoint_no_overlap_boundary(c: Constants, addr: nat)\n    requires\n        c.memories_disjoint(),\n        addr == c.range_mem.1,\n    ensures\n        !c.in_ptmem_range(addr, 1),\n{\n}",
+    "reason": "The last byte of physical memory range should not be in ptmem range \u2014 tests that `range_mem.1 < range_ptmem.0` creates a genuine gap with no overlap",
+    "entailed": true,
+    "verus_output": "`repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_step_writenonneg_valid_walk_unchanged/phi_4_memories_disjoint_no_overlap_boundary.rs:267:9\n    |\n267 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "in_ptmem_range_bounded_by_max_phyaddr",
+    "type": "boundary",
+    "code": "proof fn phi_5_in_ptmem_range_bounded_by_max_phyaddr(c: Constants, addr: nat, size: nat)\n    requires\n        c.memories_disjoint(),\n        c.in_ptmem_range(addr, size),\n        size > 0,\n    ensures\n        addr + size <= MAX_PHYADDR,\n{\n}",
+    "reason": "All ptmem addresses should be within MAX_PHYADDR \u2014 but MAX_PHYADDR depends on the underspecified MAX_PHYADDR_WIDTH (32..=52), so the actual bound is uncertain",
+    "entailed": true,
+    "verus_output": "`repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_step_writenonneg_valid_walk_unchanged/phi_5_in_ptmem_range_bounded_by_max_phyaddr.rs:267:9\n    |\n267 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,37 @@
+[
+  {
+    "name": "zero_len_subregion_matches_full",
+    "target_fn": "new",
+    "type": "boundary",
+    "code": "proof fn phi_1_zero_len_subregion_matches_full(\n    pm_view: PersistentMemoryRegionView,\n    start: nat,\n)\n    requires\n        pm_view.len() > 0,\n        start + 0 <= pm_view.len(),\n        pm_view.len() <= u64::MAX,\n    ensures\n        get_subregion_view(pm_view, start, 0nat).state =~= pm_view.state,\n{\n}",
+    "reason": "A zero-length subregion should have empty state, not the full region's state"
+  },
+  {
+    "name": "offset_subregion_equals_full_region",
+    "target_fn": "new",
+    "type": "behavioral",
+    "code": "proof fn phi_2_offset_subregion_equals_full_region(\n    pm_view: PersistentMemoryRegionView,\n    start: nat,\n    len: nat,\n)\n    requires\n        pm_view.len() > 1,\n        start > 0,\n        len > 0,\n        start + len <= pm_view.len(),\n        pm_view.len() <= u64::MAX,\n    ensures\n        get_subregion_view(pm_view, start, len).state =~= pm_view.state,\n{\n}",
+    "reason": "A subregion starting at a non-zero offset should never equal the full region's state"
+  },
+  {
+    "name": "different_starts_same_view",
+    "target_fn": "new",
+    "type": "logical",
+    "code": "proof fn phi_3_different_starts_same_view(\n    pm_view: PersistentMemoryRegionView,\n    s1: nat,\n    s2: nat,\n    len: nat,\n)\n    requires\n        s1 != s2,\n        len > 0,\n        s1 + len <= pm_view.len(),\n        s2 + len <= pm_view.len(),\n        pm_view.len() <= u64::MAX,\n    ensures\n        get_subregion_view(pm_view, s1, len).state =~= get_subregion_view(pm_view, s2, len).state,\n{\n}",
+    "reason": "Subregions at distinct offsets should not be universally extensionally equal"
+  },
+  {
+    "name": "identical_views_reported_differing",
+    "target_fn": "new",
+    "type": "logical",
+    "code": "proof fn phi_4_identical_views_reported_differing(\n    pm_view: PersistentMemoryRegionView,\n    start: nat,\n    len: nat,\n    is_writable: spec_fn(int) -> bool,\n)\n    requires\n        start + len <= pm_view.len(),\n        pm_view.len() <= u64::MAX,\n        len > 0,\n    ensures\n        !views_differ_only_where_subregion_allows(pm_view, pm_view, start, len, is_writable),\n{\n}",
+    "reason": "Comparing a region view with itself must always satisfy the differ-only-where-allowed predicate"
+  },
+  {
+    "name": "boundary_subregion_has_zero_len",
+    "target_fn": "new",
+    "type": "boundary",
+    "code": "proof fn phi_5_boundary_subregion_has_zero_len(\n    pm_view: PersistentMemoryRegionView,\n    start: nat,\n    len: nat,\n)\n    requires\n        pm_view.len() > 0,\n        len > 0,\n        start + len == pm_view.len(),\n        pm_view.len() <= u64::MAX,\n    ensures\n        get_subregion_view(pm_view, start, len).state.len() == 0,\n{\n}",
+    "reason": "A subregion with positive length at the region boundary must not report zero-length state"
+  }
+]

@@ -1,0 +1,52 @@
+[
+  {
+    "name": "write_changes_subregion_length",
+    "target_fn": "write_absolute",
+    "type": "behavioral",
+    "reason": "Write should never change the length of the subregion view; if it did, invariant `self.view(wrpm).len() == self.len()` would break on subsequent calls.",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "24 | |     bytes: Seq<u8>,\n325 | | )\n    | |_- at the end of the function body\n...\n331 |           view_before.write(addr, bytes).len() != view_before.len(),\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "empty_write_changes_view",
+    "target_fn": "write_absolute",
+    "type": "boundary",
+    "reason": "A zero-length write must be a no-op; if the spec allowed it to modify the view, callers could observe spurious state changes from vacuous writes.",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": ",\n323 | |     addr: int,\n324 | | )\n    | |_- at the end of the function body\n...\n331 |           view_before.write(addr, Seq::<u8>::empty()) != view_before,\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "write_modifies_outside_range",
+    "target_fn": "write_absolute",
+    "type": "logical",
+    "reason": "Bytes outside the written range must be unaffected; if write could modify them, the `views_differ_only_where_subregion_allows` invariant would be violated.",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": " |     k: int,\n326 | | )\n    | |_- at the end of the function body\n...\n334 |           view_before.write(addr, bytes).state[k] != view_before.state[k],\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "write_alters_state_at_last_flush",
+    "target_fn": "write_absolute",
+    "type": "logical",
+    "reason": "Write must only set outstanding_write, never alter state_at_last_flush; changing it would corrupt the crash-consistency model since flush recovery depends on state_at_last_flush being stable.",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "d of the function body\n...\n334 | /         view_before.write(addr, bytes).state[k].state_at_last_flush\n335 | |             != view_before.state[k].state_at_last_flush,\n    | |_______________________________________________________^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "nonempty_write_is_noop",
+    "target_fn": "write_absolute",
+    "type": "behavioral",
+    "reason": "A non-empty write to a region with no outstanding writes must visibly change the view (outstanding_write goes from None to Some); if it were a no-op the write would be silently lost.",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "3 | |     addr: int,\n324 | |     bytes: Seq<u8>,\n325 | | )\n    | |_- at the end of the function body\n...\n332 |           view_before.write(addr, bytes) =~= view_before,\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

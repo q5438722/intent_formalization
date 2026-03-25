@@ -1,0 +1,81 @@
+===PHI_START===
+NAME: usize2pa_mem_valid_unconditional
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)
+    ensures
+        MEM_valid(usize2pa(v)),
+{
+}
+```
+REASON: usize2pa's external_body unconditionally ensures MEM_valid(ret) for ANY input — arbitrary usize values produce "valid" physical addresses without proof
+===PHI_END===
+
+===PHI_START===
+NAME: sll_len_without_wf_returns_value_list_len
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)
+    ensures
+        sll.len() == sll.value_list_len,
+{
+}
+```
+REASON: StaticLinkedList::len's external_body ensures l == self.value_list_len unconditionally without requiring wf() — corrupted linked list returns raw field value as trusted length
+===PHI_END===
+
+===PHI_START===
+NAME: page_entry_to_map_entry_drops_present
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_page_entry_to_map_entry_drops_present(pe: PageEntry)
+    requires
+        pe.perm.present == false,
+        pe.addr != 0,
+    ensures
+        spec_page_entry_to_map_entry(&pe).addr == pe.addr,
+{
+}
+```
+REASON: spec_page_entry_to_map_entry copies addr even when present==false — non-present entries with stale addresses produce MapEntries indistinguishable from valid mappings
+===PHI_END===
+
+===PHI_START===
+NAME: container_map_4k_allows_double_ownership
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_container_map_4k_allows_double_ownership(pa: PageAllocator, c1: ContainerPtr, c2: ContainerPtr, p: PagePtr)
+    requires
+        c1 != c2,
+        pa.container_map_4k@.dom().contains(c1),
+        pa.container_map_4k@.dom().contains(c2),
+        pa.container_map_4k@[c1].contains(p),
+        pa.container_map_4k@[c2].contains(p),
+    ensures
+        pa.container_map_4k@[c1].contains(p) && pa.container_map_4k@[c2].contains(p),
+{
+}
+```
+REASON: container_map_4k is a Ghost field with no disjointness constraint — two distinct containers can simultaneously claim the same physical page
+===PHI_END===
+
+===PHI_START===
+NAME: is_empty_kernel_entries_unconstrained
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_is_empty_kernel_entries_unconstrained(pt: PageTable, i: L4Index)
+    requires
+        pt.is_empty(),
+        0 <= i < pt.kernel_l4_end,
+    ensures
+        pt.l4_table@[pt.cr3].value()[i] == pt.l4_table@[pt.cr3].value()[i],
+{
+}
+```
+REASON: PageTable::is_empty only constrains L4 entries at indices >= kernel_l4_end — kernel-range entries (0..kernel_l4_end) are completely unconstrained and could contain arbitrary mappings
+===PHI_END===

@@ -1,0 +1,83 @@
+===PHI_START===
+NAME: ptmem_view_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_ptmem_view_external_body(pt_mem: PTMem, addr: usize, value: usize)
+    requires
+        true,
+    ensures
+        pt_mem.write(addr, value).view() == pt_mem.view(),
+{
+}
+```
+REASON: `PTMem::view` is `external_body` with no specification — since it's completely unspecified, Verus could derive anything including that writes don't change the view
+===PHI_END===
+
+===PHI_START===
+NAME: rl3_interp_external_body_unconstrained
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_rl3_interp_external_body_unconstrained(s1: crate::rl3::State, s2: crate::rl3::State)
+    requires
+        true,
+    ensures
+        s1.interp() == s2.interp(),
+{
+}
+```
+REASON: `rl3::State::interp` is `external_body` closed spec — completely opaque with no postconditions, so any two states could have the same interpretation
+===PHI_END===
+
+===PHI_START===
+NAME: extra_mappings_external_body_unconstrained
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_extra_mappings_external_body_unconstrained(s: crate::os::State)
+    requires
+        true,
+    ensures
+        s.extra_mappings() === Map::empty(),
+{
+}
+```
+REASON: `extra_mappings` is `external_body` with no specification — since it's completely unspecified, the SMT solver could assume it's always empty
+===PHI_END===
+
+===PHI_START===
+NAME: applied_mappings_no_overlap_not_enforced
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_applied_mappings_no_overlap_not_enforced(s: crate::os::State, base1: nat, base2: nat)
+    requires
+        s.applied_mappings().dom().contains(base1),
+        s.applied_mappings().dom().contains(base2),
+        base1 != base2,
+    ensures
+        base1 + s.applied_mappings()[base1].frame.size <= base2
+        || base2 + s.applied_mappings()[base2].frame.size <= base1,
+{
+}
+```
+REASON: `no_overlaps` is only a precondition of `interp_vmem_subrange` but never enforced as an invariant of `applied_mappings` — overlapping mappings could exist in the OS state
+===PHI_END===
+
+===PHI_START===
+NAME: vmem_unmapped_is_zero
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_vmem_unmapped_is_zero(s: crate::os::State, c: crate::os::Constants, vaddr: nat)
+    requires
+        vaddr < MAX_BASE,
+        !crate::os::State::has_base_and_pte_for_vaddr(s.applied_mappings(), vaddr as int),
+    ensures
+        s.interp_vmem(c)[vaddr as int] == 0,
+{
+}
+```
+REASON: Unmapped virtual addresses silently return 0 rather than being undefined or causing an error — could mask bugs where unmapped memory is accidentally read as valid zero data
+===PHI_END===

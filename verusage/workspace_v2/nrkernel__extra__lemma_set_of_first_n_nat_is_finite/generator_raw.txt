@@ -1,0 +1,76 @@
+===PHI_START===
+NAME: first_n_nat_finite
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_first_n_nat_finite(n: nat)
+    ensures
+        Set::new(|i: nat| i < n).finite(),
+{
+    lemma_set_of_first_n_nat_is_finite(n);
+}
+```
+REASON: The set `{0, ..., n-1}` is always finite — direct consequence of the verified lemma
+===PHI_END===
+
+===PHI_START===
+NAME: first_zero_empty
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_first_zero_empty()
+    ensures
+        Set::new(|i: nat| i < 0) === Set::<nat>::empty(),
+{
+}
+```
+REASON: The set of naturals less than 0 is empty — tests the base case
+===PHI_END===
+
+===PHI_START===
+NAME: first_n_contains_pred
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_first_n_contains_pred(n: nat)
+    requires
+        n > 0,
+    ensures
+        Set::new(|i: nat| i < n).contains((n - 1) as nat),
+{
+}
+```
+REASON: The set `{0, ..., n-1}` contains `n-1` — tests membership at the upper boundary
+===PHI_END===
+
+===PHI_START===
+NAME: first_n_not_contains_n
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_first_n_not_contains_n(n: nat)
+    ensures
+        !Set::new(|i: nat| i < n).contains(n),
+{
+}
+```
+REASON: The set `{0, ..., n-1}` does not contain `n` — tests the strict upper bound
+===PHI_END===
+
+===PHI_START===
+NAME: first_n_insert_equals_first_n_plus_one
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_first_n_insert_equals_first_n_plus_one(n: nat)
+    ensures
+        Set::new(|i: nat| i < n).insert(n) === Set::new(|i: nat| i < n + 1),
+{
+    let s1 = Set::new(|i: nat| i < n).insert(n);
+    let s2 = Set::new(|i: nat| i < n + 1);
+    assert forall|i: nat| s1.contains(i) <==> s2.contains(i) by {};
+    assert(s1 =~= s2);
+}
+```
+REASON: Inserting `n` into `{0,...,n-1}` equals `{0,...,n}` — tests the recursive construction used in the proof
+===PHI_END===

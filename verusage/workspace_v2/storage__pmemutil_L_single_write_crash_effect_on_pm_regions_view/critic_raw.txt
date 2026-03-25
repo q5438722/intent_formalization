@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: single_write_crash_region_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `lemma_single_write_crash_effect_on_pm_region_view` is `external_body` with `unimplemented!()`. It asserts that after one aligned chunk write, only two crash states are possible (old committed or fully flushed). This is the core crash atomicity guarantee and is entirely trusted without verification.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: no_writes_crash_committed_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `lemma_if_no_outstanding_writes_then_persistent_memory_view_can_only_crash_as_committed` is `external_body` with `unimplemented!()`. It asserts crash-state uniqueness when no writes are outstanding. The multi-region lemma's correctness depends on this unverified assumption.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: regions_write_only_modifies_target
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The `write` map closure returns `pre_view` unchanged when `pos != index`. For `other != index`, the region is preserved. Correct by definition.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: regions_write_target_matches_region_write
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The map closure returns `pre_view.write(addr, bytes)` when `pos == index`. At index `index`, this equals `views[index].write(addr, bytes)`. Correct by definition.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: regions_flush_distributes
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The `flush` map applies `pm.flush()` to each region. At index `i`, `views.flush()[i] == views[i].flush()` by the vstd map indexing axiom. Correct by definition.
+===VERDICT_END===
+
+===SUMMARY===
+Two true positives: both `external_body` lemmas — crash-state uniqueness with no outstanding writes and the two-outcome crash guarantee for aligned chunk writes — are trusted without proof. These are the foundational crash consistency assumptions the multi-region proof builds on. Three false positives confirm correct definitional properties: region write isolation, write dispatch correctness, and flush distribution across regions.
+===END_SUMMARY===

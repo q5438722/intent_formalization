@@ -1,0 +1,47 @@
+[
+  {
+    "name": "same_view_different_serialization",
+    "type": "logical",
+    "code": "proof fn phi_1_same_view_different_serialization(x: &CSingleMessage, y: &CSingleMessage)\n    requires\n        x@ == y@,\n        x.is_marshalable(),\n    ensures\n        y.is_marshalable(),\n{\n    same_view_same_marshalable(x, y);\n}",
+    "reason": "The `same_view_same_marshalable` external_body axiom asserts that equal abstract views imply equal marshalability, but the view function loses concrete information (e.g., `seqno` cast to `nat` erases the u64 bound) \u2014 two CSingleMessages with same view but different concrete representations could have different marshalability",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "clone_preserves_marshalable",
+    "type": "behavioral",
+    "code": "proof fn phi_2_clone_preserves_marshalable(x: &CSingleMessage)\n    requires\n        x.is_marshalable(),\n    ensures\n        x.clone_up_to_view().is_marshalable(),\n{\n    same_view_same_marshalable(x, &x.clone_up_to_view());\n}",
+    "reason": "Combining `clone_up_to_view` (external_body ensuring only `c@ == self@`) with `same_view_same_marshalable` (external_body ensuring view-equality implies marshalability-equality) creates a chain of two unverified assumptions \u2014 if either is wrong, cloned messages could silently fail serialization",
+    "entailed": false,
+    "verus_output": "error: cannot call function `phi_2_clone_preserves_marshalable::CSingleMessage::clone_up_to_view` with mode exec\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__single_delivery_model_v__impl2__retransmit_un_acked_packets_for_dst/phi_2_clone_preserves_marshalable.rs:1031:9\n     |\n1031 |         x.clone_up_to_view().is_marshalable(),\n     |         ^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "invalid_message_is_marshalable_vacuous",
+    "type": "boundary",
+    "code": "proof fn phi_3_invalid_message_is_marshalable_vacuous()\n    ensures\n        (CSingleMessage::InvalidMessage{}).is_marshalable(),\n{\n}",
+    "reason": "InvalidMessage serializes to `seq![2]` (tag only) with `is_marshalable` requiring `1 <= usize::MAX` which is trivially true \u2014 an InvalidMessage can be serialized and sent on the wire despite being explicitly designed to represent unparseable input",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "tuple_serialize_no_length_delimiter",
+    "type": "logical",
+    "code": "proof fn phi_4_tuple_serialize_no_length_delimiter(a1: u64, b1: Vec<u8>, a2: u64, b2: Vec<u8>)\n    requires\n        a1.is_marshalable(),\n        b1.is_marshalable(),\n        a2.is_marshalable(),\n        b2.is_marshalable(),\n        (a1, b1).ghost_serialize() == (a2, b2).ghost_serialize(),\n        a1 != a2,\n    ensures\n        false,\n{\n}",
+    "reason": "Tuple serialization concatenates components without a delimiter \u2014 for fixed-width types like (u64, Vec<u8>) this may be unambiguous, but the spec provides no injectivity guarantee at the trait level, so collisions could exist for variable-length inner types",
+    "entailed": false,
+    "verus_output": "/workspace_v2/ironkv__single_delivery_model_v__impl2__retransmit_un_acked_packets_for_dst/phi_4_tuple_serialize_no_length_delimiter.rs:1036:9\n     |\n1027 | proof fn phi_4_tuple_serialize_no_length_delimiter(a1: u64, b1: Vec<u8>, a2: u64, b2: Vec<u8>)\n     |       ---------------------------------------------------------------------------------------- at the end of the function body\n...\n1036 |         false,\n     |         ^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "abstractify_cmessage_seq_preserves_length",
+    "type": "behavioral",
+    "code": "proof fn phi_5_abstractify_cmessage_seq_preserves_length(msgs: Seq<CSingleMessage>)\n    ensures\n        abstractify_cmessage_seq(msgs).len() == msgs.len(),\n{\n}",
+    "reason": "`abstractify_cmessage_seq` uses `map_values` which preserves length \u2014 this means a sequence containing InvalidMessage entries maps to abstract SingleMessage::InvalidMessage entries of the same length, potentially inflating the abstract message count with garbage entries that should have been filtered out",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

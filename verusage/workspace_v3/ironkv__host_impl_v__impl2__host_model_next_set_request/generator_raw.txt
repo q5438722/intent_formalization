@@ -1,0 +1,140 @@
+===PHI_START===
+NAME: local_set_no_hashmap_update
+TARGET_FN: next_set_request_complete
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_local_set_no_hashmap_update(
+    pre: AbstractHostState,
+    post: AbstractHostState,
+    src: AbstractEndPoint,
+    seqno: nat,
+    k: CKey,
+    v: Seq<u8>,
+    sm: SingleMessage<Message>,
+    replym: Message,
+    out: Set<Packet>,
+)
+    requires
+        pre.delegation_map.is_complete(),
+        pre.delegation_map[k] == pre.constants.me,
+        valid_key(k),
+        valid_optional_value(Some(v)),
+        next_set_request_complete(pre, post, src, seqno,
+            Message::SetRequest{key: k, value: Some(v)}, sm, replym, out, true),
+    ensures
+        post.h == pre.h,
+{
+}
+```
+REASON: If the hashmap is unchanged after a local SetRequest with Some(v), the key-value store silently drops writes
+===PHI_END===
+
+===PHI_START===
+NAME: none_value_no_remove
+TARGET_FN: next_set_request_complete
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_none_value_no_remove(
+    pre: AbstractHostState,
+    post: AbstractHostState,
+    src: AbstractEndPoint,
+    seqno: nat,
+    k: CKey,
+    sm: SingleMessage<Message>,
+    replym: Message,
+    out: Set<Packet>,
+)
+    requires
+        pre.delegation_map.is_complete(),
+        pre.delegation_map[k] == pre.constants.me,
+        valid_key(k),
+        pre.h.contains_key(k),
+        next_set_request_complete(pre, post, src, seqno,
+            Message::SetRequest{key: k, value: None}, sm, replym, out, true),
+    ensures
+        post.h.contains_key(k),
+{
+}
+```
+REASON: If the key persists after a SetRequest with None value, delete operations are broken and stale data remains
+===PHI_END===
+
+===PHI_START===
+NAME: send_success_no_state_change
+TARGET_FN: send_single_message
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_send_success_no_state_change(
+    pre: SingleDelivery<Message>,
+    post: SingleDelivery<Message>,
+    m: Message,
+    dst: AbstractEndPoint,
+    sm: Option<SingleMessage<Message>>,
+    params: AbstractParameters,
+)
+    requires
+        SingleDelivery::send_single_message(pre, post, m, dst, sm, params),
+        sm is Some,
+    ensures
+        pre == post,
+{
+}
+```
+REASON: If state is unchanged after a successful send, the un_acked queue never grows and retransmission is impossible
+===PHI_END===
+
+===PHI_START===
+NAME: ack_lookup_ignores_stored
+TARGET_FN: ack_state_lookup
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_ack_lookup_ignores_stored(
+    src: AbstractEndPoint,
+    send_state: SendState<Message>,
+    ack: AckState<Message>,
+)
+    requires
+        send_state.contains_key(src),
+        send_state[src] == ack,
+        ack.num_packets_acked > 0,
+    ensures
+        ack_state_lookup(src, send_state).num_packets_acked == 0,
+{
+}
+```
+REASON: If lookup always returns zero acked packets for a known endpoint, acknowledgements are lost and delivery breaks
+===PHI_END===
+
+===PHI_START===
+NAME: redirect_modifies_received_requests
+TARGET_FN: next_set_request
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_redirect_modifies_received_requests(
+    pre: AbstractHostState,
+    post: AbstractHostState,
+    pkt: Packet,
+    out: Set<Packet>,
+    k: CKey,
+    ov: Option<Seq<u8>>,
+)
+    requires
+        pkt.msg is Message,
+        pkt.msg.arrow_Message_m() == Message::SetRequest{key: k, value: ov},
+        pre.delegation_map.is_complete(),
+        pre.delegation_map[k] != pre.constants.me,
+        valid_key(k),
+        valid_optional_value(ov),
+        next_set_request(pre, post, pkt, out),
+    ensures
+        post.received_requests != pre.received_requests,
+{
+}
+```
+REASON: If received_requests changes on a redirect (non-local key), the host logs phantom requests it never processed
+===PHI_END===

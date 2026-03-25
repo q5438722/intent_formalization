@@ -1,0 +1,80 @@
+===PHI_START===
+NAME: interp_aux_equal_from_entries
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_interp_aux_equal_from_entries(d1: Directory, d2: Directory)
+    requires
+        d1.inv(),
+        d2.inv(),
+        d1.arch == d2.arch,
+        d1.layer == d2.layer,
+        d1.base_vaddr == d2.base_vaddr,
+        forall|j: nat| j < d1.entries.len()
+            ==> (#[trigger] d1.entries[j as int]).interp(d1.entry_base(j)) == d2.entries[j as int].interp(d1.entry_base(j)),
+    ensures
+        d1.interp_aux(0) === d2.interp_aux(0),
+{
+    d1.lemma_entries_interp_equal_implies_interp_aux_equal(d2, 0);
+}
+```
+REASON: Two directories with same entry interpretations have the same interp — direct consequence of the verified lemma
+===PHI_END===
+
+===PHI_START===
+NAME: interp_aux_tail_empty
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_interp_aux_tail_empty(d: Directory)
+    requires
+        d.inv(),
+    ensures
+        d.interp_aux(d.entries.len()) === Map::<nat, PTE>::empty(),
+{
+}
+```
+REASON: `interp_aux` past the end of entries returns empty map — tests the base case of the recursive definition
+===PHI_END===
+
+===PHI_START===
+NAME: page_entry_singleton_map
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_page_entry_singleton_map(p: PTE, base: nat)
+    ensures
+        NodeEntry::Page(p).interp(base) === map![base => p],
+{
+}
+```
+REASON: A page entry interprets as a singleton map keyed by its base — tests the open spec definition
+===PHI_END===
+
+===PHI_START===
+NAME: invalid_entry_empty_map
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_invalid_entry_empty_map(base: nat)
+    ensures
+        NodeEntry::Invalid.interp(base) === Map::<nat, PTE>::empty(),
+{
+}
+```
+REASON: An invalid entry interprets as the empty map — tests the open spec definition
+===PHI_END===
+
+===PHI_START===
+NAME: directory_entry_ignores_base
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_directory_entry_ignores_base(d: Directory, base1: nat, base2: nat)
+    ensures
+        NodeEntry::Directory(d).interp(base1) === NodeEntry::Directory(d).interp(base2),
+{
+}
+```
+REASON: A directory entry's interpretation ignores the `base` parameter — `NodeEntry::Directory(d)` calls `d.interp_aux(0)` discarding `base`, which may cause the parent's entry_base to be silently dropped
+===PHI_END===

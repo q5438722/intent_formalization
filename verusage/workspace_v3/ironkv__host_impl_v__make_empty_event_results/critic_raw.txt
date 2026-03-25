@@ -1,0 +1,31 @@
+Looking at the source carefully, focusing on `CKeyHashMap` and `spec_to_vec`:
+
+```rust
+pub uninterp spec fn spec_to_vec(&self) -> Vec<CKeyKV>;
+
+#[verifier(external_body)]
+#[verifier(when_used_as_spec(spec_to_vec))]
+pub fn to_vec(&self) -> (res: Vec<CKeyKV>)
+    ensures res == self.spec_to_vec()
+{ unimplemented!() }
+```
+
+Key observations: `CKeyHashMap` is `external_body`, `spec_to_vec` is `uninterp` with **no postconditions**, and `view()` is also `uninterp` with no axioms connecting the two. There are no axioms anywhere constraining what `spec_to_vec` returns.
+
+===VERDICT_START===
+PHI: to_vec_always_empty
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `spec_to_vec` is an uninterpreted spec function on an `external_body` type with zero postconditions or connecting axioms. The fact that the verifier can prove the result is always empty demonstrates that the spec is fatally underspecified — there is no axiom relating `spec_to_vec`'s output to the map's actual contents. A correct spec would need postconditions (e.g., relating the output length to the map's domain size and ensuring elements correspond to map entries), which would block this property.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: to_vec_bounded_by_one
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: This is a strictly weaker consequence of the same root cause as `to_vec_always_empty`: `spec_to_vec` is completely unconstrained. Since `to_vec_always_empty` already verifies (len == 0 implies len <= 1), this property adds no new information but confirms the same spec gap — `spec_to_vec` lacks any postconditions guaranteeing it faithfully represents the hashmap's key-value pairs.
+===VERDICT_END===
+
+===SUMMARY===
+Both properties expose the same fundamental spec deficiency: `CKeyHashMap::spec_to_vec` is declared as an `uninterp spec fn` on an `external_body` struct with absolutely no postconditions, axioms, or connections to `CKeyHashMap::view()`. This means the verifier has no information constraining the function's output, allowing it to prove the conversion always yields an empty (or trivially bounded) sequence — completely defeating the purpose of a hashmap-to-vector conversion. A sound spec would need axioms relating `spec_to_vec`'s output to the map's domain and values (e.g., output length equals domain cardinality, elements correspond to map entries). Both findings are true positives targeting the exec function `to_vec`.
+===END_SUMMARY===

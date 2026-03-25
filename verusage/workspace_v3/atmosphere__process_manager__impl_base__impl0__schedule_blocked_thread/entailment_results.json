@@ -1,0 +1,52 @@
+[
+  {
+    "name": "push_thread_becomes_head",
+    "target_fn": "scheduler_push_thread",
+    "type": "behavioral",
+    "reason": "Push appends to the tail; the head of a non-empty scheduler must remain the old head element",
+    "entailed": false,
+    "verified": 21,
+    "errors": 1,
+    "output_tail": "69 | |     thread_ptr: ThreadPtr,\n1670 | | )\n     | |_- at the end of the function body\n...\n1682 |           new_container.scheduler@[0] == thread_ptr,\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 20 warnings emitted\n\n"
+  },
+  {
+    "name": "push_exceeds_max_capacity",
+    "target_fn": "scheduler_push_thread",
+    "type": "boundary",
+    "reason": "Old length < MAX so new length <= MAX; exceeding MAX would indicate an overflow or off-by-one in the capacity bound",
+    "entailed": false,
+    "verified": 21,
+    "errors": 1,
+    "output_tail": "70 | | )\n     | |_- at the end of the function body\n...\n1681 |           new_container.scheduler.len() > MAX_CONTAINER_SCHEDULER_LEN,\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 20 warnings emitted\n\n"
+  },
+  {
+    "name": "push_removes_existing_element",
+    "target_fn": "scheduler_push_thread",
+    "type": "logical",
+    "reason": "Seq::push only appends; all previously present elements must still be contained in the new scheduler",
+    "entailed": false,
+    "verified": 21,
+    "errors": 1,
+    "output_tail": "ing_ptr: ThreadPtr,\n1671 | | )\n     | |_- at the end of the function body\n...\n1683 |           !new_container.scheduler@.contains(existing_ptr),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 20 warnings emitted\n\n"
+  },
+  {
+    "name": "schedule_empties_multi_element_queue",
+    "target_fn": "schedule_blocked_thread",
+    "type": "boundary",
+    "reason": "Skipping one element from a queue with >1 elements must leave a non-empty queue; emptying it would lose blocked threads",
+    "entailed": false,
+    "verified": 21,
+    "errors": 1,
+    "output_tail": "ndpointPtr,\n1670 | | )\n     | |_- at the end of the function body\n...\n1684 |           new_self.get_endpoint(endpoint_ptr).queue.len() == 0,\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 20 warnings emitted\n\n"
+  },
+  {
+    "name": "schedule_modifies_other_endpoint",
+    "target_fn": "schedule_blocked_thread",
+    "type": "logical",
+    "reason": "Scheduling from one endpoint must not modify any other endpoint's queue; violating this frame condition would corrupt unrelated IPC channels",
+    "entailed": false,
+    "verified": 21,
+    "errors": 1,
+    "output_tail": "tion body\n...\n1687 |           new_self.get_endpoint(other_ep).queue@ != old_self.get_endpoint(other_ep).queue@,\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 20 warnings emitted\n\n"
+  }
+]

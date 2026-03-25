@@ -1,0 +1,84 @@
+===PHI_START===
+NAME: entails_trans_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_entails_trans_intensional_bridge(p: TempPred<int>, q: TempPred<int>, r: TempPred<int>)
+    requires
+        p.entails(q),
+        q.entails(r),
+    ensures
+        p.entails(r),
+{
+    entails_trans::<int>(p, q, r);
+}
+```
+REASON: entails_trans is external_body bridging three layers of TempPred::new/implies closures — the transitivity requires resolving intensional closure identity across chained implications without proof
+===PHI_END===
+
+===PHI_START===
+NAME: entails_preserved_by_always_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_entails_preserved_by_always_intensional_bridge(p: TempPred<int>, q: TempPred<int>)
+    requires
+        p.entails(q),
+    ensures
+        always(p).entails(always(q)),
+{
+    entails_preserved_by_always::<int>(p, q);
+}
+```
+REASON: entails_preserved_by_always is external_body lifting entailment through always — bridging the forall-over-suffix closure inside always with the entailment closure without proof
+===PHI_END===
+
+===PHI_START===
+NAME: tla_forall_entails_instance
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_tla_forall_entails_instance(a_to_p: spec_fn(int) -> TempPred<int>, a: int)
+    ensures
+        tla_forall(a_to_p).entails(a_to_p(a)),
+{
+}
+```
+REASON: tla_forall instantiation requires bridging the forall-inside-TempPred::new closure to a specific a_to_p(a) — if the SMT solver resolves this intensional gap automatically, the external_body axioms may be redundant for this case
+===PHI_END===
+
+===PHI_START===
+NAME: always_tla_forall_to_tla_forall_always
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_always_tla_forall_to_tla_forall_always(spec: TempPred<int>, a_to_p: spec_fn(int) -> TempPred<int>)
+    requires
+        spec.entails(always(tla_forall(a_to_p))),
+    ensures
+        spec.entails(tla_forall(|a: int| always(a_to_p(a)))),
+{
+}
+```
+REASON: commuting always and tla_forall requires that forall-over-suffix and forall-over-A can be swapped through nested TempPred::new closures — if this verifies, the axioms are strong enough to enable quantifier reordering without an explicit commutativity lemma
+===PHI_END===
+
+===PHI_START===
+NAME: entails_chain_collapses_arbitrary_intermediates
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_entails_chain_collapses_arbitrary_intermediates(p: TempPred<int>, q: TempPred<int>, r: TempPred<int>, s: TempPred<int>)
+    requires
+        p.entails(q),
+        q.entails(r),
+        r.entails(s),
+    ensures
+        p.entails(s),
+{
+    entails_trans::<int>(p, q, r);
+    entails_trans::<int>(p, r, s);
+}
+```
+REASON: chaining entails_trans arbitrarily composes unverified closure-identity bridges — each application trusts the SMT solver resolves a new intensional gap, and unbounded chaining amplifies the trust surface
+===PHI_END===

@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: u64_prefix_freedom_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `u64::lemma_serialization_is_not_a_prefix_of` is `external_body` when all u64 serializations are fixed 8 bytes, making prefix-freedom equivalent to injectivity — provable from `lemma_auto_spec_u64_to_from_le_bytes` but left unverified.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: usize_serialize_injective_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `usize::lemma_serialize_injective` is `external_body` despite usize serializing via cast to u64 — injectivity follows directly from u64 injectivity plus the cast being injective for values ≤ u64::MAX. Unnecessarily trusted.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: vec_u8_prefix_freedom_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `Vec<u8>::lemma_serialization_is_not_a_prefix_of` is `external_body` despite being provable from the length-prefix structure — if two Vec<u8> have different views, their length prefixes or data differ, which is derivable from usize serialization properties.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: vec_t_injectivity_depends_on_prefix_freedom
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `Vec<T>::lemma_serialize_injective` is verified but calls `self.lemma_serialization_is_not_a_prefix_of(other)` which is `external_body` for Vec<T>. The verified proof's soundness depends entirely on this unverified prefix-freedom axiom.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: vec_u8_serialize_injective_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `Vec<u8>::lemma_serialize_injective` is `external_body` despite being provable — equal serializations means equal length prefixes (hence equal lengths) and equal data subranges. This is a straightforward consequence of the length-prefix format.
+===VERDICT_END===
+
+===SUMMARY===
+All five candidates are true positives identifying the same systemic pattern: multiple `external_body` lemmas across u64, usize, Vec<u8>, and Vec<T> implementations trust serialization injectivity and prefix-freedom axioms that are provable from the open spec definitions. The most impactful is φ4, where Vec<T>'s "verified" injectivity proof chains through Vec<T>'s unverified prefix-freedom external_body, meaning the entire generic Vec serialization injectivity guarantee is only as sound as that trusted axiom. The others (φ1–3, φ5) are individually provable properties left unnecessarily as external_body.
+===END_SUMMARY===

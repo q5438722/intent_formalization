@@ -1,0 +1,37 @@
+[
+  {
+    "name": "clear_always_empty",
+    "target_fn": "clear",
+    "type": "behavioral",
+    "code": "proof fn phi_1_clear_always_empty(pre: CommitMask, other: CommitMask, post: CommitMask)\n    requires\n        post@ == pre@.difference(other@),\n    ensures\n        post@ == Set::<int>::empty(),\n{\n}",
+    "reason": "Would mean clear erases everything regardless of other, making it a total wipe instead of a selective clear"
+  },
+  {
+    "name": "clear_is_noop",
+    "target_fn": "clear",
+    "type": "behavioral",
+    "code": "proof fn phi_2_clear_is_noop(pre: CommitMask, other: CommitMask, post: CommitMask)\n    requires\n        post@ == pre@.difference(other@),\n    ensures\n        post@ == pre@,\n{\n}",
+    "reason": "Would mean clear never removes any bits, making the operation completely ineffective"
+  },
+  {
+    "name": "other_survives_clear",
+    "target_fn": "clear",
+    "type": "logical",
+    "code": "proof fn phi_3_other_survives_clear(pre: CommitMask, other: CommitMask, post: CommitMask)\n    requires\n        post@ == pre@.difference(other@),\n    ensures\n        other@.subset_of(post@),\n{\n}",
+    "reason": "Would mean the bits we intended to clear are still present in the result, defeating the purpose of clear"
+  },
+  {
+    "name": "result_confined_to_other",
+    "target_fn": "clear",
+    "type": "boundary",
+    "code": "proof fn phi_4_result_confined_to_other(pre: CommitMask, other: CommitMask, post: CommitMask)\n    requires\n        post@ == pre@.difference(other@),\n    ensures\n        post@.subset_of(other@),\n{\n}",
+    "reason": "Would mean the result only contains bits from other, which is the exact opposite of what set difference should produce"
+  },
+  {
+    "name": "clear_symmetric",
+    "target_fn": "clear",
+    "type": "logical",
+    "code": "proof fn phi_5_clear_symmetric(pre: CommitMask, other: CommitMask, post: CommitMask)\n    requires\n        post@ == pre@.difference(other@),\n    ensures\n        post@ == other@.difference(pre@),\n{\n}",
+    "reason": "Would mean set difference is symmetric (A\\B == B\\A), which is false in general and would indicate a fundamentally broken spec"
+  }
+]

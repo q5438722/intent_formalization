@@ -1,0 +1,88 @@
+===PHI_START===
+NAME: full_missing_zero
+TARGET_FN: is_full
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_full_missing_zero(cm: CommitMask, b: bool)
+    requires
+        b == (cm@ == Set::new(|i: int| 0 <= i < COMMIT_MASK_BITS)),
+        b == true,
+    ensures
+        !cm@.contains(0int),
+{
+}
+```
+REASON: If is_full returns true yet index 0 is absent, the ensures clause does not correctly characterize the full set
+===PHI_END===
+
+===PHI_START===
+NAME: always_full
+TARGET_FN: is_full
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_always_full(cm: CommitMask, b: bool)
+    requires
+        b == (cm@ == Set::new(|i: int| 0 <= i < COMMIT_MASK_BITS)),
+    ensures
+        b == true,
+{
+}
+```
+REASON: If is_full always returns true regardless of mask content, the spec is vacuously weak
+===PHI_END===
+
+===PHI_START===
+NAME: false_implies_empty
+TARGET_FN: is_full
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_false_implies_empty(cm: CommitMask, b: bool)
+    requires
+        b == (cm@ == Set::new(|i: int| 0 <= i < COMMIT_MASK_BITS)),
+        b == false,
+    ensures
+        cm@ =~= Set::empty(),
+{
+}
+```
+REASON: If not-full implies empty, the spec conflates partial occupancy with emptiness
+===PHI_END===
+
+===PHI_START===
+NAME: full_is_half_range
+TARGET_FN: is_full
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_full_is_half_range(cm: CommitMask, b: bool)
+    requires
+        b == (cm@ == Set::new(|i: int| 0 <= i < COMMIT_MASK_BITS)),
+        b == true,
+    ensures
+        cm@ =~= Set::new(|i: int| 0 <= i < 256),
+{
+}
+```
+REASON: If the full set equals [0,256) instead of [0,512), COMMIT_MASK_BITS is incorrectly halved
+===PHI_END===
+
+===PHI_START===
+NAME: full_contains_out_of_range
+TARGET_FN: is_full
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_full_contains_out_of_range(cm: CommitMask, b: bool)
+    requires
+        b == (cm@ == Set::new(|i: int| 0 <= i < COMMIT_MASK_BITS)),
+        b == true,
+    ensures
+        cm@.contains(512int),
+{
+}
+```
+REASON: If the full set contains index 512 the upper bound is off-by-one and the mask covers more bits than intended
+===PHI_END===

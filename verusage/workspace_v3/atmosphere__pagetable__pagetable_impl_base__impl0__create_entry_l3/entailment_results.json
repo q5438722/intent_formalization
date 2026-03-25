@@ -1,0 +1,52 @@
+[
+  {
+    "name": "new_l3_entry_not_present",
+    "target_fn": "create_entry_l3",
+    "type": "behavioral",
+    "reason": "A newly created L3 entry with present==false would be invisible to hardware address translation",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": " |           pt_new.spec_resolve_mapping_l3(target_l4i, target_l3i).get_Some_0().perm.present == false,\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 63 warnings emitted\n\n"
+  },
+  {
+    "name": "new_l3_entry_not_user",
+    "target_fn": "create_entry_l3",
+    "type": "boundary",
+    "reason": "An L3 entry in user space without the user bit set would violate user/kernel isolation",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": ".\n1314 |           pt_new.spec_resolve_mapping_l3(target_l4i, target_l3i).get_Some_0().perm.user == false,\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 63 warnings emitted\n\n"
+  },
+  {
+    "name": "other_l3_mapping_disappears",
+    "target_fn": "create_entry_l3",
+    "type": "logical",
+    "reason": "Creating an L3 entry at one index must not destroy a sibling L3 entry at a different index",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "\n     | |_- at the end of the function body\n...\n1324 |           pt_new.spec_resolve_mapping_l3(target_l4i, other_l3i).is_None(),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 63 warnings emitted\n\n"
+  },
+  {
+    "name": "table_page_becomes_data_mapped",
+    "target_fn": "create_entry_l3",
+    "type": "behavioral",
+    "reason": "A page used as a table structure appearing in data mappings would break memory safety invariants",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "e,\n1304 | |     page_map_ptr: PageMapPtr,\n1305 | | )\n     | |_- at the end of the function body\n...\n1316 |           !pt_new.page_not_mapped(page_map_ptr),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 60 warnings emitted\n\n"
+  },
+  {
+    "name": "unrelated_l4_entry_changes",
+    "target_fn": "create_entry_l3",
+    "type": "logical",
+    "reason": "Modifying an L3 slot under one L4 index must not corrupt the L4 resolution at a different index",
+    "entailed": false,
+    "verified": 19,
+    "errors": 1,
+    "output_tail": "l4i: L4Index,\n1306 | | )\n     | |_- at the end of the function body\n...\n1320 |           pt_new.spec_resolve_mapping_l4(other_l4i).is_None(),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 62 warnings emitted\n\n"
+  }
+]

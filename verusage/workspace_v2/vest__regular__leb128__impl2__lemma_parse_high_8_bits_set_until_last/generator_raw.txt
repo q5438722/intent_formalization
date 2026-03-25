@@ -1,0 +1,93 @@
+===PHI_START===
+NAME: parse_length_external_body_trusted
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_parse_length_external_body_trusted(
+    s: Seq<u8>,
+    n: int,
+    v: UInt,
+)
+    requires
+        UnsignedLEB128.spec_parse(s) == Some((n, v)),
+    ensures
+        0 <= n <= s.len(),
+{
+    UnsignedLEB128.lemma_parse_length(s);
+}
+```
+REASON: `lemma_parse_length` is `external_body` with `unimplemented!()` — the bound that parsed length ≤ input length is trusted without verification for this recursive parser
+===PHI_END===
+
+===PHI_START===
+NAME: parse_productive_external_body_trusted
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_parse_productive_external_body_trusted(
+    s: Seq<u8>,
+    n: int,
+    v: UInt,
+)
+    requires
+        UnsignedLEB128.spec_parse(s) == Some((n, v)),
+    ensures
+        n > 0,
+{
+    UnsignedLEB128.lemma_parse_productive(s);
+}
+```
+REASON: `lemma_parse_productive` is `external_body` with `unimplemented!()` — the productivity guarantee is trusted without proof for UnsignedLEB128 which hardcodes `is_productive() == true`
+===PHI_END===
+
+===PHI_START===
+NAME: parse_empty_is_none
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_parse_empty_is_none()
+    ensures
+        UnsignedLEB128.spec_parse(seq![]).is_none(),
+{
+}
+```
+REASON: Parsing an empty sequence should fail — if it somehow succeeded, the parser would produce values from no input, violating the productivity and length bounds
+===PHI_END===
+
+===PHI_START===
+NAME: parse_single_byte_no_high_bit
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_parse_single_byte_no_high_bit(
+    b: u8,
+)
+    requires
+        b < 0x80,
+    ensures
+        UnsignedLEB128.spec_parse(seq![b]) == Some((1int, (b & 0x7f) as UInt)),
+{
+}
+```
+REASON: A single byte with high bit unset should parse to its low 7 bits in exactly 1 byte — if this base case were wrong, all multi-byte encodings built on top would produce incorrect values
+===PHI_END===
+
+===PHI_START===
+NAME: parse_max_value_overflow_check
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_parse_max_value_overflow_check(
+    s: Seq<u8>,
+    n: int,
+    v: UInt,
+)
+    requires
+        UnsignedLEB128.spec_parse(s) == Some((n, v)),
+    ensures
+        v <= UInt::MAX,
+{
+}
+```
+REASON: The parsed value must fit in u64 — the overflow check `v2 <= n_bit_max_unsigned!(8*8-7)` combined with `v2 << 7 | low_bits` should never exceed UInt::MAX, but the recursive accumulation depends on the trusted length/productive lemmas for termination reasoning
+===PHI_END===

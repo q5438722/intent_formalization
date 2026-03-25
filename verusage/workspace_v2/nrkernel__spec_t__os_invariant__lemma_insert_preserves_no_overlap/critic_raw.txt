@@ -1,0 +1,17 @@
+===VERDICT_START===
+PHI: crit_sect_implies_not_idle
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `is_in_crit_sect` returns false for `Idle`, `MapWaiting`, and `UnmapWaiting`, and true for everything else. Since Idle maps to false, `is_in_crit_sect()` being true necessarily means `!is_idle()`. Correct by exhaustive case analysis of the match arms.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: unique_corestates_allows_equal_idle
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `unique_CoreStates` guards with `!map[core].is_idle()`, so Idle entries are exempt from the uniqueness check. Multiple cores sharing the Idle state is correct and expected — uniqueness is only needed for active operations.
+===VERDICT_END===
+
+===SUMMARY===
+Both candidates are false positives. Critical section implying non-Idle is correct by the match arm definitions, and multiple cores having identical Idle states is intentionally allowed by the uniqueness predicate's idle guard.
+===END_SUMMARY===

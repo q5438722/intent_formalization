@@ -1,0 +1,47 @@
+[
+  {
+    "name": "container_map_2m_subset_allocated_4k",
+    "type": "logical",
+    "code": "proof fn phi_1_container_map_2m_subset_allocated_4k(alloc: PageAllocator)\n    requires\n        alloc.wf(),\n    ensures\n        alloc.container_map_2m@.dom().subset_of(alloc.allocated_pages_4k@),\n{\n}",
+    "reason": "container_wf checks container_map_2m domain against allocated_pages_4k instead of allocated_pages_2m \u2014 likely copy-paste bug",
+    "entailed": true,
+    "verus_output": "ed - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__allocator__page_allocator_spec_impl__impl2__free_page_4k/phi_1_container_map_2m_subset_allocated_4k.rs:506:72\n    |\n506 |             0 <= i < NUM_PAGES && self.page_array@[i].owning_container.is_Some() ==> (\n    |                                                                        ^^^^^^^\n\nwarning: 4 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "container_map_1g_subset_allocated_4k",
+    "type": "logical",
+    "code": "proof fn phi_2_container_map_1g_subset_allocated_4k(alloc: PageAllocator)\n    requires\n        alloc.wf(),\n    ensures\n        alloc.container_map_1g@.dom().subset_of(alloc.allocated_pages_4k@),\n{\n}",
+    "reason": "container_wf checks container_map_1g domain against allocated_pages_4k instead of allocated_pages_1g \u2014 likely copy-paste bug",
+    "entailed": true,
+    "verus_output": "ed - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__allocator__page_allocator_spec_impl__impl2__free_page_4k/phi_2_container_map_1g_subset_allocated_4k.rs:506:72\n    |\n506 |             0 <= i < NUM_PAGES && self.page_array@[i].owning_container.is_Some() ==> (\n    |                                                                        ^^^^^^^\n\nwarning: 4 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "wf_to_no_duplicates_external_body",
+    "type": "logical",
+    "code": "proof fn phi_3_wf_to_no_duplicates_external_body(sll: StaticLinkedList<usize, 10>)\n    requires\n        sll.wf(),\n    ensures\n        sll.spec_seq@.no_duplicates(),\n{\n    sll.wf_to_no_duplicates();\n}",
+    "reason": "wf_to_no_duplicates is external_body \u2014 unverified claim that wf() implies no_duplicates",
+    "entailed": true,
+    "verus_output": "cated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__allocator__page_allocator_spec_impl__impl2__free_page_4k/phi_3_wf_to_no_duplicates_external_body.rs:506:72\n    |\n506 |             0 <= i < NUM_PAGES && self.page_array@[i].owning_container.is_Some() ==> (\n    |                                                                        ^^^^^^^\n\nwarning: 4 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "push_preserves_old_node_refs",
+    "type": "behavioral",
+    "code": "proof fn phi_4_push_preserves_old_node_refs(sll: StaticLinkedList<usize, 10>, new_val: usize, old_val: usize)\n    requires\n        sll.wf(),\n        sll.len() < 10,\n        sll.unique(),\n        sll@.contains(new_val) == false,\n        sll@.contains(old_val),\n    ensures\n        ({\n            let old_ref = sll.get_node_ref(old_val);\n            old_ref == old_ref // trivially true \u2014 real test is whether push spec allows node_ref collision\n        }),\n{\n}",
+    "reason": "push ensures old node refs are preserved but get_node_ref is external_body/closed \u2014 no way to verify the claimed ref stability",
+    "entailed": true,
+    "verus_output": "deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__allocator__page_allocator_spec_impl__impl2__free_page_4k/phi_4_push_preserves_old_node_refs.rs:506:72\n    |\n506 |             0 <= i < NUM_PAGES && self.page_array@[i].owning_container.is_Some() ==> (\n    |                                                                        ^^^^^^^\n\nwarning: 4 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "alloc_new_container_inserts_into_all_maps",
+    "type": "behavioral",
+    "code": "proof fn phi_5_alloc_new_container_inserts_into_all_maps(alloc: PageAllocator, ret_ptr: PagePtr)\n    requires\n        alloc.wf(),\n        alloc.free_pages_4k.len() > 0,\n        alloc.allocated_pages_4k@.contains(ret_ptr) == false,\n        alloc.free_pages_4k@.to_set().contains(ret_ptr),\n        page_ptr_valid(ret_ptr),\n    ensures\n        // After alloc_page_4k_for_new_container, container_map_2m gets ret_ptr as key\n        // but ret_ptr is a 4k page pointer \u2014 inserting it as container key in 2m/1g maps is suspicious\n        alloc.container_map_2m@.insert(ret_ptr, Set::empty()).dom().contains(ret_ptr),\n{\n}",
+    "reason": "alloc_page_4k_for_new_container inserts a 4k page_ptr as container key into container_map_2m and container_map_1g \u2014 using a 4k page pointer as a container identifier across all size classes is suspicious",
+    "entailed": true,
+    "verus_output": "use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__allocator__page_allocator_spec_impl__impl2__free_page_4k/phi_5_alloc_new_container_inserts_into_all_maps.rs:506:72\n    |\n506 |             0 <= i < NUM_PAGES && self.page_array@[i].owning_container.is_Some() ==> (\n    |                                                                        ^^^^^^^\n\nwarning: 4 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "differing_index_bounded",
+    "type": "boundary",
+    "code": "proof fn phi_1_differing_index_bounded(s1: Seq<int>, s2: Seq<int>)\n    requires\n        s1 != s2,\n        s1.len() == s2.len(),\n        s1.len() > 0,\n    ensures\n        ({let i = some_differing_index_for_unequal_seqs(s1, s2); i < s1.len() as int}),\n{\n    let _ = some_differing_index_for_unequal_seqs(s1, s2);\n}",
+    "reason": "If the returned index could exceed the sequence length, it would allow out-of-bounds reasoning",
+    "entailed": false,
+    "verus_output": "error: cannot call function `phi_1_differing_index_bounded::some_differing_index_for_unequal_seqs` with mode proof\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__verus_extra__some_differing_index_for_unequal_seqs/phi_1_differing_index_bounded.rs:34:19\n   |\n34 |         ({let i = some_differing_index_for_unequal_seqs(s1, s2); i < s1.len() as int}),\n   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "equal_seqs_no_differing_index",
+    "type": "logical",
+    "code": "proof fn phi_2_equal_seqs_no_differing_index(s: Seq<int>)\n    ensures\n        forall |i: int| 0 <= i < s.len() ==> s[i] == s[i],\n{\n}",
+    "reason": "If a sequence could differ from itself at any index, extensional equality would be broken",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "swap_produces_different_seq",
+    "type": "behavioral",
+    "code": "proof fn phi_3_swap_produces_different_seq(s: Seq<int>, i: int, j: int)\n    requires\n        0 <= i < s.len(),\n        0 <= j < s.len(),\n        i != j,\n        s[i] != s[j],\n    ensures\n        s != s.update(i, s[j]).update(j, s[i]) || s[i] == s[j],\n{\n    let s2 = s.update(i, s[j]).update(j, s[i]);\n    if s == s2 {\n        assert(s[i] == s2[i]);\n    }\n}",
+    "reason": "Swapping two distinct elements should produce a different sequence \u2014 if it didn't, the function's ability to find the differing index would be undermined",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "singleton_diff_at_zero",
+    "type": "boundary",
+    "code": "proof fn phi_4_singleton_diff_at_zero(a: int, b: int)\n    requires\n        a != b,\n    ensures\n        some_differing_index_for_unequal_seqs(seq![a], seq![b]) == 0,\n{\n    let i = some_differing_index_for_unequal_seqs(seq![a], seq![b]);\n}",
+    "reason": "For singleton sequences with different elements, the only valid differing index is 0 \u2014 any other return value would be out of bounds",
+    "entailed": false,
+    "verus_output": "error: cannot call function `phi_4_singleton_diff_at_zero::some_differing_index_for_unequal_seqs` with mode proof\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__verus_extra__some_differing_index_for_unequal_seqs/phi_4_singleton_diff_at_zero.rs:32:9\n   |\n32 |         some_differing_index_for_unequal_seqs(seq![a], seq![b]) == 0,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "differing_index_witnesses_inequality",
+    "type": "logical",
+    "code": "proof fn phi_5_differing_index_witnesses_inequality(s1: Seq<int>, s2: Seq<int>)\n    requires\n        s1.len() == s2.len(),\n        forall |i: int| 0 <= i < s1.len() ==> s1[i] == s2[i],\n    ensures\n        s1 == s2,\n{\n    assert(s1 =~= s2);\n}",
+    "reason": "If pointwise equality didn't imply sequence equality, the function's precondition `s1 != s2` combined with equal lengths would be satisfiable even when all elements match \u2014 breaking extensionality",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

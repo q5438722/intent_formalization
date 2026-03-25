@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: align_exceeds_input
+TARGET_FN: align_to_usize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_align_exceeds_input(a: usize, b: usize)
+    requires
+        b > 0,
+    ensures
+        align_to_usize(a, b) > a,
+{
+}
+```
+REASON: Aligning down should never produce a value larger than the original input
+===PHI_END===
+
+===PHI_START===
+NAME: align_to_one_changes_value
+TARGET_FN: align_to_usize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_align_to_one_changes_value(a: usize)
+    requires
+        a <= usize::MAX,
+    ensures
+        align_to_usize(a, 1usize) != a,
+{
+}
+```
+REASON: Every integer is a multiple of 1, so aligning to 1 must be a no-op
+===PHI_END===
+
+===PHI_START===
+NAME: align_result_not_aligned
+TARGET_FN: align_to_usize
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_align_result_not_aligned(a: usize, b: usize)
+    requires
+        b > 0,
+        b <= a,
+    ensures
+        !aligned(align_to_usize(a, b) as nat, b as nat),
+{
+}
+```
+REASON: The whole point of align_to_usize is to produce a b-aligned result; failing that breaks its contract
+===PHI_END===
+
+===PHI_START===
+NAME: zero_not_aligned
+TARGET_FN: aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_zero_not_aligned(size: nat)
+    requires
+        size > 0,
+    ensures
+        !aligned(0nat, size),
+{
+}
+```
+REASON: Zero is divisible by every positive integer, so aligned(0, n) must be true for all n > 0
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_implies_align_noop_fails
+TARGET_FN: align_to_usize
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_aligned_implies_align_noop_fails(a: usize, b: usize)
+    requires
+        b > 0,
+        aligned(a as nat, b as nat),
+    ensures
+        align_to_usize(a, b) != a,
+{
+}
+```
+REASON: If a is already aligned to b then align_to_usize(a,b) must equal a; the contrary would mean alignment is lossy
+===PHI_END===

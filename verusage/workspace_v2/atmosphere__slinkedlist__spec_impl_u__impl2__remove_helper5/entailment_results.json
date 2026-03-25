@@ -1,0 +1,47 @@
+[
+  {
+    "name": "sll_len_without_wf_returns_value_list_len",
+    "type": "logical",
+    "code": "proof fn phi_1_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    ensures\n        sll.len() == sll.value_list_len,\n{\n}",
+    "reason": "StaticLinkedList::len's external_body unconditionally ensures l == self.value_list_len without requiring wf() \u2014 the raw field is exposed even for malformed lists",
+    "entailed": false,
+    "verus_output": "thout_wf_returns_value_list_len.rs:422:9\n    |\n420 | proof fn phi_1_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    |       -------------------------------------------------------------------------------------------------- at the end of the function body\n421 |     ensures\n422 |         sll.len() == sll.value_list_len,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "remove_helper5_head_becomes_second",
+    "type": "behavioral",
+    "code": "proof fn phi_2_remove_helper5_head_becomes_second<T: Copy, const N: usize>(\n    old_sll: StaticLinkedList<T, N>,\n    new_sll: StaticLinkedList<T, N>,\n    ret: T,\n)\n    requires\n        old_sll.wf(),\n        old_sll@.contains(ret),\n        old_sll.get_node_ref(ret) == old_sll.value_list_head,\n        old_sll.value_list_len != 1,\n        old_sll.free_list_len != 0,\n        new_sll.wf(),\n        new_sll.len() == old_sll.len() - 1,\n        new_sll@ =~= old_sll@.remove_value(ret),\n    ensures\n        new_sll@ =~= old_sll@.skip(1),\n{\n}",
+    "reason": "remove_helper5 removes the head element \u2014 the post-state should equal skip(1) of the old sequence, coupling remove_value with positional skip for the head case",
+    "entailed": false,
+    "verus_output": "_2_remove_helper5_head_becomes_second.rs:435:9\n    |\n420 |   proof fn phi_2_remove_helper5_head_becomes_second<T: Copy, const N: usize>(\n    |  _______-\n421 | |     old_sll: StaticLinkedList<T, N>,\n422 | |     new_sll: StaticLinkedList<T, N>,\n423 | |     ret: T,\n424 | | )\n    | |_- at the end of the function body\n...\n435 |           new_sll@ =~= old_sll@.skip(1),\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "set_next_no_index_bounds_check",
+    "type": "boundary",
+    "code": "proof fn phi_3_set_next_no_index_bounds_check<T: Copy, const N: usize>(sll: StaticLinkedList<T, N>, index: SLLIndex, v: SLLIndex)\n    requires\n        sll.array_wf(),\n        index < 0,\n    ensures\n        sll.arr_seq@.len() == N,\n{\n}",
+    "reason": "set_next requires only array_wf() with no bounds check on index \u2014 negative SLLIndex values or indices >= N are accepted, and the ensures reference arr_seq@[index as int] at potentially out-of-bounds positions",
+    "entailed": true,
+    "verus_output": " deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__slinkedlist__spec_impl_u__impl2__remove_helper5/phi_3_set_next_no_index_bounds_check.rs:208:75\n    |\n208 |                 && self.arr_seq@[self.value_list@[i as int] as int].value.get_Some_0()\n    |                                                                           ^^^^^^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "remove_helper5_preserves_node_refs",
+    "type": "behavioral",
+    "code": "proof fn phi_4_remove_helper5_preserves_node_refs<T: Copy, const N: usize>(\n    old_sll: StaticLinkedList<T, N>,\n    new_sll: StaticLinkedList<T, N>,\n    v: T,\n    w: T,\n    ret: T,\n)\n    requires\n        old_sll.wf(),\n        old_sll@.contains(ret),\n        old_sll.get_node_ref(ret) == old_sll.value_list_head,\n        old_sll.value_list_len != 1,\n        old_sll.free_list_len != 0,\n        new_sll.wf(),\n        new_sll.len() == old_sll.len() - 1,\n        new_sll@ =~= old_sll@.remove_value(ret),\n        new_sll@.contains(w),\n        old_sll.get_node_ref(w) == new_sll.get_node_ref(w),\n    ensures\n        new_sll.get_node_ref(w) == old_sll.get_node_ref(w),\n{\n}",
+    "reason": "remove_helper5 claims all remaining elements keep their node refs unchanged \u2014 the removed head node is moved to the free list, so this depends on the free list append not corrupting existing value list node assignments",
+    "entailed": true,
+    "verus_output": "recated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__slinkedlist__spec_impl_u__impl2__remove_helper5/phi_4_remove_helper5_preserves_node_refs.rs:208:75\n    |\n208 |                 && self.arr_seq@[self.value_list@[i as int] as int].value.get_Some_0()\n    |                                                                           ^^^^^^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "unique_range_uses_len_not_spec_seq_len",
+    "type": "logical",
+    "code": "proof fn phi_5_unique_range_uses_len_not_spec_seq_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    requires\n        sll.value_list_len == 0,\n        sll.spec_seq@.len() == 3,\n    ensures\n        sll.unique(),\n{\n}",
+    "reason": "unique() quantifies over 0..self.len() which equals value_list_len unconditionally \u2014 when value_list_len is 0 but spec_seq has elements, unique() is vacuously true regardless of duplicate values in spec_seq",
+    "entailed": false,
+    "verus_output": "nkedlist__spec_impl_u__impl2__remove_helper5/phi_5_unique_range_uses_len_not_spec_seq_len.rs:425:9\n    |\n420 | proof fn phi_5_unique_range_uses_len_not_spec_seq_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    |       ----------------------------------------------------------------------------------------------- at the end of the function body\n...\n425 |         sll.unique(),\n    |         ^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

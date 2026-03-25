@@ -1,0 +1,37 @@
+[
+  {
+    "name": "empty_map_nonempty_vec",
+    "target_fn": "to_vec",
+    "type": "behavioral",
+    "code": "proof fn phi_1_empty_map_nonempty_vec(m: CKeyHashMap)\n    requires\n        m@.dom() === Set::<AbstractKey>::empty(),\n    ensures\n        m.spec_to_vec()@.len() > 0,\n{\n}",
+    "reason": "An empty map should never produce a non-empty vector of key-value pairs"
+  },
+  {
+    "name": "key_not_in_domain",
+    "target_fn": "to_vec",
+    "type": "behavioral",
+    "code": "proof fn phi_2_key_not_in_domain(m: CKeyHashMap, i: int)\n    requires\n        0 <= i < m.spec_to_vec()@.len(),\n    ensures\n        !m@.contains_key(m.spec_to_vec()@[i].k),\n{\n}",
+    "reason": "Every key in the to_vec result should be present in the map's domain"
+  },
+  {
+    "name": "value_mismatch",
+    "target_fn": "to_vec",
+    "type": "behavioral",
+    "code": "proof fn phi_3_value_mismatch(m: CKeyHashMap, i: int)\n    requires\n        0 <= i < m.spec_to_vec()@.len(),\n        m@.contains_key(m.spec_to_vec()@[i].k),\n    ensures\n        m@[m.spec_to_vec()@[i].k] !== m.spec_to_vec()@[i].v@,\n{\n}",
+    "reason": "The value for a key in to_vec should match the corresponding value in the map"
+  },
+  {
+    "name": "duplicate_keys",
+    "target_fn": "to_vec",
+    "type": "logical",
+    "code": "proof fn phi_4_duplicate_keys(m: CKeyHashMap, i: int, j: int)\n    requires\n        0 <= i < m.spec_to_vec()@.len(),\n        0 <= j < m.spec_to_vec()@.len(),\n        i != j,\n    ensures\n        m.spec_to_vec()@[i].k == m.spec_to_vec()@[j].k,\n{\n}",
+    "reason": "The to_vec result should not contain duplicate keys since it represents a map"
+  },
+  {
+    "name": "nonempty_map_empty_vec",
+    "target_fn": "to_vec",
+    "type": "boundary",
+    "code": "proof fn phi_5_nonempty_map_empty_vec(m: CKeyHashMap, k: AbstractKey)\n    requires\n        m@.contains_key(k),\n    ensures\n        m.spec_to_vec()@.len() == 0,\n{\n}",
+    "reason": "A map with at least one key should never produce an empty vector representation"
+  }
+]

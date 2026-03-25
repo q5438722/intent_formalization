@@ -1,123 +1,81 @@
-# Summary: Specification Testing for `syscall_new_container_with_endpoint`
+# Adversarial Test Summary: `syscall_new_container_with_endpoint`
 
-## File Under Test
-
+## Target
 `kernel__syscall_new_container__impl0__syscall_new_container_with_endpoint.rs`
 
-This file defines a kernel syscall for creating a new container with an endpoint in the Atmosphere verified OS kernel. The key specs are:
-
-- **`syscall_new_container_with_endpoint_requirement`**: A spec function defining 13 preconditions that must all hold for the syscall to succeed (thread list not full, sufficient quotas for mem_4k/mem_2m/mem_1g/pcid/ioid, container depth not MAX, enough free pages, PCID available, endpoint shareable, address space shareable, children list not full, init_quota large enough for va_range).
-
-- **`syscall_new_container_with_endpoint_spec`**: A spec function describing what changes on success (new container/proc/thread created, domains updated, ownership relationships established, endpoint shared) and that on failure the state is unchanged.
-
-- **`syscall_new_container_with_endpoint`**: The actual function with ensures clauses linking requirement failure to error returns and the spec holding.
+Functions tested: `syscall_new_container_with_endpoint`, `new_container_with_endpoint`, and related helpers.
 
 ---
 
-## Correctness Results (should all PASS)
+## Results Overview
 
-| # | Test Name | Description | Expected | Actual |
-|---|-----------|-------------|----------|--------|
-| 1 | `test_requirement_thread_list_full` | Thread list full → requirement false | PASS | ✅ PASS |
-| 2 | `test_requirement_insufficient_mem_4k` | mem_4k quota insufficient → requirement false | PASS | ✅ PASS |
-| 3 | `test_requirement_insufficient_mem_2m` | mem_2m quota insufficient → requirement false | PASS | ✅ PASS |
-| 4 | `test_requirement_depth_max` | Container depth at MAX → requirement false | PASS | ✅ PASS |
-| 5 | `test_requirement_pcid_exhausted` | PCID exhausted → requirement false | PASS | ✅ PASS |
-| 6 | `test_requirement_children_full` | Children list full → requirement false | PASS | ✅ PASS |
-| 7 | `test_requirement_all_satisfied` | All conditions met → requirement true | PASS | ✅ PASS |
-| 8 | `test_spec_failure_preserves_state` | Requirement false + spec holds → old == new | PASS | ✅ PASS |
-| 9 | `test_requirement_init_quota_too_small` | init_quota.mem_4k < 3*va_range.len → false | PASS | ✅ PASS |
-| 10 | `test_requirement_endpoint_not_shareable` | Endpoint not shareable → requirement false | PASS | ✅ PASS |
-| 11 | `test_error_is_error` | Error variant is_error == true | PASS | ✅ PASS |
-| 12 | `test_success_not_error` | SuccessThreeUsize is_error == false | PASS | ✅ PASS |
-| 13 | `test_success_three_usize` | get_return_vaule_three_usize extracts values | PASS | ✅ PASS |
-| 14 | `test_requirement_insufficient_free_pages` | Not enough free pages → requirement false | PASS | ✅ PASS |
-| 15 | `test_quota_greater_reflexive` | Quota spec_greater is reflexive | PASS | ✅ PASS |
-| 16 | `test_quota_subtract_zero` | Quota subtract with k=0 preserves all | PASS | ✅ PASS |
-| 17 | `test_is_error_distinction` | Error vs non-Error variant distinction | PASS | ✅ PASS |
-| 18 | `test_spec_is_error_matches_error` | spec_is_error matches Error variant | PASS | ✅ PASS |
-| 19 | `test_spec_is_error_false_for_else` | spec_is_error false for Else variant | PASS | ✅ PASS |
-| 20 | `test_get_return_value_none_for_error` | get_return_vaule_three_usize returns None for Error | PASS | ✅ PASS |
+| Test File | Tests | Passed (verified) | Failed (verification error) | Expected Failures |
+|-----------|-------|--------------------|-----------------------------|-------------------|
+| `boundary_tests.rs` | 10 | 0 | 10 | 10 |
+| `behavioral_mutation_tests.rs` | 10 | 0 | 10 | 10 |
+| `logical_tests.rs` | 10 | 0 | 10 | 10 |
+| **Total** | **30** | **0** | **30** | **30** |
 
-**Verification output**: `63 verified, 0 errors`
+✅ **All 30 adversarial tests correctly FAILED verification**, meaning the specification properly rejects all tested invalid properties.
 
 ---
 
-## Completeness Results (should all FAIL)
+## Boundary Tests (10/10 failed ✅)
 
-### Round 1: Precondition Violations
-
-| # | Test Name | What it tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | `test_precond_assert_true_without_valid_thread` | Assert requirement true without thread membership | FAIL | ✅ FAIL |
-| 2 | `test_precond_assert_false_unconditionally` | Assert requirement false without any context | FAIL | ✅ FAIL |
-| 3 | `test_precond_spec_without_requirement` | Use spec without ensuring thread_dom membership | FAIL | ✅ FAIL |
-| 4 | `test_precond_requirement_true_invalid_thread` | Assert requirement true with no preconditions | FAIL | ✅ FAIL |
-
-**Verification output**: `43 verified, 4 errors`
-
-### Round 2: Overly Strong Postconditions
-
-| # | Test Name | What it tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | `test_overly_strong_no_change_on_success` | old == new when requirement true (wrong) | FAIL | ✅ FAIL |
-| 2 | `test_overly_strong_container_dom_unchanged` | container_dom unchanged on success (wrong) | FAIL | ✅ FAIL |
-| 3 | `test_overly_strong_proc_dom_unchanged` | proc_dom unchanged on success (wrong) | FAIL | ✅ FAIL |
-| 4 | `test_overly_strong_thread_dom_unchanged` | thread_dom unchanged on success (wrong) | FAIL | ✅ FAIL |
-
-**Verification output**: `43 verified, 4 errors`
-
-### Round 3: Negated/Contradicted Postconditions
-
-| # | Test Name | What it tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | `test_negate_new_container_has_children` | New container has non-empty children (wrong) | FAIL | ✅ FAIL |
-| 2 | `test_negate_new_proc_no_threads` | New proc has empty thread list (wrong) | FAIL | ✅ FAIL |
-| 3 | `test_negate_endpoint_dom_changed` | Endpoint domain changed (wrong) | FAIL | ✅ FAIL |
-| 4 | `test_negate_parent_owned_procs_changed` | Parent's owned_procs changed (wrong) | FAIL | ✅ FAIL |
-
-**Verification output**: `43 verified, 4 errors`
-
-### Round 4: Wrong Specific Values
-
-| # | Test Name | What it tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | `test_wrong_new_thread_container` | New thread belongs to old container (wrong) | FAIL | ✅ FAIL |
-| 2 | `test_wrong_new_proc_container` | New proc belongs to old container (wrong) | FAIL | ✅ FAIL |
-| 3 | `test_wrong_new_container_two_procs` | New container has 2 procs (wrong, has 1) | FAIL | ✅ FAIL |
-| 4 | `test_wrong_error_not_error` | Error variant is not an error (wrong) | FAIL | ✅ FAIL |
-
-**Verification output**: `43 verified, 4 errors`
-
-### Round 5: Cross-function Misuse & Edge Cases
-
-| # | Test Name | What it tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | `test_cross_requirement_implies_unrelated` | Requirement true implies mem_1g == 0 (wrong) | FAIL | ✅ FAIL |
-| 2 | `test_cross_parent_children_unchanged` | Parent's children list unchanged (wrong) | FAIL | ✅ FAIL |
-| 3 | `test_cross_new_thread_all_none_descriptors` | New thread's endpoint_descriptors[0] is None (wrong) | FAIL | ✅ FAIL |
-| 4 | `test_edge_quota_greater_strict` | spec_greater implies strict > (wrong, allows =) | FAIL | ✅ FAIL |
-
-**Verification output**: `43 verified, 4 errors`
+| # | Test | Violated Precondition |
+|---|------|-----------------------|
+| 1 | `test_boundary_thread_not_in_domain` | `thread_dom().contains(thread_ptr)` |
+| 2 | `test_boundary_endpoint_index_at_max` | `0 <= endpoint_index < MAX_NUM_ENDPOINT_DESCRIPTORS` |
+| 3 | `test_boundary_insufficient_mem_4k_quota` | `quota.mem_4k >= 3 + init_quota.mem_4k` |
+| 4 | `test_boundary_depth_at_max` | `depth != usize::MAX` |
+| 5 | `test_boundary_children_list_full` | `children.len() < CONTAINER_CHILD_LIST_LEN` |
+| 6 | `test_boundary_duplicate_page_ptrs` | `page_ptr_1 != page_ptr_2` |
+| 7 | `test_boundary_mem_4k_overflow` | `3 + init_quota.mem_4k < usize::MAX` |
+| 8 | `test_boundary_zero_pcid_quota` | `quota.pcid >= 1 + init_quota.pcid` |
+| 9 | `test_boundary_va_range_len_overflow` | `va_range.len * 3 < usize::MAX` |
+| 10 | `test_boundary_init_quota_less_than_3x_va_range` | `init_quota.mem_4k >= 3 * va_range.len` |
 
 ---
 
-## Overall Assessment
+## Behavioral Mutation Tests (10/10 failed ✅)
 
-### Correctness: ✅ PASS (20/20 tests pass)
-The specifications correctly model the syscall behavior:
-- Each individual precondition in the requirement function correctly gates the syscall
-- When all preconditions are met, the requirement evaluates to true
-- The spec correctly preserves state on failure (old == new)
-- Helper specs (is_error, get_return_vaule_three_usize, Quota operations) work correctly
+| # | Test | Mutated Behavior |
+|---|------|-----------------|
+| 1 | `test_mutation_page_closure_missing_one` | Claimed only 2 pages added (should be 3) |
+| 2 | `test_mutation_wrong_proc_ptr_added` | Claimed wrong pointer added to proc_dom |
+| 3 | `test_mutation_new_container_nonempty_children` | Claimed new container has non-empty children |
+| 4 | `test_mutation_wrong_quota_deduction` | Claimed only 2 mem_4k deducted (should be 3 + init) |
+| 5 | `test_mutation_children_prepend_instead_of_append` | Claimed child was prepended not appended |
+| 6 | `test_mutation_endpoint_at_wrong_index` | Claimed endpoint at index 1 (should be 0) |
+| 7 | `test_mutation_proc_wrong_owning_container` | Claimed proc belongs to parent container |
+| 8 | `test_mutation_endpoint_dom_changed` | Claimed endpoint_dom grew (should be unchanged) |
+| 9 | `test_mutation_wrong_depth` | Claimed depth = parent + 2 (should be parent + 1) |
+| 10 | `test_mutation_old_thread_changed` | Claimed old thread's owning_container changed |
 
-### Completeness: ✅ PASS (20/20 tests fail as expected)
-The specifications are tight enough to reject invalid claims:
-- Cannot assert requirement without proper preconditions (Round 1)
-- Cannot claim state is unchanged on success (Round 2)
-- Cannot negate postconditions like empty children, proc ownership (Round 3)
-- Cannot assert wrong ownership values or wrong cardinalities (Round 4)
-- Cannot derive unrelated properties from requirement, or deny spec-guaranteed changes (Round 5)
+---
 
-### Spec Gaps Found: None
-No spec gaps were discovered. The specifications are both correct and complete for the tested properties.
+## Logical Tests (10/10 failed ✅)
+
+| # | Test | Unintended Property Tested |
+|---|------|---------------------------|
+| 1 | `test_logical_determinism_container_ptr` | Determinism of allocated container pointer |
+| 2 | `test_logical_stronger_quota_inequality` | New container mem_4k strictly greater than init |
+| 3 | `test_logical_new_proc_same_pcid_as_caller` | New process reuses caller's pcid |
+| 4 | `test_logical_ptr_ordering` | Ordering among allocated page pointers |
+| 5 | `test_logical_new_container_multiple_threads` | New container has ≥2 threads |
+| 6 | `test_logical_parent_container_fully_preserved` | Parent container fully unchanged |
+| 7 | `test_logical_endpoint_owning_threads_unchanged` | Endpoint's owning_threads set unchanged |
+| 8 | `test_logical_page_ptr_alignment` | Allocated page pointer is page-aligned |
+| 9 | `test_logical_all_containers_no_cpus` | All containers have empty owned_cpus |
+| 10 | `test_logical_requirement_false_but_success` | Syscall succeeds when requirement is false |
+
+---
+
+## Conclusion
+
+The specification for `syscall_new_container_with_endpoint` correctly rejects:
+- **Invalid inputs** (boundary violations of all preconditions)
+- **Incorrect behaviors** (mutated postcondition relations)
+- **Unintended reasoning** (determinism, stronger inequalities, structural assumptions, cross-function misuse)
+
+No specification weaknesses were detected in this test campaign.

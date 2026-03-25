@@ -1,0 +1,47 @@
+[
+  {
+    "name": "ptmem_view_external_body_write_invisible",
+    "type": "logical",
+    "code": "proof fn phi_1_ptmem_view_external_body_write_invisible(pt: PTMem, addr: usize, value: usize)\n    requires\n        true,\n    ensures\n        pt.write(addr, value)@ === pt@,\n{\n}",
+    "reason": "`PTMem::view` is `external_body` with no postconditions \u2014 writes to page table memory have no observable effect on the PTE interpretation",
+    "entailed": false,
+    "verus_output": "_u__os_refinement__os_init_refines_hl_init/phi_1_ptmem_view_external_body_write_invisible.rs:690:9\n    |\n686 | proof fn phi_1_ptmem_view_external_body_write_invisible(pt: PTMem, addr: usize, value: usize)\n    |       --------------------------------------------------------------------------------------- at the end of the function body\n...\n690 |         pt.write(addr, value)@ === pt@,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "rl3_interp_external_body_collapses",
+    "type": "logical",
+    "code": "proof fn phi_2_rl3_interp_external_body_collapses(s1: crate::rl3::State, s2: crate::rl3::State)\n    requires\n        true,\n    ensures\n        s1.interp() === s2.interp(),\n{\n}",
+    "reason": "`rl3::State::interp` is `external_body` closed spec \u2014 completely opaque, so any two rl3 states could map to the same rl2 state",
+    "entailed": false,
+    "verus_output": "el__impl_u__os_refinement__os_init_refines_hl_init/phi_2_rl3_interp_external_body_collapses.rs:690:9\n    |\n686 | proof fn phi_2_rl3_interp_external_body_collapses(s1: crate::rl3::State, s2: crate::rl3::State)\n    |       ----------------------------------------------------------------------------------------- at the end of the function body\n...\n690 |         s1.interp() === s2.interp(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "rl2_init_external_body_vacuous",
+    "type": "logical",
+    "code": "proof fn phi_3_rl2_init_external_body_vacuous(s: crate::rl2::State, c: crate::Constants)\n    requires\n        true,\n    ensures\n        crate::rl2::init(s, c),\n{\n}",
+    "reason": "`rl2::init` is `external_body` closed spec with no postconditions \u2014 the initial state predicate could be trivially satisfiable for any state",
+    "entailed": false,
+    "verus_output": "   crate::rl2::init(s, c),\n690 +         crate::rl2::int(s, c),\n    |\nhelp: consider importing one of these functions\n    |\n  1 + use crate::hlspec::init;\n    |\n  1 + use crate::os::init;\n    |\n  1 + use crate::os_ext::init;\n    |\n  1 + use crate::rl3::init;\n    |\nhelp: if you import `init`, refer to it directly\n    |\n690 -         crate::rl2::init(s, c),\n690 +         init(s, c),\n    |\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0425`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "max_phyaddr_width_weaker_than_constant",
+    "type": "boundary",
+    "code": "proof fn phi_4_max_phyaddr_width_weaker_than_constant()\n    ensures\n        32 <= MAX_PHYADDR_WIDTH,\n        MAX_PHYADDR_WIDTH <= 52,\n        MAX_PHYADDR_WIDTH != 52,\n{\n    axiom_max_phyaddr_width_facts();\n}",
+    "reason": "`MAX_PHYADDR_WIDTH` is `external_body` constant set to 52 but the axiom only constrains it to `[32, 52]` \u2014 the axiom is weaker than the actual value, allowing the SMT solver to assume any width in that range",
+    "entailed": false,
+    "verus_output": " satisfied\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__impl_u__os_refinement__os_init_refines_hl_init/phi_4_max_phyaddr_width_weaker_than_constant.rs:690:9\n    |\n686 | proof fn phi_4_max_phyaddr_width_weaker_than_constant()\n    |       ------------------------------------------------- at the end of the function body\n...\n690 |         MAX_PHYADDR_WIDTH != 52,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "effective_mappings_remove_inflight_loses_valid",
+    "type": "behavioral",
+    "code": "proof fn phi_5_effective_mappings_remove_inflight_loses_valid(s: crate::os::State, vaddr: nat, pte: PTE)\n    requires\n        s.interp_pt_mem().contains_pair(vaddr, pte),\n        s.inflight_vaddr().contains(vaddr),\n    ensures\n        !s.effective_mappings().contains_key(vaddr),\n{\n}",
+    "reason": "`effective_mappings` removes all inflight vaddrs from interp_pt_mem \u2014 even if the mapping is still valid and the inflight operation hasn't modified it yet, it becomes invisible to the effective mapping view",
+    "entailed": true,
+    "verus_output": "verification results:: 10 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

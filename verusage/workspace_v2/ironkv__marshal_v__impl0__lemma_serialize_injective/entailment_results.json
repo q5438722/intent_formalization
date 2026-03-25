@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize_serialize_injective_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_usize_serialize_injective_external_body(a: usize, b: usize)\n    requires\n        a.is_marshalable(),\n        b.is_marshalable(),\n        a.ghost_serialize() == b.ghost_serialize(),\n    ensures\n        a.view_equal(&b),\n{\n    a.lemma_serialize_injective(&b);\n}",
+    "reason": "`usize::lemma_serialize_injective` is `external_body` \u2014 injectivity of usize serialization is trusted without proof, despite being provable from the u64 injectivity since usize serializes via cast to u64",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "usize_distinct_values_same_serialize",
+    "type": "behavioral",
+    "code": "proof fn phi_2_usize_distinct_values_same_serialize(a: usize, b: usize)\n    requires\n        a as int > u64::MAX,\n        b as int > u64::MAX,\n        a != b,\n    ensures\n        !a.is_marshalable() && !b.is_marshalable(),\n{\n}",
+    "reason": "Non-marshalable usize values (above u64::MAX on hypothetical >64-bit platforms) have `ghost_serialize` governed only by a `recommends` \u2014 the trait-level `external_body` ghost_serialize could map them to anything, potentially collapsing distinct values to the same serialization with no way to detect it",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "u64_all_marshalable",
+    "type": "boundary",
+    "code": "proof fn phi_3_u64_all_marshalable(x: u64)\n    ensures\n        x.is_marshalable(),\n{\n}",
+    "reason": "Every u64 is unconditionally marshalable \u2014 there is no size bound on the serialization output, so callers cannot bound buffer sizes from `is_marshalable` alone without additional knowledge about serialization length",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "ghost_serialize_trait_uninterpreted_for_marshalable",
+    "type": "logical",
+    "code": "proof fn phi_4_ghost_serialize_trait_uninterpreted_for_marshalable(a: u64, b: u64)\n    requires\n        a != b,\n        a.is_marshalable(),\n        b.is_marshalable(),\n    ensures\n        !a.view_equal(&b),\n{\n    lemma_auto_spec_u64_to_from_le_bytes();\n    a.lemma_serialize_injective(&b);\n}",
+    "reason": "The injectivity axiom combined with `view_equal` being `self@ === other@` means serialization injectivity implies value equality for u64 \u2014 but if the ensures direction were reversed (proving distinct values have distinct serializations), it would rely on contrapositive of an external_body axiom which may not be sound",
+    "entailed": false,
+    "verus_output": "rors\nerror: precondition not satisfied\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__marshal_v__impl0__lemma_serialize_injective/phi_4_ghost_serialize_trait_uninterpreted_for_marshalable.rs:95:5\n   |\n28 |       self.ghost_serialize() == other.ghost_serialize(),\n   |       ------------------------------------------------- failed precondition\n...\n95 |     a.lemma_serialize_injective(&b);\n   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "usize_ghost_serialize_len_equals_u64",
+    "type": "behavioral",
+    "code": "proof fn phi_5_usize_ghost_serialize_len_equals_u64(x: usize)\n    requires\n        x.is_marshalable(),\n    ensures\n        x.ghost_serialize().len() == 8,\n{\n    lemma_auto_spec_u64_to_from_le_bytes();\n}",
+    "reason": "Marshalable usize serialization always produces exactly 8 bytes (same as u64) \u2014 this fixed length is implicit and never stated as a spec guarantee, so any consumer relying on variable-length encoding or length < 8 would silently break",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: descriptors_len_changes
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The requires explicitly state `new descriptors =~= old descriptors.update(edp_idx, None)`. `Seq::update` is an in-place replacement that preserves length, so `=~=` (extensional equality) guarantees identical lengths. The ensures `len != len` directly contradicts the requires; this cannot verify with a non-vacuous precondition and does not reveal a spec weakness.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: unrelated_endpoint_corrupted
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The requires state the new descriptors equal `old.update(edp_idx, None)`, and `Seq::update` only modifies index `edp_idx`. For any `j != edp_idx`, `old.update(edp_idx, None)[j] == old[j]`, so the ensures `new[j] != old[j]` is a direct contradiction. The spec already correctly preserves unrelated slots via the semantics of `.update()`.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: non_blocked_becomes_blocked
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The requires include both `old state != BLOCKED` and `old state == new state`. The ensures `new state == BLOCKED` combined with `old state == new state` would imply `old state == BLOCKED`, directly contradicting the precondition. The spec correctly preserves thread state, so this property is vacuously attempting to assert an impossibility.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: other_thread_state_changed
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The requires include `threads_unchanged_except(old_os.proc_man, new_os.proc_man, set![thread_ptr])` with `other_ptr != thread_ptr`. This predicate guarantees all threads outside the exception set are fully preserved. The ensures that another thread's descriptors differ directly contradicts this invariant. The spec already correctly isolates changes to the target thread.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: container_dom_gains_member
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The requires explicitly state `new_os.container_dom() == old_os.container_dom()` and `!old_os.container_dom().contains(c)`. Set equality means membership is identical, so `!new_os.container_dom().contains(c)` follows trivially. The ensures claims the opposite, directly contradicting two preconditions. The spec correctly preserves the container domain.
+===VERDICT_END===
+
+===SUMMARY===
+All five candidate properties are false positives. Each constructs an ensures clause that directly contradicts information already present in its own requires block. The spec of `kernel_drop_endpoint` is well-structured: it uses `Seq::update` (which preserves length and non-target indices), explicitly preserves thread state (`old state == new state`), uses `threads_unchanged_except` to isolate side effects to the target thread, and asserts domain equality for containers. None of these properties can verify with non-vacuous preconditions, and they do not reveal any genuine weakness, missing axiom, or soundness gap in the specification.
+===END_SUMMARY===

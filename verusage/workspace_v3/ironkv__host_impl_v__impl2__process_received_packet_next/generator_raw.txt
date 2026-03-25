@@ -1,0 +1,97 @@
+===PHI_START===
+NAME: lookup_present_returns_none
+TARGET_FN: hashtable_lookup
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_lookup_present_returns_none(h: Hashtable, k: AbstractKey)
+    requires
+        h.dom().contains(k),
+    ensures
+        hashtable_lookup(h, k) is None,
+{
+}
+```
+REASON: If a key is in the hashtable domain, lookup must return Some; returning None would break every read path.
+===PHI_END===
+
+===PHI_START===
+NAME: get_reply_owner_produces_empty_out
+TARGET_FN: next_get_request_reply
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_get_reply_owner_produces_empty_out(pre: AbstractHostState, post: AbstractHostState, src: AbstractEndPoint, seqno: nat, k: AbstractKey, sm: SingleMessage<Message>, m: Message, out: Set<Packet>)
+    requires
+        pre.delegation_map.is_complete(),
+        pre.delegation_map[k] == pre.constants.me,
+        valid_key(k),
+        next_get_request_reply(pre, post, src, seqno, k, sm, m, out, true),
+    ensures
+        out == Set::<Packet>::empty(),
+{
+}
+```
+REASON: When we own the key and should_send is true, a reply packet must be emitted; an empty out set means the client never gets an answer.
+===PHI_END===
+
+===PHI_START===
+NAME: set_request_no_hashtable_update
+TARGET_FN: next_set_request_complete
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_set_request_no_hashtable_update(pre: AbstractHostState, post: AbstractHostState, src: AbstractEndPoint, seqno: nat, k: AbstractKey, v: AbstractValue, sm: SingleMessage<Message>, replym: Message, out: Set<Packet>)
+    requires
+        pre.delegation_map.is_complete(),
+        pre.delegation_map[k] == pre.constants.me,
+        valid_key(k),
+        valid_value(v),
+        next_set_request_complete(pre, post, src, seqno, Message::SetRequest{key: k, value: Some(v)}, sm, replym, out, true),
+    ensures
+        post.h == pre.h,
+{
+}
+```
+REASON: A successful local SetRequest with Some(v) must insert into the hashtable; an unchanged h means writes are silently lost.
+===PHI_END===
+
+===PHI_START===
+NAME: process_message_keeps_received_packet
+TARGET_FN: process_message
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_process_message_keeps_received_packet(pre: AbstractHostState, post: AbstractHostState, out: Set<Packet>)
+    requires
+        pre.delegation_map.is_complete(),
+        should_process_received_message(pre),
+        process_message(pre, post, out),
+    ensures
+        post.received_packet is Some,
+{
+}
+```
+REASON: After processing a message, received_packet must be cleared to None; keeping it Some would cause infinite reprocessing of the same packet.
+===PHI_END===
+
+===PHI_START===
+NAME: shard_send_no_delegation_update
+TARGET_FN: next_shard
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_shard_send_no_delegation_update(pre: AbstractHostState, post: AbstractHostState, out: Set<Packet>, kr: KeyRange<AbstractKey>, recipient: AbstractEndPoint, sm: SingleMessage<Message>)
+    requires
+        pre.delegation_map.is_complete(),
+        recipient != pre.constants.me,
+        pre.constants.host_ids.contains(recipient),
+        pre.delegation_map.delegate_for_key_range_is_host(kr, pre.constants.me),
+        next_shard(pre, post, out, kr, recipient, sm, true),
+    ensures
+        post.delegation_map == pre.delegation_map,
+{
+}
+```
+REASON: When a shard is actually sent (should_send=true), the delegation map must be updated to the recipient; leaving it unchanged means the host still claims ownership of delegated keys.
+===PHI_END===

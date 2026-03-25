@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: lemma_to_vec_view_reflexive_trivial
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Both `h@ == h@` and `h.spec_to_vec()@ == h.spec_to_vec()@` are trivially true by reflexivity of equality, independent of the lemma. The lemma call is unnecessary and the property reveals nothing about the external_body axiom's soundness.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: view_equal_not_symmetric_for_u64
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: For `u64`, `view_equal` is defined as `self@ === other@`, which is symmetric by definition of `===`. This is a correct and expected property of the base-case implementation.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: to_vec_view_biconditional_unsound
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The `external_body` `lemma_to_vec_view` asserts a biconditional that allows deriving `h1@ == h2@` from `h1.spec_to_vec()@ == h2.spec_to_vec()@`. Since both `view` and `spec_to_vec` are uninterpreted, this trusted axiom forces them to carry identical information — if the real HashMap `view` distinguishes states that produce the same sorted key-value vector (e.g., different internal orderings or metadata), the axiom is unsound. This direction of the biconditional is a strong unverified assumption.
+===VERDICT_END===
+
+===SUMMARY===
+Two of three candidates are false positives: the reflexivity test is trivially true and u64's `view_equal` symmetry is a direct consequence of its definition. The true positive is `to_vec_view_biconditional_unsound`, which exploits the external_body `lemma_to_vec_view` to derive that the uninterpreted `view` is fully determined by `spec_to_vec` — a strong trusted assumption that could be unsound if the HashMap view carries information not captured by the sorted key-value vector representation.
+===END_SUMMARY===

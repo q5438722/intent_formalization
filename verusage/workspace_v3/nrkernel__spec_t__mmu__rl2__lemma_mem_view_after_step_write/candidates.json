@@ -1,0 +1,37 @@
+[
+  {
+    "name": "aligned_zero_size_vacuous",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "code": "proof fn phi_1_aligned_zero_size_vacuous(addr: nat)\n    ensures\n        aligned(addr, 0),\n{\n}",
+    "reason": "If alignment with size 0 is vacuously true, any guard using `aligned(x, 0)` silently passes, admitting invalid states."
+  },
+  {
+    "name": "aligned_off_by_one",
+    "target_fn": "aligned",
+    "type": "behavioral",
+    "code": "proof fn phi_2_aligned_off_by_one(addr: nat)\n    requires\n        aligned(addr, 8),\n    ensures\n        aligned(addr + 1, 8),\n{\n}",
+    "reason": "If incrementing an 8-aligned address by 1 preserves alignment, the alignment predicate is trivially true and all ptmem write guards are vacuous."
+  },
+  {
+    "name": "page_align_not_word_align",
+    "target_fn": "aligned",
+    "type": "logical",
+    "code": "proof fn phi_3_page_align_not_word_align(addr: nat)\n    requires\n        aligned(addr, 4096),\n    ensures\n        !aligned(addr, 8),\n{\n}",
+    "reason": "Page-alignment (4096) must imply 8-byte alignment since 4096 is a multiple of 8; if it doesn't, pml4 alignment invariants fail to guarantee write alignment."
+  },
+  {
+    "name": "aligned_cross_divisor",
+    "target_fn": "aligned",
+    "type": "logical",
+    "code": "proof fn phi_4_aligned_cross_divisor(addr: nat)\n    requires\n        aligned(addr, 8),\n    ensures\n        aligned(addr, 3),\n{\n}",
+    "reason": "8-alignment should not entail 3-alignment (gcd(8,3)=1); if it does the modular semantics of `aligned` are broken and non-power-of-two checks become unsound."
+  },
+  {
+    "name": "aligned_below_size_wrong_value",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "code": "proof fn phi_5_aligned_below_size_wrong_value(addr: nat)\n    requires\n        aligned(addr, 4096),\n        addr < 4096,\n    ensures\n        addr == 1,\n{\n}",
+    "reason": "The only nat below 4096 that is 4096-aligned is 0; if the solver derives addr==1, the modular-arithmetic definition of `aligned` is inconsistent."
+  }
+]

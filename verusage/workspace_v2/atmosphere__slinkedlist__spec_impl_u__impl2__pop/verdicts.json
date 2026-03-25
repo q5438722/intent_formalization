@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "pop_preserves_node_refs_for_remaining",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The ensures clause restates what is already in the requires (`old_sll.get_node_ref(v) == new_sll.get_node_ref(v)`), making this trivially true. The property itself is desirable \u2014 pop's spec guarantees node ref stability for remaining elements, which is needed by callers holding external references."
+  },
+  {
+    "phi": "pop_ret_index_is_old_head",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`get_node_ref(ret.0)` expands to `value_list@[spec_seq@.index_of(ret.0)]`. Since `ret.0 == old_sll@[0]` and `wf()` implies `spec_seq_wf()` + `value_list_wf()`, `index_of(old_sll@[0]) == 0`, so `get_node_ref` returns `value_list@[0] == value_list_head`. This is a correct structural consequence of the spec, not an information leak \u2014 `get_node_ref` is `closed spec` so callers cannot observe the internal coupling."
+  },
+  {
+    "phi": "pop_single_element_result_empty",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "All three ensures follow directly from the preconditions: `len() == 1` and `skip(1)` gives empty seq (len 0), `wf()` gives `free_list_len + value_list_len == N` so `free_list_len == N`. This is the expected conservation invariant \u2014 a fixed-capacity list with no values has all nodes free."
+  },
+  {
+    "phi": "unique_quantifies_over_value_list_len",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`unique()` is defined using `self.len()` which unconditionally returns `self.value_list_len` (from the external_body ensures). Without `wf()`, `value_list_len` can be smaller than `spec_seq@.len()`, causing `unique()` to quantify over fewer elements than actually exist. Here the requires sets both to 3 so it works, but the underlying spec gap is real \u2014 `unique()` can be trivially satisfied for a non-wf list by setting `value_list_len = 0`."
+  }
+]

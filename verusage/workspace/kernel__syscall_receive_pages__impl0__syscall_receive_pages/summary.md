@@ -1,101 +1,51 @@
-# Summary: Specification Tests for `syscall_receive_pages`
+# Adversarial Test Summary: `syscall_receive_pages`
 
-## File Under Test
+## Target
+`kernel__syscall_receive_pages__impl0__syscall_receive_pages.rs`
 
-`kernel__syscall_receive_pages__impl0__syscall_receive_pages.rs` — A Verus-verified kernel syscall that implements IPC page sharing. The main function `syscall_receive_pages` receives pages from a sender thread through an endpoint, mapping the sender's address space into the receiver's. The file defines the `Kernel`, `ProcessManager`, `MemoryManager`, and related types, along with spec functions `syscall_receive_pages_spec_success` and `syscall_receive_pages_spec_fail` that formally describe the postconditions.
+## Results: 15/15 tests FAIL verification ✅
 
-## Correctness Results (should all PASS)
+All adversarial tests were correctly rejected by the specification, indicating the spec is **consistent** for the tested properties.
 
-| # | Test Name | Description | Expected | Actual |
-|---|-----------|-------------|----------|--------|
-| 1 | `test_spec_is_error_on_error` | `spec_is_error` returns true for `Error` variant | PASS | ✅ PASS |
-| 2 | `test_spec_is_error_on_else` | `spec_is_error` returns false for `Else` variant | PASS | ✅ PASS |
-| 3 | `test_spec_is_error_on_cpuidle` | `spec_is_error` returns false for `CpuIdle` variant | PASS | ✅ PASS |
-| 4 | `test_spec_is_error_on_noquota` | `spec_is_error` returns false for `NoQuota` variant | PASS | ✅ PASS |
-| 5 | `test_endpoint_states_differ` | `SEND` and `RECEIVE` are distinct | PASS | ✅ PASS |
-| 6 | `test_ipc_empty_no_va_range` | `Empty` payload gives `None` for VA range | PASS | ✅ PASS |
-| 7 | `test_quota_subtract_zero` | Subtracting 0 preserves all quota fields | PASS | ✅ PASS |
-| 8 | `test_quota_subtract_positive` | Subtracting 3 from mem_4k=10 gives mem_4k=7 | PASS | ✅ PASS |
-| 9 | `test_noswitchnew_is_error` | `NoSwitchNew(Error)` produces `is_error() == true` | PASS | ✅ PASS |
-| 10 | `test_noswitchnew_not_error` | `NoSwitchNew(Else)` produces `is_error() == false` | PASS | ✅ PASS |
-| 11 | `test_noswitchnew_pcid_none` | `NoSwitchNew` produces `pcid == None` | PASS | ✅ PASS |
-| 12 | `test_noswitchnew_cr3_none` | `NoSwitchNew` produces `cr3 == None` | PASS | ✅ PASS |
+---
 
-**Verus output:** `55 verified, 0 errors` (12 new tests + 43 original verifications)
+### Boundary Tests (5/5 FAIL ✅)
 
-## Completeness Results (should all FAIL)
+| # | Test | Failure Mode | Result |
+|---|------|-------------|--------|
+| B1 | `page_ptr2page_index(1)` | Non-aligned ptr violates `ptr % 0x1000 == 0` | ✅ Precondition rejected |
+| B2 | `page_index2page_ptr(NUM_PAGES)` | Out-of-range index violates `i < NUM_PAGES` | ✅ Precondition rejected |
+| B3 | `page_ptr2page_index(0x1001)` | Off-by-one alignment violation | ✅ Precondition rejected |
+| B4 | `page_index2page_ptr(usize::MAX)` | Extreme out-of-range index | ✅ Precondition rejected |
+| B5 | `page_ptr2page_index(0)` then assert `ret != 0` | Valid input, wrong assertion on output | ✅ Assertion rejected |
 
-### Round 1: Precondition Violations
+### Behavioral Mutation Tests (5/5 FAIL ✅)
 
-| # | Test Name | What It Tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | `test_quota_subtract_wrong_result` | Wrong mem_4k after subtraction (8 instead of 7) | FAIL | ✅ FAIL |
-| 2 | `test_ipc_empty_has_va_range` | Assert `Empty` payload has `Some` VA range | FAIL | ✅ FAIL |
-| 3 | `test_endpoint_send_equals_receive` | Assert `SEND == RECEIVE` | FAIL | ✅ FAIL |
-| 4 | `test_quota_subtract_wrong_mem2m` | Quota subtraction when mem_2m field differs | FAIL | ✅ FAIL |
+| # | Test | Mutation | Result |
+|---|------|----------|--------|
+| M1 | `page_ptr2page_index(0x2000)` assert `ret == 3` | Mutated expected result (correct: 2) | ✅ Assertion rejected |
+| M2 | `page_index2page_ptr(5)` assert `ret == 0` | Mutated expected result (correct: 20480) | ✅ Assertion rejected |
+| M3 | `NoSwitchNew(Error)` assert `!is_error()` | Error status negated | ✅ Assertion rejected |
+| M4 | `NoSwitchNew(Else)` assert `is_error()` | Non-error claimed as error | ✅ Assertion rejected |
+| M5 | `NoSwitchNew(Error)` assert `switch_decision == Switch` | Switch decision mutated | ✅ Assertion rejected |
 
-**Verus output:** `43 verified, 4 errors`
+### Logical Tests (5/5 FAIL ✅)
 
-### Round 2: Overly Strong Postconditions
+| # | Test | Property Tested | Result |
+|---|------|----------------|--------|
+| L1 | ∀ aligned ptr: `spec_page_ptr2page_index(ptr) < NUM_PAGES` | Unbounded result range (spec doesn't bound output) | ✅ Assertion rejected |
+| L2 | `va_4k_valid(0) == true` | VA=0 validity (0 >> 39 & 0x1ff < 1) | ✅ Assertion rejected |
+| L3 | Arbitrary struct with `pcid=Some(42)` assert `pcid.is_None()` | Spec scope: NoSwitchNew guarantees ≠ universal property | ✅ Assertion rejected |
+| L4 | `spec_page_ptr2page_index(0x1000) == spec_page_ptr2page_index(0x2000)` | False collision claim (different ptrs → different indices) | ✅ Assertion rejected |
+| L5 | `NoSwitchNew(Else).cr3.is_Some()` | cr3 must be None per spec | ✅ Assertion rejected |
 
-| # | Test Name | What It Tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | `test_noswitchnew_has_pcid` | Assert pcid is `Some` (spec says `None`) | FAIL | ✅ FAIL |
-| 2 | `test_noswitchnew_has_cr3` | Assert cr3 is `Some` (spec says `None`) | FAIL | ✅ FAIL |
-| 3 | `test_spec_is_error_else_is_error` | Assert `Else` is an error (it's not) | FAIL | ✅ FAIL |
-| 4 | `test_noswitchnew_switch_is_switch` | Assert switch_decision is `Switch` (spec says `NoSwitch`) | FAIL | ✅ FAIL |
+---
 
-**Verus output:** `43 verified, 4 errors`
+## Conclusion
 
-### Round 3: Negated/Contradicted Postconditions
+The specification correctly rejects all 15 adversarial queries across all three categories:
+- **Boundary**: Preconditions properly guard against invalid inputs (alignment, range)
+- **Behavioral**: Postconditions correctly specify input-output relationships
+- **Logical**: Spec does not over-generalize; it correctly handles scope boundaries
 
-| # | Test Name | What It Tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | `test_error_not_error` | Negate: assert `Error` is NOT an error | FAIL | ✅ FAIL |
-| 2 | `test_noswitchnew_error_negated` | Negate: assert `NoSwitchNew(Error)` is not error | FAIL | ✅ FAIL |
-| 3 | `test_noswitchnew_else_is_error` | Negate: assert `NoSwitchNew(Else)` IS error | FAIL | ✅ FAIL |
-| 4 | `test_quota_subtract_zero_negated` | Negate: assert subtract-by-0 does NOT hold | FAIL | ✅ FAIL |
-
-**Verus output:** `43 verified, 4 errors`
-
-### Round 4: Wrong Specific Values
-
-| # | Test Name | What It Tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | `test_noswitchnew_wrong_error_code` | Assert error_code is `Else` when constructed with `Error` | FAIL | ✅ FAIL |
-| 2 | `test_quota_wrong_subtraction_amount` | Wrong subtraction: 10-3=5 (should be 7) | FAIL | ✅ FAIL |
-| 3 | `test_quota_wrong_pcid_field` | Quota subtraction with pcid changed (2→99) | FAIL | ✅ FAIL |
-| 4 | `test_spec_is_error_wrong_match` | Assert `CpuIdle` variant is an error | FAIL | ✅ FAIL |
-
-**Verus output:** `43 verified, 4 errors`
-
-### Round 5: Cross-function Misuse & Edge Cases
-
-| # | Test Name | What It Tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | `test_noswitchnew_wrong_switch_variant` | Assert switch is `NoThread` instead of `NoSwitch` | FAIL | ✅ FAIL |
-| 2 | `test_noswitchnew_error_equals_else` | Assert Error and Else have same is_error result | FAIL | ✅ FAIL |
-| 3 | `test_quota_subtract_commutative` | Assert subtraction is commutative (swap q1/q2) | FAIL | ✅ FAIL |
-| 4 | `test_spec_is_error_vainuse` | Assert `VaInUse` variant is an error | FAIL | ✅ FAIL |
-
-**Verus output:** `43 verified, 4 errors`
-
-## Overall Assessment
-
-### Correctness
-All 12 correctness tests **pass**. The spec functions correctly define:
-- Error detection via `spec_is_error` (only `RetValueType::Error` is an error)
-- `NoSwitchNew` constructor guarantees (error_code preserved, pcid/cr3 None, NoSwitch)
-- Endpoint state distinction (SEND ≠ RECEIVE)
-- IPC payload extraction (only `Pages` variant has VA range)
-- Quota subtraction semantics (only `mem_4k` changes, all other fields preserved)
-
-### Completeness
-All 20 completeness tests **fail** as expected. The specs correctly reject:
-- Wrong arithmetic results (quota subtraction)
-- Incorrect type assertions (wrong enum variants)
-- Negated postconditions
-- Cross-function misuse (swapped arguments, wrong field values)
-
-### Spec Gaps Identified
-None. The tested spec functions are both correct and complete for the properties exercised. Note that the main `syscall_receive_pages` function was not directly called in tests due to the complexity of constructing well-formed `Kernel` instances (many fields rely on `#[verifier::external_body]` closed specs). The function's postcondition specs (`syscall_receive_pages_spec_success` and `syscall_receive_pages_spec_fail`) are structurally sound but could benefit from additional testing with concrete kernel state transitions if mock infrastructure were available.
+**No spec weaknesses detected** in the tested surface area. The `page_ptr2page_index`, `page_index2page_ptr`, `va_4k_valid`, and `NoSwitchNew` functions have adequate specifications. The main `syscall_receive_pages` function could not be directly tested in isolation due to its complex `Kernel` state preconditions, but its helper functions and return type specifications are sound.

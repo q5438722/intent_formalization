@@ -1,0 +1,90 @@
+===PHI_START===
+NAME: arch_inv_vacuously_satisfiable
+TARGET_FN: Arch::inv
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_arch_inv_vacuously_satisfiable()
+    ensures
+        exists|a: Arch| a.inv() && a.layers.len() == 0,
+{
+}
+```
+REASON: If an Arch with zero layers satisfies inv(), a degenerate architecture with no address translation is considered valid, defeating the purpose of the page table structure.
+===PHI_END===
+
+===PHI_START===
+NAME: entry_base_collision_different_indices
+TARGET_FN: Arch::entry_base
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_entry_base_collision_different_indices(a: Arch, layer: nat, base: nat, i: nat, j: nat)
+    requires
+        a.inv(),
+        layer < a.layers.len(),
+        i < a.num_entries(layer),
+        j < a.num_entries(layer),
+        i != j,
+    ensures
+        a.entry_base(layer, base, i) == a.entry_base(layer, base, j),
+{
+}
+```
+REASON: If two distinct entry indices in the same layer produce the same base address, page table entries would map overlapping virtual address regions, breaking isolation.
+===PHI_END===
+
+===PHI_START===
+NAME: well_formed_allows_zero_entries
+TARGET_FN: Directory::well_formed
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_well_formed_allows_zero_entries(d: Directory)
+    requires
+        d.well_formed(),
+    ensures
+        d.entries.len() == 0,
+{
+}
+```
+REASON: If a well_formed directory can have zero entries, the interp_aux interpretation would always be empty, allowing vacuously valid but useless directories that waste a page table level.
+===PHI_END===
+
+===PHI_START===
+NAME: page_frame_zero_size_under_inv
+TARGET_FN: Directory::pages_match_entry_size
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_page_frame_zero_size_under_inv(d: Directory, i: nat)
+    requires
+        d.inv(),
+        i < d.entries.len(),
+        d.entries[i as int] is Page,
+    ensures
+        d.entries[i as int]->Page_0.frame.size == 0,
+{
+}
+```
+REASON: If a page within a valid directory can have a zero-sized frame, the mapping represents no actual memory, which would silently create unusable page table entries.
+===PHI_END===
+
+===PHI_START===
+NAME: directory_child_same_layer
+TARGET_FN: Directory::directories_are_in_next_layer
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_directory_child_same_layer(d: Directory, i: nat)
+    requires
+        d.inv(),
+        i < d.entries.len(),
+        d.entries[i as int] is Directory,
+    ensures
+        d.entries[i as int]->Directory_0.layer == d.layer,
+{
+}
+```
+REASON: If a child directory can reside at the same layer as its parent, the decreasing measure on layer breaks, enabling infinite recursion in the page table walk and a non-terminating interpretation.
+===PHI_END===

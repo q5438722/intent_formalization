@@ -1,0 +1,47 @@
+[
+  {
+    "name": "execution_equality_forces_fn_equality",
+    "type": "logical",
+    "code": "proof fn phi_1_execution_equality_forces_fn_equality(f: spec_fn(nat) -> int, g: spec_fn(nat) -> int)\n    requires\n        forall |i: nat| #[trigger] f(i) == g(i),\n    ensures\n        f == g,\n{\n    let ex1 = Execution { nat_to_state: f };\n    let ex2 = Execution { nat_to_state: g };\n    // If SMT can derive ex1 == ex2 from the axioms, then f == g follows from struct field equality\n}",
+    "reason": "if the SMT solver can derive intensional spec_fn equality from pointwise equivalence through Execution wrapping, it would collapse the extensional/intensional distinction without any external_body axiom",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "implies_apply_closure_bridge",
+    "type": "logical",
+    "code": "proof fn phi_2_implies_apply_closure_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.satisfied_by(ex),\n        (p.pred)(ex) ==> (q.pred)(ex),\n    ensures\n        q.satisfied_by(ex),\n{\n    implies_apply::<int>(ex, p, q);\n}",
+    "reason": "implies_apply is external_body bridging p.implies(q).satisfied_by(ex) through TempPred::new closure wrapping and direct implication \u2014 silently resolves closure identity mismatch",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "entails_preserved_by_always_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_3_entails_preserved_by_always_intensional_bridge(p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.entails(q),\n    ensures\n        always(p).entails(always(q)),\n{\n    entails_preserved_by_always::<int>(p, q);\n}",
+    "reason": "entails_preserved_by_always is external_body lifting entailment through always \u2014 bridges the forall-over-suffix closure inside always with the entailment closure without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "always_weaken_vacuous_spec",
+    "type": "boundary",
+    "code": "proof fn phi_4_always_weaken_vacuous_spec(p: TempPred<int>, q: TempPred<int>)\n    requires\n        valid(p.implies(q)),\n    ensures\n        TempPred::<int>::new(|ex: Execution<int>| false).entails(always(q)),\n{\n    always_weaken::<int>(TempPred::new(|ex: Execution<int>| false), p, q);\n}",
+    "reason": "an unsatisfiable spec vacuously entails always(q) for any q \u2014 always_weaken propagates this without checking spec satisfiability, potentially hiding specification errors",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "always_weaken_strengthens_to_valid",
+    "type": "logical",
+    "code": "proof fn phi_5_always_weaken_strengthens_to_valid(p: TempPred<int>, q: TempPred<int>, spec: TempPred<int>)\n    requires\n        valid(p.implies(q)),\n        spec.entails(always(p)),\n    ensures\n        spec.entails(always(q)),\n{\n    always_weaken::<int>(spec, p, q);\n}",
+    "reason": "always_weaken composes two external_body axioms (implies_apply + entails_preserved_by_always) to derive always(q) from always(p) under a pointwise implication \u2014 the composition amplifies the unverified trust surface across both axioms",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

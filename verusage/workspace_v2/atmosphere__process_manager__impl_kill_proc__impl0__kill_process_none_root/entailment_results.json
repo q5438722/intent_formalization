@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize2pa_mem_valid_unconditional",
+    "type": "logical",
+    "code": "proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body unconditionally ensures MEM_valid(ret) for ANY input \u2014 arbitrary usize values produce \"valid\" physical addresses without proof",
+    "entailed": false,
+    "verus_output": "^^^^^^ not found in this scope\n\nerror[E0425]: cannot find function `usize2pa` in this scope\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__impl_kill_proc__impl0__kill_process_none_root/phi_1_usize2pa_mem_valid_unconditional.rs:1932:19\n     |\n1932 |         MEM_valid(usize2pa(v)),\n     |                   ^^^^^^^^ not found in this scope\n\nerror: aborting due to 2 previous errors\n\nFor more information about this error, try `rustc --explain E0425`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "sll_len_without_wf_returns_value_list_len",
+    "type": "logical",
+    "code": "proof fn phi_2_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    ensures\n        sll.len() == sll.value_list_len,\n{\n}",
+    "reason": "StaticLinkedList::len's external_body ensures l == self.value_list_len unconditionally without requiring wf() \u2014 corrupted linked list returns raw field as trusted length",
+    "entailed": false,
+    "verus_output": "_returns_value_list_len.rs:1932:9\n     |\n1930 | proof fn phi_2_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n     |       -------------------------------------------------------------------------------------------------- at the end of the function body\n1931 |     ensures\n1932 |         sll.len() == sll.value_list_len,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 21 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "get_proc_owned_threads_wf_without_full_wf",
+    "type": "logical",
+    "code": "proof fn phi_3_get_proc_owned_threads_wf_without_full_wf(\n    pm: ProcessManager,\n    p_ptr: ProcPtr,\n)\n    requires\n        pm.proc_perms_wf(),\n        pm.process_fields_wf(),\n        pm.proc_dom().contains(p_ptr),\n    ensures\n        pm.get_proc(p_ptr).owned_threads.wf(),\n{\n}",
+    "reason": "get_proc's external_body unconditionally ensures ret.owned_threads.wf() with only proc_perms_wf + process_fields_wf \u2014 leaks structural invariant without requiring full wf()",
+    "entailed": true,
+    "verus_output": "elude::OptionAdditionalFns::is_Some`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__impl_kill_proc__impl0__kill_process_none_root/phi_3_get_proc_owned_threads_wf_without_full_wf.rs:1607:32\n     |\n1607 |                 ).root_process.is_Some() implies \n     |                                ^^^^^^^\n\nwarning: 21 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "unique_implies_no_duplicates_external_body",
+    "type": "logical",
+    "code": "proof fn phi_4_unique_implies_no_duplicates_external_body<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    requires\n        sll.unique(),\n        sll.wf(),\n    ensures\n        sll@.no_duplicates(),\n{\n    sll.unique_implys_no_duplicates();\n}",
+    "reason": "unique_implys_no_duplicates is external_body \u2014 the bridge from custom unique() (over spec_seq indices) to vstd's no_duplicates() is unverified and potentially unsound if semantics differ",
+    "entailed": true,
+    "verus_output": "lude::OptionAdditionalFns::is_Some`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__impl_kill_proc__impl0__kill_process_none_root/phi_4_unique_implies_no_duplicates_external_body.rs:1607:32\n     |\n1607 |                 ).root_process.is_Some() implies \n     |                                ^^^^^^^\n\nwarning: 21 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "get_thread_leaks_container_children_wf",
+    "type": "logical",
+    "code": "proof fn phi_5_get_thread_leaks_container_children_wf(\n    pm: ProcessManager,\n    t_ptr: ThreadPtr,\n)\n    requires\n        pm.wf(),\n        pm.thread_dom().contains(t_ptr),\n    ensures\n        pm.get_container(pm.get_thread(t_ptr).owning_container).children.wf(),\n        pm.get_container(pm.get_thread(t_ptr).owning_container).scheduler.wf(),\n        pm.get_container(pm.get_thread(t_ptr).owning_container).owned_procs.wf(),\n{\n}",
+    "reason": "get_thread's external_body ensures wf() of the owning container's scheduler, owned_procs, AND children \u2014 exposing three container-internal invariants through a thread accessor without explicit container_fields_wf requirement",
+    "entailed": false,
+    "verus_output": "_children_wf.rs:1939:9\n     |\n1930 |   proof fn phi_5_get_thread_leaks_container_children_wf(\n     |  _______-\n1931 | |     pm: ProcessManager,\n1932 | |     t_ptr: ThreadPtr,\n1933 | | )\n     | |_- at the end of the function body\n...\n1939 |           pm.get_container(pm.get_thread(t_ptr).owning_container).scheduler.wf(),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 2 previous errors; 21 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

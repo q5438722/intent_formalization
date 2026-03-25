@@ -1,103 +1,58 @@
-# Summary: Specification Testing for `remove_helper1`
+# Adversarial Test Results: `remove_helper1`
 
-## File Under Test
-`slinkedlist__spec_impl_u__impl2__remove_helper1.rs` — Defines a `StaticLinkedList<T, N>` (array-backed doubly-linked list) with a `remove_helper1` method that removes the sole element when `value_list_len == 1`. Also includes three proof lemmas for sequence operations (`seq_push_lemma`, `seq_skip_lemma`, `seq_skip_index_of_lemma`) and external-body helper functions (`set_next`, `set_prev`, `get_value`, `len`).
+**Target**: `slinkedlist__spec_impl_u__impl2__remove_helper1.rs`  
+**Function**: `StaticLinkedList::remove_helper1` — removes the sole element from a 1-element static linked list.
 
----
+## Summary
 
-## Correctness Results (should all PASS)
-
-**Result: 18 verified, 0 errors ✅**
-
-| Test Name | Description | Expected | Actual |
-|-----------|-------------|----------|--------|
-| `test_push_contains_pushed_element` | Push onto empty seq makes element contained | PASS | PASS ✅ |
-| `test_push_preserves_existing` | Push preserves existing elements in seq | PASS | PASS ✅ |
-| `test_push_no_unrelated` | Push does not add unrelated elements | PASS | PASS ✅ |
-| `test_push_param` | Parameterized: push/contains with distinct values | PASS | PASS ✅ |
-| `test_skip_indexing` | skip(1)[i] == s[i+1] for concrete seq | PASS | PASS ✅ |
-| `test_first_element_contained` | Non-empty seq contains its first element | PASS | PASS ✅ |
-| `test_skip_removes_first` | skip(1) does not contain first element (no dups) | PASS | PASS ✅ |
-| `test_skip_is_remove_value` | skip(1) == remove_value(s[0]) when no dups | PASS | PASS ✅ |
-| `test_skip_preserves_non_first` | skip(1) preserves non-first elements (no dups) | PASS | PASS ✅ |
-| `test_skip_indexing_param` | Parameterized: skip(1) indexing | PASS | PASS ✅ |
-| `test_skip_index_of` | index_of decreases by 1 after skip(1) | PASS | PASS ✅ |
-| `test_skip_index_of_last` | index_of for last element after skip(1) | PASS | PASS ✅ |
-| `test_remove_spec_consistency` | remove_helper1 postconditions are mutually consistent | PASS | PASS ✅ |
-| `test_remove_preserves_node_refs` | Node refs preserved for remaining elements | PASS | PASS ✅ |
-| `test_remove_length_relation` | Length decreases by exactly 1 | PASS | PASS ✅ |
-| `test_push_chain` | Multiple pushes preserve containment | PASS | PASS ✅ |
-| `test_skip_singleton` | skip(1) on singleton == remove_value | PASS | PASS ✅ |
+All **15 adversarial tests** across 3 categories **FAILED verification as expected**, confirming the specification correctly rejects invalid inputs, incorrect behaviors, and unwarranted logical inferences.
 
 ---
 
-## Completeness Results (should all FAIL)
+## Boundary Tests (`boundary_tests.rs`) — 5/5 FAILED ✓
 
-### Round 1: Precondition / Antecedent Violations
-**Result: 1 verified (remove_helper1 body), 4 errors ✅**
+| # | Test | Violated Precondition | Result |
+|---|------|-----------------------|--------|
+| 1 | `test_boundary_missing_wf` | Missing `old(self).wf()` | ❌ precondition not satisfied |
+| 2 | `test_boundary_value_not_contained` | `!old(self)@.contains(v@)` | ❌ precondition not satisfied |
+| 3 | `test_boundary_multi_element_list` | `value_list_len == 2` (should be 1) | ❌ precondition not satisfied |
+| 4 | `test_boundary_wrong_remove_index` | `get_node_ref(v@) != remove_index` | ❌ precondition not satisfied |
+| 5 | `test_boundary_get_value_negative_index` | `index = -1` (violates `0 <= index`) | ❌ precondition not satisfied |
 
-| Test Name | What It Tests | Expected | Actual |
-|-----------|--------------|----------|--------|
-| `test_fail_skip_with_duplicates` | skip(1) property on seq with duplicates (no_duplicates violated) | FAIL | FAIL ✅ |
-| `test_fail_push_contained_not_in_result` | Assert pushed seq doesn't contain existing element | FAIL | FAIL ✅ |
-| `test_fail_index_of_first_element` | skip_index_of when v IS the first element (s[0]!=v violated) | FAIL | FAIL ✅ |
-| `test_fail_skip_remove_value_with_dups` | skip(1)==remove_value for wrong value | FAIL | FAIL ✅ |
-
-### Round 2: Overly Strong Postconditions
-**Result: 1 verified, 4 errors ✅**
-
-| Test Name | What It Tests | Expected | Actual |
-|-----------|--------------|----------|--------|
-| `test_fail_push_preserves_no_dup` | Push duplicate preserves no_duplicates (not guaranteed) | FAIL | FAIL ✅ |
-| `test_fail_remove_length_unchanged` | Assert length stays the same after remove | FAIL | FAIL ✅ |
-| `test_fail_remove_seq_unchanged` | Assert sequence unchanged after remove | FAIL | FAIL ✅ |
-| `test_fail_skip_preserves_length` | Assert skip(1) preserves length | FAIL | FAIL ✅ |
-
-### Round 3: Negated Postconditions
-**Result: 1 verified, 5 errors ✅**
-
-| Test Name | What It Tests | Expected | Actual |
-|-----------|--------------|----------|--------|
-| `test_fail_push_not_contains` | Negate: pushed element NOT contained | FAIL | FAIL ✅ |
-| `test_fail_skip_keeps_first` | Negate: first element IS in skip(1) | FAIL | FAIL ✅ |
-| `test_fail_first_not_contained` | Negate: first element NOT contained in non-empty seq | FAIL | FAIL ✅ |
-| `test_fail_ret_not_v` | Negate: ret != v after remove | FAIL | FAIL ✅ |
-| `test_fail_skip_not_remove_value` | Negate: skip(1) != remove_value(s[0]) | FAIL | FAIL ✅ |
-
-### Round 4: Wrong Specific Values
-**Result: 1 verified, 4 errors ✅**
-
-| Test Name | What It Tests | Expected | Actual |
-|-----------|--------------|----------|--------|
-| `test_fail_skip_wrong_index_0` | Assert skip(1)[0] == s[0] (wrong, should be s[1]) | FAIL | FAIL ✅ |
-| `test_fail_skip_wrong_index_1` | Assert skip(1)[1] == s[1] (wrong, should be s[2]) | FAIL | FAIL ✅ |
-| `test_fail_wrong_index_of` | Assert wrong index_of value (2 instead of 0) | FAIL | FAIL ✅ |
-| `test_fail_wrong_seq_op` | Assert push instead of remove_value | FAIL | FAIL ✅ |
-
-### Round 5: Cross-function Misuse & Edge Cases
-**Result: 1 verified, 4 errors ✅**
-
-| Test Name | What It Tests | Expected | Actual |
-|-----------|--------------|----------|--------|
-| `test_fail_push_at_front` | Assert push puts element at front (it goes at end) | FAIL | FAIL ✅ |
-| `test_fail_remove_index_negative` | Assert remove_index is negative (not guaranteed) | FAIL | FAIL ✅ |
-| `test_fail_removed_still_present` | Assert removed element still in new sequence | FAIL | FAIL ✅ |
-| `test_fail_new_not_wf` | Assert new list is NOT well-formed (spec says it IS) | FAIL | FAIL ✅ |
+**Note**: An earlier version tested `value_list_len == 0`, which created a vacuously contradictory precondition set (`wf() && contains(v@) && value_list_len == 0` is unsatisfiable because the verifier can unfold `closed spec fn wf()` within the same compilation unit). Fixed to use `value_list_len == 2`.
 
 ---
 
-## Overall Assessment
+## Behavioral Mutation Tests (`behavioral_mutation_tests.rs`) — 5/5 FAILED ✓
 
-### Correctness: ✅ PASS
-All 17 correctness tests verify successfully. The specs of `remove_helper1` and the three proof lemmas are consistent and correctly describe valid usage patterns.
+| # | Test | Mutated Property | Result |
+|---|------|------------------|--------|
+| 1 | `test_mutation_wrong_return_value` | `ret != v@` (spec says `ret == v@`) | ❌ assertion failed |
+| 2 | `test_mutation_length_unchanged` | `len == 1` after remove (spec says `len == old_len - 1`) | ❌ assertion failed |
+| 3 | `test_mutation_result_not_wf` | `!self.wf()` (spec ensures `self.wf()`) | ❌ assertion failed |
+| 4 | `test_mutation_element_still_present` | `self@.contains(ret)` (spec ensures removal) | ❌ assertion failed |
+| 5 | `test_mutation_uniqueness_violated` | `!self.unique()` (spec ensures uniqueness) | ❌ assertion failed |
 
-### Completeness: ✅ PASS
-All 21 completeness tests fail as expected. The specs reject:
-- Use of lemma results when antecedent conditions are violated (duplicates, wrong element)
-- Overly strong claims (unchanged length/sequence, preserved no_duplicates on push)
-- Negations of all guaranteed postconditions
-- Wrong concrete values for skip indexing and index_of
-- Cross-function misuse and incorrect structural assertions
+---
 
-### Spec Gaps Found: None
-No spec gaps were discovered. The specifications are both correct and tight for the tested properties.
+## Logical Tests (`logical_tests.rs`) — 5/5 FAILED ✓
+
+| # | Test | Unwarranted Property | Result |
+|---|------|---------------------|--------|
+| 1 | `test_logical_result_nonempty_after_remove` | Non-empty result after removing sole element | ❌ assertion failed |
+| 2 | `test_logical_structural_equivalence` | Same view ⟹ same `value_list_head` | ❌ assertion failed |
+| 3 | `test_logical_wf_no_value_constraint` | `wf()` constrains element values (`sll@[0] > 0`) | ❌ assertion failed |
+| 4 | `test_logical_determinism_internal_state` | Two results matching postconditions share `free_list_head` | ❌ assertion failed |
+| 5 | `test_logical_remove_creates_elements` | `remove_value` introduces elements not in original | ❌ assertion failed |
+
+---
+
+## Conclusion
+
+The specification of `remove_helper1` is **consistent** across all three semantic dimensions tested:
+
+1. **Input validation**: All preconditions (`wf`, `contains`, `value_list_len == 1`, `get_node_ref == index`) are properly enforced — no invalid call is accepted.
+2. **Output correctness**: All postconditions (`wf`, length decrease, return value, view update, uniqueness) are tight — no incorrect behavior is admitted.
+3. **Logical boundaries**: The spec does not entail structural determinism, value constraints, or element creation — the semantic boundary is properly controlled.
+
+**Observation**: `closed spec fn wf()` is transparently unfolded by the verifier within the same `verus!{}` block, so tests relying on its opacity must avoid contradictory precondition sets.

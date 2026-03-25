@@ -1,0 +1,47 @@
+[
+  {
+    "name": "size_of_bin_external_body_unconstrained",
+    "type": "logical",
+    "code": "proof fn phi_1_size_of_bin_external_body_unconstrained()\n    ensures\n        size_of_bin(1) == size_of_bin(1),\n{\n}",
+    "reason": "`size_of_bin` is `external_body` with no axioms \u2014 its return value is completely uninterpreted, so `pfd_lower`, `pfd_upper`, and the entire bin-fitting pipeline have no concrete meaning",
+    "entailed": true,
+    "verus_output": "verification results:: 20 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "smallest_bin_wsize1_is_bin1",
+    "type": "boundary",
+    "code": "proof fn phi_2_smallest_bin_wsize1_is_bin1()\n    ensures\n        smallest_bin_fitting_size(0) == 1,\n        smallest_bin_fitting_size(1) == 1,\n        smallest_bin_fitting_size(8) == 1,\n{\n}",
+    "reason": "`smallest_bin_fitting_size` maps all sizes 0\u20138 to bin 1 because `wsize = (size + 7) / 8` yields wsize \u2264 1 for size \u2264 8 \u2014 bins 2\u20138 (wsize 2\u20138 range) are unreachable for byte sizes \u2264 8, potentially misallocating small objects",
+    "entailed": false,
+    "verus_output": "on not satisfied\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__bin_sizes__result2_idx_in_range_has_bin_size/phi_2_smallest_bin_wsize1_is_bin1.rs:284:9\n    |\n280 | proof fn phi_2_smallest_bin_wsize1_is_bin1()\n    |       -------------------------------------- at the end of the function body\n...\n284 |         smallest_bin_fitting_size(8) == 1,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 2 previous errors\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pow2_negative_is_one",
+    "type": "boundary",
+    "code": "proof fn phi_3_pow2_negative_is_one(e: int)\n    requires\n        e < 0,\n    ensures\n        pow2(e) == 1,\n{\n}",
+    "reason": "`pow2` returns 1 for all negative exponents \u2014 mathematically 2^(-n) is a fraction, so callers passing negative exponents by mistake silently get 1",
+    "entailed": true,
+    "verus_output": "verification results:: 20 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "result_idx_external_body_trusted",
+    "type": "logical",
+    "code": "proof fn phi_4_result_idx_external_body_trusted(bin_idx: int, wsize: int)\n    requires\n        valid_bin_idx(bin_idx),\n        pfd_lower(bin_idx) <= wsize <= pfd_upper(bin_idx),\n        check_idx_in_range_has_bin_size(bin_idx, wsize, wsize + 1),\n    ensures\n        smallest_bin_fitting_size(wsize * INTPTR_SIZE) == bin_idx,\n{\n    result_idx_in_range_has_bin_size(bin_idx, wsize, wsize + 1);\n}",
+    "reason": "`result_idx_in_range_has_bin_size` is `external_body` \u2014 the inductive unrolling lemma that connects `check_idx_in_range_has_bin_size` to the universally quantified property is trusted without proof, so the entire bin-fitting correctness chain rests on an unverified assumption",
+    "entailed": true,
+    "verus_output": "verification results:: 20 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "smallest_bin_huge_boundary",
+    "type": "boundary",
+    "code": "proof fn phi_5_smallest_bin_huge_boundary()\n    ensures\n        smallest_bin_fitting_size(524288 * 8 + 1) == BIN_HUGE as int,\n        smallest_bin_fitting_size(524288 * 8) != BIN_HUGE as int,\n{\n}",
+    "reason": "The boundary between the computed bin path and BIN_HUGE is at wsize > 524288 (strict), so wsize == 524288 (size == 4194304) takes the complex computation path rather than mapping to BIN_HUGE \u2014 off-by-one could cause the largest non-huge size to get an incorrect bin index",
+    "entailed": false,
+    "verus_output": "       arguments to this function are incorrect\n    |\nnote: function defined here\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__bin_sizes__result2_idx_in_range_has_bin_size/phi_5_smallest_bin_huge_boundary.rs:177:18\n    |\n177 | pub open spec fn smallest_bin_fitting_size(size: int) -> int {\n    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^ ---------\n\nerror: aborting due to 2 previous errors\n\nFor more information about this error, try `rustc --explain E0308`.\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,89 @@
+===PHI_START===
+NAME: align_exceeds_input
+TARGET_FN: align_to_usize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_align_exceeds_input(a: usize, b: usize)
+    requires
+        b > 0,
+        a >= b,
+    ensures
+        align_to_usize(a, b) > a,
+{
+}
+```
+REASON: Aligning down should never produce a value larger than the original input
+===PHI_END===
+
+===PHI_START===
+NAME: result_not_multiple
+TARGET_FN: align_to_usize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_result_not_multiple(a: usize, b: usize)
+    requires
+        b > 0,
+        a < 0xFFFF_FFFF_FFFF_FFFFusize,
+    ensures
+        align_to_usize(a, b) % b != 0,
+{
+}
+```
+REASON: The core contract of alignment is that the result is a multiple of b; violating this means alignment is broken
+===PHI_END===
+
+===PHI_START===
+NAME: not_idempotent
+TARGET_FN: align_to_usize
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_not_idempotent(a: usize, b: usize)
+    requires
+        b > 0,
+        a >= a % b,
+    ensures
+        align_to_usize(align_to_usize(a, b), b) != align_to_usize(a, b),
+{
+}
+```
+REASON: Aligning an already-aligned value again must be a no-op; failure means the function is not a true projection
+===PHI_END===
+
+===PHI_START===
+NAME: already_aligned_changes
+TARGET_FN: align_to_usize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_already_aligned_changes(a: usize, b: usize)
+    requires
+        b > 0,
+        a % b == 0,
+    ensures
+        align_to_usize(a, b) != a,
+{
+}
+```
+REASON: When the input is already a multiple of b the result must equal the input; any deviation is a bug
+===PHI_END===
+
+===PHI_START===
+NAME: gap_too_large
+TARGET_FN: align_to_usize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_gap_too_large(a: usize, b: usize)
+    requires
+        b > 0,
+        a >= b,
+    ensures
+        a - align_to_usize(a, b) >= b,
+{
+}
+```
+REASON: The distance between the input and its aligned value must be strictly less than b; a gap >= b means a closer aligned address was skipped
+===PHI_END===

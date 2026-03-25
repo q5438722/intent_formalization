@@ -1,0 +1,81 @@
+===PHI_START===
+NAME: pde_directory_addr_masked
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_pde_directory_addr_masked(entry: usize, layer: nat)
+    requires
+        layer < 4,
+        entry & 1 == 1,
+        (PDE { entry, layer: Ghost(layer) })@ is Directory,
+    ensures
+        (PDE { entry, layer: Ghost(layer) })@->Directory_addr == (entry & MASK_ADDR) as usize,
+{
+}
+```
+REASON: Directory addresses should be extracted via `entry & MASK_ADDR` — tests that the address field extraction is consistent across all layers that produce Directory entries
+===PHI_END===
+
+===PHI_START===
+NAME: pde_layer1_page_uses_different_mask
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_pde_layer1_page_uses_different_mask(entry: usize)
+    requires
+        entry & 1 == 1,
+        (PDE { entry, layer: Ghost(1) }).all_mb0_bits_are_zero(),
+        (PDE { entry, layer: Ghost(1) })@ is Page,
+    ensures
+        (PDE { entry, layer: Ghost(1) })@->Page_addr == (entry & MASK_L1_PG_ADDR) as usize,
+{
+}
+```
+REASON: Layer 1 (PDPT) Page entries use `MASK_L1_PG_ADDR` (bits 30+) instead of `MASK_ADDR` (bits 12+) — if wrong, 1GB pages would have incorrect physical base addresses
+===PHI_END===
+
+===PHI_START===
+NAME: pt_walk_path_l0_entry_is_pde_view
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_pt_walk_path_l0_entry_is_pde_view(mem: PTMem, vaddr: usize)
+    ensures
+        mem.pt_walk(vaddr).path[0].1 == (PDE { entry: mem.read(add(mem.pml4, mul(l0_bits!(vaddr), WORD_SIZE))), layer: Ghost(0) })@,
+{
+}
+```
+REASON: The first path entry's GPDE should match PDE::view of the raw entry read from pml4 + l0_index*8 — tests that pt_walk correctly records the PDE interpretation at layer 0
+===PHI_END===
+
+===PHI_START===
+NAME: all_mb0_external_body_gates_all_present
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_all_mb0_external_body_gates_all_present(entry: usize, layer: nat)
+    requires
+        layer < 4,
+        entry & 1 == 1,
+        !(PDE { entry, layer: Ghost(layer) }).all_mb0_bits_are_zero(),
+    ensures
+        (PDE { entry, layer: Ghost(layer) })@ is Invalid,
+{
+}
+```
+REASON: When `all_mb0_bits_are_zero` returns false for a present entry, PDE::view falls through to Invalid — but since `all_mb0_bits_are_zero` is `external_body`, Verus cannot verify it actually checks the right bits, potentially misclassifying valid entries
+===PHI_END===
+
+===PHI_START===
+NAME: walk_path_len_bounded_1_to_4
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_walk_path_len_bounded_1_to_4(mem: PTMem, vaddr: usize)
+    ensures
+        1 <= mem.pt_walk(vaddr).path.len() <= 4,
+{
+}
+```
+REASON: The walk should always produce 1-4 path entries (L0 invalid → 1, L0→L1 invalid → 2, etc.) — tests that no branch of pt_walk creates paths outside these bounds
+===PHI_END===

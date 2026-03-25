@@ -1,0 +1,87 @@
+===PHI_START===
+NAME: empty_map_nonempty_vec
+TARGET_FN: to_vec
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_empty_map_nonempty_vec(m: CKeyHashMap)
+    requires
+        m@.dom() === Set::<AbstractKey>::empty(),
+    ensures
+        m.spec_to_vec()@.len() > 0,
+{
+}
+```
+REASON: An empty map should never produce a non-empty vector of key-value pairs
+===PHI_END===
+
+===PHI_START===
+NAME: key_not_in_domain
+TARGET_FN: to_vec
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_key_not_in_domain(m: CKeyHashMap, i: int)
+    requires
+        0 <= i < m.spec_to_vec()@.len(),
+    ensures
+        !m@.contains_key(m.spec_to_vec()@[i].k),
+{
+}
+```
+REASON: Every key in the to_vec result should be present in the map's domain
+===PHI_END===
+
+===PHI_START===
+NAME: value_mismatch
+TARGET_FN: to_vec
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_value_mismatch(m: CKeyHashMap, i: int)
+    requires
+        0 <= i < m.spec_to_vec()@.len(),
+        m@.contains_key(m.spec_to_vec()@[i].k),
+    ensures
+        m@[m.spec_to_vec()@[i].k] !== m.spec_to_vec()@[i].v@,
+{
+}
+```
+REASON: The value for a key in to_vec should match the corresponding value in the map
+===PHI_END===
+
+===PHI_START===
+NAME: duplicate_keys
+TARGET_FN: to_vec
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_duplicate_keys(m: CKeyHashMap, i: int, j: int)
+    requires
+        0 <= i < m.spec_to_vec()@.len(),
+        0 <= j < m.spec_to_vec()@.len(),
+        i != j,
+    ensures
+        m.spec_to_vec()@[i].k == m.spec_to_vec()@[j].k,
+{
+}
+```
+REASON: The to_vec result should not contain duplicate keys since it represents a map
+===PHI_END===
+
+===PHI_START===
+NAME: nonempty_map_empty_vec
+TARGET_FN: to_vec
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_nonempty_map_empty_vec(m: CKeyHashMap, k: AbstractKey)
+    requires
+        m@.contains_key(k),
+    ensures
+        m.spec_to_vec()@.len() == 0,
+{
+}
+```
+REASON: A map with at least one key should never produce an empty vector representation
+===PHI_END===

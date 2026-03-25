@@ -1,0 +1,47 @@
+[
+  {
+    "name": "always_p_is_stable_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_1_always_p_is_stable_intensional_bridge(p: TempPred<int>, ex: Execution<int>)\n    ensures\n        stable(always(p)).satisfied_by(ex),\n{\n    always_p_is_stable::<int>(p);\n}",
+    "reason": "always_p_is_stable is external_body deriving valid(stable(always(p))) \u2014 stable wraps always(p).implies(always(always(p))) in nested closures creating intensional gaps resolved without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "leads_to_stable_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_2_leads_to_stable_intensional_bridge(p: TempPred<int>, q: TempPred<int>, ex: Execution<int>)\n    ensures\n        stable(p.leads_to(q)).satisfied_by(ex),\n{\n    p_leads_to_q_is_stable::<int>(p, q);\n}",
+    "reason": "p_leads_to_q_is_stable relies on always_p_is_stable with p.implies(eventually(q)) \u2014 the substitution equates p.leads_to(q) with always(p.implies(eventually(q))) intensionally through closure identity",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "always_always_from_always",
+    "type": "logical",
+    "code": "proof fn phi_3_always_always_from_always(p: TempPred<int>, ex: Execution<int>)\n    requires\n        always(p).satisfied_by(ex),\n    ensures\n        always(always(p)).satisfied_by(ex),\n{\n    always_p_is_stable::<int>(p);\n}",
+    "reason": "always_p_is_stable gives always(p) ==> always(always(p)) for all executions \u2014 this derives always(always(p)) from always(p), requiring intensional resolution of nested always closures without proof",
+    "entailed": false,
+    "verus_output": "anyu/intent_formalization/verusage/workspace_v2/anvil-library__p_leads_to_q_is_stable/phi_3_always_always_from_always.rs:91:9\n   |\n87 | proof fn phi_3_always_always_from_always(p: TempPred<int>, ex: Execution<int>)\n   |       ------------------------------------------------------------------------ at the end of the function body\n...\n91 |         always(always(p)).satisfied_by(ex),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "stable_implies_always_preservation",
+    "type": "behavioral",
+    "code": "proof fn phi_4_stable_implies_always_preservation(p: TempPred<int>, q: TempPred<int>, ex: Execution<int>)\n    requires\n        p.leads_to(q).satisfied_by(ex),\n    ensures\n        always(p.leads_to(q)).satisfied_by(ex),\n{\n    p_leads_to_q_is_stable::<int>(p, q);\n}",
+    "reason": "stable(leads_to) applied at ex upgrades leads_to at current state to always(leads_to) \u2014 the stable closure bridges implies and always wrapping without verifying the nested closure chain",
+    "entailed": false,
+    "verus_output": "to_q_is_stable/phi_4_stable_implies_always_preservation.rs:91:9\n   |\n87 | proof fn phi_4_stable_implies_always_preservation(p: TempPred<int>, q: TempPred<int>, ex: Execution<int>)\n   |       --------------------------------------------------------------------------------------------------- at the end of the function body\n...\n91 |         always(p.leads_to(q)).satisfied_by(ex),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "any_always_self_reinforcing",
+    "type": "boundary",
+    "code": "proof fn phi_5_any_always_self_reinforcing(ex: Execution<int>)\n    requires\n        always(TempPred::<int>::new(|e: Execution<int>| false)).satisfied_by(ex),\n    ensures\n        always(always(TempPred::<int>::new(|e: Execution<int>| false))).satisfied_by(ex),\n{\n    always_p_is_stable::<int>(TempPred::new(|e: Execution<int>| false));\n}",
+    "reason": "always(false) is vacuously satisfiable only on empty domains \u2014 always_p_is_stable still derives always(always(false)) from always(false), propagating the vacuous case through intensional closure gaps",
+    "entailed": false,
+    "verus_output": "_p_leads_to_q_is_stable/phi_5_any_always_self_reinforcing.rs:91:9\n   |\n87 | proof fn phi_5_any_always_self_reinforcing(ex: Execution<int>)\n   |       -------------------------------------------------------- at the end of the function body\n...\n91 |         always(always(TempPred::<int>::new(|e: Execution<int>| false))).satisfied_by(ex),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

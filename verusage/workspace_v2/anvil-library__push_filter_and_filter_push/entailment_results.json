@@ -1,0 +1,47 @@
+[
+  {
+    "name": "filter_preserves_order",
+    "type": "behavioral",
+    "code": "proof fn phi_1_filter_preserves_order(s: Seq<int>, pred: spec_fn(int) -> bool, i: int, j: int)\n    requires\n        0 <= i < s.filter(pred).len(),\n        0 <= j < s.filter(pred).len(),\n        i < j,\n    ensures\n        exists |ii: int, jj: int| 0 <= ii < jj < s.len() && s[ii] == s.filter(pred)[i] && s[jj] == s.filter(pred)[j],\n{\n}",
+    "reason": "if filter doesn't preserve element order from the original sequence, push_filter commutativity could silently reorder elements",
+    "entailed": false,
+    "verus_output": "<int>, pred: spec_fn(int) -> bool, i: int, j: int)\n   |       ---------------------------------------------------------------------------------------- at the end of the function body\n...\n26 |         exists |ii: int, jj: int| 0 <= ii < jj < s.len() && s[ii] == s.filter(pred)[i] && s[jj] == s.filter(pred)[j],\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "filter_len_leq_original",
+    "type": "boundary",
+    "code": "proof fn phi_2_filter_len_leq_original(s: Seq<int>, pred: spec_fn(int) -> bool)\n    ensures\n        s.filter(pred).len() <= s.len(),\n    decreases s.len(),\n{\n    reveal(Seq::filter);\n    if s.len() != 0 {\n        phi_2_filter_len_leq_original(s.drop_last(), pred);\n    }\n}",
+    "reason": "filter should never produce a longer sequence \u2014 if it could, the push lemma's ensures clauses would be reasoning about ill-formed sequences",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "filter_empty_seq",
+    "type": "boundary",
+    "code": "proof fn phi_3_filter_empty_seq(pred: spec_fn(int) -> bool)\n    ensures\n        Seq::<int>::empty().filter(pred).len() == 0,\n{\n    reveal(Seq::filter);\n}",
+    "reason": "filtering empty sequence should produce empty \u2014 tests base case of filter definition",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "push_filter_true_increases_len",
+    "type": "behavioral",
+    "code": "proof fn phi_4_push_filter_true_increases_len(s: Seq<int>, pred: spec_fn(int) -> bool, e: int)\n    requires\n        pred(e),\n    ensures\n        s.push(e).filter(pred).len() == s.filter(pred).len() + 1,\n{\n    push_filter_and_filter_push(s, pred, e);\n}",
+    "reason": "pushing an element satisfying pred should increase filtered length by exactly 1 \u2014 tests that the equality in the ensures clause is precise",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "push_filter_false_preserves_len",
+    "type": "behavioral",
+    "code": "proof fn phi_5_push_filter_false_preserves_len(s: Seq<int>, pred: spec_fn(int) -> bool, e: int)\n    requires\n        !pred(e),\n    ensures\n        s.push(e).filter(pred).len() == s.filter(pred).len(),\n{\n    push_filter_and_filter_push(s, pred, e);\n}",
+    "reason": "pushing an element not satisfying pred should not change filtered length \u2014 tests the second ensures clause is correct",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

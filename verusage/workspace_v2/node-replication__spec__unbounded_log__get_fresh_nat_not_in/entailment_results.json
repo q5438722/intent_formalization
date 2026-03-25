@@ -1,0 +1,47 @@
+[
+  {
+    "name": "combiner_request_ids_not_contains_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_combiner_request_ids_not_contains_external_body(\n    combiners: Map<NodeId, CombinerState>,\n    rid: ReqId,\n)\n    requires\n        combiners.dom().finite(),\n        combiner_request_id_fresh(combiners, rid),\n    ensures\n        !combiner_request_ids(combiners).contains(rid),\n{\n    combiner_request_ids_not_contains(combiners, rid);\n}",
+    "reason": "`combiner_request_ids_not_contains` is `external_body` \u2014 the biconditional between pointwise freshness and set non-containment is trusted without proof",
+    "entailed": true,
+    "verus_output": " https://verus-lang.github.io/verus/guide/datatypes_enum.html\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/node-replication__spec__unbounded_log__get_fresh_nat_not_in/phi_1_combiner_request_ids_not_contains_external_body.rs:11:1\n   |\n11 | / #[is_variant]\n12 | | pub ghost enum CombinerState {\n13 | |     Ready,\n14 | |     Placed { queued_ops: Seq<ReqId> },\n...  |\n26 | |     UpdatedVersion { queued_ops: Seq<ReqId>, tail: LogIdx },\n27 | | }\n   | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "combiner_request_ids_finite_external_body",
+    "type": "logical",
+    "code": "proof fn phi_2_combiner_request_ids_finite_external_body(\n    combiners: Map<NodeId, CombinerState>,\n)\n    requires\n        combiners.dom().finite(),\n    ensures\n        combiner_request_ids(combiners).finite(),\n{\n    combiner_request_ids_finite(combiners);\n}",
+    "reason": "`combiner_request_ids_finite` is `external_body` \u2014 finiteness of the fold-over-choose result is trusted without proof",
+    "entailed": true,
+    "verus_output": "stead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/node-replication__spec__unbounded_log__get_fresh_nat_not_in/phi_2_combiner_request_ids_finite_external_body.rs:11:1\n   |\n11 | / #[is_variant]\n12 | | pub ghost enum CombinerState {\n13 | |     Ready,\n14 | |     Placed { queued_ops: Seq<ReqId> },\n...  |\n26 | |     UpdatedVersion { queued_ops: Seq<ReqId>, tail: LogIdx },\n27 | | }\n   | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "element_outside_set_external_body",
+    "type": "logical",
+    "code": "proof fn phi_3_element_outside_set_external_body(s: Set<nat>)\n    requires\n        s.finite(),\n    ensures ({\n        let r = element_outside_set(s);\n        !s.contains(r)\n    }),\n{\n    let _ = element_outside_set(s);\n}",
+    "reason": "`element_outside_set` is `external_body` \u2014 the existence of a nat outside any finite set is trusted without proof",
+    "entailed": false,
+    "verus_output": "ueued_ops: Seq<ReqId>, tail: LogIdx },\n27 | | }\n   | |_^\n\nerror: cannot call function `phi_3_element_outside_set_external_body::element_outside_set` with mode proof\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/node-replication__spec__unbounded_log__get_fresh_nat_not_in/phi_3_element_outside_set_external_body.rs:162:17\n    |\n162 |         let r = element_outside_set(s);\n    |                 ^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "get_fresh_nat_always_exists",
+    "type": "behavioral",
+    "code": "proof fn phi_4_get_fresh_nat_always_exists(\n    reqs: Set<ReqId>,\n    combiner: Map<NodeId, CombinerState>,\n)\n    requires\n        reqs.finite(),\n        combiner.dom().finite(),\n    ensures\n        !reqs.contains(get_fresh_nat(reqs, combiner)),\n        combiner_request_id_fresh(combiner, get_fresh_nat(reqs, combiner)),\n{\n    get_fresh_nat_not_in(reqs, combiner);\n}",
+    "reason": "Fresh nat generation always succeeds \u2014 depends on three chained `external_body` axioms (`element_outside_set`, `combiner_request_ids_not_contains`, `combiner_request_ids_finite`)",
+    "entailed": true,
+    "verus_output": "r `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/node-replication__spec__unbounded_log__get_fresh_nat_not_in/phi_4_get_fresh_nat_always_exists.rs:11:1\n   |\n11 | / #[is_variant]\n12 | | pub ghost enum CombinerState {\n13 | |     Ready,\n14 | |     Placed { queued_ops: Seq<ReqId> },\n...  |\n26 | |     UpdatedVersion { queued_ops: Seq<ReqId>, tail: LogIdx },\n27 | | }\n   | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "get_fresh_nat_closed_spec_choose",
+    "type": "logical",
+    "code": "proof fn phi_5_get_fresh_nat_closed_spec_choose(\n    reqs: Set<ReqId>,\n    combiner: Map<NodeId, CombinerState>,\n    reqs2: Set<ReqId>,\n)\n    requires\n        reqs.finite(),\n        reqs2.finite(),\n        combiner.dom().finite(),\n        reqs.subset_of(reqs2),\n    ensures\n        !reqs2.contains(get_fresh_nat(reqs, combiner)) || !reqs.contains(get_fresh_nat(reqs2, combiner)),\n{\n    get_fresh_nat_not_in(reqs, combiner);\n    get_fresh_nat_not_in(reqs2, combiner);\n}",
+    "reason": "`get_fresh_nat` uses `closed spec` with `choose` \u2014 the chosen value for a smaller set may or may not avoid a larger set, but the second disjunct always holds; tests whether `get_fresh_nat` is monotonic w.r.t. set inclusion",
+    "entailed": true,
+    "verus_output": "tches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/node-replication__spec__unbounded_log__get_fresh_nat_not_in/phi_5_get_fresh_nat_closed_spec_choose.rs:11:1\n   |\n11 | / #[is_variant]\n12 | | pub ghost enum CombinerState {\n13 | |     Ready,\n14 | |     Placed { queued_ops: Seq<ReqId> },\n...  |\n26 | |     UpdatedVersion { queued_ops: Seq<ReqId>, tail: LogIdx },\n27 | | }\n   | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

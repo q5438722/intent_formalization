@@ -1,0 +1,47 @@
+[
+  {
+    "name": "lemma_to_vec_external_body_from_vec_roundtrip",
+    "type": "logical",
+    "code": "proof fn phi_1_lemma_to_vec_external_body_from_vec_roundtrip(h1: CKeyHashMap, h2: CKeyHashMap)\n    requires\n        h1.spec_to_vec()@ == h2.spec_to_vec()@,\n    ensures\n        h1 == h2,\n{\n    h1.lemma_to_vec();\n    h2.lemma_to_vec();\n    // from_vec(to_vec(h1)) == h1 and from_vec(to_vec(h2)) == h2\n    // if to_vec views are equal, the Vecs might differ in non-view parts\n    // but from_vec is uninterpreted so this may not hold\n}",
+    "reason": "`lemma_to_vec` asserts `from_vec(to_vec(h)) == h` \u2014 combined with uninterpreted `spec_from_vec`, if two hashmaps have view-equal to_vec results, the axiom doesn't guarantee the hashmaps themselves are equal since `spec_from_vec` is uninterpreted and `to_vec` view-equality doesn't imply `to_vec` equality",
+    "entailed": false,
+    "verus_output": "rkspace_v2/ironkv__marshal_ironsht_specific_v__lemma_is_marshalable_CKeyHashMap/phi_1_lemma_to_vec_external_body_from_vec_roundtrip.rs:406:9\n    |\n402 | proof fn phi_1_lemma_to_vec_external_body_from_vec_roundtrip(h1: CKeyHashMap, h2: CKeyHashMap)\n    |       ---------------------------------------------------------------------------------------- at the end of the function body\n...\n406 |         h1 == h2,\n    |         ^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "fold_left_sum_external_body_negative",
+    "type": "logical",
+    "code": "proof fn phi_2_fold_left_sum_external_body_negative()\n    ensures\n        Seq::<u64>::empty().fold_left(0int, |acc: int, x: u64| acc + x.ghost_serialize().len()) == 0,\n{\n}",
+    "reason": "`lemma_seq_fold_left_sum_le` is external_body and could allow deriving incorrect bounds \u2014 an empty sequence fold should be 0 but the axiom is trusted without machine-checked base case",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "lemma_to_vec_dom_len_no_injectivity",
+    "type": "behavioral",
+    "code": "proof fn phi_3_lemma_to_vec_dom_len_no_injectivity(h: CKeyHashMap)\n    ensures\n        ({\n            h.lemma_to_vec();\n            h.spec_to_vec().len() == h@.dom().len()\n        }),\n{\n    h.lemma_to_vec();\n}",
+    "reason": "`lemma_to_vec` is external_body and asserts `to_vec().len() == view.dom().len()` \u2014 but since `view` is uninterpreted, this axiom constrains the relationship between two uninterpreted functions without any grounding, and a wrong implementation could satisfy the spec vacuously",
+    "entailed": false,
+    "verus_output": "error: cannot call function `phi_3_lemma_to_vec_dom_len_no_injectivity::CKeyHashMap::lemma_to_vec` with mode proof\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__marshal_ironsht_specific_v__lemma_is_marshalable_CKeyHashMap/phi_3_lemma_to_vec_dom_len_no_injectivity.rs:405:13\n    |\n405 |             h.lemma_to_vec();\n    |             ^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "ckeyhashmap_serialize_len_unchecked",
+    "type": "boundary",
+    "code": "proof fn phi_4_ckeyhashmap_serialize_len_unchecked(h: CKeyHashMap)\n    requires\n        h.is_marshalable(),\n    ensures\n        h.ghost_serialize().len() <= ckeyhashmap_max_serialized_size() as int,\n{\n    reveal(ckeyhashmap_max_serialized_size);\n}",
+    "reason": "The `is_marshalable` for `CKeyHashMap` directly includes `ghost_serialize().len() <= ckeyhashmap_max_serialized_size()` \u2014 but this bound (0x100000 = 1MiB) is arbitrarily chosen, and the external_body `lemma_seq_fold_left_sum_le` used to prove it could be unsound for the specific fold patterns used",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "lemma_seq_fold_left_append_len_unchecked",
+    "type": "logical",
+    "code": "proof fn phi_5_lemma_seq_fold_left_append_len_unchecked()\n    ensures\n        ({\n            let s = seq![1u64, 2u64];\n            let prefix = Seq::<u8>::empty();\n            let f = |a: u64| a.ghost_serialize();\n            s.fold_left(prefix, |sb: Seq<u8>, a: u64| sb + f(a)).len() as int\n            ==\n            s.fold_left(prefix.len() as int, |i: int, a: u64| i + f(a).len() as int)\n        }),\n{\n    let s = seq![1u64, 2u64];\n    let prefix = Seq::<u8>::empty();\n    let f = |a: u64| a.ghost_serialize();\n    lemma_seq_fold_left_append_len_int::<u64, u8>(s, prefix, f);\n}",
+    "reason": "`lemma_seq_fold_left_append_len_int` is external_body and equates byte-level fold length with integer-level fold sum \u2014 this correspondence is trusted without proof and any discrepancy would silently corrupt all serialization length calculations",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "view_equal_not_reflexive_trait",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "CKeyKV's `view_equal` is derived by the macro as `self.k.view_equal(&other.k) && self.v.view_equal(&other.v)`. For SHTKey, `view_equal` compares `self.ukey@"
+  },
+  {
+    "phi": "lemma_to_vec_view_self_tautology",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The ensures clause `h@ == h@` and `h.spec_to_vec()@ == h.spec_to_vec()@` are trivially true by equality reflexivity \u2014 Verus proves these without invoking any external_body lemma. This doesn't test the biconditional at all; it's just a tautology."
+  },
+  {
+    "phi": "view_equal_implies_serialize_equal_no_marshalable",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "The trait-level `lemma_same_views_serialize_the_same` is external_body and ensures `self.ghost_serialize() == other.ghost_serialize()` with only `view_equal` as precondition \u2014 no `is_marshalable` required. Since `ghost_serialize` at the trait level only has `recommends self.is_marshalable()` (not `requires`), the lemma produces equality claims about serializations of non-marshalable values where the serialization output is effectively unconstrained. This is a spec gap: the lemma should require marshalability or the guarantee is vacuously about under-specified values."
+  },
+  {
+    "phi": "to_vec_view_biconditional_forces_injective_view",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "The `lemma_to_vec_view` axiom is intentionally asserting that `CKeyHashMap`'s abstract view (`Map<AbstractKey, Seq<u8>>`) and its `spec_to_vec` representation are in bijective correspondence \u2014 this is a design-level assumption about the external_body wrapper faithfully representing the underlying `HashMap`. The backward direction (equal to_vec views imply equal map views) is the expected contract for a well-implemented wrapper type, not a spec gap."
+  }
+]

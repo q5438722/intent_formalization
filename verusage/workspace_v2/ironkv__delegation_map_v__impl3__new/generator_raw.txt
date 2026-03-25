@@ -1,0 +1,76 @@
+===PHI_START===
+NAME: sorted_empty_is_valid
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_sorted_empty_is_valid<K: KeyTrait>()
+    ensures
+        sorted(Seq::<K>::empty()),
+{
+}
+```
+REASON: Empty sequence vacuously satisfies `sorted` — any predicate over pairs of indices holds trivially, which is correct but could mask issues if callers assume sorted implies non-empty
+===PHI_END===
+
+===PHI_START===
+NAME: cmp_spec_no_irreflexivity
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_cmp_spec_no_irreflexivity<K: KeyTrait>(a: K)
+    ensures
+        a.cmp_spec(a).lt() || !a.cmp_spec(a).lt(),
+{
+}
+```
+REASON: `cmp_spec` is uninterpreted with no axiom preventing `a.cmp_spec(a).lt()` from being true — if `cmp_spec` is reflexively less-than, `sorted` allows duplicate-valued elements while `no_duplicates` operates on structural equality, creating an inconsistency between the two validity conditions
+===PHI_END===
+
+===PHI_START===
+NAME: sorted_no_transitivity
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_sorted_no_transitivity<K: KeyTrait>(a: K, b: K, c: K)
+    requires
+        a.cmp_spec(b).lt(),
+        b.cmp_spec(c).lt(),
+    ensures
+        a.cmp_spec(c).lt() || !a.cmp_spec(c).lt(),
+{
+}
+```
+REASON: `cmp_spec` has no transitivity axiom — `sorted` checks all pairs directly via the quantifier, but downstream code reasoning about `cmp_spec` outside of sequences cannot derive transitivity, potentially making the ordering relation inconsistent
+===PHI_END===
+
+===PHI_START===
+NAME: map_valid_ghost_unconstrained_outside_keys
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_map_valid_ghost_unconstrained_outside_keys<K: KeyTrait + VerusClone>(som: StrictlyOrderedMap<K>, k: K)
+    requires
+        som.valid(),
+        !som@.contains_key(k),
+    ensures
+        !som.keys@.contains(k),
+{
+}
+```
+REASON: `map_valid` asserts `m@.dom() == keys@.to_set()` — but both `m` and `keys` are ghost/closed fields, and `map_valid` is closed, so external code cannot verify this link holds after external_body operations that might desync the ghost map from the keys vector
+===PHI_END===
+
+===PHI_START===
+NAME: new_external_body_sorted_empty_trusted
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_new_external_body_sorted_empty_trusted()
+    ensures
+        sorted(Seq::<SHTKey>::empty()),
+        Seq::<SHTKey>::empty().no_duplicates(),
+{
+}
+```
+REASON: `StrictlyOrderedVec::new` is external_body and asserts `v.valid()` on the empty vec — the sorted+no_duplicates ensures on empty are trivially true, but the external_body trust means the implementation could return a non-empty vec that violates validity without detection
+===PHI_END===

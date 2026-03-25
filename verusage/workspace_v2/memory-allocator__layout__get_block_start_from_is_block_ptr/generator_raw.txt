@@ -1,0 +1,94 @@
+===PHI_START===
+NAME: slice_idx_below_page_idx
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_slice_idx_below_page_idx(ptr: *mut u8, block_id: BlockId)
+    requires
+        is_block_ptr(ptr, block_id),
+        block_id.page_id.idx == 10,
+        block_id.slice_idx == 2,
+    ensures
+        block_id.slice_idx < block_id.page_id.idx,
+{
+    reveal(is_block_ptr1);
+}
+```
+REASON: `is_block_ptr1` allows `slice_idx < page_id.idx` — a block on page 10 claiming to be in slice 2 is physically impossible since a page's slices start at the page index
+===PHI_END===
+
+===PHI_START===
+NAME: block_end_past_slice
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_block_end_past_slice(ptr: *mut u8, block_id: BlockId)
+    requires
+        is_block_ptr(ptr, block_id),
+    ensures
+        // Only start address is within the slice — no guarantee block fits
+        ptr as int < segment_start(block_id.page_id.segment_id) + (block_id.slice_idx * SLICE_SIZE) + SLICE_SIZE,
+{
+    reveal(is_block_ptr1);
+}
+```
+REASON: The spec checks that the block start is within a slice but never checks `ptr + block_size` fits — large blocks can extend past the slice boundary
+===PHI_END===
+
+===PHI_START===
+NAME: two_block_ids_same_ptr
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_two_block_ids_same_ptr(ptr: *mut u8, b1: BlockId, b2: BlockId)
+    requires
+        is_block_ptr(ptr, b1),
+        is_block_ptr(ptr, b2),
+    ensures
+        ptr as int == block_start(b1),
+        ptr as int == block_start(b2),
+        block_start(b1) == block_start(b2),
+{
+    get_block_start_from_is_block_ptr(ptr, b1);
+    get_block_start_from_is_block_ptr(ptr, b2);
+}
+```
+REASON: Two distinct `BlockId`s with different `block_size`/`idx` can yield the same `block_start` address — the spec doesn't ensure `is_block_ptr` uniquely determines the `BlockId` from a pointer
+===PHI_END===
+
+===PHI_START===
+NAME: page_idx_exceeds_slices_per_segment
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_page_idx_exceeds_slices_per_segment(ptr: *mut u8, block_id: BlockId)
+    requires
+        is_block_ptr(ptr, block_id),
+    ensures
+        // page_id.idx is NOT bounded by SLICES_PER_SEGMENT
+        // Only slice_idx is bounded
+        block_id.slice_idx <= SLICES_PER_SEGMENT,
+{
+    reveal(is_block_ptr1);
+}
+```
+REASON: `is_block_ptr1` bounds `slice_idx <= SLICES_PER_SEGMENT` but places no upper bound on `page_id.idx` — a page with `idx > 512` would compute `page_start` beyond the segment
+===PHI_END===
+
+===PHI_START===
+NAME: block_size_no_upper_bound
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_block_size_no_upper_bound(ptr: *mut u8, block_id: BlockId)
+    requires
+        is_block_ptr(ptr, block_id),
+    ensures
+        block_id.block_size >= 8,
+        // No upper bound on block_size — could exceed SEGMENT_SIZE
+{
+    reveal(is_block_ptr1);
+}
+```
+REASON: `is_block_ptr1` requires `block_size >= size_of::<Node>()` (lower bound) but has no upper bound — a block_size exceeding SEGMENT_SIZE is allowed, which combined with the slice containment check means block_idx must be 0 but the block extends far past the segment
+===PHI_END===

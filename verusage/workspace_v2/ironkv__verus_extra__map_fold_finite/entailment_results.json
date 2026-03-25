@@ -1,0 +1,47 @@
+[
+  {
+    "name": "set_fold_empty_returns_zero",
+    "type": "boundary",
+    "code": "proof fn phi_1_set_fold_empty_returns_zero<B>(zero: B, f: spec_fn(B, int) -> B)\n    ensures\n        set_fold(Set::<int>::empty(), zero, f) == zero,\n{\n}",
+    "reason": "If folding an empty set didn't return the zero element, the base case would inject phantom values",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "set_fold_infinite_returns_zero",
+    "type": "boundary",
+    "code": "proof fn phi_2_set_fold_infinite_returns_zero(s: Set<int>, zero: int, f: spec_fn(int, int) -> int)\n    requires\n        !s.finite(),\n    ensures\n        set_fold(s, zero, f) == zero,\n{\n}",
+    "reason": "Folding an infinite set silently returns `zero` instead of being undefined \u2014 callers may not realize they get the identity element for non-finite sets",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "map_fold_empty_is_empty",
+    "type": "boundary",
+    "code": "proof fn phi_3_map_fold_empty_is_empty<B>(f: spec_fn(int) -> B)\n    ensures\n        map_fold(Set::<int>::empty(), f) == Set::<B>::empty(),\n{\n}",
+    "reason": "Mapping over an empty set should produce empty \u2014 if it didn't, map_fold would fabricate elements from nothing",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "set_fold_singleton_applies_f",
+    "type": "behavioral",
+    "code": "proof fn phi_4_set_fold_singleton_applies_f(x: int, zero: int, f: spec_fn(int, int) -> int)\n    ensures\n        set_fold(set![x], zero, f) == f(zero, x),\n{\n    assert(set![x].remove(x) =~= Set::<int>::empty());\n}",
+    "reason": "Folding a singleton should apply f exactly once to (zero, element) \u2014 any other result means set_fold mishandles the base-to-single-element transition",
+    "entailed": false,
+    "verus_output": "v__verus_extra__map_fold_finite/phi_4_set_fold_singleton_applies_f.rs:53:9\n   |\n51 | proof fn phi_4_set_fold_singleton_applies_f(x: int, zero: int, f: spec_fn(int, int) -> int)\n   |       ------------------------------------------------------------------------------------- at the end of the function body\n52 |     ensures\n53 |         set_fold(set![x], zero, f) == f(zero, x),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "set_fold_order_dependent_non_commutative",
+    "type": "logical",
+    "code": "proof fn phi_5_set_fold_order_dependent_non_commutative()\n    ensures\n        set_fold(set![1int, 2int], 0int, |acc: int, a: int| acc * 10 + a) ==\n        set_fold(set![1int, 2int], 0int, |acc: int, a: int| acc * 10 + a),\n{\n}",
+    "reason": "set_fold uses `s.choose()` which is deterministic but unspecified \u2014 for non-commutative f the result is well-defined but unpredictable, yet the spec provides no commutativity requirement",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

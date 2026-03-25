@@ -1,0 +1,52 @@
+[
+  {
+    "name": "greater_is_lt",
+    "target_fn": "is_lt",
+    "type": "behavioral",
+    "reason": "If Greater were classified as Less, the ordering comparison used throughout StrictlyOrderedMap and DelegationMap would be fundamentally broken",
+    "entailed": false,
+    "verified": 5,
+    "errors": 1,
+    "output_tail": "587:9\n    |\n585 | proof fn phi_1_greater_is_lt()\n    |       ------------------------ at the end of the function body\n586 |     ensures\n587 |         Ordering::Greater.lt(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 12 warnings emitted\n\n"
+  },
+  {
+    "name": "new_spec_is_end",
+    "target_fn": "is_end",
+    "type": "boundary",
+    "reason": "A KeyIterator wrapping Some(k) should never report as end; if it did, get() would be unreachable and DelegationMap range operations would silently skip all keys",
+    "entailed": false,
+    "verified": 5,
+    "errors": 1,
+    "output_tail": "----------------------------------------------------- at the end of the function body\n586 |     ensures\n587 |         KeyIterator::new_spec(k).is_end_spec(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 12 warnings emitted\n\n"
+  },
+  {
+    "name": "above_self",
+    "target_fn": "above",
+    "type": "logical",
+    "reason": "A key should not be strictly above itself in its own iterator; this would break the greatest-lower-bound logic used by DelegationMap::get_internal",
+    "entailed": false,
+    "verified": 5,
+    "errors": 1,
+    "output_tail": "  --------------------------------------------------- at the end of the function body\n586 |     ensures\n587 |         KeyIterator::new_spec(k).above_spec(k),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 12 warnings emitted\n\n"
+  },
+  {
+    "name": "get_roundtrip_broken",
+    "target_fn": "get",
+    "type": "boundary",
+    "reason": "Extracting a key via get and re-wrapping with new_spec must roundtrip to the same iterator; failure would break between/gap reasoning in DelegationMap::set",
+    "entailed": false,
+    "verified": 5,
+    "errors": 1,
+    "output_tail": "--------------------------------------------------------- at the end of the function body\n...\n589 |         KeyIterator::new_spec(*ki.get_spec()) != ki,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 12 warnings emitted\n\n"
+  },
+  {
+    "name": "set_misses_interior",
+    "target_fn": "set",
+    "type": "behavioral",
+    "reason": "A key strictly between lo and hi must be inside the between range; otherwise DelegationMap::set would fail to update interior keys in the assigned range",
+    "entailed": false,
+    "verified": 5,
+    "errors": 1,
+    "output_tail": "ator::between(KeyIterator::new_spec(lo), KeyIterator::new_spec(k), KeyIterator::new_spec(hi)),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 12 warnings emitted\n\n"
+  }
+]

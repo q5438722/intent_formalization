@@ -1,0 +1,88 @@
+===PHI_START===
+NAME: execution_equality_forces_fn_equality
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_execution_equality_forces_fn_equality(f: spec_fn(nat) -> int, g: spec_fn(nat) -> int)
+    requires
+        forall |i: nat| #[trigger] f(i) == g(i),
+    ensures
+        f == g,
+{
+    let ex1 = Execution { nat_to_state: f };
+    let ex2 = Execution { nat_to_state: g };
+    // If SMT can derive ex1 == ex2 from the axioms, then f == g follows from struct field equality
+}
+```
+REASON: if the SMT solver can derive intensional spec_fn equality from pointwise equivalence through Execution wrapping, it would collapse the extensional/intensional distinction without any external_body axiom
+===PHI_END===
+
+===PHI_START===
+NAME: implies_apply_closure_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_implies_apply_closure_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>)
+    requires
+        p.satisfied_by(ex),
+        (p.pred)(ex) ==> (q.pred)(ex),
+    ensures
+        q.satisfied_by(ex),
+{
+    implies_apply::<int>(ex, p, q);
+}
+```
+REASON: implies_apply is external_body bridging p.implies(q).satisfied_by(ex) through TempPred::new closure wrapping and direct implication — silently resolves closure identity mismatch
+===PHI_END===
+
+===PHI_START===
+NAME: entails_preserved_by_always_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_entails_preserved_by_always_intensional_bridge(p: TempPred<int>, q: TempPred<int>)
+    requires
+        p.entails(q),
+    ensures
+        always(p).entails(always(q)),
+{
+    entails_preserved_by_always::<int>(p, q);
+}
+```
+REASON: entails_preserved_by_always is external_body lifting entailment through always — bridges the forall-over-suffix closure inside always with the entailment closure without proof
+===PHI_END===
+
+===PHI_START===
+NAME: always_weaken_vacuous_spec
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_always_weaken_vacuous_spec(p: TempPred<int>, q: TempPred<int>)
+    requires
+        valid(p.implies(q)),
+    ensures
+        TempPred::<int>::new(|ex: Execution<int>| false).entails(always(q)),
+{
+    always_weaken::<int>(TempPred::new(|ex: Execution<int>| false), p, q);
+}
+```
+REASON: an unsatisfiable spec vacuously entails always(q) for any q — always_weaken propagates this without checking spec satisfiability, potentially hiding specification errors
+===PHI_END===
+
+===PHI_START===
+NAME: always_weaken_strengthens_to_valid
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_always_weaken_strengthens_to_valid(p: TempPred<int>, q: TempPred<int>, spec: TempPred<int>)
+    requires
+        valid(p.implies(q)),
+        spec.entails(always(p)),
+    ensures
+        spec.entails(always(q)),
+{
+    always_weaken::<int>(spec, p, q);
+}
+```
+REASON: always_weaken composes two external_body axioms (implies_apply + entails_preserved_by_always) to derive always(q) from always(p) under a pointwise implication — the composition amplifies the unverified trust surface across both axioms
+===PHI_END===

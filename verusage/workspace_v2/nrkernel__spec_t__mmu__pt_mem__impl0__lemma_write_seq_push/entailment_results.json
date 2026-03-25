@@ -1,0 +1,47 @@
+[
+  {
+    "name": "lemma_fold_left_push_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_lemma_fold_left_push_external_body()\n    ensures\n        seq![1int, 2].push(3).fold_left(0int, |acc: int, x: int| acc + x)\n            == (|acc: int, x: int| acc + x)(seq![1int, 2].fold_left(0int, |acc: int, x: int| acc + x), 3),\n{\n    lemma_fold_left_push(seq![1int, 2], 3, 0int, |acc: int, x: int| acc + x);\n}",
+    "reason": "`lemma_fold_left_push` is `external_body` with `unimplemented!()` \u2014 the fundamental fold-left-push equivalence is trusted without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "lemma_write_seq_external_body",
+    "type": "logical",
+    "code": "proof fn phi_2_lemma_write_seq_external_body(pt: PTMem, writes: Seq<(usize, usize)>)\n    ensures\n        pt.write_seq(writes).pml4 == pt.pml4,\n        pt.mem.dom().subset_of(pt.write_seq(writes).mem.dom()),\n{\n    pt.lemma_write_seq(writes);\n}",
+    "reason": "`lemma_write_seq` is `external_body` with `unimplemented!()` \u2014 pml4 preservation and domain monotonicity are trusted without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "write_seq_push_depends_on_two_external_body",
+    "type": "logical",
+    "code": "proof fn phi_3_write_seq_push_depends_on_two_external_body(pt: PTMem, addr: usize, value: usize)\n    ensures\n        pt.write_seq(Seq::<(usize, usize)>::empty().push((addr, value)))\n            == (PTMem {\n                pml4: pt.pml4,\n                mem: pt.write_seq(Seq::<(usize, usize)>::empty()).mem.insert(addr, value),\n            }),\n{\n    pt.lemma_write_seq_push(Seq::<(usize, usize)>::empty(), addr, value);\n}",
+    "reason": "`lemma_write_seq_push` depends on both `lemma_fold_left_push` and `lemma_write_seq` (both external_body) \u2014 the push decomposition rests on two unverified trust assumptions",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "write_seq_push_simplifies_to_write",
+    "type": "behavioral",
+    "code": "proof fn phi_4_write_seq_push_simplifies_to_write(pt: PTMem, addr: usize, value: usize)\n    ensures\n        pt.write_seq(seq![(addr, value)]) === pt.write(addr, value),\n{\n}",
+    "reason": "A single-element write_seq should equal a direct write \u2014 tests fold_left base case consistency",
+    "entailed": false,
+    "verus_output": "4_write_seq_push_simplifies_to_write.rs:64:9\n   |\n62 | proof fn phi_4_write_seq_push_simplifies_to_write(pt: PTMem, addr: usize, value: usize)\n   |       --------------------------------------------------------------------------------- at the end of the function body\n63 |     ensures\n64 |         pt.write_seq(seq![(addr, value)]) === pt.write(addr, value),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "write_seq_push_pml4_preserved",
+    "type": "behavioral",
+    "code": "proof fn phi_5_write_seq_push_pml4_preserved(pt: PTMem, writes: Seq<(usize, usize)>, addr: usize, value: usize)\n    ensures\n        pt.write_seq(writes.push((addr, value))).pml4 == pt.pml4,\n{\n    pt.lemma_write_seq_push(writes, addr, value);\n}",
+    "reason": "pml4 preservation through push relies on `lemma_write_seq_push` which transitively depends on two external_body lemmas",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

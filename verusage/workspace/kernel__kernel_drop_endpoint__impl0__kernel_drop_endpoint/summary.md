@@ -1,105 +1,62 @@
-# Summary: Specification Testing for `kernel_drop_endpoint`
+# Test Summary: `kernel_drop_endpoint`
 
-## File Under Test
-`kernel__kernel_drop_endpoint__impl0__kernel_drop_endpoint.rs` — Defines the `Kernel::kernel_drop_endpoint` method, which drops an endpoint descriptor from a thread. The function updates the thread's endpoint descriptor array (setting the entry at `edp_idx` to `None`), potentially freeing an endpoint page. It preserves kernel well-formedness, domain invariants, container tree structure, process state, and all other threads.
-
-Also tested: `ProcessManager::drop_endpoint` (external_body helper with trusted specs).
-
----
-
-## Correctness Results (`correctness_tests.rs`)
-
-**All tests PASS** (52 verified, 0 errors)
-
-| # | Test Name | Description | Expected | Actual |
-|---|-----------|-------------|----------|--------|
-| 1 | `test_endpoint_descriptor_cleared` | Descriptor at `edp_idx` is `None` after update | PASS | PASS ✅ |
-| 2 | `test_other_descriptors_unchanged` | Descriptors at other indices are unchanged | PASS | PASS ✅ |
-| 3 | `test_thread_state_preserved` | Thread state (SCHEDULED/BLOCKED/RUNNING) preserved | PASS | PASS ✅ |
-| 4 | `test_domain_preservation` | Container/proc/thread domains preserved | PASS | PASS ✅ |
-| 5 | `test_processes_unchanged` | All processes identical before and after | PASS | PASS ✅ |
-| 6 | `test_other_threads_unchanged` | Non-target threads identical before and after | PASS | PASS ✅ |
-| 7 | `test_owning_proc_preserved` | Target thread's owning proc unchanged | PASS | PASS ✅ |
-| 8 | `test_blocking_endpoint_preserved` | Blocking endpoint index preserved | PASS | PASS ✅ |
-| 9 | `test_container_tree_preserved` | Container parent/children/depth preserved | PASS | PASS ✅ |
-| 10 | `test_container_owned_procs_preserved` | Container root_process/owned_procs preserved | PASS | PASS ✅ |
-| 11 | `test_new_kernel_wf` | Sub-wellformedness (mem_man, page_alloc, proc_man, etc.) | PASS | PASS ✅ |
+## Target
+`kernel__kernel_drop_endpoint__impl0__kernel_drop_endpoint.rs`  
+Functions tested: `kernel_drop_endpoint` (Kernel), `drop_endpoint` (ProcessManager)
 
 ---
 
-## Completeness Results
+## Results Overview
 
-### Round 1: Precondition Violations (`completeness_round1.rs`)
+| Test File | Tests | Failed (expected) | Passed (unexpected) |
+|---|---|---|---|
+| `boundary_tests.rs` | 6 | 6 | 0 |
+| `behavioral_mutation_tests.rs` | 8 | 8 | 0 |
+| `logical_tests.rs` | 7 | 7 | 0 |
+| **Total** | **21** | **21** | **0** |
 
-**All tests FAIL** (41 verified, 4 errors)
-
-| # | Test Name | What It Tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | `test_missing_wf` | Missing `old_k.wf()` precondition | FAIL | FAIL ✅ |
-| 2 | `test_invalid_edp_idx` | `edp_idx = MAX_NUM_ENDPOINT_DESCRIPTORS` (out of range) | FAIL | FAIL ✅ |
-| 3 | `test_thread_not_in_domain` | Thread not in `thread_dom()` | FAIL | FAIL ✅ |
-| 4 | `test_blocked_on_dropped_endpoint` | Thread blocked on the endpoint being dropped | FAIL | FAIL ✅ |
-
-### Round 2: Overly Strong Postconditions (`completeness_round2.rs`)
-
-**All tests FAIL** (41 verified, 4 errors)
-
-| # | Test Name | What It Tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | `test_all_descriptors_none` | All descriptors are None (only edp_idx should be) | FAIL | FAIL ✅ |
-| 2 | `test_descriptors_identical` | Descriptors sequence unchanged (should be updated at edp_idx) | FAIL | FAIL ✅ |
-| 3 | `test_target_thread_unchanged` | Target thread completely unchanged (it IS modified) | FAIL | FAIL ✅ |
-| 4 | `test_all_threads_unchanged` | All threads unchanged (target thread is excepted) | FAIL | FAIL ✅ |
-
-### Round 3: Negated/Contradicted Postconditions (`completeness_round3.rs`)
-
-**All tests FAIL** (41 verified, 5 errors)
-
-| # | Test Name | What It Tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | `test_thread_state_changes` | Thread state changed from SCHEDULED to BLOCKED | FAIL | FAIL ✅ |
-| 2 | `test_thread_domain_changes` | Non-existent thread appears in domain | FAIL | FAIL ✅ |
-| 3 | `test_processes_changed` | Process not equal to old value | FAIL | FAIL ✅ |
-| 4 | `test_container_domain_changes` | Existing container removed from domain | FAIL | FAIL ✅ |
-| 5 | `test_descriptor_not_cleared` | Descriptor at edp_idx is NOT None | FAIL | FAIL ✅ |
-
-### Round 4: Wrong Specific Values (`completeness_round4.rs`)
-
-**All tests FAIL** (41 verified, 4 errors)
-
-| # | Test Name | What It Tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | `test_wrong_owning_proc` | Owning proc changed to wrong value | FAIL | FAIL ✅ |
-| 2 | `test_wrong_index_cleared` | Wrong descriptor index was cleared | FAIL | FAIL ✅ |
-| 3 | `test_proc_domain_shrank` | Process removed from domain | FAIL | FAIL ✅ |
-| 4 | `test_wrong_blocking_endpoint` | Blocking endpoint changed to Some(0) | FAIL | FAIL ✅ |
-
-### Round 5: Cross-function Misuse & Edge Cases (`completeness_round5.rs`)
-
-**All tests FAIL** (41 verified, 5 errors)
-
-| # | Test Name | What It Tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | `test_container_tree_changed` | Container parent changed (contradicts tree_unchanged) | FAIL | FAIL ✅ |
-| 2 | `test_wrong_thread_modified` | Non-target thread state changed | FAIL | FAIL ✅ |
-| 3 | `test_endpoint_dom_changed` | Endpoint removed from domain | FAIL | FAIL ✅ |
-| 4 | `test_new_kernel_not_wf` | Kernel NOT well-formed after call | FAIL | FAIL ✅ |
-| 5 | `test_containers_changed` | Container owned_procs changed (contradicts spec) | FAIL | FAIL ✅ |
+**All 21 adversarial tests FAILED verification as expected.** No spec weaknesses detected.
 
 ---
 
-## Overall Assessment
+## Boundary Tests (6/6 failed ✅)
 
-### Correctness: ✅ PASS
-All 11 correctness tests verify successfully. The postconditions of `kernel_drop_endpoint` correctly imply the expected derived properties: endpoint descriptors are properly updated, thread state is preserved, domains are unchanged, and the kernel remains well-formed.
+| # | Test | Violated Precondition |
+|---|---|---|
+| 1 | `test_boundary_edp_idx_at_max` | `edp_idx == 128` (must be < 128) |
+| 2 | `test_boundary_edp_idx_usize_max` | `edp_idx == usize::MAX` |
+| 3 | `test_boundary_thread_not_in_domain` | Thread not in `thread_dom()` |
+| 4 | `test_boundary_blocked_thread_drops_blocking_endpoint` | Blocked thread drops its own blocking endpoint |
+| 5 | `test_boundary_kernel_not_wf` | Kernel not well-formed |
+| 6 | `test_boundary_edp_idx_negative_wrap` | `edp_idx == 200` (out of range) |
 
-### Completeness: ✅ PASS
-All 22 completeness tests fail as expected. The specifications correctly reject:
-- Precondition violations (missing wf, invalid indices, thread not in domain, blocked on dropped endpoint)
-- Overly strong claims (all descriptors cleared, target thread unchanged)
-- Negated postconditions (state changes, domain changes, process changes)
-- Wrong specific values (wrong proc, wrong index, wrong blocking endpoint)
-- Cross-function misuse (container tree changes, wrong thread modified)
+## Behavioral Mutation Tests (8/8 failed ✅)
 
-### Spec Gaps Found: None
-The specifications for `kernel_drop_endpoint` appear both correct and sufficiently tight. No unexpected verification successes or failures were encountered.
+| # | Test | Mutated Property |
+|---|---|---|
+| 1 | `test_behavioral_descriptor_not_cleared` | Claim descriptor NOT cleared at `edp_idx` |
+| 2 | `test_behavioral_thread_state_changed` | Claim thread state changed |
+| 3 | `test_behavioral_other_thread_changed` | Claim other thread was modified |
+| 4 | `test_behavioral_proc_dom_shrank` | Claim process domain shrank |
+| 5 | `test_behavioral_container_dom_changed` | Claim container domain changed |
+| 6 | `test_behavioral_blocking_index_changed` | Claim blocking index changed |
+| 7 | `test_behavioral_owning_proc_changed` | Claim owning_proc changed |
+| 8 | `test_behavioral_process_container_changed` | Claim process container changed |
+
+## Logical Tests (7/7 failed ✅)
+
+| # | Test | Unintended Property |
+|---|---|---|
+| 1 | `test_logical_endpoint_dom_shrinks` | Endpoint domain shrinks after drop |
+| 2 | `test_logical_other_descriptor_also_cleared` | Another descriptor also cleared |
+| 3 | `test_logical_idempotent_drop` | Dropping None descriptor is a no-op on page_closure |
+| 4 | `test_logical_determinism` | Two calls return identical pages |
+| 5 | `test_logical_thread_dom_min_size` | Thread domain has ≥ 2 elements |
+| 6 | `test_logical_all_containers_fully_identical` | All container fields unchanged |
+| 7 | `test_logical_idx_zero_always_none` | Index 0 always returns None |
+
+---
+
+## Conclusion
+
+The specification for `kernel_drop_endpoint` correctly rejects all 21 adversarial queries across boundary violations, behavioral mutations, and logical overreach. The spec appears consistent with respect to the tested semantic boundaries.

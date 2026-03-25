@@ -1,0 +1,122 @@
+use vstd::prelude::*;
+
+fn main() {}
+
+verus!{
+
+// ========== Definitions (from source) ==========
+
+pub struct Execution<T> {
+    pub nat_to_state: spec_fn(nat) -> T,
+}
+
+impl<T> Execution<T> {
+    pub open spec fn suffix(self, pos: nat) -> Self {
+        Execution {
+            nat_to_state: |i: nat| (self.nat_to_state)(i + pos),
+        }
+    }
+}
+
+#[verifier(reject_recursive_types(T))]
+pub struct TempPred<T> {
+    pub pred: spec_fn(Execution<T>) -> bool,
+}
+
+impl<T> TempPred<T> {
+    pub open spec fn new(pred: spec_fn(Execution<T>) -> bool) -> Self {
+        TempPred { pred: pred }
+    }
+
+    pub open spec fn satisfied_by(self, execution: Execution<T>) -> bool {
+        (self.pred)(execution)
+    }
+
+    pub open spec fn implies(self, other: Self) -> Self {
+        TempPred::new(|ex: Execution<T>| self.satisfied_by(ex) ==> other.satisfied_by(ex))
+    }
+
+    pub open spec fn leads_to(self, other: Self) -> Self {
+        always(self.implies(eventually(other)))
+    }
+
+    pub open spec fn entails(self, other: Self) -> bool {
+        valid(self.implies(other))
+    }
+}
+
+pub open spec fn always<T>(temp_pred: TempPred<T>) -> TempPred<T> {
+    TempPred::new(|ex: Execution<T>| forall |i: nat| #[trigger] temp_pred.satisfied_by(ex.suffix(i)))
+}
+
+pub open spec fn eventually<T>(temp_pred: TempPred<T>) -> TempPred<T> {
+    TempPred::new(|ex: Execution<T>| exists |i: nat| #[trigger] temp_pred.satisfied_by(ex.suffix(i)))
+}
+
+pub open spec fn valid<T>(temp_pred: TempPred<T>) -> bool {
+    forall |ex: Execution<T>| temp_pred.satisfied_by(ex)
+}
+
+// ========== Function Under Test ==========
+
+#[verifier::external_body]
+proof fn leads_to_rank_step_one_usize_help<T>(spec: TempPred<T>, p: spec_fn(usize) -> TempPred<T>, n: usize)
+    requires
+        forall |n: usize| #![trigger p(n)] (n > 0 ==> spec.entails(p(n).leads_to(p((n - 1) as usize)))),
+    ensures
+        spec.entails(p(n).leads_to(p(0))),
+    decreases n,
+{
+    unimplemented!()
+}
+
+pub proof fn leads_to_rank_step_one_usize<T>(spec: TempPred<T>, p: spec_fn(usize) -> TempPred<T>)
+    requires
+        forall |n: usize| #![trigger p(n)] (n > 0 ==> spec.entails(p(n).leads_to(p((n - 1) as usize)))),
+    ensures
+        forall |n: usize| #[trigger] spec.entails(p(n).leads_to(p(0))),
+{
+    let pre = {
+        forall |n: usize| #![trigger p(n)] (n > 0 ==> spec.entails(p(n).leads_to(p((n - 1) as usize))))
+    };
+    assert forall |n: usize| pre implies #[trigger] spec.entails(p(n).leads_to(p(0))) by {
+        leads_to_rank_step_one_usize_help(spec, p, n);
+    }
+}
+
+// ========== LOGICAL TESTS ==========
+
+// Test 1: Assert spec entails always(p(0)) — leads_to does NOT imply always
+// SHOULD FAIL - leads_to means "if p(n) then eventually p(0)", not "p(0) always holds"
+proof fn test_logical_always_p0<T>(spec: TempPred<T>, p: spec_fn(usize) -> TempPred<T>)
+    requires
+        forall |n: usize| #![trigger p(n)] (n > 0 ==> spec.entails(p(n).leads_to(p((n - 1) as usize)))),
+{
+    leads_to_rank_step_one_usize(spec, p);
+    // Unintended reasoning: leads_to does not imply always
+    assert(spec.entails(always(p(0usize))));
+}
+
+// Test 2: Assert direct entailment p(n).entails(p(0)) — much stronger than leads_to
+// SHOULD FAIL - leads_to is temporal (eventually), entails is immediate
+proof fn test_logical_direct_entailment<T>(spec: TempPred<T>, p: spec_fn(usize) -> TempPred<T>)
+    requires
+        forall |n: usize| #![trigger p(n)] (n > 0 ==> spec.entails(p(n).leads_to(p((n - 1) as usize)))),
+{
+    leads_to_rank_step_one_usize(spec, p);
+    // Unintended reasoning: leads_to does NOT mean p(n) directly entails p(0)
+    assert(forall |n: usize| #[trigger] p(n).entails(p(0usize)));
+}
+
+// Test 3: Assert valid(spec) — the precondition does NOT imply spec holds universally
+// SHOULD FAIL - nothing in the precondition guarantees spec is universally valid
+proof fn test_logical_spec_universally_valid<T>(spec: TempPred<T>, p: spec_fn(usize) -> TempPred<T>)
+    requires
+        forall |n: usize| #![trigger p(n)] (n > 0 ==> spec.entails(p(n).leads_to(p((n - 1) as usize)))),
+{
+    // Unintended reasoning: spec.entails(...) just means valid(spec.implies(...))
+    // This does NOT mean spec itself is universally valid
+    assert(valid(spec));
+}
+
+}

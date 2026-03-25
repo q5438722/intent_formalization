@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: parse_empty_is_none
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The `spec_parse` definition explicitly checks `s.len() != 0` and returns `None` for empty input. Correct by definition.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: parse_single_byte_value_range
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: For `s = seq![b]` with `b < 0x80`, `is_high_8_bit_set` is false, so the spec returns `Some((1, take_low_7_bits!(b) as UInt))` = `Some((1, (b & 0x7f) as UInt))`. Correct by unfolding the open spec.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: parse_consumed_at_most_input_length
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The base case returns `n=1` for `s.len() >= 1`. The recursive case adds 1 to `n` from `s.drop_first()`, and by induction `n2 <= s.drop_first().len()`, so `n = n2 + 1 <= s.len()`. The proof itself is verified and correct by structural induction on the open spec.
+===VERDICT_END===
+
+===SUMMARY===
+All three candidates are false positives. Empty-input failure and single-byte parsing follow directly from the open spec definition. The consumed-length bound is provable by structural induction on the recursive spec without relying on any trusted axioms. No spec gaps found.
+===END_SUMMARY===

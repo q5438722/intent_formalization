@@ -1,0 +1,90 @@
+===PHI_START===
+NAME: serialize_noop
+TARGET_FN: serialize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_serialize_noop(val: u64, old_data: Seq<u8>, new_data: Seq<u8>)
+    requires
+        val.is_marshalable(),
+        new_data.len() >= old_data.len(),
+        new_data.subrange(0, old_data.len() as int) == old_data,
+        new_data.subrange(old_data.len() as int, new_data.len() as int) == val.ghost_serialize(),
+    ensures
+        new_data.len() == old_data.len(),
+{
+}
+```
+REASON: Serialize of a u64 should always append bytes; a no-op (zero-length append) would mean the encoding is empty and undecodable.
+===PHI_END===
+
+===PHI_START===
+NAME: serialize_not_injective
+TARGET_FN: serialize
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_serialize_not_injective(a: u64, b: u64)
+    requires
+        a != b,
+        a.is_marshalable(),
+        b.is_marshalable(),
+    ensures
+        a.ghost_serialize() == b.ghost_serialize(),
+{
+}
+```
+REASON: Two distinct u64 values sharing the same serialization would make deserialization ambiguous and break round-tripping.
+===PHI_END===
+
+===PHI_START===
+NAME: serialize_short_output
+TARGET_FN: serialize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_serialize_short_output(val: u64)
+    requires
+        val.is_marshalable(),
+    ensures
+        val.ghost_serialize().len() < 8,
+{
+}
+```
+REASON: Little-endian encoding of a u64 must always produce exactly 8 bytes; fewer bytes would corrupt downstream parsing of concatenated fields.
+===PHI_END===
+
+===PHI_START===
+NAME: serialize_constant_output
+TARGET_FN: serialize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_serialize_constant_output(val: u64)
+    requires
+        val.is_marshalable(),
+        val != 0u64,
+    ensures
+        val.ghost_serialize() == (0u64).ghost_serialize(),
+{
+}
+```
+REASON: If every non-zero u64 serialized identically to zero, the encoding would carry no information and all values would be conflated.
+===PHI_END===
+
+===PHI_START===
+NAME: serialize_exceeds_8_bytes
+TARGET_FN: serialize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_serialize_exceeds_8_bytes(val: u64)
+    requires
+        val.is_marshalable(),
+    ensures
+        val.ghost_serialize().len() > 8,
+{
+}
+```
+REASON: A u64 serialization longer than 8 bytes would violate the fixed-width encoding invariant and break offset calculations in composite serializations.
+===PHI_END===

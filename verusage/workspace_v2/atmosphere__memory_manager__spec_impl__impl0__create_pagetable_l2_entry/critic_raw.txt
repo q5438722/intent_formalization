@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: page_closure_includes_l4_table
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This follows directly from the open spec definition of `page_closure`, which is `l3_tables@.dom() + l2_tables@.dom() + l1_tables@.dom() + l4_table@.dom()`. Including l4_table in page_closure is intentional — the page table owns its L4 page. Disjointness between table levels is a separate invariant concern, not a defect in page_closure's definition.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: is_empty_allows_nonempty_kernel_entries
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures clause `present || !present` is a tautology (P ∨ ¬P) that holds for any boolean regardless of spec content. While the underlying observation about kernel entries being unconstrained by `is_empty` is valid design intent (kernel mappings are shared/persistent), this PHI proves nothing because its ensures is trivially true.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: resolve_l4_ignores_kernel_region_present
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is intentional x86-64 page table design. The kernel region (indices < `kernel_l4_end`) contains shared kernel mappings that must always be traversable regardless of the present bit — `spec_resolve_mapping_l4` deliberately returns `Some` for `l4i < kernel_l4_end` to ensure kernel address resolution always succeeds. This is a desirable property, not a spec gap.
+===VERDICT_END===
+
+===SUMMARY===
+All three candidates are false positives. `page_closure_includes_l4_table` restates the open spec definition of page_closure, which intentionally includes L4 table pointers. `is_empty_allows_nonempty_kernel_entries` has a tautological ensures clause that proves nothing about the spec. `resolve_l4_ignores_kernel_region_present` reflects deliberate x86-64 design where kernel-region L4 entries are always treated as valid mappings to ensure kernel address space is always resolvable.
+===END_SUMMARY===

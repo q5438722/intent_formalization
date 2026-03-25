@@ -1,0 +1,76 @@
+===PHI_START===
+NAME: max_phyaddr_width_axiom_allows_any_value_32_52
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_max_phyaddr_width_axiom_allows_any_value_32_52()
+    ensures
+        32 <= MAX_PHYADDR_WIDTH <= 52,
+{
+    axiom_max_phyaddr_width_facts();
+}
+```
+REASON: `MAX_PHYADDR_WIDTH` is `external_body` with value 52, but the axiom only constrains it to `[32, 52]` — any proof using MASK_ADDR_SPEC could silently depend on the weaker range, producing masks with fewer valid bits than the actual hardware
+===PHI_END===
+
+===PHI_START===
+NAME: mask_addr_low_12_bits_zero
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_mask_addr_low_12_bits_zero()
+    ensures
+        MASK_ADDR_SPEC & 0xFFF == 0,
+{
+    axiom_max_phyaddr_width_facts();
+    assert(forall|low: usize, high: usize| low <= high && high < 64 ==> bitmask_inc!(low, high) & (!0usize >> (64 - low)) == 0) by (bit_vector);
+}
+```
+REASON: `MASK_ADDR_SPEC = bitmask_inc!(12, MAX_PHYADDR_WIDTH-1)` should have bits 0-11 clear — tests that the mask doesn't accidentally include low offset bits which would corrupt physical address extraction
+===PHI_END===
+
+===PHI_START===
+NAME: mask_addr_bit_12_set
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_mask_addr_bit_12_set()
+    ensures
+        MASK_ADDR_SPEC & (1usize << 12) != 0,
+{
+    axiom_max_phyaddr_width_facts();
+    assert(1usize << 12 == 4096) by (compute);
+}
+```
+REASON: Bit 12 should be the lowest set bit in MASK_ADDR — if clear, the mask would start at bit 13+ and lose one bit of physical address resolution
+===PHI_END===
+
+===PHI_START===
+NAME: mask_addr_high_bits_clear_above_52
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_mask_addr_high_bits_clear_above_52()
+    ensures
+        MASK_ADDR_SPEC & !((1usize << MAX_PHYADDR_WIDTH) - 1) == 0,
+{
+    axiom_max_phyaddr_width_facts();
+}
+```
+REASON: Bits at or above MAX_PHYADDR_WIDTH should be zero in MASK_ADDR — if set, the mask would extract bits beyond the physical address width, producing invalid physical addresses
+===PHI_END===
+
+===PHI_START===
+NAME: mask_addr_not_zero_for_any_valid_width
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_mask_addr_not_zero_for_any_valid_width()
+    ensures
+        MASK_ADDR_SPEC != 0,
+{
+    axiom_max_phyaddr_width_facts();
+}
+```
+REASON: For any MAX_PHYADDR_WIDTH in [32, 52], the mask should be nonzero — a zero mask would mean no physical address bits are extracted, breaking all address translation
+===PHI_END===

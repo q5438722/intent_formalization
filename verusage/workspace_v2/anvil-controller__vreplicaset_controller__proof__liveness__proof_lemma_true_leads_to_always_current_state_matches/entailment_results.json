@@ -1,0 +1,47 @@
+[
+  {
+    "name": "unmarshal_roundtrip_no_axiom",
+    "type": "logical",
+    "code": "proof fn phi_1_unmarshal_roundtrip_no_axiom(p: PodView)\n    requires\n        true,\n    ensures\n        PodView::unmarshal(p.marshal()) is Ok,\n        PodView::unmarshal(p.marshal())->Ok_0 == p,\n{\n}",
+    "reason": "marshal_spec/unmarshal_spec are uninterpreted with no roundtrip axiom \u2014 if provable the solver assumes an unjustified bijection between typed specs and serialized Values",
+    "entailed": false,
+    "verus_output": "roller__proof__liveness__proof_lemma_true_leads_to_always_current_state_matches/phi_1_unmarshal_roundtrip_no_axiom.rs:5601:9\n     |\n5596 | proof fn phi_1_unmarshal_roundtrip_no_axiom(p: PodView)\n     |       ------------------------------------------------- at the end of the function body\n...\n5601 |         PodView::unmarshal(p.marshal())->Ok_0 == p,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 2 previous errors; 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "marshal_spec_injective",
+    "type": "logical",
+    "code": "proof fn phi_2_marshal_spec_injective(s1: Option<PodSpecView>, s2: Option<PodSpecView>)\n    requires\n        PodView::marshal_spec(s1) == PodView::marshal_spec(s2),\n    ensures\n        s1 == s2,\n{\n}",
+    "reason": "marshal_spec is uninterpreted with no declared injectivity \u2014 if provable the solver implicitly assumes injectivity stronger than what the spec provides",
+    "entailed": false,
+    "verus_output": "icaset_controller__proof__liveness__proof_lemma_true_leads_to_always_current_state_matches/phi_2_marshal_spec_injective.rs:5600:9\n     |\n5596 | proof fn phi_2_marshal_spec_injective(s1: Option<PodSpecView>, s2: Option<PodSpecView>)\n     |       --------------------------------------------------------------------------------- at the end of the function body\n...\n5600 |         s1 == s2,\n     |         ^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "unmarshal_skips_state_validation",
+    "type": "behavioral",
+    "code": "proof fn phi_3_unmarshal_skips_state_validation(obj: DynamicObjectView)\n    requires\n        obj.kind == PodView::kind(),\n        PodView::unmarshal_spec(obj.spec) is Ok,\n        PodView::unmarshal_status(obj.status) is Ok,\n    ensures\n        PodView::unmarshal(obj) is Ok,\n{\n}",
+    "reason": "unmarshal succeeds when kind/spec/status parse correctly but never checks state_validation \u2014 invalid objects like pods with spec == None can be successfully unmarshalled",
+    "entailed": true,
+    "verus_output": "hal_skips_state_validation.rs:4393:5\n     |\n4393 |     assert forall |other_id| \n     |     ^^^^^^\n     |\n     = help: If you didn't mean to assume the antecedent, we're very curious to hear why! To tell us, please open an issue on the Verus issue tracker on github with the title `Don't always make assert forall assume the antecedent`. If no one opens such an issue, we'll soon change the behavior of Verus to always assume the antecedent of the outermost implication\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "create_key_namespace_diverges",
+    "type": "behavioral",
+    "code": "proof fn phi_4_create_key_namespace_diverges(req: CreateRequest)\n    requires\n        req.obj.metadata.namespace is Some,\n        req.namespace != req.obj.metadata.namespace->0,\n    ensures\n        req.key().namespace != req.obj.metadata.namespace->0,\n{\n}",
+    "reason": "CreateRequest::key uses self.namespace not self.obj.metadata.namespace \u2014 these can diverge so the key does not faithfully represent the object's actual namespace",
+    "entailed": true,
+    "verus_output": "ate_key_namespace_diverges.rs:4393:5\n     |\n4393 |     assert forall |other_id| \n     |     ^^^^^^\n     |\n     = help: If you didn't mean to assume the antecedent, we're very curious to hear why! To tell us, please open an issue on the Verus issue tracker on github with the title `Don't always make assert forall assume the antecedent`. If no one opens such an issue, we'll soon change the behavior of Verus to always assume the antecedent of the outermost implication\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "object_ref_ignores_uid",
+    "type": "logical",
+    "code": "proof fn phi_5_object_ref_ignores_uid(p1: PodView, p2: PodView)\n    requires\n        p1.metadata.name == p2.metadata.name,\n        p1.metadata.namespace == p2.metadata.namespace,\n        p1.metadata.uid != p2.metadata.uid,\n        p1.metadata.name is Some,\n        p1.metadata.namespace is Some,\n    ensures\n        p1.object_ref() == p2.object_ref(),\n{\n}",
+    "reason": "object_ref is (kind, name, namespace) ignoring uid \u2014 two distinct resource incarnations with different uids produce identical ObjectRefs conflating identity across delete-recreate cycles",
+    "entailed": true,
+    "verus_output": "i_5_object_ref_ignores_uid.rs:4393:5\n     |\n4393 |     assert forall |other_id| \n     |     ^^^^^^\n     |\n     = help: If you didn't mean to assume the antecedent, we're very curious to hear why! To tell us, please open an issue on the Verus issue tracker on github with the title `Don't always make assert forall assume the antecedent`. If no one opens such an issue, we'll soon change the behavior of Verus to always assume the antecedent of the outermost implication\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

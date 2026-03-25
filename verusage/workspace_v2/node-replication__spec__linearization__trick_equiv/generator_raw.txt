@@ -1,0 +1,126 @@
+===PHI_START===
+NAME: behavior_equiv_both_inited
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_behavior_equiv_both_inited<DT: Dispatch>(
+    a: SimpleLog::State<DT>,
+    b: AsynchronousSingleton::State<DT>,
+)
+    ensures
+        behavior_equiv::<DT>(
+            SimpleLogBehavior::Inited(a),
+            AsynchronousSingletonBehavior::Inited(b),
+        ),
+{
+}
+```
+REASON: Any two Inited behaviors are equivalent regardless of their states — `behavior_equiv` only checks structural variant, not state content, so unrelated initial states are considered equivalent
+===PHI_END===
+
+===PHI_START===
+NAME: internal_steps_freely_added
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_internal_steps_freely_added<DT: Dispatch>(
+    s1: SimpleLog::State<DT>,
+    s2: SimpleLog::State<DT>,
+    b: AsynchronousSingletonBehavior<DT>,
+)
+    requires
+        behavior_equiv(SimpleLogBehavior::Inited(s1), b),
+    ensures
+        behavior_equiv(
+            SimpleLogBehavior::Stepped(s2, AsyncLabel::Internal, Box::new(SimpleLogBehavior::Inited(s1))),
+            b,
+        ),
+{
+}
+```
+REASON: An arbitrary internal step with any state can be prepended to an equivalent behavior — `behavior_equiv` skips internal steps without checking state validity
+===PHI_END===
+
+===PHI_START===
+NAME: trick_equiv_swaps_states
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_trick_equiv_swaps_states<DT: Dispatch>(
+    s1: SimpleLog::State<DT>,
+    s2: SimpleLog::State<DT>,
+    tail: SimpleLogBehavior<DT>,
+    b: AsynchronousSingletonBehavior<DT>,
+)
+    requires
+        behavior_equiv(
+            SimpleLogBehavior::Stepped(s1, AsyncLabel::Internal, Box::new(tail)),
+            b,
+        ),
+    ensures
+        behavior_equiv(
+            SimpleLogBehavior::Stepped(s2, AsyncLabel::Internal, Box::new(tail)),
+            b,
+        ),
+{
+    trick_equiv(
+        SimpleLogBehavior::Stepped(s1, AsyncLabel::Internal, Box::new(tail)),
+        SimpleLogBehavior::Stepped(s2, AsyncLabel::Internal, Box::new(tail)),
+        b,
+    );
+}
+```
+REASON: The state in an internal step can be replaced with any other state without breaking equivalence — `trick_equiv` proves internal step states are completely irrelevant
+===PHI_END===
+
+===PHI_START===
+NAME: infinite_internal_steps_equiv
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_infinite_internal_steps_equiv<DT: Dispatch>(
+    s1: SimpleLog::State<DT>,
+    s2: SimpleLog::State<DT>,
+    b: AsynchronousSingletonBehavior<DT>,
+)
+    requires
+        behavior_equiv(SimpleLogBehavior::Inited(s1), b),
+    ensures
+        behavior_equiv(
+            SimpleLogBehavior::Stepped(
+                s2,
+                AsyncLabel::Internal,
+                Box::new(SimpleLogBehavior::Stepped(
+                    s2,
+                    AsyncLabel::Internal,
+                    Box::new(SimpleLogBehavior::Inited(s1)),
+                )),
+            ),
+            b,
+        ),
+{
+}
+```
+REASON: Arbitrarily many internal steps can be stacked on the `a` side — `behavior_equiv` peels them off recursively, so any number of unvalidated internal transitions are invisible
+===PHI_END===
+
+===PHI_START===
+NAME: async_singleton_internal_skip
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_async_singleton_internal_skip<DT: Dispatch>(
+    a: SimpleLogBehavior<DT>,
+    s1: AsynchronousSingleton::State<DT>,
+    s2: AsynchronousSingleton::State<DT>,
+    b_tail: AsynchronousSingletonBehavior<DT>,
+)
+    requires
+        behavior_equiv(a, AsynchronousSingletonBehavior::Stepped(s1, AsyncLabel::Internal, Box::new(b_tail))),
+    ensures
+        behavior_equiv(a, AsynchronousSingletonBehavior::Stepped(s2, AsyncLabel::Internal, Box::new(b_tail))),
+{
+}
+```
+REASON: The state in an internal step on the `b` side can also be freely swapped — `behavior_equiv` ignores the state of internal transitions on both sides
+===PHI_END===

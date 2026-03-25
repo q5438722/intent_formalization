@@ -1,0 +1,89 @@
+Here are 5 candidate undesirable properties targeting `aligned`:
+
+===PHI_START===
+NAME: zero_size_alignment_trivially_true
+TARGET_FN: aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_zero_size_alignment_trivially_true(addr: nat)
+    requires
+        addr >= 0,
+    ensures
+        aligned(addr, 0),
+{
+}
+```
+REASON: aligned(addr, 0) should not hold because alignment to zero is undefined, but nat%0 may be 0 in SMT making it vacuously true
+===PHI_END===
+
+===PHI_START===
+NAME: shift_by_one_preserves_alignment
+TARGET_FN: aligned
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_shift_by_one_preserves_alignment(addr: nat, size: nat)
+    requires
+        size > 1,
+        aligned(addr, size),
+    ensures
+        aligned(addr + 1, size),
+{
+}
+```
+REASON: Adding 1 to an aligned address should break alignment for any size > 1, so this entailment would indicate the spec is vacuous or wrong
+===PHI_END===
+
+===PHI_START===
+NAME: double_size_always_preserves_alignment
+TARGET_FN: aligned
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_double_size_always_preserves_alignment(addr: nat, size: nat)
+    requires
+        size > 0,
+        aligned(addr, size),
+    ensures
+        aligned(addr, 2 * size),
+{
+}
+```
+REASON: Alignment to size does not imply alignment to 2*size (e.g. 4 is aligned to 4 but not to 8), so this holding would mean the spec is too weak
+===PHI_END===
+
+===PHI_START===
+NAME: nonmultiple_is_aligned
+TARGET_FN: aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_nonmultiple_is_aligned(size: nat)
+    requires
+        size > 1,
+    ensures
+        aligned(size + 1, size),
+{
+}
+```
+REASON: size+1 is never a multiple of size when size>1, so this being provable would mean aligned accepts non-multiples
+===PHI_END===
+
+===PHI_START===
+NAME: offset_by_size_minus_one_still_aligned
+TARGET_FN: aligned
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_offset_by_size_minus_one_still_aligned(addr: nat, size: nat)
+    requires
+        size > 1,
+        aligned(addr, size),
+    ensures
+        aligned((addr + size) - 1, size),
+{
+}
+```
+REASON: addr+size-1 is one less than the next aligned address, so it should NOT be aligned; provability would indicate the spec conflates adjacent boundaries
+===PHI_END===

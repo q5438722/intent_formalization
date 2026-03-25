@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "marshal_preserves_integrity_external_body",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`marshal_preserves_integrity` is `#[verifier::external_body]` with `unimplemented!()` \u2014 the marshal/unmarshal roundtrip is axiomatically assumed without proof. All downstream integrity reasoning is trusted, not verified."
+  },
+  {
+    "phi": "unmarshal_ignores_state_validation",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is standard Kubernetes design. Unmarshalling is pure deserialization; state validation is a separate admission-time concern. Coupling validation into unmarshal would conflate parsing with policy enforcement."
+  },
+  {
+    "phi": "marshal_spec_not_injective",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`marshal_spec` is `uninterp spec fn` \u2014 Verus treats uninterpreted functions as injective (equal outputs require equal inputs). The requires clause `s1 != s2 && marshal_spec(s1) == marshal_spec(s2)` is unsatisfiable, making this vacuously true. No real non-injectivity is demonstrated."
+  },
+  {
+    "phi": "object_ref_ignores_uid",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`ObjectRef` is intentionally a (kind, name, namespace) triple \u2014 this is the standard Kubernetes resource identity model. UID-based disambiguation is handled separately through owner references and garbage collection, not through ObjectRef lookups."
+  },
+  {
+    "phi": "update_key_ignores_obj_namespace",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`UpdateRequest::key()` derives namespace from `self.namespace` rather than `self.obj.metadata.namespace`. If these diverge, the object is stored under a key inconsistent with its own metadata. The same pattern appears in `UpdateStatusRequest::key()`."
+  }
+]

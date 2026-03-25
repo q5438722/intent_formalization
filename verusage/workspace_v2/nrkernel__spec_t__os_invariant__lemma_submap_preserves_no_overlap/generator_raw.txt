@@ -1,0 +1,96 @@
+===PHI_START===
+NAME: submap_shrinks_pte_size
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_submap_shrinks_pte_size(pt: Map<nat, PTE>, sub_pt: Map<nat, PTE>, vaddr: nat, ult_id: nat)
+    requires
+        sub_pt.submap_of(pt),
+        pt.contains_key(vaddr),
+        !sub_pt.contains_key(vaddr),
+    ensures
+        os::CoreState::UnmapWaiting { ult_id, vaddr }.pte_size(sub_pt) == 0,
+        os::CoreState::UnmapWaiting { ult_id, vaddr }.pte_size(pt) == pt[vaddr].frame.size,
+{
+}
+```
+REASON: When a key is in pt but not sub_pt, UnmapWaiting's pte_size drops to 0 — the lemma exploits this monotonicity (smaller regions overlap less), but the zero-size region means the core's operation becomes invisible to overlap checks on the submap
+===PHI_END===
+
+===PHI_START===
+NAME: no_overlap_vacuous_on_empty_values
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_no_overlap_vacuous_on_empty_values(pt: Map<nat, PTE>)
+    ensures
+        no_overlap_vmem_values(Map::<Core, os::CoreState>::empty(), pt),
+{
+}
+```
+REASON: `no_overlap_vmem_values` is vacuously true for empty core_states — tests the base case; if this didn't hold, no initial state could satisfy the invariant
+===PHI_END===
+
+===PHI_START===
+NAME: submap_preserves_with_empty_submap
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_submap_preserves_with_empty_submap(
+    c: os::Constants,
+    core_states: Map<Core, os::CoreState>,
+    pt: Map<nat, PTE>,
+)
+    requires
+        unique_CoreStates(core_states),
+        no_overlap_vmem_values(core_states, pt),
+    ensures
+        no_overlap_vmem_values(core_states, Map::empty()),
+{
+    lemma_submap_preserves_no_overlap(c, core_states, pt, Map::empty());
+}
+```
+REASON: Using empty submap makes all UnmapWaiting/UnmapExecuting pte_sizes 0, effectively hiding all unmap operations from overlap detection — the invariant degenerates but the lemma still claims no-overlap holds
+===PHI_END===
+
+===PHI_START===
+NAME: unique_corestates_not_preserved_by_submap
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_unique_corestates_not_preserved_by_submap(
+    core1: Core, core2: Core,
+    vaddr: nat, pte: PTE, pt: Map<nat, PTE>,
+)
+    requires
+        core1 != core2,
+        pt.contains_key(vaddr),
+        pt[vaddr] == pte,
+    ensures
+        !unique_CoreStates(map![
+            core1 => os::CoreState::MapWaiting { ult_id: 0, vaddr, pte },
+            core2 => os::CoreState::MapWaiting { ult_id: 0, vaddr, pte }
+        ]),
+{
+}
+```
+REASON: Two cores with identical MapWaiting states violate uniqueness — tests that `unique_CoreStates` correctly rejects duplicate non-Idle entries; if it accepted them, the no-overlap argument would break
+===PHI_END===
+
+===PHI_START===
+NAME: overlap_monotone_in_size
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_overlap_monotone_in_size(base1: nat, size1_small: nat, size1_large: nat, base2: nat, size2_small: nat, size2_large: nat)
+    requires
+        size1_small <= size1_large,
+        size2_small <= size2_large,
+        overlap(MemRegion { base: base1, size: size1_small }, MemRegion { base: base2, size: size2_small }),
+    ensures
+        overlap(MemRegion { base: base1, size: size1_large }, MemRegion { base: base2, size: size2_large }),
+{
+}
+```
+REASON: The lemma's proof implicitly relies on overlap being monotone in region sizes — if overlap weren't monotone, the submap-to-supermap reasoning would be unsound
+===PHI_END===

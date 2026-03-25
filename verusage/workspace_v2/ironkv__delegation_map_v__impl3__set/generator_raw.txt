@@ -1,0 +1,93 @@
+===PHI_START===
+NAME: gap_means_empty_external_body_unsound
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_gap_means_empty_external_body_unsound<K: KeyTrait + VerusClone>(som: StrictlyOrderedMap<K>, lo: KeyIterator<K>, hi: KeyIterator<K>, k: KeyIterator<K>)
+    requires
+        som.gap(lo, hi),
+        lo.lt_spec(k),
+        k.lt_spec(hi),
+        som@.contains_key(*k.get()),
+    ensures
+        false,
+{
+    som.gap_means_empty(lo, hi, k);
+}
+```
+REASON: `gap_means_empty` is external_body and derives `false` from its preconditions — if any precondition can be fabricated (e.g., via another external_body unsoundness), this becomes an unrestricted `false` oracle
+===PHI_END===
+
+===PHI_START===
+NAME: mind_the_gap_external_body_trusted
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_mind_the_gap_external_body_trusted<K: KeyTrait + VerusClone>(som: StrictlyOrderedMap<K>, w: KeyIterator<K>, x: KeyIterator<K>, y: KeyIterator<K>, z: KeyIterator<K>)
+    requires
+        som.gap(w, x),
+        som.gap(y, z),
+        y.lt_spec(x),
+    ensures
+        som.gap(w, z),
+{
+    som.mind_the_gap();
+}
+```
+REASON: `mind_the_gap` is external_body with no proof — its gap-transitivity ensures clause is asserted without verification, so a bug in the gap merging logic would silently introduce unsoundness
+===PHI_END===
+
+===PHI_START===
+NAME: set_gap_spec_allows_key_removal
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_set_gap_spec_allows_key_removal<K: KeyTrait + VerusClone>(som: StrictlyOrderedMap<K>, k: K, v: ID, lo: KeyIterator<K>, hi: KeyIterator<K>)
+    requires
+        som.valid(),
+        som.gap(lo, hi),
+        lo.lt_spec(KeyIterator::new_spec(k)),
+        KeyIterator::new_spec(k).lt_spec(hi),
+    ensures
+        !som@.contains_key(k),
+{
+    som.gap_means_empty(lo, hi, KeyIterator::new_spec(k));
+}
+```
+REASON: A key inside a gap cannot exist in the map — this is correct but combined with the external_body trust of `gap_means_empty`, could be used to incorrectly derive non-membership of keys that actually exist if the gap predicate is poisoned
+===PHI_END===
+
+===PHI_START===
+NAME: find_key_none_external_body
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_find_key_none_external_body<K: KeyTrait + VerusClone>(som: StrictlyOrderedMap<K>, k: K)
+    requires
+        som.valid(),
+        som@.contains_key(k),
+    ensures
+        exists |i: usize| 0 <= i < som.keys@.len() && som.keys@[i as int] == k,
+{
+}
+```
+REASON: If the map contains key `k`, `find_key`'s spec guarantees an index exists — but `find_key` is external_body, so the implementation could return `None` for an existing key, and the spec-level reasoning would be unsound
+===PHI_END===
+
+===PHI_START===
+NAME: insert_external_body_vec_desync
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_insert_external_body_vec_desync<K: KeyTrait + VerusClone>(v: StrictlyOrderedVec<K>, k: K)
+    requires
+        v.valid(),
+        !v@.contains(k),
+    ensures
+        v@.to_set().insert(k).len() == v@.to_set().len() + 1,
+{
+    assert(!v@.to_set().contains(k));
+}
+```
+REASON: `StrictlyOrderedVec::insert` is external_body and ensures `to_set() == old.to_set().insert(k)` — but the set cardinality increase is derived from `!contains(k)` at the spec level without verifying the implementation actually inserts at the right position
+===PHI_END===

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "write_preserves_pml4",
+    "type": "behavioral",
+    "code": "proof fn phi_1_write_preserves_pml4(mem: PTMem, addr: usize, value: usize)\n    ensures\n        mem.write(addr, value).pml4 == mem.pml4,\n{\n}",
+    "reason": "`PTMem::write` explicitly preserves pml4 \u2014 tests that individual writes never change the page table root pointer",
+    "entailed": true,
+    "verus_output": "o `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_step_Writeback_post_valid_pt_walk_not_wraddr_in_path/phi_1_write_preserves_pml4.rs:241:9\n    |\n241 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "write_seq_preserves_pml4",
+    "type": "behavioral",
+    "code": "proof fn phi_2_write_seq_preserves_pml4(mem: PTMem, writes: Seq<(usize, usize)>)\n    ensures\n        mem.write_seq(writes).pml4 == mem.pml4,\n{\n    // Induction on writes.len()\n    if writes.len() > 0 {\n        let prefix = writes.drop_last();\n        let last = writes.last();\n        assert(mem.write_seq(prefix).pml4 == mem.pml4) by {\n            phi_2_write_seq_preserves_pml4(mem, prefix);\n        };\n    }\n}",
+    "reason": "A sequence of writes should never change pml4 since each individual write preserves it \u2014 but `fold_left` could have subtle interaction issues",
+    "entailed": false,
+    "verus_output": " default\n\nerror: recursive function must have a decreases clause\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_step_Writeback_post_valid_pt_walk_not_wraddr_in_path/phi_2_write_seq_preserves_pml4.rs:726:7\n    |\n726 | proof fn phi_2_write_seq_preserves_pml4(mem: PTMem, writes: Seq<(usize, usize)>)\n    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "valid_core_external_body",
+    "type": "logical",
+    "code": "proof fn phi_3_valid_core_external_body(c: Constants, core1: Core, core2: Core)\n    requires\n        core1.node_id == core2.node_id,\n        core1.core_id == core2.core_id,\n    ensures\n        c.valid_core(core1) == c.valid_core(core2),\n{\n}",
+    "reason": "`valid_core` is `external_body` \u2014 identical cores should get the same validity result, but this is unverified",
+    "entailed": true,
+    "verus_output": "epr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_step_Writeback_post_valid_pt_walk_not_wraddr_in_path/phi_3_valid_core_external_body.rs:241:9\n    |\n241 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "write_read_same_addr",
+    "type": "behavioral",
+    "code": "proof fn phi_4_write_read_same_addr(mem: PTMem, addr: usize, value: usize)\n    ensures\n        mem.write(addr, value).read(addr) == value,\n{\n}",
+    "reason": "Writing then reading the same address should return the written value \u2014 tests that `Map::insert` followed by `Map::index` is consistent",
+    "entailed": true,
+    "verus_output": "o `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_step_Writeback_post_valid_pt_walk_not_wraddr_in_path/phi_4_write_read_same_addr.rs:241:9\n    |\n241 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "write_read_different_addr",
+    "type": "behavioral",
+    "code": "proof fn phi_5_write_read_different_addr(mem: PTMem, addr1: usize, addr2: usize, value: usize)\n    requires\n        addr1 != addr2,\n        mem.mem.contains_key(addr2),\n    ensures\n        mem.write(addr1, value).read(addr2) == mem.read(addr2),\n{\n}",
+    "reason": "Writing to one address should not affect reads from a different address \u2014 tests non-interference of memory writes",
+    "entailed": true,
+    "verus_output": "pr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_step_Writeback_post_valid_pt_walk_not_wraddr_in_path/phi_5_write_read_different_addr.rs:241:9\n    |\n241 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

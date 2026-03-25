@@ -1,0 +1,92 @@
+===PHI_START===
+NAME: aligned_transitive_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_aligned_transitive_external_body(a: nat, b: nat, c: nat)
+    requires
+        0 < b,
+        0 < c,
+        aligned(a, b),
+        aligned(b, c),
+    ensures
+        aligned(a, c),
+{
+    aligned_transitive(a, b, c);
+}
+```
+REASON: `aligned_transitive` is `external_body` — divisibility transitivity is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_transitive_auto_universal
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_aligned_transitive_auto_universal(a: nat, b: nat, c: nat)
+    requires
+        0 < b,
+        0 < c,
+        aligned(a, b),
+        aligned(b, c),
+    ensures
+        aligned(a, c),
+{
+    aligned_transitive_auto();
+}
+```
+REASON: The auto lemma provides universal transitivity to the SMT solver — depends on the unverified `aligned_transitive` external_body
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_chain_three
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_aligned_chain_three(a: nat, b: nat, c: nat, d: nat)
+    requires
+        0 < b, 0 < c, 0 < d,
+        aligned(a, b),
+        aligned(b, c),
+        aligned(c, d),
+    ensures
+        aligned(a, d),
+{
+    aligned_transitive(a, b, c);
+    aligned_transitive(a, c, d);
+}
+```
+REASON: Two applications of the external_body axiom yield a 3-step transitivity chain — composes freely without verification
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_zero_any
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_aligned_zero_any(b: nat)
+    requires
+        b > 0,
+    ensures
+        aligned(0, b),
+{
+}
+```
+REASON: Zero is aligned to everything — tests the trivial base case of `aligned`
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_self
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_aligned_self(a: nat)
+    requires
+        a > 0,
+    ensures
+        aligned(a, a),
+{
+}
+```
+REASON: Every nonzero value is self-aligned — tests the `a % a == 0` tautology
+===PHI_END===

@@ -1,0 +1,118 @@
+===PHI_START===
+NAME: collateral_proc_removal
+TARGET_FN: helper_kernel_kill_proc_root
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_collateral_proc_removal(
+    old_proc_dom: Set<ProcPtr>,
+    new_proc_dom: Set<ProcPtr>,
+    proc_ptr: ProcPtr,
+    other_ptr: ProcPtr,
+)
+    requires
+        old_proc_dom.contains(proc_ptr),
+        old_proc_dom.contains(other_ptr),
+        proc_ptr != other_ptr,
+        new_proc_dom =~= old_proc_dom.remove(proc_ptr),
+    ensures
+        !new_proc_dom.contains(other_ptr),
+{
+}
+```
+REASON: Killing one process should never remove a different process from the domain
+===PHI_END===
+
+===PHI_START===
+NAME: stale_child_reference
+TARGET_FN: helper_kernel_kill_proc_root
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_stale_child_reference(
+    new_proc_dom: Set<ProcPtr>,
+    proc_ptr: ProcPtr,
+    parent_ptr: ProcPtr,
+    old_parent_children: Seq<ProcPtr>,
+    new_parent_children: Seq<ProcPtr>,
+)
+    requires
+        !new_proc_dom.contains(proc_ptr),
+        new_proc_dom.contains(parent_ptr),
+        new_parent_children =~= old_parent_children,
+        old_parent_children.contains(proc_ptr),
+    ensures
+        new_parent_children.contains(proc_ptr) && !new_proc_dom.contains(proc_ptr),
+{
+}
+```
+REASON: Children-preservation ensures could leave a dangling reference to the killed process in a surviving process's children list
+===PHI_END===
+
+===PHI_START===
+NAME: container_dom_loses_element
+TARGET_FN: helper_kernel_kill_proc_root
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_container_dom_loses_element(
+    old_container_dom: Set<ContainerPtr>,
+    new_container_dom: Set<ContainerPtr>,
+    c_ptr: ContainerPtr,
+)
+    requires
+        new_container_dom =~= old_container_dom,
+        old_container_dom.contains(c_ptr),
+    ensures
+        !new_container_dom.contains(c_ptr),
+{
+}
+```
+REASON: Killing a root process should never cause a container to disappear from the container domain
+===PHI_END===
+
+===PHI_START===
+NAME: subtree_over_removal
+TARGET_FN: helper_kernel_kill_proc_root
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_subtree_over_removal(
+    old_subtree: Set<ProcPtr>,
+    new_subtree: Set<ProcPtr>,
+    proc_ptr: ProcPtr,
+    other_ptr: ProcPtr,
+)
+    requires
+        new_subtree =~= old_subtree.remove(proc_ptr),
+        old_subtree.contains(other_ptr),
+        other_ptr != proc_ptr,
+    ensures
+        !new_subtree.contains(other_ptr),
+{
+}
+```
+REASON: Removing proc_ptr from an ancestor's subtree_set should not accidentally remove any other process from that set
+===PHI_END===
+
+===PHI_START===
+NAME: thread_dom_gains_element
+TARGET_FN: helper_kernel_kill_proc_root
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_thread_dom_gains_element(
+    old_thread_dom: Set<ThreadPtr>,
+    new_thread_dom: Set<ThreadPtr>,
+    t_ptr: ThreadPtr,
+)
+    requires
+        new_thread_dom =~= old_thread_dom,
+        !old_thread_dom.contains(t_ptr),
+    ensures
+        new_thread_dom.contains(t_ptr),
+{
+}
+```
+REASON: Killing a process should never introduce a new thread into the thread domain
+===PHI_END===

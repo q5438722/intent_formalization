@@ -1,0 +1,20 @@
+[
+  {
+    "phi": "container_map_4k_allows_double_ownership",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "The `container_map_4k` Ghost field has no disjointness constraint in the visible spec. The PHI correctly demonstrates that two distinct containers can both contain the same page pointer in their respective maps \u2014 the ensures clause is not a tautology since it conjoins both containment facts under the `c1 != c2` precondition, and Verus confirmed this is satisfiable. A sound page allocator should enforce exclusive page ownership."
+  },
+  {
+    "phi": "is_empty_kernel_entries_unchecked",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The ensures clause is a trivial tautology (`x == x`). It proves nothing about kernel entries being unchecked. Moreover, kernel-range L4 entries being unconstrained in `is_empty` is intentional design \u2014 kernel mappings are shared across address spaces and persist regardless of whether a process's user-space page table is \"empty.\""
+  },
+  {
+    "phi": "container_map_not_subset_allocated",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The ensures clause trivially restates the precondition (`container_map_4k@[c].contains(p)` implies itself). This proves nothing about the relationship between container maps and allocated pages. While the observation about missing subset constraints may be valid, this PHI doesn't demonstrate it."
+  }
+]

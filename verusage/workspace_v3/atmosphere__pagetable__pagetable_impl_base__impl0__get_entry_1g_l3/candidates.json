@@ -1,0 +1,37 @@
+[
+  {
+    "name": "always_some_1g",
+    "target_fn": "get_entry_1g_l3",
+    "type": "behavioral",
+    "code": "proof fn phi_1_always_some_1g(pt: &PageTable, l4i: L4Index, l3i: L3Index, l4_entry: PageEntry)\n    requires\n        pt.wf(),\n        pt.kernel_l4_end <= l4i < 512,\n        0 <= l3i < 512,\n        pt.spec_resolve_mapping_l4(l4i) =~= Some(l4_entry),\n    ensures\n        pt.spec_resolve_mapping_1g_l3(l4i, l3i).is_Some(),\n{\n}",
+    "reason": "If every L3 lookup unconditionally returns Some, non-present or non-PS entries would be treated as valid 1G mappings."
+  },
+  {
+    "name": "always_none_1g",
+    "target_fn": "get_entry_1g_l3",
+    "type": "behavioral",
+    "code": "proof fn phi_2_always_none_1g(pt: &PageTable, l4i: L4Index, l3i: L3Index, l4_entry: PageEntry)\n    requires\n        pt.wf(),\n        pt.kernel_l4_end <= l4i < 512,\n        0 <= l3i < 512,\n        pt.spec_resolve_mapping_l4(l4i) =~= Some(l4_entry),\n    ensures\n        pt.spec_resolve_mapping_1g_l3(l4i, l3i).is_None(),\n{\n}",
+    "reason": "If the result is always None, 1G large-page resolution is completely broken and no gigabyte page can ever be used."
+  },
+  {
+    "name": "some_implies_addr_zero",
+    "target_fn": "get_entry_1g_l3",
+    "type": "boundary",
+    "code": "proof fn phi_3_some_implies_addr_zero(pt: &PageTable, l4i: L4Index, l3i: L3Index, l4_entry: PageEntry)\n    requires\n        pt.wf(),\n        pt.kernel_l4_end <= l4i < 512,\n        0 <= l3i < 512,\n        pt.spec_resolve_mapping_l4(l4i) =~= Some(l4_entry),\n        pt.spec_resolve_mapping_1g_l3(l4i, l3i).is_Some(),\n    ensures\n        pt.spec_resolve_mapping_1g_l3(l4i, l3i).unwrap().addr == 0,\n{\n}",
+    "reason": "A resolved 1G mapping with physical address 0 would alias the null frame, corrupting low physical memory."
+  },
+  {
+    "name": "some_implies_user_not_set",
+    "target_fn": "get_entry_1g_l3",
+    "type": "logical",
+    "code": "proof fn phi_4_some_implies_user_not_set(pt: &PageTable, l4i: L4Index, l3i: L3Index, l4_entry: PageEntry)\n    requires\n        pt.wf(),\n        pt.kernel_l4_end <= l4i < 512,\n        0 <= l3i < 512,\n        pt.spec_resolve_mapping_l4(l4i) =~= Some(l4_entry),\n        pt.spec_resolve_mapping_1g_l3(l4i, l3i).is_Some(),\n    ensures\n        !pt.spec_resolve_mapping_1g_l3(l4i, l3i).unwrap().perm.user,\n{\n}",
+    "reason": "User-space page table entries must have the user bit set; lacking it would prevent ring-3 access and violate user_only invariant."
+  },
+  {
+    "name": "some_implies_ps_not_set",
+    "target_fn": "get_entry_1g_l3",
+    "type": "logical",
+    "code": "proof fn phi_5_some_implies_ps_not_set(pt: &PageTable, l4i: L4Index, l3i: L3Index, l4_entry: PageEntry)\n    requires\n        pt.wf(),\n        pt.kernel_l4_end <= l4i < 512,\n        0 <= l3i < 512,\n        pt.spec_resolve_mapping_l4(l4i) =~= Some(l4_entry),\n        pt.spec_resolve_mapping_1g_l3(l4i, l3i).is_Some(),\n    ensures\n        !pt.spec_resolve_mapping_1g_l3(l4i, l3i).unwrap().perm.ps,\n{\n}",
+    "reason": "A 1G mapping must have PS set; without it hardware interprets the entry as an L2 table pointer, causing memory corruption."
+  }
+]

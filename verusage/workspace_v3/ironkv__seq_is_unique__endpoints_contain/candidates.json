@@ -1,0 +1,37 @@
+[
+  {
+    "name": "empty_vec_always_contains",
+    "target_fn": "endpoints_contain",
+    "type": "behavioral",
+    "code": "proof fn phi_1_empty_vec_always_contains(endpoints: Vec<EndPoint>, endpoint: EndPoint)\n    requires\n        endpoints@.len() == 0,\n    ensures\n        abstractify_end_points(endpoints).contains(endpoint@),\n{\n}",
+    "reason": "An empty collection should never contain any element; if provable, the spec is vacuously broken for empty inputs"
+  },
+  {
+    "name": "nonempty_always_contains",
+    "target_fn": "endpoints_contain",
+    "type": "behavioral",
+    "code": "proof fn phi_2_nonempty_always_contains(endpoints: Vec<EndPoint>, endpoint: EndPoint)\n    requires\n        endpoints@.len() > 0,\n    ensures\n        abstractify_end_points(endpoints).contains(endpoint@),\n{\n}",
+    "reason": "A non-empty list should not automatically contain every possible endpoint; if provable, the spec over-approximates membership"
+  },
+  {
+    "name": "singleton_match_not_found",
+    "target_fn": "endpoints_contain",
+    "type": "boundary",
+    "code": "proof fn phi_3_singleton_match_not_found(endpoints: Vec<EndPoint>, endpoint: EndPoint)\n    requires\n        endpoints@.len() == 1,\n        endpoints@[0]@ == endpoint@,\n    ensures\n        !abstractify_end_points(endpoints).contains(endpoint@),\n{\n}",
+    "reason": "A singleton list whose only element matches the target must report containment; if provable, the spec misses a present element"
+  },
+  {
+    "name": "never_present",
+    "target_fn": "endpoints_contain",
+    "type": "logical",
+    "code": "proof fn phi_4_never_present(endpoints: Vec<EndPoint>, endpoint: EndPoint)\n    requires\n        endpoints@.len() > 0,\n    ensures\n        !abstractify_end_points(endpoints).contains(endpoint@),\n{\n}",
+    "reason": "Non-empty lists can contain a matching endpoint; if provable, the spec forces the function to always return false"
+  },
+  {
+    "name": "distinct_ids_conflated",
+    "target_fn": "endpoints_contain",
+    "type": "logical",
+    "code": "proof fn phi_5_distinct_ids_conflated(e1: EndPoint, e2: EndPoint)\n    requires\n        e1@.id.len() > 0,\n        e2@.id.len() == 0,\n    ensures\n        e1@ == e2@,\n{\n}",
+    "reason": "Endpoints with different-length IDs must be distinct; if provable, the abstract equality in the spec is unsound"
+  }
+]

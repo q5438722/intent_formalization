@@ -1,0 +1,83 @@
+===PHI_START===
+NAME: aligned_zero_size_vacuous
+TARGET_FN: aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_aligned_zero_size_vacuous(addr: nat)
+    ensures
+        aligned(addr, 0),
+{
+}
+```
+REASON: If alignment with size 0 is vacuously true, any guard using `aligned(x, 0)` silently passes, admitting invalid states.
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_off_by_one
+TARGET_FN: aligned
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_aligned_off_by_one(addr: nat)
+    requires
+        aligned(addr, 8),
+    ensures
+        aligned(addr + 1, 8),
+{
+}
+```
+REASON: If incrementing an 8-aligned address by 1 preserves alignment, the alignment predicate is trivially true and all ptmem write guards are vacuous.
+===PHI_END===
+
+===PHI_START===
+NAME: page_align_not_word_align
+TARGET_FN: aligned
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_page_align_not_word_align(addr: nat)
+    requires
+        aligned(addr, 4096),
+    ensures
+        !aligned(addr, 8),
+{
+}
+```
+REASON: Page-alignment (4096) must imply 8-byte alignment since 4096 is a multiple of 8; if it doesn't, pml4 alignment invariants fail to guarantee write alignment.
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_cross_divisor
+TARGET_FN: aligned
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_aligned_cross_divisor(addr: nat)
+    requires
+        aligned(addr, 8),
+    ensures
+        aligned(addr, 3),
+{
+}
+```
+REASON: 8-alignment should not entail 3-alignment (gcd(8,3)=1); if it does the modular semantics of `aligned` are broken and non-power-of-two checks become unsound.
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_below_size_wrong_value
+TARGET_FN: aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_aligned_below_size_wrong_value(addr: nat)
+    requires
+        aligned(addr, 4096),
+        addr < 4096,
+    ensures
+        addr == 1,
+{
+}
+```
+REASON: The only nat below 4096 that is 4096-aligned is 0; if the solver derives addr==1, the modular-arithmetic definition of `aligned` is inconsistent.
+===PHI_END===

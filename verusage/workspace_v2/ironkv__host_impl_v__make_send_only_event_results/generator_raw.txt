@@ -1,0 +1,124 @@
+===PHI_START===
+NAME: well_typed_allows_empty_everything
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_well_typed_allows_empty_everything()
+    ensures
+        ({
+            let er = EventResults {
+                recvs: Seq::<NetEvent>::empty(),
+                clocks: Seq::<NetEvent>::empty(),
+                sends: Seq::<NetEvent>::empty(),
+                ios: Seq::<NetEvent>::empty(),
+            };
+            er.well_typed_events() && er.event_seq().len() == 0
+        }),
+{
+}
+```
+REASON: An EventResults with all empty sequences is trivially well-typed — a completely empty event batch passes validation, potentially allowing no-op steps to refine real protocol transitions
+===PHI_END===
+
+===PHI_START===
+NAME: ios_decoupled_from_event_seq
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_ios_decoupled_from_event_seq(e1: NetEvent, e2: NetEvent)
+    requires
+        e1 is Send,
+        e2 is Send,
+        e1 !== e2,
+    ensures
+        ({
+            let er = EventResults {
+                recvs: Seq::<NetEvent>::empty(),
+                clocks: Seq::<NetEvent>::empty(),
+                sends: seq![e1],
+                ios: seq![e2],
+            };
+            er.well_typed_events() && er.event_seq() != er.ios
+        }),
+{
+}
+```
+REASON: `ios` and `event_seq()` can disagree arbitrarily — `well_typed_events` constrains only `recvs`, `clocks`, `sends`, and `clocks.len()`, but places no constraint on `ios` matching the actual events, so refinement proofs may silently use fabricated ios
+===PHI_END===
+
+===PHI_START===
+NAME: well_typed_no_upper_bound_on_sends
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_well_typed_no_upper_bound_on_sends(s1: NetEvent, s2: NetEvent, s3: NetEvent)
+    requires
+        s1 is Send,
+        s2 is Send,
+        s3 is Send,
+    ensures
+        ({
+            let er = EventResults {
+                recvs: Seq::<NetEvent>::empty(),
+                clocks: Seq::<NetEvent>::empty(),
+                sends: seq![s1, s2, s3],
+                ios: seq![s1, s2, s3],
+            };
+            er.well_typed_events()
+        }),
+{
+}
+```
+REASON: `well_typed_events` bounds `clocks.len() <= 1` but places no upper bound on `sends` or `recvs` — a single protocol step can claim an unbounded number of sends, potentially allowing a single transition to flood the network
+===PHI_END===
+
+===PHI_START===
+NAME: event_seq_ordering_fixed
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_event_seq_ordering_fixed(r: NetEvent, c: NetEvent, s: NetEvent)
+    requires
+        r is Receive,
+        c is ReadClock,
+        s is Send,
+    ensures
+        ({
+            let er = EventResults {
+                recvs: seq![r],
+                clocks: seq![c],
+                sends: seq![s],
+                ios: seq![r, c, s],
+            };
+            er.event_seq() =~= seq![r, c, s]
+        }),
+{
+}
+```
+REASON: `event_seq()` concatenates in fixed order `recvs + clocks + sends` — if the actual network interleaving was send-then-receive, the event sequence misrepresents the real causal order, potentially allowing invalid refinement proofs
+===PHI_END===
+
+===PHI_START===
+NAME: well_typed_allows_multiple_recvs
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_well_typed_allows_multiple_recvs(r1: NetEvent, r2: NetEvent)
+    requires
+        r1 is Receive,
+        r2 is Receive,
+    ensures
+        ({
+            let er = EventResults {
+                recvs: seq![r1, r2],
+                clocks: Seq::<NetEvent>::empty(),
+                sends: Seq::<NetEvent>::empty(),
+                ios: seq![r1, r2],
+            };
+            er.well_typed_events() && er.recvs.len() == 2
+        }),
+{
+}
+```
+REASON: `well_typed_events` allows multiple receives in a single event batch with no upper bound — most I/O automaton models expect at most one receive per step, so allowing multiple receives could break single-delivery assumptions in protocol refinement
+===PHI_END===

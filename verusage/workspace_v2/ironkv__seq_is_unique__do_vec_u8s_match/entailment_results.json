@@ -1,0 +1,47 @@
+[
+  {
+    "name": "empty_vecs_always_equal",
+    "type": "boundary",
+    "code": "proof fn phi_1_empty_vecs_always_equal(e1: Vec<u8>, e2: Vec<u8>)\n    requires\n        e1@.len() == 0,\n        e2@.len() == 0,\n    ensures\n        e1@ == e2@,\n{\n}",
+    "reason": "Two empty Vec<u8> should be equal at the spec level \u2014 if this fails it would indicate broken extensional equality for empty sequences",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "match_result_ignores_capacity",
+    "type": "behavioral",
+    "code": "proof fn phi_2_match_result_ignores_capacity(e1: Vec<u8>, e2: Vec<u8>, e3: Vec<u8>)\n    requires\n        e1@ == e2@,\n        e2@ == e3@,\n    ensures\n        e1@ == e3@,\n{\n}",
+    "reason": "Transitivity of sequence equality must hold \u2014 if the spec-level view equality is not transitive, chained comparisons via `do_vec_u8s_match` would be unsound",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "single_element_diff_detected",
+    "type": "behavioral",
+    "code": "proof fn phi_3_single_element_diff_detected(e1: Vec<u8>, e2: Vec<u8>, i: int)\n    requires\n        e1@.len() == e2@.len(),\n        0 <= i < e1@.len(),\n        e1@[i] != e2@[i],\n    ensures\n        e1@ != e2@,\n{\n}",
+    "reason": "If two sequences differ at any index, they must be unequal \u2014 if extensional equality somehow missed a single-element difference, the function's ensures would be violated",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "length_mismatch_implies_unequal",
+    "type": "boundary",
+    "code": "proof fn phi_4_length_mismatch_implies_unequal(e1: Vec<u8>, e2: Vec<u8>)\n    requires\n        e1@.len() != e2@.len(),\n    ensures\n        e1@ != e2@,\n{\n}",
+    "reason": "Sequences of different lengths must be unequal \u2014 if the spec allowed length-mismatched sequences to be equal, the early return in `do_vec_u8s_match` would be wrong",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "pointwise_equal_implies_seq_equal",
+    "type": "logical",
+    "code": "proof fn phi_5_pointwise_equal_implies_seq_equal(e1: Vec<u8>, e2: Vec<u8>)\n    requires\n        e1@.len() == e2@.len(),\n        forall |j: int| 0 <= j < e1@.len() ==> e1@[j] == e2@[j],\n    ensures\n        e1@ == e2@,\n{\n    assert(e1@ =~= e2@);\n}",
+    "reason": "The function relies on pointwise comparison implying full sequence equality via extensional equality \u2014 if this entailment broke, the function's loop-based comparison would not establish its postcondition",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

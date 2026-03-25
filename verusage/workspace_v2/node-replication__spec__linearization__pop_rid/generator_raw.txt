@@ -1,0 +1,102 @@
+===PHI_START===
+NAME: pop_rid_choose_deterministic
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_pop_rid_choose_deterministic(t: Set<ReqId>)
+    requires
+        !t.is_empty(),
+        t.finite(),
+    ensures ({
+        let (s1, r1) = pop_rid(t);
+        let (s2, r2) = pop_rid(t);
+        r1 == r2 && s1 =~= s2
+    }),
+{
+    let _ = pop_rid(t);
+    let _ = pop_rid(t);
+}
+```
+REASON: `choose()` is deterministic in Verus specs — calling `pop_rid` twice on the same set always picks the same element, but the spec doesn't document which element is chosen
+===PHI_END===
+
+===PHI_START===
+NAME: pop_rid_result_strictly_smaller
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_pop_rid_result_strictly_smaller(t: Set<ReqId>)
+    requires
+        !t.is_empty(),
+        t.finite(),
+    ensures ({
+        let (s, r) = pop_rid(t);
+        s.len() == t.len() - 1
+    }),
+{
+    let _ = pop_rid(t);
+}
+```
+REASON: The result set has exactly one fewer element — tests that `remove` on a contained element decrements length by exactly 1
+===PHI_END===
+
+===PHI_START===
+NAME: pop_rid_singleton_empty
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_pop_rid_singleton_empty(r: ReqId)
+    ensures ({
+        let t = set!{r};
+        let (s, popped) = pop_rid(t);
+        s.is_empty() && popped == r
+    }),
+{
+    let t = set!{r};
+    let (s, popped) = pop_rid(t);
+    assert(t.choose() == r);
+}
+```
+REASON: Popping from a singleton set yields the empty set and the only element — tests the minimal case
+===PHI_END===
+
+===PHI_START===
+NAME: pop_rid_removed_not_in_result
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_pop_rid_removed_not_in_result(t: Set<ReqId>)
+    requires
+        !t.is_empty(),
+        t.finite(),
+    ensures ({
+        let (s, r) = pop_rid(t);
+        !s.contains(r)
+    }),
+{
+    let _ = pop_rid(t);
+}
+```
+REASON: The popped element is absent from the result set — tests that `remove` actually removes the element
+===PHI_END===
+
+===PHI_START===
+NAME: pop_rid_preserves_other_elements
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_pop_rid_preserves_other_elements(t: Set<ReqId>, x: ReqId)
+    requires
+        !t.is_empty(),
+        t.finite(),
+        t.contains(x),
+    ensures ({
+        let (s, r) = pop_rid(t);
+        x != r ==> s.contains(x)
+    }),
+{
+    let _ = pop_rid(t);
+}
+```
+REASON: All elements other than the popped one are preserved in the result — tests the frame condition of `remove`
+===PHI_END===

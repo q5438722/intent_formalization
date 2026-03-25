@@ -1,0 +1,47 @@
+[
+  {
+    "name": "leads_to_rank_step_one_usize_help_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_1_leads_to_rank_step_one_usize_help_intensional_bridge(spec: TempPred<int>, p: spec_fn(usize) -> TempPred<int>, n: usize)\n    requires\n        forall |n: usize| #![trigger p(n)] (n > 0 ==> spec.entails(p(n).leads_to(p((n - 1) as usize)))),\n    ensures\n        spec.entails(p(n).leads_to(p(0))),\n{\n    leads_to_rank_step_one_usize_help::<int>(spec, p, n);\n}",
+    "reason": "leads_to_rank_step_one_usize_help is external_body performing induction and transitive leads_to composition \u2014 the chaining of always/implies/eventually closures bridges multiple intensional gaps without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "usize_rank_limited_vs_nat",
+    "type": "behavioral",
+    "code": "proof fn phi_2_usize_rank_limited_vs_nat(spec: TempPred<int>, p: spec_fn(usize) -> TempPred<int>)\n    requires\n        forall |n: usize| #![trigger p(n)] (n > 0 ==> spec.entails(p(n).leads_to(p((n - 1) as usize)))),\n    ensures\n        forall |n: usize| #[trigger] spec.entails(p(n).leads_to(p(0))),\n{\n    leads_to_rank_step_one_usize::<int>(spec, p);\n}",
+    "reason": "quantifying over usize silently bounds the ranking argument to usize::MAX \u2014 unlike a nat-indexed variant, rank functions exceeding platform word size cannot be expressed, potentially masking liveness proof incompleteness",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "false_spec_any_rank_leads_to",
+    "type": "boundary",
+    "code": "proof fn phi_3_false_spec_any_rank_leads_to(p: spec_fn(usize) -> TempPred<int>, n: usize)\n    ensures\n        TempPred::<int>::new(|ex: Execution<int>| false).entails(p(n).leads_to(p(0))),\n{\n    leads_to_rank_step_one_usize_help::<int>(TempPred::new(|ex: Execution<int>| false), p, n);\n}",
+    "reason": "an unsatisfiable spec vacuously satisfies all step premises and thus entails any ranked leads_to chain \u2014 the external_body axiom propagates vacuous truth without detecting spec inconsistency",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "rank_zero_leads_to_self",
+    "type": "boundary",
+    "code": "proof fn phi_4_rank_zero_leads_to_self(spec: TempPred<int>, p: spec_fn(usize) -> TempPred<int>)\n    requires\n        forall |n: usize| #![trigger p(n)] (n > 0 ==> spec.entails(p(n).leads_to(p((n - 1) as usize)))),\n    ensures\n        spec.entails(p(0usize).leads_to(p(0usize))),\n{\n    leads_to_rank_step_one_usize_help::<int>(spec, p, 0usize);\n}",
+    "reason": "at n=0 the external_body axiom must internally derive leads_to reflexivity through nested always/implies/eventually closures \u2014 this base case requires unverified intensional closure resolution",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "usize_max_full_chain",
+    "type": "boundary",
+    "code": "proof fn phi_5_usize_max_full_chain(spec: TempPred<int>, p: spec_fn(usize) -> TempPred<int>)\n    requires\n        forall |n: usize| #![trigger p(n)] (n > 0 ==> spec.entails(p(n).leads_to(p((n - 1) as usize)))),\n    ensures\n        spec.entails(p(usize::MAX).leads_to(p(0usize))),\n{\n    leads_to_rank_step_one_usize_help::<int>(spec, p, usize::MAX);\n}",
+    "reason": "chaining usize::MAX steps of transitive leads_to composition through the external_body helper \u2014 the decreases clause on usize handles the full range with each step invoking unverified intensional closure resolution",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

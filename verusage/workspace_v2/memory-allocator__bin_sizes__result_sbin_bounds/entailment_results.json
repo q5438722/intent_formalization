@@ -1,0 +1,47 @@
+[
+  {
+    "name": "sbin_bounds_negative_size_unchecked",
+    "type": "boundary",
+    "code": "proof fn phi_1_sbin_bounds_negative_size_unchecked()\n    ensures\n        property_sbin_bounds(0) || !property_sbin_bounds(0),\n{\n}",
+    "reason": "`property_sbin_bounds` casts `size as u64` without a non-negativity or range check \u2014 for size=0, `u64_leading_zeros(0)` is 64, making `b = 63 - 64` underflow as u8, so the property may fail or produce nonsensical results at boundary",
+    "entailed": true,
+    "verus_output": "verification results:: 17 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "pow2_negative_is_one",
+    "type": "boundary",
+    "code": "proof fn phi_2_pow2_negative_is_one(e: int)\n    requires\n        e < 0,\n    ensures\n        pow2(e) == 1,\n{\n}",
+    "reason": "`pow2` returns 1 for all negative exponents \u2014 mathematically 2^(-n) is a fraction, so callers accidentally passing negative values get silently wrong results",
+    "entailed": true,
+    "verus_output": "verification results:: 17 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "sbin_bounds_size_8_fails",
+    "type": "boundary",
+    "code": "proof fn phi_3_sbin_bounds_size_8_fails()\n    ensures\n        !property_sbin_bounds(4),\n{\n}",
+    "reason": "For small sizes like 4, `u64_leading_zeros(4) == 61`, so `b = 63 - 61 = 2`, and `(2 << 2) | ((4 >> 0) & 0x03) = 8 | 0 = 8 >= 4` should hold \u2014 but if it doesn't, the property excludes valid small sizes from the sbin computation",
+    "entailed": false,
+    "verus_output": ", 1 errors\nerror: postcondition not satisfied\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__bin_sizes__result_sbin_bounds/phi_3_sbin_bounds_size_8_fails.rs:204:9\n    |\n202 | proof fn phi_3_sbin_bounds_size_8_fails()\n    |       ----------------------------------- at the end of the function body\n203 |     ensures\n204 |         !property_sbin_bounds(4),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "check_sbin_bounds_vacuous_empty_range",
+    "type": "boundary",
+    "code": "proof fn phi_4_check_sbin_bounds_vacuous_empty_range()\n    ensures\n        check_sbin_bounds(100, 50),\n{\n}",
+    "reason": "`check_sbin_bounds` is vacuously true when `size_start >= size_end` \u2014 callers who accidentally swap arguments get a trivially true result, masking missing coverage",
+    "entailed": true,
+    "verus_output": "verification results:: 17 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "shift_is_div_zero_identity",
+    "type": "boundary",
+    "code": "proof fn phi_5_shift_is_div_zero_identity(x: u64)\n    ensures\n        x >> 0u64 == x as nat,\n{\n    shift_is_div(x, 0);\n}",
+    "reason": "Right-shifting by 0 is trivially the identity \u2014 but `shift_is_div` is used to justify bit-manipulation in `property_sbin_bounds`; if the shift amount in the sbin formula can be 0 (when `b == 2`), the shift `b - 2 = 0` extracts no useful bits, potentially misclassifying sizes into wrong bins",
+    "entailed": false,
+    "verus_output": "rror: postcondition not satisfied\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__bin_sizes__result_sbin_bounds/phi_5_shift_is_div_zero_identity.rs:204:9\n    |\n202 | proof fn phi_5_shift_is_div_zero_identity(x: u64)\n    |       ------------------------------------------- at the end of the function body\n203 |     ensures\n204 |         x >> 0u64 == x as nat,\n    |         ^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

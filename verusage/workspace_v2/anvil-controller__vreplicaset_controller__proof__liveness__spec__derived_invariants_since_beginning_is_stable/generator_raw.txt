@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: unmarshal_skips_state_validation
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_unmarshal_skips_state_validation(obj: DynamicObjectView)
+    requires
+        obj.kind == PodView::kind(),
+        PodView::unmarshal_spec(obj.spec) is Ok,
+        PodView::unmarshal_status(obj.status) is Ok,
+    ensures
+        PodView::unmarshal(obj) is Ok,
+{
+}
+```
+REASON: unmarshal succeeds when kind/spec/status parse but never checks state_validation — pods with spec == None can be unmarshalled despite failing state_validation
+===PHI_END===
+
+===PHI_START===
+NAME: label_selector_none_matches_everything
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_label_selector_none_matches_everything(labels: Map<StringView, StringView>)
+    requires
+        true,
+    ensures
+        (LabelSelectorView { match_labels: None }).matches(labels),
+{
+}
+```
+REASON: a LabelSelectorView with match_labels == None matches every label set including empty — this means a selector with no constraints selects all pods which may be unintended
+===PHI_END===
+
+===PHI_START===
+NAME: label_selector_empty_map_matches_everything
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_label_selector_empty_map_matches_everything(labels: Map<StringView, StringView>)
+    requires
+        true,
+    ensures
+        (LabelSelectorView { match_labels: Some(Map::empty()) }).matches(labels),
+{
+}
+```
+REASON: a selector with an empty match_labels map vacuously matches all label sets — the forall over an empty domain is trivially true, making Some(empty) and None equivalent
+===PHI_END===
+
+===PHI_START===
+NAME: object_ref_ignores_uid
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_object_ref_ignores_uid(p1: PodView, p2: PodView)
+    requires
+        p1.metadata.name == p2.metadata.name,
+        p1.metadata.namespace == p2.metadata.namespace,
+        p1.metadata.uid != p2.metadata.uid,
+        p1.metadata.name is Some,
+        p1.metadata.namespace is Some,
+    ensures
+        p1.object_ref() == p2.object_ref(),
+{
+}
+```
+REASON: object_ref is (kind, name, namespace) ignoring uid — two distinct resource incarnations with different uids produce identical ObjectRefs conflating identity across delete-recreate cycles
+===PHI_END===
+
+===PHI_START===
+NAME: create_key_namespace_diverges
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_create_key_namespace_diverges(req: CreateRequest)
+    requires
+        req.obj.metadata.namespace is Some,
+        req.namespace != req.obj.metadata.namespace->0,
+    ensures
+        req.key().namespace != req.obj.metadata.namespace->0,
+{
+}
+```
+REASON: CreateRequest::key uses self.namespace not self.obj.metadata.namespace — these can diverge so the key does not faithfully represent the object's actual namespace
+===PHI_END===

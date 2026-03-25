@@ -1,0 +1,47 @@
+[
+  {
+    "name": "smallest_bin_negative_size",
+    "type": "boundary",
+    "code": "proof fn phi_1_smallest_bin_negative_size()\n    ensures\n        smallest_bin_fitting_size(-1) == 1,\n{\n}",
+    "reason": "Negative allocation sizes silently map to bin 1 instead of being rejected \u2014 `(-1 + 7) / 8 = 0` which satisfies `wsize <= 1`, so invalid negative sizes get a valid bin assignment",
+    "entailed": false,
+    "verus_output": "home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__bin_sizes__result_idx_out_of_range_has_different_bin_size/phi_1_smallest_bin_negative_size.rs:269:9\n    |\n267 | proof fn phi_1_smallest_bin_negative_size()\n    |       ------------------------------------- at the end of the function body\n268 |     ensures\n269 |         smallest_bin_fitting_size(-1) == 1,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "out_of_range_wsize_bound_at_128",
+    "type": "boundary",
+    "code": "proof fn phi_2_out_of_range_wsize_bound_at_128(bin_idx: int, wsize: int)\n    requires\n        valid_bin_idx(bin_idx),\n        !(pfd_lower(bin_idx) <= wsize <= pfd_upper(bin_idx)),\n        wsize == 200,\n    ensures\n        property_idx_out_of_range_has_different_bin_size(bin_idx, wsize),\n{\n}",
+    "reason": "`property_idx_out_of_range_has_different_bin_size` only constrains `wsize <= 128` \u2014 for wsize > 128 the property is vacuously true, so the spec says nothing about whether out-of-range wsizes above 128 get correctly rejected",
+    "entailed": true,
+    "verus_output": "verification results:: 19 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "size_of_bin_opaque_hides_structure",
+    "type": "logical",
+    "code": "proof fn phi_3_size_of_bin_opaque_hides_structure()\n    ensures\n        ({\n            reveal(size_of_bin);\n            size_of_bin(9) == 8 * 10\n        }),\n{\n    reveal(size_of_bin);\n}",
+    "reason": "Bin 9 (first exponential bin: group=0, inner=0) has size `8 * (0+5) * pow2(0+1) = 8 * 5 * 2 = 80`, so `size_of_bin(9)/8 = 10` \u2014 but `size_of_bin(8)/8 = 8`, meaning wsizes 9 have no bin (pfd_lower(9) = 9 but pfd_upper(8) = 8, gap exists for wsize 9 only if smallest_bin_fitting_size handles it)",
+    "entailed": false,
+    "verus_output": "error: expected pure mathematical expression\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__bin_sizes__result_idx_out_of_range_has_different_bin_size/phi_3_size_of_bin_opaque_hides_structure.rs:269:9\n    |\n269 | /         ({\n270 | |             reveal(size_of_bin);\n271 | |             size_of_bin(9) == 8 * 10\n272 | |         }),\n    | |__________^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "smallest_bin_huge_boundary",
+    "type": "boundary",
+    "code": "proof fn phi_4_smallest_bin_huge_boundary()\n    ensures\n        smallest_bin_fitting_size(524288 * 8 + 1) == BIN_HUGE as int,\n{\n}",
+    "reason": "An allocation of `524288*8 + 1` bytes rounds to wsize `524289 > 524288`, hitting BIN_HUGE \u2014 but `pfd_upper(BIN_HUGE)` is `size_of_bin(73)/8 = (8*524289)/8 = 524289`, so this is exactly at the artificial cap; any size above gets BIN_HUGE but the bin's \"size\" is fake",
+    "entailed": false,
+    "verus_output": "ents to this function are incorrect\n    |\nnote: function defined here\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__bin_sizes__result_idx_out_of_range_has_different_bin_size/phi_4_smallest_bin_huge_boundary.rs:191:18\n    |\n191 | pub open spec fn smallest_bin_fitting_size(size: int) -> int {\n    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^ ---------\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0308`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "check_recursive_vacuous_empty",
+    "type": "logical",
+    "code": "proof fn phi_5_check_recursive_vacuous_empty(bin_idx: int)\n    ensures\n        check_idx_out_of_range_has_different_bin_size(bin_idx, 10, 5),\n{\n}",
+    "reason": "When `wsize_start >= wsize_end`, the check function returns true vacuously \u2014 a caller could accidentally pass reversed or equal bounds and get a \"verified\" result that covers zero wsizes, silently providing no guarantees",
+    "entailed": true,
+    "verus_output": "verification results:: 19 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

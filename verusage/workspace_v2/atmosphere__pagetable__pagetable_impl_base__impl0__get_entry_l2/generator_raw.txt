@@ -1,0 +1,92 @@
+===PHI_START===
+NAME: usize2pa_mem_valid_unconditional
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)
+    ensures
+        MEM_valid(usize2pa(v)),
+{
+}
+```
+REASON: usize2pa's external_body unconditionally ensures MEM_valid(ret) for ANY input — arbitrary usize values produce "valid" physical addresses without proof
+===PHI_END===
+
+===PHI_START===
+NAME: page_entry_to_map_entry_drops_user_bit
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_page_entry_to_map_entry_drops_user_bit(pe: PageEntry)
+    requires
+        pe.perm.user == true,
+        pe.perm.present == true,
+    ensures
+        spec_page_entry_to_map_entry(&pe) == spec_page_entry_to_map_entry(
+            &PageEntry { perm: PageEntryPerm { user: false, ..pe.perm }, ..pe }
+        ),
+{
+}
+```
+REASON: page_entry_to_map_entry silently drops the user/supervisor bit — kernel-only and user-accessible pages become indistinguishable in MapEntry
+===PHI_END===
+
+===PHI_START===
+NAME: page_entry_to_map_entry_drops_present_and_ps
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_page_entry_to_map_entry_drops_present_and_ps(pe: PageEntry)
+    requires
+        pe.perm.present == false,
+    ensures
+        spec_page_entry_to_map_entry(&pe) == spec_page_entry_to_map_entry(
+            &PageEntry { perm: PageEntryPerm { present: true, ..pe.perm }, ..pe }
+        ),
+{
+}
+```
+REASON: page_entry_to_map_entry produces identical MapEntry regardless of present bit — non-present entries yield valid-looking MapEntries indistinguishable from present ones
+===PHI_END===
+
+===PHI_START===
+NAME: disjoint_l2_commented_out_intra_table
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_disjoint_l2_intra_table_missing(pt: PageTable, p: PageMapPtr, l2i: L2Index, l2j: L2Index)
+    requires
+        pt.wf_l2(),
+        pt.disjoint_l2(),
+        pt.l2_tables@.dom().contains(p),
+        0 <= l2i < 512,
+        0 <= l2j < 512,
+        l2i != l2j,
+        pt.l2_tables@[p].value()[l2i].perm.present,
+        pt.l2_tables@[p].value()[l2j].perm.present,
+        !pt.l2_tables@[p].value()[l2i].perm.ps,
+        !pt.l2_tables@[p].value()[l2j].perm.ps,
+    ensures
+        pt.l2_tables@[p].value()[l2i].addr != pt.l2_tables@[p].value()[l2j].addr,
+{
+}
+```
+REASON: disjoint_l2 covers intra-table uniqueness via the pi==pj && l2i!=l2j case — verifying this confirms the active (non-commented) spec correctly replaced the commented-out version
+===PHI_END===
+
+===PHI_START===
+NAME: pcid_ioid_exclusive_or
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_pcid_ioid_exclusive_or(pt: PageTable)
+    requires
+        pt.pcid_ioid_wf(),
+        pt.pcid.is_Some(),
+    ensures
+        pt.ioid.is_None(),
+{
+}
+```
+REASON: pcid_ioid_wf uses `!=` (XOR) meaning exactly one must be Some — a page table can never have both PCID and IOID simultaneously, but the spec allows neither to be set (both None satisfies != trivially as false != false is false... actually both None gives false != false = false, so this is not satisfied — the XOR is correct)
+===PHI_END===

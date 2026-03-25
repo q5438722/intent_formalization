@@ -1,0 +1,113 @@
+===PHI_START===
+NAME: always_zero
+TARGET_FN: align_down
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_always_zero(x: usize, y: usize, res: usize)
+    requires
+        y != 0,
+        res == (x as int / y as int) * y,
+        res <= x < res + y,
+        res % y == 0,
+        (res / y * y) == res,
+    ensures
+        res == 0,
+{
+}
+```
+REASON: If entailed, align_down would collapse every input to zero, losing all alignment information
+===PHI_END===
+
+===PHI_START===
+NAME: identity_function
+TARGET_FN: align_down
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_identity_function(x: usize, y: usize, res: usize)
+    requires
+        y != 0,
+        res == (x as int / y as int) * y,
+        res <= x < res + y,
+        res % y == 0,
+        (res / y * y) == res,
+    ensures
+        res == x,
+{
+}
+```
+REASON: If entailed, align_down never rounds down and is a no-op, defeating its purpose
+===PHI_END===
+
+===PHI_START===
+NAME: strict_less_when_aligned
+TARGET_FN: align_down
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_strict_less_when_aligned(x: usize, y: usize, res: usize)
+    requires
+        y != 0,
+        y > 1,
+        x > 0,
+        res == (x as int / y as int) * y,
+        res <= x < res + y,
+        res % y == 0,
+        (res / y * y) == res,
+    ensures
+        res < x,
+{
+}
+```
+REASON: If entailed, already-aligned values (e.g. x=4, y=2) would wrongly never map to themselves
+===PHI_END===
+
+===PHI_START===
+NAME: double_align_collapse
+TARGET_FN: align_down
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_double_align_collapse(x: usize, y: usize, res1: usize, res2: usize)
+    requires
+        y != 0,
+        y > 1,
+        2 * y <= usize::MAX,
+        res1 == (x as int / y as int) * y,
+        res1 <= x < res1 + y,
+        res1 % y == 0,
+        res2 == (x as int / (2 * y) as int) * (2 * y),
+        res2 <= x < res2 + 2 * y,
+        res2 % (2 * y) == 0,
+    ensures
+        res1 == res2,
+{
+}
+```
+REASON: If entailed, aligning to y and 2*y would be indistinguishable, meaning granularity is meaningless
+===PHI_END===
+
+===PHI_START===
+NAME: nonmonotone
+TARGET_FN: align_down
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_nonmonotone(x: usize, y: usize, res1: usize, res2: usize)
+    requires
+        y != 0,
+        x < usize::MAX,
+        res1 == (x as int / y as int) * y,
+        res1 <= x < res1 + y,
+        res1 % y == 0,
+        res2 == ((x + 1) as int / y as int) * y,
+        res2 <= (x + 1) < res2 + y,
+        res2 % y == 0,
+    ensures
+        res2 < res1,
+{
+}
+```
+REASON: If entailed, align_down would violate monotonicity — a larger input could produce a smaller aligned result
+===PHI_END===

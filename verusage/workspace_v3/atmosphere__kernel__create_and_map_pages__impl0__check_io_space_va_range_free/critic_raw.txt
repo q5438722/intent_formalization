@@ -1,0 +1,40 @@
+Looking at these five φ properties, I notice a critical signal: **φ1 (always true) directly contradicts φ2 (always false for len>0) and φ5 (false for len=0)**. If all five verified, the shared preconditions must be unsatisfiable — classic vacuous verification. This is expected with `external_body closed spec` functions like `wf()` and `io_space_range_free()` whose bodies are opaque to Verus.
+
+===VERDICT_START===
+PHI: always_free
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Directly contradicted by φ2 (never_free_nonempty) and φ5 (zero_len_not_free), which also verified. The only way all three hold simultaneously is if the shared preconditions (`os.wf()`, `proc_dom().contains(...)`, `ioid.is_Some()`, `va_range.wf()`) are unsatisfiable. This is a vacuous verification artifact from opaque `external_body closed spec` functions, not a real spec weakness.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: never_free_nonempty
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Directly contradicts φ1 (always_free) for the case where `va_range.len > 0`. Both verified, proving the conjunction of preconditions with `len > 0` is unsatisfiable. This is a vacuity artifact, not evidence that IO-space mapping is blocked.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: proc_independent
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Given that φ1 and φ2 are contradictory and both verified, the precondition set is vacuously unsatisfiable. This property holds vacuously, not because IO-space isolation is actually violated. The opaque `external_body closed spec` for `wf()` and `io_space_range_free()` prevents Verus from constructing any satisfying witness.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: free_implies_entire_io_space_empty
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The additional precondition `os.io_space_range_free(target_proc_ptr, va_range)` combined with the base preconditions is unsatisfiable (as proven by the φ1/φ2 contradiction). The property holds vacuously, not because the spec conflates range-free with whole-space-empty.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: zero_len_not_free
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Directly contradicts φ1 (always_free) for the `len == 0` case. Both verified, so the preconditions with `len == 0` are also unsatisfiable. This is the same vacuity artifact, not a genuine boundary-condition bug.
+===VERDICT_END===
+
+===SUMMARY===
+All five properties are false positives arising from vacuous verification. The decisive evidence is that φ1 (always_free) mutually contradicts both φ2 (never_free_nonempty, for len>0) and φ5 (zero_len_not_free, for len=0). Since all verified, the shared precondition set — particularly the opaque `external_body closed spec` predicates `os.wf()`, `io_space_range_free()`, and related functions — is unsatisfiable in this verification context. Verus cannot construct any witness satisfying the requires clauses, so it proves every ensures clause vacuously. No real specification weakness in `check_io_space_va_range_free` is demonstrated by these properties.
+===END_SUMMARY===

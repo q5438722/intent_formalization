@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "inv_allows_empty_arch",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "An `Arch` with zero layers vacuously satisfies the forall in `inv()` and `0 <= X86_NUM_LAYERS`. This is a genuine spec weakness \u2014 an empty architecture represents no address translation and should be excluded. The invariant should require `self.layers.len() > 0`."
+  },
+  {
+    "phi": "inv_allows_non_page_aligned_entry_size",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "While entry_size=3 looks nonsensical, `inv()` is intentionally a generic architectural invariant parameterized over `Arch`, not hardcoded to x86 page sizes. The concrete x86 arch is `x86_arch_spec` which uses correct sizes. The invariant's role is structural (positive sizes, bounded, hierarchical decomposition), not enforcing page alignment \u2014 that's a design choice, not a spec gap."
+  },
+  {
+    "phi": "upper_vaddr_exceeds_max_base",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`upper_vaddr` computes `base + num_entries * entry_size`, so with base=1 it naturally exceeds `MAX_BASE` (which equals `upper_vaddr(0,0)`). The function has only `recommends` (not `requires`) preconditions, and `MAX_BASE` is just a named constant for the zero-base case. There's no spec gap \u2014 callers are expected to use valid bases; the `recommends` clause signals this."
+  },
+  {
+    "phi": "inv_allows_single_entry_layer",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "A layer with `num_entries=1` is architecturally valid in the general `Arch` abstraction \u2014 it could represent a single-entry root level. The invariant requires `0 < num_entries <= 512`, which is a deliberate bound. Requiring `> 1` would be an unnecessary restriction on the generic architecture type; the concrete `x86_arch_spec` uses 512 everywhere."
+  },
+  {
+    "phi": "entry_size_is_next_layer_vacuously_true",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is the same underlying observation as `inv_allows_empty_arch` and `inv_allows_non_page_aligned_entry_size`. For a single-layer arch, the last layer's `entry_size_is_next_layer_size` is vacuously true by design \u2014 there's no next layer to constrain against. This is correct behavior for an implication over a non-existent successor; the real issue (if any) is the empty-arch case already captured by \u03c61."
+  }
+]

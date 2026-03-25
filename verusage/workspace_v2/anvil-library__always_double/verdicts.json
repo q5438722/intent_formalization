@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "always_unfold_intensional_bridge",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The external_body `always_unfold` bridges an intensional gap between the `forall` quantifier embedded inside `always`'s `TempPred::new` closure and a bare `forall` in the ensures clause. This is an unverified trust assumption \u2014 the two formulations are semantically equivalent but intensionally distinct in Verus's closure encoding."
+  },
+  {
+    "phi": "always_propagate_suffix_composition",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Chaining the two external_body axioms yields `p.satisfied_by(ex.suffix(i).suffix(j))` without ever proving that `suffix(i).suffix(j)` is equivalent to `suffix(i+j)`. The axioms implicitly allow reasoning over nested suffixes that are intensionally distinct from single-offset suffixes, expanding the unverified trust surface beyond what either axiom alone provides."
+  },
+  {
+    "phi": "always_double_unfold_to_bare",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is logically identical to \u03c62 \u2014 it reaches the same conclusion (`p` on double-suffix) via `always_double` + two unfolds instead of `always_propagate_forwards` + one unfold. It identifies no new trust assumption beyond what \u03c61 and \u03c62 already cover; `always_double` is a verified lemma that adds no extra unsoundness."
+  },
+  {
+    "phi": "always_propagate_unbounded",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is the universally quantified version of \u03c62 \u2014 same axiom chain (`always_propagate_forwards` + `always_unfold`) lifted to `forall |i, j|`. It identifies no new trust surface beyond what \u03c62 already captures; the universal quantification is just a mechanical lifting of the same pattern."
+  },
+  {
+    "phi": "always_propagate_zero_redundant",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`ex.suffix(0)` creates a new `Execution` with closure `|i| f(i+0)`, which is intensionally distinct from `ex` even though semantically equivalent. The external_body `always_propagate_forwards` silently asserts `always(p)` transfers to this intensionally distinct execution at i=0, a concrete and minimal demonstration of the axiom's unverified intensional assumption."
+  }
+]

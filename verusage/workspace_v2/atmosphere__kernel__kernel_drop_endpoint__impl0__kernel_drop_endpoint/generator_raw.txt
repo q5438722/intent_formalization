@@ -1,0 +1,77 @@
+Let me see the remaining content more carefully:
+This file is heavily truncated — it shows page table, page allocator, and linked list specs but cuts off at `mapped_pages_4k`. Based on what's visible:
+
+===PHI_START===
+NAME: usize2pa_mem_valid_unconditional
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)
+    ensures
+        MEM_valid(usize2pa(v)),
+{
+}
+```
+REASON: usize2pa's external_body unconditionally ensures MEM_valid(ret) — this is trusted without proof, and if MEM_MASK has the wrong value, arbitrary addresses pass validation
+===PHI_END===
+
+===PHI_START===
+NAME: sll_len_without_wf_returns_value_list_len
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)
+    ensures
+        sll.len() == sll.value_list_len,
+{
+}
+```
+REASON: StaticLinkedList::len's external_body ensures l == self.value_list_len unconditionally without requiring wf() — a corrupted linked list returns its raw field value as trusted length
+===PHI_END===
+
+===PHI_START===
+NAME: pagetable_is_empty_allows_nonempty_l4_dom
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_pagetable_is_empty_allows_nonempty_l4_dom(pt: PageTable)
+    requires
+        pt.is_empty(),
+    ensures
+        pt.l4_table@.dom().contains(pt.cr3),
+        pt.page_closure().len() >= 1,
+{
+}
+```
+REASON: is_empty accesses l4_table@[cr3] assuming it exists but never constrains l4_table's domain — page_closure includes l4_table.dom() which is never emptied, so an "empty" page table still holds page frames
+===PHI_END===
+
+===PHI_START===
+NAME: usize2page_entry_zero_is_empty
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_usize2page_entry_zero_is_empty()
+    ensures
+        spec_usize2page_entry(0usize).is_empty(),
+{
+}
+```
+REASON: The external_body ensures on usize2page_entry for v==0 guarantee all perm fields are false and addr is 0, which matches is_empty() — but this relies on unverified bit-masking assumptions about MEM_MASK and the flag masks all producing 0 when applied to 0
+===PHI_END===
+
+===PHI_START===
+NAME: page_is_mapped_no_subset_allocated
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_page_is_mapped_no_subset_allocated(pa: PageAllocator, p: PagePtr)
+    requires
+        pa.page_is_mapped(p),
+    ensures
+        pa.mapped_pages_4k().contains(p) || pa.mapped_pages_2m().contains(p) || pa.mapped_pages_1g().contains(p),
+{
+}
+```
+REASON: page_is_mapped is defined as the disjunction of mapped_pages_4k/2m/1g but there is no constraint requiring mapped pages to be a subset of allocated pages — a page can be "mapped" without being "allocated"
+===PHI_END===

@@ -1,0 +1,99 @@
+===PHI_START===
+NAME: lemma_insert_preserves_shrinking_region_overlap
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_lemma_insert_preserves_shrinking_region_overlap(
+    c: os::Constants,
+    core_states: Map<Core, os::CoreState>,
+    pt: Map<nat, PTE>,
+    core: Core,
+    new_cs: os::CoreState,
+    other_core: Core,
+)
+    requires
+        new_cs.is_in_crit_sect(),
+        forall|cr| #![auto] core_states.dom().contains(cr) && core_states[cr].is_in_crit_sect() ==> cr == core,
+        core_states.dom().contains(core),
+        core_states.dom().contains(other_core),
+        other_core != core,
+        unique_CoreStates(core_states),
+        no_overlap_vmem_values(core_states, pt),
+        !core_states[core].is_idle(),
+        !new_cs.is_idle(),
+        core_states[core].vaddr() == new_cs.vaddr(),
+        core_states[core].pte_size(pt) >= new_cs.pte_size(pt),
+        core_states[core] != new_cs,
+        !core_states[other_core].is_idle(),
+    ensures
+        false,
+{
+}
+```
+REASON: The precondition requires only one core is in critical section (`forall|cr| ... is_in_crit_sect() ==> cr == core`), but also requires `other_core` is non-Idle and different from `core` — if non-Idle non-crit-sect states (MapWaiting, UnmapWaiting) can exist, this is satisfiable; if not, it's vacuous
+===PHI_END===
+
+===PHI_START===
+NAME: crit_sect_implies_not_idle
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_crit_sect_implies_not_idle(cs: os::CoreState)
+    requires
+        cs.is_in_crit_sect(),
+    ensures
+        !cs.is_idle(),
+{
+}
+```
+REASON: `is_in_crit_sect` excludes Idle, MapWaiting, UnmapWaiting — tests that the critical section predicate correctly implies non-Idle; if a critical-section state were also Idle, the lemma's preconditions would be contradictory
+===PHI_END===
+
+===PHI_START===
+NAME: map_waiting_not_in_crit_but_not_idle
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_map_waiting_not_in_crit_but_not_idle(ult_id: nat, vaddr: nat, pte: PTE)
+    ensures
+        !os::CoreState::MapWaiting { ult_id, vaddr, pte }.is_in_crit_sect(),
+        !os::CoreState::MapWaiting { ult_id, vaddr, pte }.is_idle(),
+{
+}
+```
+REASON: MapWaiting is neither in critical section nor Idle — this creates a gap where cores with pending map requests exist but aren't protected by the single-crit-sect precondition, potentially allowing the lemma to be applied while another core has a waiting operation
+===PHI_END===
+
+===PHI_START===
+NAME: pte_size_shrink_allows_zero
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_pte_size_shrink_allows_zero(pt: Map<nat, PTE>, ult_id: nat, vaddr: nat)
+    requires
+        !pt.contains_key(vaddr),
+    ensures
+        os::CoreState::UnmapExecuting { ult_id, vaddr, result: None }.pte_size(pt) == 0,
+{
+}
+```
+REASON: When the vaddr isn't in pt, UnmapExecuting with no result has pte_size 0 — the `pte_size >= new_cs.pte_size` precondition is trivially satisfied for any new_cs with size 0, allowing the lemma to be applied even when the original operation had no real region to protect
+===PHI_END===
+
+===PHI_START===
+NAME: unique_corestates_allows_equal_idle
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_unique_corestates_allows_equal_idle(core1: Core, core2: Core)
+    requires
+        core1 != core2,
+    ensures
+        unique_CoreStates(
+            map![core1 => os::CoreState::Idle, core2 => os::CoreState::Idle]
+        ),
+{
+}
+```
+REASON: `unique_CoreStates` allows multiple cores to have identical Idle states — the `!map[core].is_idle()` guard means Idle is exempt from uniqueness, so duplicate Idle values don't violate the invariant
+===PHI_END===

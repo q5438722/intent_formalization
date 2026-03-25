@@ -1,0 +1,84 @@
+===PHI_START===
+NAME: write_seq_pml4_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_write_seq_pml4_external_body(mem: PTMem, writes: Seq<(usize, usize)>)
+    ensures
+        mem.write_seq(writes).pml4 == mem.pml4,
+{
+    mem.lemma_write_seq(writes);
+}
+```
+REASON: `lemma_write_seq` is `external_body` — pml4 preservation across write sequences is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: ptmem_view_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_ptmem_view_external_body(mem1: PTMem, mem2: PTMem)
+    requires
+        mem1.mem === mem2.mem,
+        mem1.pml4 == mem2.pml4,
+    ensures
+        mem1@ === mem2@,
+{
+}
+```
+REASON: `PTMem::view` is `external_body` — the PTE interpretation function is entirely opaque and unverified
+===PHI_END===
+
+===PHI_START===
+NAME: pt_walk_unrelated_write_at_pml4
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_pt_walk_unrelated_write_at_pml4(mem: PTMem, vaddr: usize, addr: usize, value: usize)
+    requires
+        addr != add(mem.pml4, mul(l0_bits!(vaddr), WORD_SIZE)),
+        mem.mem.contains_key(add(mem.pml4, mul(l0_bits!(vaddr), WORD_SIZE))),
+        mem.read(add(mem.pml4, mul(l0_bits!(vaddr), WORD_SIZE))) & 1 == 0,
+    ensures
+        mem.write(addr, value).pt_walk(vaddr).path.len() == mem.pt_walk(vaddr).path.len(),
+{
+}
+```
+REASON: Writing to an unrelated address when the L0 entry is non-present should not change the walk path length — tests that pt_walk only depends on addresses it actually reads
+===PHI_END===
+
+===PHI_START===
+NAME: memories_disjoint_no_overlap_boundary
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_memories_disjoint_no_overlap_boundary(c: Constants, addr: nat)
+    requires
+        c.memories_disjoint(),
+        addr == c.range_mem.1,
+    ensures
+        !c.in_ptmem_range(addr, 1),
+{
+}
+```
+REASON: The last byte of physical memory range should not be in ptmem range — tests that `range_mem.1 < range_ptmem.0` creates a genuine gap with no overlap
+===PHI_END===
+
+===PHI_START===
+NAME: in_ptmem_range_bounded_by_max_phyaddr
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_in_ptmem_range_bounded_by_max_phyaddr(c: Constants, addr: nat, size: nat)
+    requires
+        c.memories_disjoint(),
+        c.in_ptmem_range(addr, size),
+        size > 0,
+    ensures
+        addr + size <= MAX_PHYADDR,
+{
+}
+```
+REASON: All ptmem addresses should be within MAX_PHYADDR — but MAX_PHYADDR depends on the underspecified MAX_PHYADDR_WIDTH (32..=52), so the actual bound is uncertain
+===PHI_END===

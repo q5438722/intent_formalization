@@ -1,0 +1,75 @@
+===PHI_START===
+NAME: new_seq_length
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_new_seq_length(i: nat, e: nat)
+    ensures
+        new_seq(i, e).len() == i,
+{
+    lemma_new_seq(i, e);
+}
+```
+REASON: The sequence length equals `i` exactly — tests the core length property
+===PHI_END===
+
+===PHI_START===
+NAME: new_seq_all_same
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_new_seq_all_same(i: nat, e: nat, j: nat)
+    requires
+        j < i,
+    ensures
+        new_seq(i, e)[j as int] === e,
+{
+    lemma_new_seq(i, e);
+}
+```
+REASON: Every element equals `e` — the sequence is a constant function, cannot represent varying initialization
+===PHI_END===
+
+===PHI_START===
+NAME: new_seq_zero_empty
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_new_seq_zero_empty()
+    ensures
+        new_seq::<nat>(0, 42) =~= seq![],
+{
+}
+```
+REASON: `new_seq(0, _)` produces an empty sequence — tests the base case
+===PHI_END===
+
+===PHI_START===
+NAME: new_seq_one_singleton
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_new_seq_one_singleton(e: nat)
+    ensures
+        new_seq(1, e) =~= seq![e],
+{
+}
+```
+REASON: `new_seq(1, e)` is a singleton — tests the minimal non-trivial case
+===PHI_END===
+
+===PHI_START===
+NAME: new_seq_push_extends
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_new_seq_push_extends(i: nat, e: nat)
+    requires
+        i > 0,
+    ensures
+        new_seq(i, e) =~= new_seq((i - 1) as nat, e).push(e),
+{
+}
+```
+REASON: The recursive step is directly exposed — tests that the open spec definition unfolds as expected
+===PHI_END===

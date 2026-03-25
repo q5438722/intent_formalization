@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: empty_vec_always_contains
+TARGET_FN: endpoints_contain
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_empty_vec_always_contains(endpoints: Vec<EndPoint>, endpoint: EndPoint)
+    requires
+        endpoints@.len() == 0,
+    ensures
+        abstractify_end_points(endpoints).contains(endpoint@),
+{
+}
+```
+REASON: An empty collection should never contain any element; if provable, the spec is vacuously broken for empty inputs
+===PHI_END===
+
+===PHI_START===
+NAME: nonempty_always_contains
+TARGET_FN: endpoints_contain
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_nonempty_always_contains(endpoints: Vec<EndPoint>, endpoint: EndPoint)
+    requires
+        endpoints@.len() > 0,
+    ensures
+        abstractify_end_points(endpoints).contains(endpoint@),
+{
+}
+```
+REASON: A non-empty list should not automatically contain every possible endpoint; if provable, the spec over-approximates membership
+===PHI_END===
+
+===PHI_START===
+NAME: singleton_match_not_found
+TARGET_FN: endpoints_contain
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_singleton_match_not_found(endpoints: Vec<EndPoint>, endpoint: EndPoint)
+    requires
+        endpoints@.len() == 1,
+        endpoints@[0]@ == endpoint@,
+    ensures
+        !abstractify_end_points(endpoints).contains(endpoint@),
+{
+}
+```
+REASON: A singleton list whose only element matches the target must report containment; if provable, the spec misses a present element
+===PHI_END===
+
+===PHI_START===
+NAME: never_present
+TARGET_FN: endpoints_contain
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_never_present(endpoints: Vec<EndPoint>, endpoint: EndPoint)
+    requires
+        endpoints@.len() > 0,
+    ensures
+        !abstractify_end_points(endpoints).contains(endpoint@),
+{
+}
+```
+REASON: Non-empty lists can contain a matching endpoint; if provable, the spec forces the function to always return false
+===PHI_END===
+
+===PHI_START===
+NAME: distinct_ids_conflated
+TARGET_FN: endpoints_contain
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_distinct_ids_conflated(e1: EndPoint, e2: EndPoint)
+    requires
+        e1@.id.len() > 0,
+        e2@.id.len() == 0,
+    ensures
+        e1@ == e2@,
+{
+}
+```
+REASON: Endpoints with different-length IDs must be distinct; if provable, the abstract equality in the spec is unsound
+===PHI_END===

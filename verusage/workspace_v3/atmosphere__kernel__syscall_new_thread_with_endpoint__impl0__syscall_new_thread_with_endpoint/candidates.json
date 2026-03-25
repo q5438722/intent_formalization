@@ -1,0 +1,37 @@
+[
+  {
+    "name": "always_returns_error",
+    "target_fn": "syscall_new_thread_with_endpoint",
+    "type": "behavioral",
+    "code": "proof fn phi_1_always_returns_error(old_os: Os, new_os: Os, thread_ptr: ThreadPtr, endpoint_index: EndpointIdx, ret: SyscallReturnStruct)\n    requires\n        old_os.wf(),\n        old_os.thread_dom().contains(thread_ptr),\n        0 <= endpoint_index < MAX_NUM_ENDPOINT_DESCRIPTORS,\n        new_os.wf(),\n        syscall_new_thread_with_endpoint_spec(old_os, new_os, thread_ptr, endpoint_index, ret),\n    ensures\n        ret == SyscallReturnStruct::NoSwitchNew(RetValueType::Error),\n{\n}",
+    "reason": "If provable, the spec is vacuous\u2014thread creation can never succeed regardless of system state."
+  },
+  {
+    "name": "success_returns_same_thread_ptr",
+    "target_fn": "syscall_new_thread_with_endpoint",
+    "type": "boundary",
+    "code": "proof fn phi_2_success_returns_same_thread_ptr(old_os: Os, new_os: Os, thread_ptr: ThreadPtr, endpoint_index: EndpointIdx, ret: SyscallReturnStruct)\n    requires\n        old_os.wf(),\n        old_os.thread_dom().contains(thread_ptr),\n        0 <= endpoint_index < MAX_NUM_ENDPOINT_DESCRIPTORS,\n        new_os.wf(),\n        syscall_new_thread_with_endpoint_spec(old_os, new_os, thread_ptr, endpoint_index, ret),\n        ret != SyscallReturnStruct::NoSwitchNew(RetValueType::Error),\n    ensures\n        ret == SyscallReturnStruct::NoSwitchNew(RetValueType::SuccessUsize { value: thread_ptr }),\n{\n}",
+    "reason": "If provable, the \"new\" thread pointer aliases the calling thread, violating thread identity uniqueness."
+  },
+  {
+    "name": "error_changes_thread_dom",
+    "target_fn": "syscall_new_thread_with_endpoint",
+    "type": "logical",
+    "code": "proof fn phi_3_error_changes_thread_dom(old_os: Os, new_os: Os, thread_ptr: ThreadPtr, endpoint_index: EndpointIdx, ret: SyscallReturnStruct)\n    requires\n        old_os.wf(),\n        old_os.thread_dom().contains(thread_ptr),\n        0 <= endpoint_index < MAX_NUM_ENDPOINT_DESCRIPTORS,\n        new_os.wf(),\n        syscall_new_thread_with_endpoint_spec(old_os, new_os, thread_ptr, endpoint_index, ret),\n        ret == SyscallReturnStruct::NoSwitchNew(RetValueType::Error),\n    ensures\n        old_os.thread_dom() !== new_os.thread_dom(),\n{\n}",
+    "reason": "If provable, error paths have side effects on the thread domain, violating rollback semantics."
+  },
+  {
+    "name": "success_thread_dom_unchanged",
+    "target_fn": "syscall_new_thread_with_endpoint",
+    "type": "behavioral",
+    "code": "proof fn phi_4_success_thread_dom_unchanged(old_os: Os, new_os: Os, thread_ptr: ThreadPtr, endpoint_index: EndpointIdx, ret: SyscallReturnStruct)\n    requires\n        old_os.wf(),\n        old_os.thread_dom().contains(thread_ptr),\n        0 <= endpoint_index < MAX_NUM_ENDPOINT_DESCRIPTORS,\n        new_os.wf(),\n        syscall_new_thread_with_endpoint_spec(old_os, new_os, thread_ptr, endpoint_index, ret),\n        ret != SyscallReturnStruct::NoSwitchNew(RetValueType::Error),\n    ensures\n        old_os.thread_dom() =~= new_os.thread_dom(),\n{\n}",
+    "reason": "If provable, a successful thread creation adds no new thread to the domain, making the operation a no-op."
+  },
+  {
+    "name": "container_pages_modified",
+    "target_fn": "syscall_new_thread_with_endpoint",
+    "type": "logical",
+    "code": "proof fn phi_5_container_pages_modified(old_os: Os, new_os: Os, thread_ptr: ThreadPtr, endpoint_index: EndpointIdx, ret: SyscallReturnStruct, c: ContainerPtr)\n    requires\n        old_os.wf(),\n        old_os.thread_dom().contains(thread_ptr),\n        0 <= endpoint_index < MAX_NUM_ENDPOINT_DESCRIPTORS,\n        new_os.wf(),\n        syscall_new_thread_with_endpoint_spec(old_os, new_os, thread_ptr, endpoint_index, ret),\n        new_os.container_dom().contains(c),\n    ensures\n        old_os.get_container_owned_pages(c) !== new_os.get_container_owned_pages(c),\n{\n}",
+    "reason": "If provable, the spec permits container page ownership to change, violating the explicit preservation invariant asserted in the implementation."
+  }
+]

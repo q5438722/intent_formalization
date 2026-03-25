@@ -1,0 +1,104 @@
+===PHI_START===
+NAME: disjoint_mappings_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_disjoint_mappings_external_body(d: Directory, i: nat, j: nat)
+    requires
+        d.inv(),
+        i < j,
+        j < d.entries.len(),
+    ensures
+        forall|va: nat| d.interp_of_entry(i).contains_key(va) ==> !d.interp_of_entry(j).contains_key(va),
+{
+    d.lemma_interp_of_entry_disjoint_mappings(i, j);
+}
+```
+REASON: `lemma_interp_of_entry_disjoint_mappings` is `external_body` — disjointness of different entries' virtual address mappings is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: insert_propagates_to_interp_aux
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_insert_propagates_to_interp_aux(d1: Directory, d2: Directory, idx: nat, vaddr: nat, pte: PTE)
+    requires
+        d1.inv(),
+        d2.inv(),
+        idx < d1.entries.len(),
+        d1.arch == d2.arch,
+        d1.layer == d2.layer,
+        d1.base_vaddr == d2.base_vaddr,
+        d2.entries[idx as int].interp(d1.entry_base(idx))
+            == d1.entries[idx as int].interp(d1.entry_base(idx)).insert(vaddr, pte),
+        forall|j: nat| j < d1.entries.len() && j != idx
+            ==> (#[trigger] d1.entries[j as int]).interp(d1.entry_base(j))
+                        == d2.entries[j as int].interp(d1.entry_base(j)),
+    ensures
+        d2.interp_aux(0) === d1.interp_aux(0).insert(vaddr, pte),
+{
+    d1.lemma_entries_interp_insert_implies_interp_aux_insert(d2, idx, vaddr, pte, 0);
+}
+```
+REASON: Single-entry insertion propagates to interp_aux — the verified proof depends on the external_body disjointness lemma for the `idx > i` case
+===PHI_END===
+
+===PHI_START===
+NAME: disjoint_symmetric
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_disjoint_symmetric(d: Directory, i: nat, j: nat)
+    requires
+        d.inv(),
+        i < j,
+        j < d.entries.len(),
+    ensures
+        forall|va: nat| d.interp_of_entry(j).contains_key(va) ==> !d.interp_of_entry(i).contains_key(va),
+{
+    d.lemma_interp_of_entry_disjoint_mappings(i, j);
+}
+```
+REASON: Symmetric direction of disjointness — also depends on the external_body axiom
+===PHI_END===
+
+===PHI_START===
+NAME: page_entry_singleton_key
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_page_entry_singleton_key(d: Directory, i: nat)
+    requires
+        d.inv(),
+        i < d.entries.len(),
+        d.entries[i as int] is Page,
+    ensures
+        d.interp_of_entry(i).contains_key(d.entry_base(i)),
+        d.interp_of_entry(i).dom().len() == 1,
+{
+}
+```
+REASON: A page entry's interpretation contains exactly one key at its entry_base — tests the singleton map structure
+===PHI_END===
+
+===PHI_START===
+NAME: disjoint_page_entries_distinct_bases
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_disjoint_page_entries_distinct_bases(d: Directory, i: nat, j: nat)
+    requires
+        d.inv(),
+        i < j,
+        j < d.entries.len(),
+        d.entries[i as int] is Page,
+        d.entries[j as int] is Page,
+    ensures
+        d.entry_base(i) != d.entry_base(j),
+{
+    d.lemma_interp_of_entry_disjoint_mappings(i, j);
+}
+```
+REASON: Two page entries at different indices must have different entry_bases — consequence of the external_body disjointness, but the base distinctness should follow from arithmetic alone
+===PHI_END===

@@ -1,0 +1,37 @@
+[
+  {
+    "name": "zero_len_write_changes_view",
+    "target_fn": "write_absolute",
+    "type": "behavioral",
+    "code": "proof fn phi_1_zero_len_write_changes_view(\n    view: PersistentMemoryRegionView,\n    addr: int,\n)\n    requires\n        0 <= addr,\n        addr <= view.len(),\n    ensures\n        view.write(addr, Seq::<u8>::empty()) != view,\n{\n}",
+    "reason": "Writing zero bytes should be a no-op; if the spec entails a state change, the write postcondition is too broad"
+  },
+  {
+    "name": "write_changes_view_length",
+    "target_fn": "write_absolute",
+    "type": "boundary",
+    "code": "proof fn phi_2_write_changes_view_length(\n    view: PersistentMemoryRegionView,\n    addr: int,\n    bytes: Seq<u8>,\n)\n    requires\n        0 <= addr,\n        addr + bytes.len() <= view.len(),\n        bytes.len() > 0,\n    ensures\n        view.write(addr, bytes).len() != view.len(),\n{\n}",
+    "reason": "A write should never change the length of the subregion view; if it can, the ensures of write_absolute fails to preserve region geometry"
+  },
+  {
+    "name": "write_modifies_outside_range",
+    "target_fn": "write_absolute",
+    "type": "behavioral",
+    "code": "proof fn phi_3_write_modifies_outside_range(\n    view: PersistentMemoryRegionView,\n    addr: int,\n    bytes: Seq<u8>,\n    k: int,\n)\n    requires\n        0 <= addr,\n        addr + bytes.len() <= view.len(),\n        bytes.len() > 0,\n        0 <= k < view.len(),\n        !(addr <= k < addr + bytes.len()),\n    ensures\n        view.write(addr, bytes).state[k] != view.state[k],\n{\n}",
+    "reason": "Bytes outside the written range must be unchanged; if the spec allows modification of untouched positions, data corruption is possible"
+  },
+  {
+    "name": "write_not_idempotent",
+    "target_fn": "write_absolute",
+    "type": "logical",
+    "code": "proof fn phi_4_write_not_idempotent(\n    view: PersistentMemoryRegionView,\n    addr: int,\n    bytes: Seq<u8>,\n)\n    requires\n        0 <= addr,\n        addr + bytes.len() <= view.len(),\n        bytes.len() > 0,\n    ensures\n        view.write(addr, bytes).write(addr, bytes) != view.write(addr, bytes),\n{\n}",
+    "reason": "Writing the same bytes to the same location twice should be idempotent; non-idempotency would indicate the write spec accumulates phantom state"
+  },
+  {
+    "name": "write_creates_outstanding_outside_range",
+    "target_fn": "write_absolute",
+    "type": "logical",
+    "code": "proof fn phi_5_write_creates_outstanding_outside_range(\n    view: PersistentMemoryRegionView,\n    addr: int,\n    bytes: Seq<u8>,\n    k: int,\n)\n    requires\n        view.no_outstanding_writes_in_range(0, view.len() as int),\n        0 <= addr,\n        addr + bytes.len() <= view.len(),\n        bytes.len() > 0,\n        0 <= k < view.len(),\n        !(addr <= k < addr + bytes.len()),\n    ensures\n        view.write(addr, bytes).state[k].outstanding_write.is_some(),\n{\n}",
+    "reason": "A write must not create outstanding writes at positions outside the target range; if it can, flush semantics for unrelated regions become unsound"
+  }
+]

@@ -1,0 +1,104 @@
+===PHI_START===
+NAME: init_produces_nonempty_view
+TARGET_FN: init
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_init_produces_nonempty_view<T: Copy, const N: usize>(sll: StaticLinkedList<T, N>)
+    requires
+        N > 2,
+        N < SLLIndex::MAX,
+        sll.wf(),
+        sll@ =~= Seq::empty(),
+        sll.spec_len() == 0,
+    ensures
+        sll@.len() > 0,
+{
+}
+```
+REASON: After init the view must be empty; a non-empty view means init failed to clear elements
+===PHI_END===
+
+===PHI_START===
+NAME: init_nonzero_value_list_len
+TARGET_FN: init
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_init_nonzero_value_list_len<T: Copy, const N: usize>(sll: StaticLinkedList<T, N>)
+    requires
+        N > 2,
+        N < SLLIndex::MAX,
+        sll.wf(),
+        sll@ =~= Seq::empty(),
+        sll.spec_len() == 0,
+    ensures
+        sll.value_list_len > 0,
+{
+}
+```
+REASON: After init value_list_len must be 0; a positive value means phantom occupied slots exist
+===PHI_END===
+
+===PHI_START===
+NAME: init_value_head_nonnegative
+TARGET_FN: init
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_init_value_head_nonnegative<T: Copy, const N: usize>(sll: StaticLinkedList<T, N>)
+    requires
+        N > 2,
+        N < SLLIndex::MAX,
+        sll.wf(),
+        sll@ =~= Seq::empty(),
+        sll.spec_len() == 0,
+    ensures
+        sll.value_list_head >= 0,
+{
+}
+```
+REASON: Empty value list must have head == -1; a non-negative head implies a dangling value chain
+===PHI_END===
+
+===PHI_START===
+NAME: init_no_free_nodes
+TARGET_FN: init
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_init_no_free_nodes<T: Copy, const N: usize>(sll: StaticLinkedList<T, N>)
+    requires
+        N > 2,
+        N < SLLIndex::MAX,
+        sll.wf(),
+        sll@ =~= Seq::empty(),
+        sll.spec_len() == 0,
+    ensures
+        sll.free_list_len == 0,
+{
+}
+```
+REASON: After init all N>2 nodes should be free; zero free nodes means storage capacity is lost
+===PHI_END===
+
+===PHI_START===
+NAME: init_len_spec_seq_mismatch
+TARGET_FN: init
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_init_len_spec_seq_mismatch<T: Copy, const N: usize>(sll: StaticLinkedList<T, N>)
+    requires
+        N > 2,
+        N < SLLIndex::MAX,
+        sll.wf(),
+        sll@ =~= Seq::empty(),
+        sll.spec_len() == 0,
+    ensures
+        sll.value_list_len as int != sll@.len() as int,
+{
+}
+```
+REASON: value_list_len must agree with spec_seq length; a mismatch breaks the abstraction invariant
+===PHI_END===

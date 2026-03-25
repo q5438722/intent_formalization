@@ -1,0 +1,37 @@
+[
+  {
+    "name": "get_request_always_redirects",
+    "target_fn": "next_get_request_reply",
+    "type": "behavioral",
+    "code": "proof fn phi_1_get_request_always_redirects(\n    pre: AbstractHostState, post: AbstractHostState,\n    src: AbstractEndPoint, seqno: nat, k: AbstractKey,\n    sm: SingleMessage<Message>, m: Message, out: Set<Packet>, should_send: bool\n)\n    requires\n        pre.delegation_map.is_complete(),\n        next_get_request_reply(pre, post, src, seqno, k, sm, m, out, should_send),\n        should_send,\n        valid_key(k),\n    ensures\n        m is Redirect,\n{\n}",
+    "reason": "Would mean the host can never serve a GetRequest locally, always redirecting even for owned keys."
+  },
+  {
+    "name": "set_request_no_hashtable_mutation",
+    "target_fn": "next_set_request_complete",
+    "type": "behavioral",
+    "code": "proof fn phi_2_set_request_no_hashtable_mutation(\n    pre: AbstractHostState, post: AbstractHostState,\n    src: AbstractEndPoint, seqno: nat, reqm: Message,\n    sm: SingleMessage<Message>, replym: Message, out: Set<Packet>, should_send: bool\n)\n    requires\n        pre.delegation_map.is_complete(),\n        reqm is SetRequest,\n        next_set_request_complete(pre, post, src, seqno, reqm, sm, replym, out, should_send),\n    ensures\n        post.h == pre.h,\n{\n}",
+    "reason": "Would mean SetRequests never actually modify the hashtable, rendering writes completely inert."
+  },
+  {
+    "name": "process_message_no_requests_logged",
+    "target_fn": "process_message",
+    "type": "logical",
+    "code": "proof fn phi_3_process_message_no_requests_logged(\n    pre: AbstractHostState, post: AbstractHostState, out: Set<Packet>\n)\n    requires\n        pre.delegation_map.is_complete(),\n        process_message(pre, post, out),\n    ensures\n        post.received_requests == pre.received_requests,\n{\n}",
+    "reason": "Would mean the host never appends to received_requests, breaking application-level request tracking."
+  },
+  {
+    "name": "shard_send_produces_empty_output",
+    "target_fn": "next_shard",
+    "type": "boundary",
+    "code": "proof fn phi_4_shard_send_produces_empty_output(\n    pre: AbstractHostState, post: AbstractHostState, out: Set<Packet>,\n    kr: KeyRange<AbstractKey>, recipient: AbstractEndPoint,\n    sm: SingleMessage<Message>, should_send: bool\n)\n    requires\n        pre.delegation_map.is_complete(),\n        next_shard(pre, post, out, kr, recipient, sm, should_send),\n        should_send,\n    ensures\n        out == Set::<Packet>::empty(),\n{\n}",
+    "reason": "Would mean shard operations never transmit Delegate packets to recipients even when should_send is true."
+  },
+  {
+    "name": "delegate_no_delegation_count_increase",
+    "target_fn": "next_delegate",
+    "type": "logical",
+    "code": "proof fn phi_5_delegate_no_delegation_count_increase(\n    pre: AbstractHostState, post: AbstractHostState, pkt: Packet, out: Set<Packet>\n)\n    requires\n        pkt.msg is Message,\n        pre.delegation_map.is_complete(),\n        next_delegate(pre, post, pkt, out),\n        pre.constants.host_ids.contains(pkt.src),\n    ensures\n        post.num_delegations == pre.num_delegations,\n{\n}",
+    "reason": "Would mean accepted Delegate messages never increment the delegation counter, breaking the max-delegations safety bound."
+  }
+]

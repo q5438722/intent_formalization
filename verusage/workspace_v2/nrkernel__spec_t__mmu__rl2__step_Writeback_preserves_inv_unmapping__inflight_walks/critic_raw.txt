@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: update_range_at_zero_replaces_prefix
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `update_range(s, 0, new)` expands to `s.subrange(0,0) + new + s.subrange(new.len(), s.len())`, which is `Seq::empty() + new + suffix`. The length, prefix, and suffix properties follow directly from sequence concatenation axioms. Correct by construction.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: combine_flags_disable_execute_propagates
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `combine` defines `disable_execute: self.disable_execute || other.disable_execute`. If `f1.disable_execute` is true, the OR is true regardless of `f2`. This is the intended security-conservative behavior for NX propagation through page table walks.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: lemma_write_seq_pml4_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `lemma_write_seq` is `external_body` with `unimplemented!()` body — it asserts `write_seq(writes).pml4 == self.pml4` without proof. While the property is correct (each `write` preserves `pml4` by construction), it's trusted rather than verified. This is an unverified trust assumption that could be proved by induction on `writes.len()`.
+===VERDICT_END===
+
+===SUMMARY===
+Two false positives: `update_range` prefix replacement and `combine` NX propagation are correct by their definitions. One true positive: `lemma_write_seq` is an `external_body` proof trusting pml4 preservation and domain monotonicity without verification — a closeable gap since the property follows by straightforward induction over the write sequence.
+===END_SUMMARY===

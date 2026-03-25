@@ -1,0 +1,87 @@
+===PHI_START===
+NAME: align_exceeds_input
+TARGET_FN: align_to_usize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_align_exceeds_input(a: usize, b: usize)
+    requires
+        b > 0,
+        a >= b,
+    ensures
+        align_to_usize(a, b) > a,
+{
+}
+```
+REASON: Alignment (round-down) must never produce a value larger than the original address
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_input_changes
+TARGET_FN: align_to_usize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_aligned_input_changes(a: usize, b: usize)
+    requires
+        b > 0,
+        a % b == 0,
+    ensures
+        align_to_usize(a, b) != a,
+{
+}
+```
+REASON: Aligning an already-aligned value must be a no-op; changing it would corrupt valid base addresses
+===PHI_END===
+
+===PHI_START===
+NAME: result_not_multiple
+TARGET_FN: align_to_usize
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_result_not_multiple(a: usize, b: usize)
+    requires
+        b > 0,
+    ensures
+        align_to_usize(a, b) % b != 0,
+{
+}
+```
+REASON: The whole point of alignment is that the result is divisible by the alignment size; violating this breaks page-boundary invariants
+===PHI_END===
+
+===PHI_START===
+NAME: excessive_rounding
+TARGET_FN: align_to_usize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_excessive_rounding(a: usize, b: usize)
+    requires
+        b > 0,
+        a >= b,
+    ensures
+        a - align_to_usize(a, b) >= b,
+{
+}
+```
+REASON: Rounding down by b or more means skipping an entire alignment block, losing a valid mapping region
+===PHI_END===
+
+===PHI_START===
+NAME: not_idempotent
+TARGET_FN: align_to_usize
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_not_idempotent(a: usize, b: usize)
+    requires
+        b > 0,
+    ensures
+        align_to_usize(align_to_usize(a, b), b) != align_to_usize(a, b),
+{
+}
+```
+REASON: Alignment must be idempotent; a double-align changing the result would mean walk result vbase addresses are unstable
+===PHI_END===

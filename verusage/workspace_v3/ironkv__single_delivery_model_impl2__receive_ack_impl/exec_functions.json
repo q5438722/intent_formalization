@@ -1,0 +1,38 @@
+[
+  {
+    "name": "new",
+    "code": "#[verifier(external_body)]\n    pub fn new() -> (out: Self)\n        ensures out@ == Map::<AbstractEndPoint, V>::empty()\n    {\n        unimplemented!()\n    }"
+  },
+  {
+    "name": "truncate_un_ack_list",
+    "code": "pub open spec(checked) fn truncate_un_ack_list<MT>(un_acked: AckList<MT>, seqno_acked: nat) -> Seq<SingleMessage<MT>>\ndecreases un_acked.len()\n{\n    if un_acked.len() > 0 && un_acked[0] is Message && un_acked[0].arrow_Message_seqno() <= seqno_acked {\n        truncate_un_ack_list(un_acked.skip(1), seqno_acked)\n    } else {\n        un_acked\n    }\n}"
+  },
+  {
+    "name": "ack_state_lookup",
+    "code": "pub open spec(checked) fn ack_state_lookup<MT>(src: AbstractEndPoint, send_state: SendState<MT>) -> AckState<MT> {\n    if send_state.contains_key(src)\n        { send_state[src] }\n    else\n        { AckState{num_packets_acked: 0, un_acked: Seq::empty()} }\n}"
+  },
+  {
+    "name": "maybe_ack_packet",
+    "code": "pub open spec(checked) fn maybe_ack_packet(pre: Self, pkt: Packet, ack: Packet, acks:Set<Packet>) -> bool {\n        if pre.should_ack_single_message(pkt) {\n            pre.send_ack(pkt, ack, acks)\n        } else {\n            acks.is_empty()\n        }\n    }"
+  },
+  {
+    "name": "should_ack_single_message",
+    "code": "pub open spec(checked) fn should_ack_single_message(self, pkt: Packet) -> bool\n    {\n        &&& pkt.msg is Message  // Don't want to ack acks\n        &&& {\n            let last_seqno = tombstone_table_lookup(pkt.src, self.receive_state);\n            pkt.msg.arrow_Message_seqno() <= last_seqno\n            }\n    }"
+  },
+  {
+    "name": "send_ack",
+    "code": "pub open spec(checked) fn send_ack(self, pkt: Packet, ack: Packet, acks:Set<Packet>) -> bool\n    recommends\n        self.should_ack_single_message(pkt),\n    {\n        &&& ack.msg is Ack\n        &&& ack.msg.arrow_Ack_ack_seqno() == pkt.msg.arrow_Message_seqno()\n        &&& ack.src == pkt.dst\n        &&& ack.dst == pkt.src\n        &&& acks == set![ ack ]\n    }"
+  },
+  {
+    "name": "receive_ack",
+    "code": "pub open spec(checked) fn receive_ack(pre: Self, post: Self, pkt: Packet, acks:Set<Packet>) -> bool\n    recommends\n        pkt.msg is Ack,\n    {\n        &&& acks.is_empty()\n        &&& {\n            let old_ack_state = ack_state_lookup(pkt.src, pre.send_state);\n            if pkt.msg.arrow_Ack_ack_seqno() > old_ack_state.num_packets_acked {\n                let new_ack_state = AckState{\n                        num_packets_acked: pkt.msg.arrow_Ack_ack_seqno(),\n                        un_acked: truncate_un_ack_list(old_ack_state.un_acked, pkt.msg.arrow_Ack_ack_seqno()),\n                        .. old_ack_state};\n                post =~= Self{ send_state: pre.send_state.insert(pkt.src, new_ack_state), ..post }\n            } else {\n                post == pre\n            }\n        }\n    }"
+  },
+  {
+    "name": "un_acked_messages_for_dest_up_to",
+    "code": "pub open spec(checked) fn un_acked_messages_for_dest_up_to(self, src: AbstractEndPoint, dst: AbstractEndPoint, count: nat) -> Set<Packet>\n    recommends\n        self.send_state.contains_key(dst),\n        count <= self.send_state[dst].un_acked.len()\n    {\n        Set::new(|p: Packet| {\n                &&& p.src == src\n                &&& exists |i: int| {\n                    &&& 0 <= i < count\n                    &&& self.send_state[dst].un_acked[i] is Message\n                    &&& p.msg == self.send_state[dst].un_acked[i]\n                    &&& p.dst == p.msg.arrow_Message_dst()\n                }\n        })\n    }"
+  },
+  {
+    "name": "receive_ack_impl",
+    "code": "pub fn receive_ack_impl(&mut self, pkt: &CPacket)\n    requires\n        old(self).valid(),\n       // self.abstractable(),\n        pkt.abstractable(),\n        pkt.msg is Ack,\n    ensures\n        self.valid(),\n        SingleDelivery::receive_ack(old(self)@, self@, pkt@, set!{}),\n    {\n        let num_packets_acked = \n            match self.send_state.get(&pkt.src) {\n                Some(ref cack_state) => { cack_state.num_packets_acked }\n                None => { 0 },\n                // In the None case, we have no ack state. To meet our AckState::receive_ack assum-ed\n                // protocol spec, we are forced to not update the send_state; stuffing an\n                // CAckState::new in there would make spec unmeetable.\n            };\n\n        if let CSingleMessage::Ack{ack_seqno} = pkt.msg {\n            if ack_seqno <= num_packets_acked {\n                return;\n            }\n\n            let mut local_state = CAckState::new();\n            let default = CAckState::new();\n\n            let ghost int_local_state = local_state;    // trigger fodder\n            self.send_state.cack_state_swap(&pkt.src, &mut local_state, default);\n\n            local_state.truncate(ack_seqno, Ghost(pkt.src@));\n            self.send_state.put(&pkt.src, local_state);\n\n            assert forall |ep: EndPoint| #[trigger] self.send_state@.contains_key(ep@)\n                implies {\n                    &&& ep.abstractable()\n                    &&& self.send_state.epmap[&ep].abstractable()\n            } by {\n                if ep@ != pkt.src@ {\n                    assert( old(self).send_state@.contains_key(ep@) );\n                }\n            }\n\n            assert forall |ep: AbstractEndPoint| #[trigger] self.send_state@.contains_key(ep)\n                implies self.send_state.epmap@[ep].valid(ep) by {\n                if ep != pkt.src@ {\n                    assert( old(self).send_state@.contains_key(ep) );\n                }\n            }\n        }\n    }"
+  }
+]

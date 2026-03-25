@@ -1,0 +1,89 @@
+===PHI_START===
+NAME: unmap_start_removes_mapping_immediately
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_unmap_start_removes_mapping_immediately(c: Constants, s1: State, s2: State, lbl: RLbl)
+    requires
+        step_UnmapStart(c, s1, s2, lbl),
+        s1.sound,
+        s1.mappings.contains_key(lbl->UnmapStart_vaddr),
+    ensures
+        !s2.mappings.contains_key(lbl->UnmapStart_vaddr),
+{
+}
+```
+REASON: `step_UnmapStart` immediately removes the mapping from `s2.mappings` before the unmap operation completes — in a concurrent TLB system, removing the mapping before shootdown completes could allow stale TLB entries to reference freed physical memory
+===PHI_END===
+
+===PHI_START===
+NAME: insert_non_map_preserves_unique_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_insert_non_map_preserves_unique_external_body(thread_state: Map<nat, ThreadState>, base: nat, vaddr: nat, pte: Option<PTE>)
+    requires
+        inflight_maps_unique(thread_state),
+    ensures
+        inflight_maps_unique(thread_state.insert(base, ThreadState::Unmap { vaddr, pte })),
+{
+    insert_non_map_preserves_unique(thread_state, base, ThreadState::Unmap { vaddr, pte });
+}
+```
+REASON: `insert_non_map_preserves_unique` is `external_body` with `unimplemented!()` — trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: unmap_sound_pte_size_zero_for_unmapped
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_unmap_sound_pte_size_zero_for_unmapped(s1: State, vaddr: nat)
+    requires
+        !s1.mappings.contains_key(vaddr),
+    ensures
+        step_Unmap_sound(s1, vaddr, 0),
+{
+}
+```
+REASON: When unmapping a non-existent vaddr, `pte_size` is 0 and `step_Unmap_sound` checks overlap with a zero-size region — zero-size overlap checks are unreliable due to the `overlap` bug
+===PHI_END===
+
+===PHI_START===
+NAME: unmap_start_unsound_on_inflight_conflict
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_unmap_start_unsound_on_inflight_conflict(c: Constants, s1: State, s2: State, lbl: RLbl)
+    requires
+        step_UnmapStart(c, s1, s2, lbl),
+        s1.sound,
+        !step_Unmap_sound(s1, lbl->UnmapStart_vaddr, 
+            if s1.mappings.contains_key(lbl->UnmapStart_vaddr) { s1.mappings[lbl->UnmapStart_vaddr].frame.size } else { 0 }),
+    ensures
+        !s2.sound,
+{
+}
+```
+REASON: When unmap conflicts with inflight operations, the system transitions to unsound rather than rejecting the operation — permissive failure mode that poisons the entire state
+===PHI_END===
+
+===PHI_START===
+NAME: unmap_stores_pte_in_thread_state
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_unmap_stores_pte_in_thread_state(c: Constants, s1: State, s2: State, lbl: RLbl, pte: PTE)
+    requires
+        step_UnmapStart(c, s1, s2, lbl),
+        s1.sound,
+        s1.mappings.contains_pair(lbl->UnmapStart_vaddr, pte),
+        step_Unmap_sound(s1, lbl->UnmapStart_vaddr, pte.frame.size),
+    ensures
+        s2.thread_state[lbl->UnmapStart_thread_id] === ThreadState::Unmap { vaddr: lbl->UnmapStart_vaddr, pte: Some(pte) },
+        !s2.mappings.contains_key(lbl->UnmapStart_vaddr),
+{
+}
+```
+REASON: The mapping is simultaneously removed from `mappings` and stored in the thread's Unmap state — if the thread crashes or is cancelled, the PTE exists only in `thread_state` and may never be restored or properly freed
+===PHI_END===

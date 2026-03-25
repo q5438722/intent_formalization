@@ -1,0 +1,100 @@
+===PHI_START===
+NAME: always_false
+TARGET_FN: container_check_is_ancestor
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_always_false(pm: &ProcessManager, ancestor_ptr: ContainerPtr, child_ptr: ContainerPtr)
+    requires
+        pm.wf(),
+        pm.container_dom().contains(ancestor_ptr),
+        pm.container_dom().contains(child_ptr),
+    ensures
+        !pm.get_container(ancestor_ptr).subtree_set@.contains(child_ptr),
+{
+}
+```
+REASON: If subtree_set is always empty the ancestor check is vacuously false, breaking all hierarchy queries
+===PHI_END===
+
+===PHI_START===
+NAME: always_true
+TARGET_FN: container_check_is_ancestor
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_always_true(pm: &ProcessManager, ancestor_ptr: ContainerPtr, child_ptr: ContainerPtr)
+    requires
+        pm.wf(),
+        pm.container_dom().contains(ancestor_ptr),
+        pm.container_dom().contains(child_ptr),
+    ensures
+        pm.get_container(ancestor_ptr).subtree_set@.contains(child_ptr),
+{
+}
+```
+REASON: If every container is trivially an ancestor of every other, isolation between containers is completely broken
+===PHI_END===
+
+===PHI_START===
+NAME: symmetric_ancestry
+TARGET_FN: container_check_is_ancestor
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_symmetric_ancestry(pm: &ProcessManager, a: ContainerPtr, b: ContainerPtr)
+    requires
+        pm.wf(),
+        pm.container_dom().contains(a),
+        pm.container_dom().contains(b),
+        a != b,
+        pm.get_container(a).subtree_set@.contains(b),
+    ensures
+        pm.get_container(b).subtree_set@.contains(a),
+{
+}
+```
+REASON: Ancestry in a tree must be antisymmetric; symmetry would mean every ancestor relationship is cyclic, destroying the tree structure
+===PHI_END===
+
+===PHI_START===
+NAME: deeper_node_is_ancestor
+TARGET_FN: container_check_is_ancestor
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_deeper_node_is_ancestor(pm: &ProcessManager, ancestor_ptr: ContainerPtr, child_ptr: ContainerPtr)
+    requires
+        pm.wf(),
+        pm.container_dom().contains(ancestor_ptr),
+        pm.container_dom().contains(child_ptr),
+        ancestor_ptr != child_ptr,
+        pm.get_container(ancestor_ptr).depth >= pm.get_container(child_ptr).depth,
+    ensures
+        pm.get_container(ancestor_ptr).subtree_set@.contains(child_ptr),
+{
+}
+```
+REASON: A strictly-deeper-or-equal node cannot be a proper ancestor of a shallower node; if the spec allows this the depth-based early-return optimization is unsound
+===PHI_END===
+
+===PHI_START===
+NAME: same_depth_implies_ancestor
+TARGET_FN: container_check_is_ancestor
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_same_depth_implies_ancestor(pm: &ProcessManager, a: ContainerPtr, b: ContainerPtr)
+    requires
+        pm.wf(),
+        pm.container_dom().contains(a),
+        pm.container_dom().contains(b),
+        a != b,
+        pm.get_container(a).depth == pm.get_container(b).depth,
+    ensures
+        pm.get_container(a).subtree_set@.contains(b),
+{
+}
+```
+REASON: Distinct containers at the same depth in a tree are siblings or cousins and cannot be ancestors of each other; entailment would indicate a broken depth invariant
+===PHI_END===

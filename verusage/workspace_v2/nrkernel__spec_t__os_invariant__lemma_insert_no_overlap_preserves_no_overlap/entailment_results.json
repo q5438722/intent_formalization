@@ -1,0 +1,47 @@
+[
+  {
+    "name": "inflight_vmem_region_size_zero_on_failed_unmap",
+    "type": "behavioral",
+    "code": "proof fn phi_1_inflight_vmem_region_size_zero_on_failed_unmap(pt: Map<nat, PTE>, ult_id: nat, vaddr: nat)\n    ensures\n        os::inflight_vmem_region(pt, os::CoreState::UnmapOpDone { ult_id, vaddr, result: Err(()) }).size == 0,\n{\n}",
+    "reason": "A failed unmap (Err result) produces a zero-size inflight region \u2014 this means failed unmaps never block other operations via overlap, even though they're still in a non-Idle state occupying the core",
+    "entailed": true,
+    "verus_output": "et_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__os_invariant__lemma_insert_no_overlap_preserves_no_overlap/phi_1_inflight_vmem_region_size_zero_on_failed_unmap.rs:147:42\n    |\n147 |                 if result is Ok { result.get_Ok_0().frame.size } else { 0 }\n    |                                          ^^^^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pte_size_unmap_waiting_depends_on_pt",
+    "type": "behavioral",
+    "code": "proof fn phi_2_pte_size_unmap_waiting_depends_on_pt(vaddr: nat, ult_id: nat, pt1: Map<nat, PTE>, pt2: Map<nat, PTE>, pte: PTE)\n    requires\n        pt1.contains_key(vaddr),\n        pt1[vaddr] == pte,\n        !pt2.contains_key(vaddr),\n    ensures\n        os::CoreState::UnmapWaiting { ult_id, vaddr }.pte_size(pt1) == pte.frame.size,\n        os::CoreState::UnmapWaiting { ult_id, vaddr }.pte_size(pt2) == 0,\n{\n}",
+    "reason": "`UnmapWaiting` and early `UnmapExecuting` compute pte_size from the current pt map \u2014 if pt changes between when the unmap started and when size is queried, the inflight region size changes, potentially allowing overlapping operations to slip through",
+    "entailed": false,
+    "verus_output": "\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror[E0432]: unresolved import `crate::defs`\n --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__os_invariant__lemma_insert_no_overlap_preserves_no_overlap/phi_2_pte_size_unmap_waiting_depends_on_pt.rs:2:12\n  |\n2 | use crate::defs::*;\n  |            ^^^^ could not find `defs` in the crate root\n\nerror: aborting due to 2 previous errors\n\nFor more information about this error, try `rustc --explain E0432`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "no_overlap_vmem_allows_idle_duplicates",
+    "type": "logical",
+    "code": "proof fn phi_3_no_overlap_vmem_allows_idle_duplicates(core1: Core, core2: Core, pt: Map<nat, PTE>)\n    requires\n        core1 != core2,\n    ensures\n        no_overlap_vmem_values(\n            map![core1 => os::CoreState::Idle, core2 => os::CoreState::Idle],\n            pt,\n        ),\n{\n}",
+    "reason": "`no_overlap_vmem_values` vacuously holds when all cores are Idle \u2014 tests that the invariant doesn't accidentally require something of Idle states; if it did, initial states couldn't satisfy it",
+    "entailed": true,
+    "verus_output": "Ok_0`: get_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__os_invariant__lemma_insert_no_overlap_preserves_no_overlap/phi_3_no_overlap_vmem_allows_idle_duplicates.rs:147:42\n    |\n147 |                 if result is Ok { result.get_Ok_0().frame.size } else { 0 }\n    |                                          ^^^^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "unique_corestates_ignores_idle",
+    "type": "logical",
+    "code": "proof fn phi_4_unique_corestates_ignores_idle(core1: Core, core2: Core)\n    requires\n        core1 != core2,\n    ensures\n        unique_CoreStates(map![core1 => os::CoreState::Idle, core2 => os::CoreState::Idle]),\n{\n}",
+    "reason": "`unique_CoreStates` skips Idle states \u2014 two cores can both be Idle without violating uniqueness; tests that the `!map[core].is_idle()` guard works correctly",
+    "entailed": true,
+    "verus_output": "ns::get_Ok_0`: get_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__os_invariant__lemma_insert_no_overlap_preserves_no_overlap/phi_4_unique_corestates_ignores_idle.rs:147:42\n    |\n147 |                 if result is Ok { result.get_Ok_0().frame.size } else { 0 }\n    |                                          ^^^^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "candidate_overlaps_inflight_zero_size_unmap_err",
+    "type": "behavioral",
+    "code": "proof fn phi_5_candidate_overlaps_inflight_zero_size_unmap_err(pt: Map<nat, PTE>, vaddr: nat, base: nat, size: nat)\n    requires\n        base != vaddr,\n        size > 0,\n    ensures\n        !os::candidate_mapping_overlaps_inflight_vmem(\n            pt,\n            set![os::CoreState::UnmapOpDone { ult_id: 0, vaddr, result: Err(()) }],\n            base,\n            size,\n        ),\n{\n}",
+    "reason": "A failed UnmapOpDone has zero-size inflight region \u2014 it never blocks any candidate mapping at a different base, effectively making the core invisible to overlap checks while still being non-Idle and occupying the core state",
+    "entailed": false,
+    "verus_output": "----------------------------------------------------------------------------------------------------------- at the end of the function body\n...\n290 | /         !os::candidate_mapping_overlaps_inflight_vmem(\n291 | |             pt,\n292 | |             set![os::CoreState::UnmapOpDone { ult_id: 0, vaddr, result: Err(()) }],\n293 | |             base,\n294 | |             size,\n295 | |         ),\n    | |_________^ failed this postcondition\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

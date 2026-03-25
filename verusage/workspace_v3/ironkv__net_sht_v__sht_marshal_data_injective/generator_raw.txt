@@ -1,0 +1,88 @@
+===PHI_START===
+NAME: to_vec_always_empty
+TARGET_FN: to_vec
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_to_vec_always_empty(h: CKeyHashMap)
+    requires
+        h.is_marshalable(),
+    ensures
+        h.spec_to_vec()@.len() == 0,
+{
+}
+```
+REASON: to_vec should not always return an empty vector for every marshalable hash map
+===PHI_END===
+
+===PHI_START===
+NAME: to_vec_at_most_one
+TARGET_FN: to_vec
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_to_vec_at_most_one(h: CKeyHashMap)
+    requires
+        h.is_marshalable(),
+    ensures
+        h.spec_to_vec()@.len() <= 1,
+{
+}
+```
+REASON: Hash maps can contain many entries so to_vec should be able to return more than one element
+===PHI_END===
+
+===PHI_START===
+NAME: to_vec_constant_function
+TARGET_FN: to_vec
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_to_vec_constant_function(h1: CKeyHashMap, h2: CKeyHashMap)
+    requires
+        h1.is_marshalable(),
+        h2.is_marshalable(),
+    ensures
+        h1.spec_to_vec()@ =~= h2.spec_to_vec()@,
+{
+}
+```
+REASON: Different hash maps should generally produce different to_vec results so a constant function implies total information loss
+===PHI_END===
+
+===PHI_START===
+NAME: to_vec_all_elements_identical
+TARGET_FN: to_vec
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_to_vec_all_elements_identical(h: CKeyHashMap)
+    requires
+        h.is_marshalable(),
+        h.spec_to_vec()@.len() >= 2,
+    ensures
+        h.spec_to_vec()@[0] === h.spec_to_vec()@[1],
+{
+}
+```
+REASON: A hash map with multiple distinct entries should produce distinct key-value pairs in to_vec not identical copies
+===PHI_END===
+
+===PHI_START===
+NAME: to_vec_ignores_content
+TARGET_FN: to_vec
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_to_vec_ignores_content(h1: CKeyHashMap, h2: CKeyHashMap)
+    requires
+        h1.is_marshalable(),
+        h2.is_marshalable(),
+        h1.ghost_serialize() !== h2.ghost_serialize(),
+    ensures
+        h1.spec_to_vec()@ =~= h2.spec_to_vec()@,
+{
+}
+```
+REASON: Maps with different serialized content represent different data so to_vec must reflect that difference in its output
+===PHI_END===

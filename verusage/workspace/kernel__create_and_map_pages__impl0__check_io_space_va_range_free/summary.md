@@ -1,117 +1,83 @@
-# Summary: Specification Tests for `check_io_space_va_range_free`
+# Test Summary: `check_io_space_va_range_free`
 
-## File Under Test
+## Target Function
+`Kernel::check_io_space_va_range_free(&self, target_proc_ptr: ProcPtr, va_range: &VaRange4K) -> bool`
 
-`kernel__create_and_map_pages__impl0__check_io_space_va_range_free.rs`
-
-Defines `Kernel::check_io_space_va_range_free`, which checks whether an IO space VA range is free (unmapped) for a given process. The spec `io_space_range_free` states: for all indices j in `[0, va_range.len)`, the j-th VA in the range is NOT in the IO space domain for the target process.
-
-### Preconditions
-- `self.wf()` — kernel well-formed
-- `self.proc_dom().contains(target_proc_ptr)` — process exists
-- `self.get_proc(target_proc_ptr).ioid.is_Some()` — process has IOMMU ID
-- `va_range.wf()` — VA range well-formed
-
-### Postcondition
-- `ret == self.io_space_range_free(target_proc_ptr, va_range)`
+Checks whether every VA in `va_range` is absent from the IO space of the process identified by `target_proc_ptr`. Returns `true` iff all VAs are free.
 
 ---
 
-## Correctness Results (should all PASS)
+## Results Overview
 
-| # | Test Name | Description | Expected | Actual |
-|---|-----------|-------------|----------|--------|
-| 1 | `test_param_free_implies_element_not_in_domain` | If range free and j in bounds, VA[j] not in IO space | PASS | ✅ PASS |
-| 2 | `test_param_empty_range_is_free` | Empty range (len=0) is always free | PASS | ✅ PASS |
-| 3 | `test_param_all_elements_free_implies_range_free` | All elements not in domain ⟹ range is free | PASS | ✅ PASS |
-| 4 | `test_param_single_element_free` | Single-element range: element not in domain ⟹ free | PASS | ✅ PASS |
-| 5 | `test_param_free_range_first_element` | Free range with len≥1 ⟹ first element not in domain | PASS | ✅ PASS |
-| 6 | `test_param_free_range_first_and_last` | Free range with len≥2 ⟹ first and last free | PASS | ✅ PASS |
-| 7 | `test_param_free_range_is_bool` | io_space_range_free true ⟹ equals true | PASS | ✅ PASS |
-| 8 | `test_param_not_free_means_false` | Not free ⟹ equals false | PASS | ✅ PASS |
-| 9 | `test_param_element_in_domain_means_not_free` | Element in domain ⟹ range not free | PASS | ✅ PASS |
-| 10 | `test_param_free_range_middle_element` | Free range with len≥3 ⟹ middle element free | PASS | ✅ PASS |
+| Test File | Tests | Failed (expected) | Passed (unexpected) |
+|-----------|-------|--------------------|---------------------|
+| boundary_tests.rs | 12 | 12 ✅ | 0 |
+| behavioral_mutation_tests.rs | 12 | 12 ✅ | 0 |
+| logical_tests.rs | 12 | 12 ✅ | 0 |
+| **Total** | **36** | **36 ✅** | **0** |
 
-**Result: 52 verified, 0 errors** (includes 42 from original file + 10 tests)
+All 36 adversarial tests were **correctly rejected** by Verus, indicating the specification is consistent with respect to the queried properties.
 
 ---
 
-## Completeness Results (should all FAIL)
+## Boundary Tests (12/12 failed ✅)
 
-### Round 1: Precondition Violations
+| # | Test | Violation |
+|---|------|-----------|
+| 1 | `test_boundary_proc_not_in_domain` | `proc_dom` does not contain target proc |
+| 2 | `test_boundary_ioid_is_none` | Process has no ioid (None) |
+| 3 | `test_boundary_va_range_start_zero` | VA=0 not valid (kernel space) |
+| 4 | `test_boundary_va_range_len_overflow` | start+len*4096 cannot overflow usize::MAX |
+| 5 | `test_boundary_ioid_not_active` | Free ioid is not active |
+| 6 | `test_boundary_va_not_4k_aligned` | Unaligned VA (0x1001) not valid |
+| 7 | `test_boundary_ioid_at_max` | ioid == IOID_MAX is out of range |
+| 8 | `test_boundary_va_range_duplicates` | Duplicate VAs in range violate wf() |
+| 9 | `test_boundary_va_range_element_invalid` | Non-valid VA element in range |
+| 10 | `test_boundary_kernel_wf_from_nothing` | kernel.wf() cannot be assumed from false |
+| 11 | `test_boundary_empty_range_returns_false` | Empty range is vacuously free (true, not false) |
+| 12 | `test_boundary_page_ptr_not_aligned` | Unaligned page ptr violates precondition |
 
-| # | Test Name | What It Tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | `test_missing_wf` | Call without `kernel.wf()` | FAIL | ✅ FAIL |
-| 2 | `test_missing_proc_dom` | Call without `proc_dom().contains(target)` | FAIL | ✅ FAIL |
-| 3 | `test_missing_ioid` | Call without `ioid.is_Some()` | FAIL | ✅ FAIL |
-| 4 | `test_missing_va_range_wf` | Call without `va_range.wf()` | FAIL | ✅ FAIL |
-| 5 | `test_all_missing` | Call with no preconditions at all | FAIL | ✅ FAIL |
+## Behavioral Mutation Tests (12/12 failed ✅)
 
-**Result: 42 verified, 5 errors** ✅
+| # | Test | Mutation |
+|---|------|----------|
+| 1 | `test_mutation_range_free_returns_false` | Free range falsely claimed to return false |
+| 2 | `test_mutation_range_not_free_returns_true` | Occupied range falsely claimed free |
+| 3 | `test_mutation_resolve_some_returns_none` | Mapped VA falsely claimed to resolve as None |
+| 4 | `test_mutation_resolve_none_returns_some` | Unmapped VA falsely claimed to resolve as Some |
+| 5 | `test_mutation_partial_range_free_returns_true` | Partially free range falsely claimed fully free |
+| 6 | `test_mutation_ret_negated` | Return value falsely negated |
+| 7 | `test_mutation_all_free_but_claim_false` | All-free range falsely claimed not free |
+| 8 | `test_mutation_io_space_domain_changes` | Immutable reference falsely claimed to mutate |
+| 9 | `test_mutation_single_element_free_returns_false` | Single free element falsely claimed not free |
+| 10 | `test_mutation_empty_io_space_range_not_free` | Empty IO space falsely claimed to contain VA |
+| 11 | `test_mutation_loop_skips_index` | Loop falsely claimed to skip an index |
+| 12 | `test_mutation_none_means_mapped` | None resolve falsely claimed to mean mapped |
 
-### Round 2: Overly Strong Postconditions
+## Logical Tests (12/12 failed ✅)
 
-| # | Test Name | What It Tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | `test_free_range_implies_empty_io_space` | Free range ⟹ entire IO space empty (too strong) | FAIL | ✅ FAIL |
-| 2 | `test_free_range_implies_zero_len` | Free range ⟹ len==0 (too strong) | FAIL | ✅ FAIL |
-| 3 | `test_free_range_implies_no_mapping_anywhere` | Free for p1 ⟹ free for p2 (too strong) | FAIL | ✅ FAIL |
-| 4 | `test_free_io_implies_free_pagetable` | IO space free ⟹ regular pagetable free (too strong) | FAIL | ✅ FAIL |
-| 5 | `test_free_range_elements_equal` | Free range ⟹ VA elements are equal (too strong) | FAIL | ✅ FAIL |
-
-**Result: 42 verified, 5 errors** ✅
-
-### Round 3: Negated/Contradicted Postconditions
-
-| # | Test Name | What It Tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | `test_always_true` | Claim io_space_range_free always true | FAIL | ✅ FAIL |
-| 2 | `test_always_false` | Claim io_space_range_free always false | FAIL | ✅ FAIL |
-| 3 | `test_negate_element_free` | Free range but claim element IS in domain | FAIL | ✅ FAIL |
-| 4 | `test_mapped_but_claim_free` | Element mapped but claim range free | FAIL | ✅ FAIL |
-| 5 | `test_negate_spec_equivalence` | All elements free but claim range NOT free | FAIL | ✅ FAIL |
-
-**Result: 42 verified, 5 errors** ✅
-
-### Round 4: Wrong Specific Values
-
-| # | Test Name | What It Tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | `test_last_mapped_claim_free` | Last element mapped but claim free | FAIL | ✅ FAIL |
-| 2 | `test_middle_mapped_claim_free` | Middle element mapped but claim free | FAIL | ✅ FAIL |
-| 3 | `test_free_implies_short_range` | Free ⟹ len≤1 (wrong) | FAIL | ✅ FAIL |
-| 4 | `test_free_implies_singleton_io_space` | Free ⟹ IO space has exactly 1 entry (wrong) | FAIL | ✅ FAIL |
-| 5 | `test_not_free_implies_all_mapped` | Not free ⟹ ALL elements mapped (too strong) | FAIL | ✅ FAIL |
-
-**Result: 42 verified, 5 errors** ✅
-
-### Round 5: Cross-Function Misuse & Edge Cases
-
-| # | Test Name | What It Tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | `test_cross_process_confusion` | Free for p1 ⟹ element free for p2 | FAIL | ✅ FAIL |
-| 2 | `test_io_vs_pagetable_confusion` | IO space free ⟹ pagetable free | FAIL | ✅ FAIL |
-| 3 | `test_unrelated_property` | Free ⟹ process has no children (unrelated) | FAIL | ✅ FAIL |
-| 4 | `test_wrong_ioid_reasoning` | Free for own ioid ⟹ free for different ioid | FAIL | ✅ FAIL |
-| 5 | `test_range_extension_unsound` | Free for small range ⟹ free for larger range | FAIL | ✅ FAIL |
-
-**Result: 42 verified, 5 errors** ✅
+| # | Test | Unintended Property |
+|---|------|---------------------|
+| 1 | `test_logical_range_free_implies_io_space_empty` | Free range does NOT imply empty IO space |
+| 2 | `test_logical_one_free_implies_all_free` | One free VA does NOT imply all free |
+| 3 | `test_logical_io_free_implies_pcid_free` | IO space free does NOT imply PCID space free |
+| 4 | `test_logical_free_range_implies_positive_len` | Free range does NOT require len > 0 |
+| 5 | `test_logical_cross_proc_io_space_free` | Proc1 free does NOT imply proc2 free |
+| 6 | `test_logical_subset_free_implies_superset_free` | Subset free does NOT imply superset free |
+| 7 | `test_logical_same_ioid_same_io_space` | Same ioid does NOT imply same IO space (unconstrained) |
+| 8 | `test_logical_check_changes_page_alloc` | Read-only check does NOT modify page_alloc |
+| 9 | `test_logical_va_valid_not_in_io_space` | Valid VA can still be in IO space |
+| 10 | `test_logical_order_dependence` | Checking order does NOT affect result (commutative) |
+| 11 | `test_logical_free_range_extends` | Free subrange does NOT extend to larger range |
+| 12 | `test_logical_result_independent_of_proc` | Result depends on which process is queried |
 
 ---
 
-## Overall Assessment
+## Conclusion
 
-### Correctness: ✅ PASS
-All 10 correctness tests pass. The spec `io_space_range_free` correctly captures element-wise freedom from the IO space domain. The spec is equivalent to checking that no element in the range is mapped in the process's IOMMU table.
+The specification for `check_io_space_va_range_free` correctly:
+- **Rejects invalid inputs** (boundary violations)
+- **Rejects mutated behaviors** (incorrect return values and state changes)
+- **Rejects unintended logical inferences** (cross-process reasoning, subset extension, etc.)
 
-### Completeness: ✅ PASS
-All 25 completeness tests (5 per round) fail as expected. The spec:
-- Requires all four preconditions (Round 1)
-- Does not overgeneralize to other processes, pagetables, or range properties (Round 2)
-- Is neither always true nor always false (Round 3)
-- Correctly rejects wrong specific value claims (Round 4)
-- Does not confuse IO spaces, processes, or allow unsound range extension (Round 5)
-
-### Spec Gaps Found: None
-The specification is both correct and complete for the properties tested. No unexpected passes or failures were observed.
+No specification weaknesses were detected. The spec tightly constrains the semantic space of the function.

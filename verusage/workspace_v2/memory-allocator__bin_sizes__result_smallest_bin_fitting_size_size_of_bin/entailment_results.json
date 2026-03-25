@@ -1,0 +1,47 @@
+[
+  {
+    "name": "smallest_bin_negative_size",
+    "type": "boundary",
+    "code": "proof fn phi_1_smallest_bin_negative_size()\n    ensures\n        smallest_bin_fitting_size(-100) == 1,\n{\n}",
+    "reason": "Negative allocation sizes silently map to bin 1 instead of being rejected \u2014 `(-100 + 7) / 8` is negative, satisfying `wsize <= 1`, so any negative size request gets a valid bin assignment",
+    "entailed": false,
+    "verus_output": "me/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__bin_sizes__result_smallest_bin_fitting_size_size_of_bin/phi_1_smallest_bin_negative_size.rs:247:9\n    |\n245 | proof fn phi_1_smallest_bin_negative_size()\n    |       ------------------------------------- at the end of the function body\n246 |     ensures\n247 |         smallest_bin_fitting_size(-100) == 1,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "smallest_bin_zero_size",
+    "type": "boundary",
+    "code": "proof fn phi_2_smallest_bin_zero_size()\n    ensures\n        smallest_bin_fitting_size(0) == 1,\n{\n}",
+    "reason": "A zero-byte allocation request maps to bin 1 (the smallest real bin) rather than being flagged as invalid \u2014 zero-size allocations silently succeed and consume an 8-byte slot",
+    "entailed": false,
+    "verus_output": "tisfied\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__bin_sizes__result_smallest_bin_fitting_size_size_of_bin/phi_2_smallest_bin_zero_size.rs:247:9\n    |\n245 | proof fn phi_2_smallest_bin_zero_size()\n    |       --------------------------------- at the end of the function body\n246 |     ensures\n247 |         smallest_bin_fitting_size(0) == 1,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "size_of_bin_huge_artificial_cap",
+    "type": "behavioral",
+    "code": "proof fn phi_3_size_of_bin_huge_artificial_cap()\n    ensures\n        ({\n            reveal(size_of_bin);\n            size_of_bin(BIN_HUGE as int) == 8 * 524289\n        }),\n{\n    reveal(size_of_bin);\n}",
+    "reason": "BIN_HUGE's size is hardcoded to `8 * 524289 = 4194312` instead of being unbounded \u2014 the roundtrip property `smallest_bin_fitting_size(size_of_bin(73)) == 73` only works because of this artificial finite cap, but allocations larger than 4194312 bytes also map to BIN_HUGE, breaking the inverse relationship",
+    "entailed": false,
+    "verus_output": "error: expected pure mathematical expression\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__bin_sizes__result_smallest_bin_fitting_size_size_of_bin/phi_3_size_of_bin_huge_artificial_cap.rs:247:9\n    |\n247 | /         ({\n248 | |             reveal(size_of_bin);\n249 | |             size_of_bin(BIN_HUGE as int) == 8 * 524289\n250 | |         }),\n    | |__________^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "check_vacuous_reversed_bounds",
+    "type": "logical",
+    "code": "proof fn phi_4_check_vacuous_reversed_bounds()\n    ensures\n        check_smallest_bin_fitting_size_size_of_bin(73, 1),\n{\n}",
+    "reason": "`check_smallest_bin_fitting_size_size_of_bin` with reversed bounds returns true vacuously \u2014 a caller passing `(73, 1)` gets a \"verified\" result that covers zero bins, providing no guarantees while appearing to confirm the roundtrip property",
+    "entailed": true,
+    "verus_output": "verification results:: 18 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "smallest_bin_above_huge_threshold",
+    "type": "behavioral",
+    "code": "proof fn phi_5_smallest_bin_above_huge_threshold()\n    ensures\n        smallest_bin_fitting_size(524288 * 8 + 1) == BIN_HUGE as int,\n        smallest_bin_fitting_size(999999999) == BIN_HUGE as int,\n{\n}",
+    "reason": "All sizes above `524288 * 8` bytes map to the same BIN_HUGE index regardless of magnitude \u2014 a 1GB allocation and a 4MB allocation get identical bin treatment, with no mechanism to distinguish or reject oversized requests at the bin-fitting level",
+    "entailed": false,
+    "verus_output": "to this function are incorrect\n    |\nnote: function defined here\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__bin_sizes__result_smallest_bin_fitting_size_size_of_bin/phi_5_smallest_bin_above_huge_threshold.rs:191:18\n    |\n191 | pub open spec fn smallest_bin_fitting_size(size: int) -> int {\n    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^ ---------\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0308`.\n",
+    "timed_out": false
+  }
+]

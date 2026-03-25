@@ -1,0 +1,52 @@
+[
+  {
+    "name": "parent_also_removed",
+    "target_fn": "kill_process_none_root",
+    "type": "behavioral",
+    "reason": "Killing a leaf process should never remove its parent from the process domain",
+    "entailed": false,
+    "verified": 23,
+    "errors": 1,
+    "output_tail": "              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n     |\n    ::: /home/chentianyu/intent_formalization/verus/vstd/std_specs/option.rs:153:9\n     |\n 153 |         option is Some,\n     |         -------------- recommendation not met\n\nerror: aborting due to 1 previous error; 21 warnings emitted\n\n"
+  },
+  {
+    "name": "parent_children_fully_cleared",
+    "target_fn": "kill_process_none_root",
+    "type": "boundary",
+    "reason": "Parent should only lose the killed child, not have all its children cleared",
+    "entailed": false,
+    "verified": 23,
+    "errors": 1,
+    "output_tail": " new_pm.get_proc(old_pm.get_proc(proc_ptr).parent.unwrap()).children@ =~= Seq::<ProcPtr>::empty(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 21 warnings emitted\n\n"
+  },
+  {
+    "name": "container_dom_shrinks",
+    "target_fn": "kill_process_none_root",
+    "type": "logical",
+    "reason": "Killing a process must never remove any container from the container domain",
+    "entailed": false,
+    "verified": 23,
+    "errors": 1,
+    "output_tail": "xists|c: ContainerPtr| old_pm.container_dom().contains(c) && !new_pm.container_dom().contains(c),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 21 warnings emitted\n\n"
+  },
+  {
+    "name": "endpoint_dom_shrinks",
+    "target_fn": "kill_process_none_root",
+    "type": "behavioral",
+    "reason": "Killing a threadless childless process should never destroy any endpoint",
+    "entailed": false,
+    "verified": 23,
+    "errors": 1,
+    "output_tail": "old_pm.endpoint_perms@.dom().contains(e) && !new_pm.endpoint_perms@.dom().contains(e),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 21 warnings emitted\n\n"
+  },
+  {
+    "name": "returned_page_differs_from_proc",
+    "target_fn": "kill_process_none_root",
+    "type": "boundary",
+    "reason": "The freed page should be the process's own backing page, not some unrelated page",
+    "entailed": false,
+    "verified": 23,
+    "errors": 1,
+    "output_tail": "----------------------------------------------------------------------------------------------------- at the end of the function body\n...\n1947 |         ret_page != proc_ptr,\n     |         ^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 21 warnings emitted\n\n"
+  }
+]

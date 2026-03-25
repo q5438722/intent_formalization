@@ -1,0 +1,83 @@
+===PHI_START===
+NAME: pde_layer0_never_page
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_pde_layer0_never_page(entry: usize)
+    requires
+        entry & 1 == 1,
+    ensures
+        !((PDE { entry, layer: Ghost(0) })@ is Page),
+{
+}
+```
+REASON: Layer 0 (PML4) entries should never be Page — they are always Directory or Invalid; if a Page entry appears at layer 0, the walk semantics would be wrong
+===PHI_END===
+
+===PHI_START===
+NAME: pde_layer3_never_directory
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_pde_layer3_never_directory(entry: usize)
+    requires
+        entry & 1 == 1,
+        (PDE { entry, layer: Ghost(3) }).all_mb0_bits_are_zero(),
+    ensures
+        !((PDE { entry, layer: Ghost(3) })@ is Directory),
+{
+}
+```
+REASON: Layer 3 (PT) entries should never be Directory — they are always Page or Invalid; if a Directory entry appears at layer 3, the walk would recurse beyond 4 levels
+===PHI_END===
+
+===PHI_START===
+NAME: walk_result_vbase_leq_vaddr
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_walk_result_vbase_leq_vaddr(w: Walk)
+    requires
+        w.path.last().1 is Page,
+        w.path.len() >= 2,
+        w.path.len() <= 4,
+    ensures
+        w.result() is Valid,
+        w.result()->vbase <= w.vaddr,
+{
+}
+```
+REASON: `vbase = align_to_usize(vaddr, entry_size)` rounds down, so `vbase <= vaddr` — if this fails, the alignment function is incorrectly rounding up
+===PHI_END===
+
+===PHI_START===
+NAME: walk_result_size_matches_depth
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_walk_result_size_matches_depth(w: Walk)
+    requires
+        w.path.last().1 is Page,
+        w.path.len() == 4,
+    ensures
+        w.result() is Valid,
+        w.result()->pte.frame.size == L3_ENTRY_SIZE as nat,
+{
+}
+```
+REASON: A 4-level walk (ending at L3) should produce a 4KB page — tests that the depth-to-size mapping is correct; wrong sizes would break physical address translation
+===PHI_END===
+
+===PHI_START===
+NAME: pde_layer_geq4_always_invalid
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_pde_layer_geq4_always_invalid(entry: usize)
+    ensures
+        (PDE { entry, layer: Ghost(4) })@ is Invalid,
+{
+}
+```
+REASON: Layers ≥ 4 don't exist in x86-64 — any PDE at layer 4 should be Invalid; if it's classified as Directory or Page, the walk could exceed the 4-level hierarchy
+===PHI_END===

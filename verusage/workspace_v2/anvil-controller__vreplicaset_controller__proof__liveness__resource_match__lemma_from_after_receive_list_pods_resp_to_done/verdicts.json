@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "kernel_mem_end_l4_allows_user_at_zero",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`KERNEL_MEM_END_L4INDEX == 1` is an intentional design constant. On x86-64, the L4 index 0 covers virtual addresses 0x0000_0000_0000_0000\u20130x0000_007F_FFFF_FFFF, which is indeed the low canonical user range, but this microkernel explicitly reserves only index 0 for kernel entries \u2014 this is a deliberate non-standard layout choice, not a spec gap."
+  },
+  {
+    "phi": "page_index2ptr_overflow",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`NUM_PAGES = 2 * 1024 * 1024 = 2^21`, so max `i * 4096 = 2^21 * 4096 = 2^33 \u2248 8GB`, which fits comfortably in a 64-bit `usize`. The `as usize` cast in the spec is a no-op on the target platform, and Verus's arithmetic model correctly handles this range."
+  },
+  {
+    "phi": "unmarshal_skips_state_validation",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Unmarshal is intentionally a parsing/deserialization step separate from validation. In Kubernetes, state validation is performed at admission time, not during unmarshalling \u2014 this separation is by design."
+  },
+  {
+    "phi": "create_key_namespace_diverges",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`CreateRequest::key()` derives namespace from `self.namespace` rather than `self.obj.metadata.namespace`. If these diverge, the object is stored under a key that disagrees with the object's own metadata, potentially placing the object in the wrong namespace."
+  },
+  {
+    "phi": "object_ref_ignores_uid",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`ObjectRef` is intentionally defined as (kind, name, namespace) \u2014 this is Kubernetes's standard resource identification scheme. UID is a separate identity concept used for ownership tracking and garbage collection, not for resource lookup keys."
+  }
+]

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "deserialize_external_body_returns_any_marshalable",
+    "type": "logical",
+    "code": "proof fn phi_1_deserialize_external_body_returns_any_marshalable(data: Vec<u8>)\n    requires\n        data@.len() >= 16,\n        data@[0] == 1u8,\n    ensures\n        ({\n            let res = Option::<u64>::deserialize(&data, 0);\n            res.is_some() ==> res.unwrap().0.is_marshalable()\n        }),\n{\n}",
+    "reason": "All `external_body` `deserialize` implementations (usize, Vec<u8>, Option<T>, Vec<T>, (T,U)) have trivially satisfiable `None => true` ensures \u2014 they could always return `None` and vacuously satisfy the spec, making the deserialize contract useless for proving roundtrip properties",
+    "entailed": false,
+    "verus_output": "error: cannot call function `phi_1_deserialize_external_body_returns_any_marshalable::Marshalable::deserialize` with mode exec\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__marshal_v__impl0__deserialize/phi_1_deserialize_external_body_returns_any_marshalable.rs:197:23\n    |\n197 |             let res = Option::<u64>::deserialize(&data, 0);\n    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "option_none_serialize_tag_zero",
+    "type": "behavioral",
+    "code": "proof fn phi_2_option_none_serialize_tag_zero()\n    ensures\n        ({\n            let n: Option<u64> = None;\n            n.ghost_serialize() == seq![0u8]\n        }),\n{\n}",
+    "reason": "`None` serializes to a single byte `[0]` while `Some(x)` uses `[1] + x.ghost_serialize()` \u2014 but since `ghost_serialize` at the trait level is `external_body` with only a `recommends`, there's no guarantee that the open spec definitions here actually match what the external_body trait-level function returns",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "tuple_serialize_ambiguous_no_delimiter",
+    "type": "logical",
+    "code": "proof fn phi_3_tuple_serialize_ambiguous_no_delimiter(a1: Vec<u8>, a2: Vec<u8>, b1: Vec<u8>, b2: Vec<u8>)\n    requires\n        a1.is_marshalable(),\n        a2.is_marshalable(),\n        b1.is_marshalable(),\n        b2.is_marshalable(),\n        a1@ == seq![1u8, 2u8],\n        a2@ == seq![3u8, 4u8, 5u8],\n        b1@ == seq![1u8, 2u8, 3u8],\n        b2@ == seq![4u8, 5u8],\n    ensures\n        (a1, a2).ghost_serialize() == (b1, b2).ghost_serialize(),\n{\n}",
+    "reason": "Tuple serialization concatenates the two components without any length delimiter or separator \u2014 two different tuples with different split points can produce identical serializations, breaking injectivity",
+    "entailed": false,
+    "verus_output": "ition\n\nnote: recommendation not met\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__marshal_v__impl0__deserialize/phi_3_tuple_serialize_ambiguous_no_delimiter.rs:202:39\n    |\n 18 |     recommends self.is_marshalable()\n    |                --------------------- recommendation not met\n...\n202 |         (a1, a2).ghost_serialize() == (b1, b2).ghost_serialize(),\n    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "vec_u8_deserialize_always_none_valid",
+    "type": "boundary",
+    "code": "proof fn phi_4_vec_u8_deserialize_always_none_valid(data: Vec<u8>, start: usize)\n    ensures\n        ({\n            let res = Vec::<u8>::deserialize(&data, start);\n            res === None::<(Vec<u8>, usize)> ==> true\n        }),\n{\n}",
+    "reason": "The `external_body` `deserialize` for `Vec<u8>` can always return `None` since the ensures clause has `None => true` \u2014 there is no liveness/completeness guarantee that deserialization succeeds when given valid serialized data, so the spec is too weak to prove any roundtrip property",
+    "entailed": false,
+    "verus_output": "error: cannot call function `phi_4_vec_u8_deserialize_always_none_valid::Marshalable::deserialize` with mode exec\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__marshal_v__impl0__deserialize/phi_4_vec_u8_deserialize_always_none_valid.rs:194:23\n    |\n194 |             let res = Vec::<u8>::deserialize(&data, start);\n    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "usize_deserialize_external_body_unconstrained",
+    "type": "logical",
+    "code": "proof fn phi_5_usize_deserialize_external_body_unconstrained(data: Vec<u8>, start: usize)\n    requires\n        data@.len() >= start + 8,\n    ensures\n        ({\n            let res = usize::deserialize(&data, start);\n            res.is_some() ==> res.unwrap().0 as int <= u64::MAX\n        }),\n{\n}",
+    "reason": "`usize::deserialize` is `external_body` with no custom ensures \u2014 it inherits the trait ensures which only says the result `is_marshalable()` (i.e., `<= u64::MAX`) if `Some`, but the implementation is completely unverified and could return any usize including values that truncated from the u64 in the byte stream",
+    "entailed": false,
+    "verus_output": "error: cannot call function `phi_5_usize_deserialize_external_body_unconstrained::Marshalable::deserialize` with mode exec\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__marshal_v__impl0__deserialize/phi_5_usize_deserialize_external_body_unconstrained.rs:196:23\n    |\n196 |             let res = usize::deserialize(&data, start);\n    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

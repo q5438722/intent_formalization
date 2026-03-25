@@ -1,0 +1,87 @@
+===PHI_START===
+NAME: zero_size_aligned
+TARGET_FN: aligned
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_zero_size_aligned()
+    ensures
+        aligned(1 as nat, 0 as nat),
+{
+}
+```
+REASON: Size-zero alignment is meaningless; if entailed, the spec has a division-by-zero gap allowing vacuous alignment
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_symmetry
+TARGET_FN: aligned
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_aligned_symmetry(a: nat)
+    requires
+        a > 0,
+        aligned(a, PAGE_SIZE as nat),
+    ensures
+        aligned(PAGE_SIZE as nat, a),
+{
+}
+```
+REASON: Alignment is not symmetric; PAGE_SIZE is not a multiple of every page-aligned address (e.g. 4096 % 8192 != 0)
+===PHI_END===
+
+===PHI_START===
+NAME: nonzero_smaller_than_size
+TARGET_FN: aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_nonzero_smaller_than_size(a: nat, b: nat)
+    requires
+        0 < a,
+        a < b,
+    ensures
+        aligned(a, b),
+{
+}
+```
+REASON: A positive value strictly less than its alignment size cannot be divisible by it; would break all alignment-size invariants
+===PHI_END===
+
+===PHI_START===
+NAME: mul_closure
+TARGET_FN: aligned
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_mul_closure(a: nat, b: nat, c: nat)
+    requires
+        b > 0,
+        c > 0,
+        aligned(a, b),
+        aligned(a, c),
+    ensures
+        aligned(a, b * c),
+{
+}
+```
+REASON: Alignment to two sizes does not imply alignment to their product; e.g. aligned(12,4) && aligned(12,6) but not aligned(12,24)
+===PHI_END===
+
+===PHI_START===
+NAME: page_implies_l1
+TARGET_FN: aligned
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_page_implies_l1(addr: nat)
+    requires
+        aligned(addr, PAGE_SIZE as nat),
+    ensures
+        aligned(addr, L1_ENTRY_SIZE as nat),
+{
+}
+```
+REASON: 4KB page alignment does not imply 1GB L1 alignment; would conflate all page-table levels and break the translation hierarchy
+===PHI_END===

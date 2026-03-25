@@ -1,0 +1,81 @@
+Looking at `syscall_receive_empty_no_block`, I note its `ensures` clause is **empty**, and it branches on several constants/predicates. I'll generate 5 candidates probing the spec's constants, return-value distinguishability, and precondition satisfiability.
+
+===PHI_START===
+NAME: endpoint_excludes_zero
+TARGET_FN: syscall_receive_empty_no_block
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_endpoint_excludes_zero(blocking_endpoint_index: EndpointIdx)
+    requires
+        0 <= blocking_endpoint_index < MAX_NUM_ENDPOINT_DESCRIPTORS,
+    ensures
+        blocking_endpoint_index > 0,
+{
+}
+```
+REASON: If entailed, endpoint index 0 is never valid, silently excluding the first descriptor slot
+===PHI_END===
+
+===PHI_START===
+NAME: requires_vacuous_on_index
+TARGET_FN: syscall_receive_empty_no_block
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_requires_vacuous_on_index(blocking_endpoint_index: EndpointIdx)
+    requires
+        0 <= blocking_endpoint_index < MAX_NUM_ENDPOINT_DESCRIPTORS,
+    ensures
+        false,
+{
+}
+```
+REASON: If entailed, MAX_NUM_ENDPOINT_DESCRIPTORS is 0 and no valid index exists, making the syscall unreachable
+===PHI_END===
+
+===PHI_START===
+NAME: error_indistinguishable_from_success
+TARGET_FN: syscall_receive_empty_no_block
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_error_indistinguishable_from_success()
+    ensures
+        SyscallReturnStruct::NoSwitchNew(RetValueType::Error)
+            == SyscallReturnStruct::NoSwitchNew(RetValueType::Else),
+{
+}
+```
+REASON: If entailed, the caller cannot distinguish a failed receive from a successful one
+===PHI_END===
+
+===PHI_START===
+NAME: scheduler_capacity_zero
+TARGET_FN: syscall_receive_empty_no_block
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_scheduler_capacity_zero()
+    ensures
+        MAX_CONTAINER_SCHEDULER_LEN == 0usize,
+{
+}
+```
+REASON: If entailed, the scheduler-full check always triggers and the syscall can never successfully schedule a blocked sender
+===PHI_END===
+
+===PHI_START===
+NAME: queue_capacity_zero
+TARGET_FN: syscall_receive_empty_no_block
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_queue_capacity_zero()
+    ensures
+        MAX_NUM_THREADS_PER_ENDPOINT == 0usize,
+{
+}
+```
+REASON: If entailed, the endpoint queue capacity is zero so the queue-length branch conditions degenerate and no sender can ever be queued
+===PHI_END===

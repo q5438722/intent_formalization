@@ -1,0 +1,47 @@
+[
+  {
+    "name": "always_unfold_extensional_gap",
+    "type": "logical",
+    "code": "proof fn phi_1_always_unfold_extensional_gap(ex: Execution<int>, p: TempPred<int>, i: nat)\n    requires\n        always(p).satisfied_by(ex),\n    ensures\n        p.satisfied_by(ex.suffix(i)),\n{\n    always_unfold::<int>(ex, p);\n}",
+    "reason": "always_unfold is external_body bridging an intensional closure gap \u2014 the forall inside always's TempPred::new closure vs the bare forall in the ensures are intensionally distinct, and this axiom papers over that without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "always_and_reverse_not_proven",
+    "type": "logical",
+    "code": "proof fn phi_2_always_and_reverse_not_proven(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>)\n    requires\n        always(p).satisfied_by(ex),\n        always(q).satisfied_by(ex),\n    ensures\n        always(p.and(q)).satisfied_by(ex),\n{\n    always_unfold::<int>(ex, p);\n    always_unfold::<int>(ex, q);\n}",
+    "reason": "the converse of always_distributed_by_and (always(p) \u2227 always(q) \u2192 always(p\u2227q)) relies on always_unfold to extract the quantifiers, then re-wrapping into a new closure \u2014 if this verifies, the external_body axiom is strong enough to close intensional gaps in both directions",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "always_suffix_shift",
+    "type": "behavioral",
+    "code": "proof fn phi_3_always_suffix_shift(ex: Execution<int>, p: TempPred<int>, k: nat)\n    requires\n        always(p).satisfied_by(ex),\n    ensures\n        always(p).satisfied_by(ex.suffix(k)),\n{\n    always_unfold::<int>(ex, p);\n}",
+    "reason": "always(p) on ex should imply always(p) on any suffix, but proving this requires re-packing quantified suffix facts into the always closure on a shifted execution \u2014 if always_unfold is powerful enough to close this, it may be overly strong",
+    "entailed": false,
+    "verus_output": "intent_formalization/verusage/workspace_v2/anvil-library__always_distributed_by_and/phi_3_always_suffix_shift.rs:85:9\n   |\n81 | proof fn phi_3_always_suffix_shift(ex: Execution<int>, p: TempPred<int>, k: nat)\n   |       -------------------------------------------------------------------------- at the end of the function body\n...\n85 |         always(p).satisfied_by(ex.suffix(k)),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "always_vacuous_on_false",
+    "type": "boundary",
+    "code": "proof fn phi_4_always_vacuous_on_false()\n    ensures\n        valid(always(TempPred::<int>::new(|ex: Execution<int>| false)).implies(\n            TempPred::<int>::new(|ex: Execution<int>| false)\n        )),\n{\n}",
+    "reason": "always(false) trivially implies anything including false itself \u2014 but if valid(always(false).implies(q)) holds for arbitrary q via explosion, the spec framework could silently derive any property from an inconsistent always assumption",
+    "entailed": false,
+    "verus_output": "space_v2/anvil-library__always_distributed_by_and/phi_4_always_vacuous_on_false.rs:83:9\n   |\n81 |   proof fn phi_4_always_vacuous_on_false()\n   |         ---------------------------------- at the end of the function body\n82 |       ensures\n83 | /         valid(always(TempPred::<int>::new(|ex: Execution<int>| false)).implies(\n84 | |             TempPred::<int>::new(|ex: Execution<int>| false)\n85 | |         )),\n   | |__________^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "suffix_suffix_composition",
+    "type": "logical",
+    "code": "proof fn phi_5_suffix_suffix_composition(ex: Execution<int>, p: TempPred<int>, i: nat, j: nat)\n    requires\n        always(p).satisfied_by(ex),\n    ensures\n        p.satisfied_by(ex.suffix(i).suffix(j)),\n{\n    always_unfold::<int>(ex, p);\n}",
+    "reason": "ex.suffix(i).suffix(j) creates a doubly-nested closure (|k| (|m| nat_to_state(m+i))(k+j)) that should equal ex.suffix(i+j) but is intensionally distinct \u2014 if always_unfold is strong enough to prove p holds on this double-suffix without an explicit composition lemma, the axiom may be unsoundly collapsing closure identities",
+    "entailed": false,
+    "verus_output": "e_v2/anvil-library__always_distributed_by_and/phi_5_suffix_suffix_composition.rs:85:9\n   |\n81 | proof fn phi_5_suffix_suffix_composition(ex: Execution<int>, p: TempPred<int>, i: nat, j: nat)\n   |       ---------------------------------------------------------------------------------------- at the end of the function body\n...\n85 |         p.satisfied_by(ex.suffix(i).suffix(j)),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

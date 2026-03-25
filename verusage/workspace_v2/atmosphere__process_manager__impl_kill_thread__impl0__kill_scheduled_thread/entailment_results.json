@@ -1,0 +1,47 @@
+[
+  {
+    "name": "sll_len_without_wf_returns_value_list_len",
+    "type": "logical",
+    "code": "proof fn phi_1_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    requires\n        !sll.wf(),\n    ensures\n        sll.spec_len() == sll.value_list_len,\n{\n}",
+    "reason": "The external_body `len()` ensures `l == self.value_list_len` unconditionally (not guarded by `self.wf()`), so `spec_len` which maps to `len` returns `value_list_len` even without well-formedness \u2014 but `spec_len` is defined as `self@.len()` which reads from `spec_seq`, creating a potential inconsistency between the two definitions when wf doesn't hold",
+    "entailed": false,
+    "verus_output": "ut_wf_returns_value_list_len.rs:1685:9\n     |\n1681 | proof fn phi_1_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n     |       -------------------------------------------------------------------------------------------------- at the end of the function body\n...\n1685 |         sll.spec_len() == sll.value_list_len,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 20 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "owned_threads_shared_across_containers",
+    "type": "logical",
+    "code": "proof fn phi_2_owned_threads_shared_across_containers(pm: ProcessManager, c1: ContainerPtr, c2: ContainerPtr, t: ThreadPtr)\n    requires\n        pm.container_perms_wf(),\n        pm.container_tree_wf(),\n        pm.container_dom().contains(c1),\n        pm.container_dom().contains(c2),\n        c1 != c2,\n        pm.get_container(c1).owned_threads@.contains(t),\n    ensures\n        !pm.get_container(c2).owned_threads@.contains(t),\n{\n}",
+    "reason": "Neither `container_perms_wf` nor `container_tree_wf` constrains `owned_threads` disjointness across containers \u2014 two distinct containers can claim the same thread via their unconstrained Ghost fields",
+    "entailed": false,
+    "verus_output": "phi_2_owned_threads_shared_across_containers(pm: ProcessManager, c1: ContainerPtr, c2: ContainerPtr, t: ThreadPtr)\n     |       --------------------------------------------------------------------------------------------------------------------- at the end of the function body\n...\n1690 |         !pm.get_container(c2).owned_threads@.contains(t),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 20 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "owned_endpoints_shared_across_containers",
+    "type": "logical",
+    "code": "proof fn phi_3_owned_endpoints_shared_across_containers(pm: ProcessManager, c1: ContainerPtr, c2: ContainerPtr, e: EndpointPtr)\n    requires\n        pm.container_perms_wf(),\n        pm.container_tree_wf(),\n        pm.container_dom().contains(c1),\n        pm.container_dom().contains(c2),\n        c1 != c2,\n        pm.get_container(c1).owned_endpoints@.contains(e),\n    ensures\n        !pm.get_container(c2).owned_endpoints@.contains(e),\n{\n}",
+    "reason": "The `owned_endpoints` Ghost field on Container has no cross-container disjointness constraint in any well-formedness predicate, allowing two containers to simultaneously claim the same endpoint",
+    "entailed": false,
+    "verus_output": "endpoints_shared_across_containers(pm: ProcessManager, c1: ContainerPtr, c2: ContainerPtr, e: EndpointPtr)\n     |       ------------------------------------------------------------------------------------------------------------------------- at the end of the function body\n...\n1690 |         !pm.get_container(c2).owned_endpoints@.contains(e),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 20 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "get_proc_leaks_container_dom_without_wf",
+    "type": "logical",
+    "code": "proof fn phi_4_get_proc_leaks_container_dom_without_wf(pm: ProcessManager, proc_ptr: ProcPtr)\n    requires\n        pm.proc_perms_wf(),\n        pm.process_fields_wf(),\n        pm.proc_dom().contains(proc_ptr),\n        !pm.wf(),\n    ensures\n        pm.container_dom().contains(pm.get_proc(proc_ptr).owning_container),\n{\n}",
+    "reason": "get_proc's external_body ensures `self.wf() ==> self.container_dom().contains(ret.owning_container)` guarded by wf, but the weaker preconditions (proc_perms_wf + process_fields_wf) may allow the SMT solver to derive the container_dom membership unconditionally from the implication when wf is false \u2014 the ensures should hold vacuously only if wf is genuinely needed",
+    "entailed": false,
+    "verus_output": "    |\n1681 | proof fn phi_4_get_proc_leaks_container_dom_without_wf(pm: ProcessManager, proc_ptr: ProcPtr)\n     |       --------------------------------------------------------------------------------------- at the end of the function body\n...\n1688 |         pm.container_dom().contains(pm.get_proc(proc_ptr).owning_container),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 20 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "container_cpu_wf_no_cpu_upper_bound",
+    "type": "boundary",
+    "code": "proof fn phi_5_container_cpu_wf_no_cpu_upper_bound(pm: ProcessManager, c_ptr: ContainerPtr, cpu_i: CpuId)\n    requires\n        pm.container_perms_wf(),\n        pm.container_cpu_wf(),\n        pm.container_dom().contains(c_ptr),\n        pm.get_container(c_ptr).owned_cpus@.contains(cpu_i),\n    ensures\n        0 <= cpu_i < NUM_CPUS,\n{\n}",
+    "reason": "The reverse direction of `container_cpu_wf` (from container's owned_cpus to cpu_list) only triggers when `self.get_container(c_ptr).owned_cpus@.contains(cpu_i)` but the ensures clause requires `0 <= cpu_i < NUM_CPUS` \u2014 if the Ghost set contains an out-of-range CpuId, the spec may not catch it since the quantifier body starts from the trigger rather than bounding cpu_i first",
+    "entailed": true,
+    "verus_output": ":is_Some`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__impl_kill_thread__impl0__kill_scheduled_thread/phi_5_container_cpu_wf_no_cpu_upper_bound.rs:1464:32\n     |\n1464 |                 ).root_process.is_Some() implies self.process_tree_wf(c_ptr) by {\n     |                                ^^^^^^^\n\nwarning: 20 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

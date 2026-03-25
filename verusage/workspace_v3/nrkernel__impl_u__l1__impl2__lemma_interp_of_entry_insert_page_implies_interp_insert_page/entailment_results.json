@@ -1,0 +1,52 @@
+[
+  {
+    "name": "empty_arch_satisfies_inv",
+    "target_fn": "Arch::inv",
+    "type": "boundary",
+    "reason": "An architecture with zero layers should not satisfy inv, as it represents no valid page table structure",
+    "entailed": true,
+    "verified": 11,
+    "errors": 0,
+    "output_tail": "verification results:: 11 verified, 0 errors\n\n"
+  },
+  {
+    "name": "entry_base_zero_neq_base",
+    "target_fn": "Arch::entry_base",
+    "type": "behavioral",
+    "reason": "The base address of the first entry (idx=0) should equal the directory base; inequality would mean a gap or offset error",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": " nat)\n    |       -------------------------------------------------------------------- at the end of the function body\n...\n281 |         arch.entry_base(layer, base, 0) != base,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "update_changes_layer",
+    "target_fn": "Directory::update",
+    "type": "behavioral",
+    "reason": "Updating a single entry should preserve the directory's layer; a change would corrupt the tree structure",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": "y, n: nat, e: NodeEntry)\n    |       ----------------------------------------------------------------- at the end of the function body\n...\n281 |         d.update(n, e).layer != d.layer,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "degenerate_arch_satisfies_inv",
+    "target_fn": "Arch::inv",
+    "type": "boundary",
+    "reason": "An architecture with entry_size=1 byte and a single entry per layer is nonsensical for page tables and should be rejected by inv",
+    "entailed": true,
+    "verified": 11,
+    "errors": 0,
+    "output_tail": "verification results:: 11 verified, 0 errors\n\n"
+  },
+  {
+    "name": "all_invalid_implies_nonempty_interp",
+    "target_fn": "Directory::interp",
+    "type": "logical",
+    "reason": "A directory whose entries are all Invalid should have an empty interpretation; a non-empty map would mean phantom mappings",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": " Directory)\n    |       ---------------------------------------------------------- at the end of the function body\n...\n281 |         exists|k: nat| d.interp().contains_key(k),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

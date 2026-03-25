@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: lemma_write_seq_read_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `lemma_write_seq_read` is `external_body` with `unimplemented!()` — the property that a unique-address write in a `fold_left` sequence produces the expected value requires an inductive proof that is not verified. This is used by `lemma_writer_read_from_sbuf` to establish store buffer read consistency.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: writer_read_from_sbuf_chains_external
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `lemma_writer_read_from_sbuf` is a verified proof, but its body directly calls `lemma_write_seq_read` which is `external_body`. The store buffer read consistency guarantee is a transitive trust assumption — only as strong as the unverified underlying lemma.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: wf_implies_pml4_aligned
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `wf` explicitly includes `aligned(self.pt_mem.pml4 as nat, 4096)` as a conjunct. This follows directly from the definition — it's a correct and expected property, not a spec gap.
+===VERDICT_END===
+
+===SUMMARY===
+Two true positives: `lemma_write_seq_read` is an external_body lemma trusting the fold_left read-after-unique-write property without proof, and `lemma_writer_read_from_sbuf` transitively depends on it for store buffer consistency. One false positive: pml4 alignment follows directly from the `wf` definition.
+===END_SUMMARY===

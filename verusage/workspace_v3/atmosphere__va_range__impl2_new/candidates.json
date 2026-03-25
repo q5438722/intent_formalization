@@ -1,0 +1,37 @@
+[
+  {
+    "name": "null_addr_valid",
+    "target_fn": "va_4k_valid",
+    "type": "behavioral",
+    "code": "proof fn phi_1_null_addr_valid()\n    ensures\n        spec_va_4k_valid(0usize),\n{\n}",
+    "reason": "Address zero (null pointer) should never be a valid 4K virtual address"
+  },
+  {
+    "name": "empty_range_trivially_valid",
+    "target_fn": "va_4k_range_valid",
+    "type": "boundary",
+    "code": "proof fn phi_2_empty_range_trivially_valid(va: usize)\n    requires\n        spec_va_4k_valid(va),\n    ensures\n        spec_va_4k_range_valid(va, 0usize),\n{\n}",
+    "reason": "A zero-length range being unconditionally valid could mask bugs where callers assume non-empty ranges"
+  },
+  {
+    "name": "add_range_not_injective",
+    "target_fn": "va_add_range",
+    "type": "logical",
+    "code": "proof fn phi_3_add_range_not_injective(va: usize, i: usize, j: usize)\n    requires\n        spec_va_4k_valid(va),\n        va + 100 * 4096 < usize::MAX,\n        0 <= i < 100,\n        0 <= j < 100,\n        i != j,\n    ensures\n        spec_va_add_range(va, i) == spec_va_add_range(va, j),\n{\n}",
+    "reason": "Distinct offsets mapping to the same address would break no_duplicates invariant of VaRange4K"
+  },
+  {
+    "name": "userspace_addr_accepted",
+    "target_fn": "va_4k_valid",
+    "type": "behavioral",
+    "code": "proof fn phi_4_userspace_addr_accepted()\n    ensures\n        spec_va_4k_valid(0x1000usize),\n{\n}",
+    "reason": "A low user-space address (L4 index 0) passing kernel-space validation would be a security violation"
+  },
+  {
+    "name": "new_zero_len_wf",
+    "target_fn": "new",
+    "type": "boundary",
+    "code": "proof fn phi_5_new_zero_len_wf(va: VAddr)\n    requires\n        spec_va_4k_valid(va),\n        spec_va_4k_range_valid(va, 0usize),\n        va < usize::MAX,\n    ensures\n        ({\n            let s = Seq::<VAddr>::new(0 as nat, |i: int| spec_va_add_range(va, i as usize));\n            s.len() == 0 && s.no_duplicates()\n        }),\n{\n}",
+    "reason": "VaRange4K::new accepting len=0 and producing a trivially well-formed empty range could hide logic errors in callers that assume non-empty ranges"
+  }
+]

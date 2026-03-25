@@ -1,0 +1,37 @@
+[
+  {
+    "name": "endpoint_excludes_zero",
+    "target_fn": "syscall_receive_empty_no_block",
+    "type": "boundary",
+    "code": "proof fn phi_1_endpoint_excludes_zero(blocking_endpoint_index: EndpointIdx)\n    requires\n        0 <= blocking_endpoint_index < MAX_NUM_ENDPOINT_DESCRIPTORS,\n    ensures\n        blocking_endpoint_index > 0,\n{\n}",
+    "reason": "If entailed, endpoint index 0 is never valid, silently excluding the first descriptor slot"
+  },
+  {
+    "name": "requires_vacuous_on_index",
+    "target_fn": "syscall_receive_empty_no_block",
+    "type": "logical",
+    "code": "proof fn phi_2_requires_vacuous_on_index(blocking_endpoint_index: EndpointIdx)\n    requires\n        0 <= blocking_endpoint_index < MAX_NUM_ENDPOINT_DESCRIPTORS,\n    ensures\n        false,\n{\n}",
+    "reason": "If entailed, MAX_NUM_ENDPOINT_DESCRIPTORS is 0 and no valid index exists, making the syscall unreachable"
+  },
+  {
+    "name": "error_indistinguishable_from_success",
+    "target_fn": "syscall_receive_empty_no_block",
+    "type": "behavioral",
+    "code": "proof fn phi_3_error_indistinguishable_from_success()\n    ensures\n        SyscallReturnStruct::NoSwitchNew(RetValueType::Error)\n            == SyscallReturnStruct::NoSwitchNew(RetValueType::Else),\n{\n}",
+    "reason": "If entailed, the caller cannot distinguish a failed receive from a successful one"
+  },
+  {
+    "name": "scheduler_capacity_zero",
+    "target_fn": "syscall_receive_empty_no_block",
+    "type": "logical",
+    "code": "proof fn phi_4_scheduler_capacity_zero()\n    ensures\n        MAX_CONTAINER_SCHEDULER_LEN == 0usize,\n{\n}",
+    "reason": "If entailed, the scheduler-full check always triggers and the syscall can never successfully schedule a blocked sender"
+  },
+  {
+    "name": "queue_capacity_zero",
+    "target_fn": "syscall_receive_empty_no_block",
+    "type": "boundary",
+    "code": "proof fn phi_5_queue_capacity_zero()\n    ensures\n        MAX_NUM_THREADS_PER_ENDPOINT == 0usize,\n{\n}",
+    "reason": "If entailed, the endpoint queue capacity is zero so the queue-length branch conditions degenerate and no sender can ever be queued"
+  }
+]

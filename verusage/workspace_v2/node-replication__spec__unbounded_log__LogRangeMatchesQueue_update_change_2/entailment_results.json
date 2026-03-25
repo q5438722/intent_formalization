@@ -1,0 +1,47 @@
+[
+  {
+    "name": "update_change_2_non_queue_rid_droppable",
+    "type": "logical",
+    "code": "proof fn phi_1_update_change_2_non_queue_rid_droppable<DT: Dispatch>(\n    queue: Seq<ReqId>,\n    log: Map<LogIdx, LogEntry<DT>>,\n    nodeId: NodeId,\n    updates: Map<ReqId, UpdateState<DT>>,\n    rid: ReqId,\n    logLower: LogIdx,\n    logUpper: LogIdx,\n)\n    requires\n        logLower <= logUpper,\n        LogRangeMatchesQueue(queue, log, 0, logLower, logUpper, nodeId, updates),\n        updates.contains_key(rid),\n        !queue.contains(rid),\n    ensures\n        LogRangeMatchesQueue(queue, log, 0, logLower, logUpper, nodeId, updates.remove(rid)),\n{\n    LogRangeMatchesQueue_update_change_2(queue, log, 0, logLower, logUpper, nodeId, updates, updates.remove(rid));\n}",
+    "reason": "Any update entry not in the queue can be silently removed \u2014 the frame condition only guards queue-contained rids, allowing arbitrary mutation of non-queue entries",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "update_change_2_empty_updates_all_remote",
+    "type": "boundary",
+    "code": "proof fn phi_2_update_change_2_empty_updates_all_remote<DT: Dispatch>(\n    queue: Seq<ReqId>,\n    log: Map<LogIdx, LogEntry<DT>>,\n    nodeId: NodeId,\n    updates: Map<ReqId, UpdateState<DT>>,\n    logLower: LogIdx,\n    logUpper: LogIdx,\n)\n    requires\n        logLower <= logUpper,\n        queue.len() == 0,\n        LogRangeMatchesQueue(queue, log, 0, logLower, logUpper, nodeId, updates),\n    ensures\n        LogRangeMatchesQueue(queue, log, 0, logLower, logUpper, nodeId, Map::empty()),\n{\n    LogRangeMatchesQueue_update_change_2(queue, log, 0, logLower, logUpper, nodeId, updates, Map::empty());\n}",
+    "reason": "When the queue is empty (all remote entries), the updates map can be replaced with an entirely empty map \u2014 shows the match is completely independent of updates for all-remote ranges",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "update_change_2_swap_non_queue_state",
+    "type": "behavioral",
+    "code": "proof fn phi_3_update_change_2_swap_non_queue_state<DT: Dispatch>(\n    queue: Seq<ReqId>,\n    log: Map<LogIdx, LogEntry<DT>>,\n    nodeId: NodeId,\n    updates: Map<ReqId, UpdateState<DT>>,\n    rid: ReqId,\n    new_state: UpdateState<DT>,\n    logLower: LogIdx,\n    logUpper: LogIdx,\n)\n    requires\n        logLower <= logUpper,\n        LogRangeMatchesQueue(queue, log, 0, logLower, logUpper, nodeId, updates),\n        updates.contains_key(rid),\n        !queue.contains(rid),\n    ensures\n        LogRangeMatchesQueue(queue, log, 0, logLower, logUpper, nodeId, updates.insert(rid, new_state)),\n{\n    LogRangeMatchesQueue_update_change_2(queue, log, 0, logLower, logUpper, nodeId, updates, updates.insert(rid, new_state));\n}",
+    "reason": "A non-queue rid's update state can be changed to any arbitrary state (Init, Applied, Done) without affecting the match \u2014 the frame condition is blind to non-queue entries",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "local_entry_queue_rid_in_updates",
+    "type": "behavioral",
+    "code": "proof fn phi_4_local_entry_queue_rid_in_updates<DT: Dispatch>(\n    queue: Seq<ReqId>,\n    log: Map<LogIdx, LogEntry<DT>>,\n    nodeId: NodeId,\n    updates: Map<ReqId, UpdateState<DT>>,\n    logIdx: LogIdx,\n)\n    requires\n        LogContainsEntriesUpToHere(log, logIdx + 1),\n        log[logIdx].node_id == nodeId,\n        LogRangeMatchesQueue(queue, log, 0, logIdx, logIdx + 1, nodeId, updates),\n    ensures\n        queue.len() == 1,\n        updates.contains_key(queue[0]),\n        updates[queue[0]] is Placed,\n        updates[queue[0]].arrow_Placed_idx() == logIdx,\n{\n}",
+    "reason": "Single local log entry forces exactly one queue element in Placed state linking to that log index",
+    "entailed": false,
+    "verus_output": "ntry_queue_rid_in_updates.rs:184:9\n    |\n172 |   proof fn phi_4_local_entry_queue_rid_in_updates<DT: Dispatch>(\n    |  _______-\n173 | |     queue: Seq<ReqId>,\n174 | |     log: Map<LogIdx, LogEntry<DT>>,\n175 | |     nodeId: NodeId,\n176 | |     updates: Map<ReqId, UpdateState<DT>>,\n177 | |     logIdx: LogIdx,\n178 | | )\n    | |_- at the end of the function body\n...\n184 |           queue.len() == 1,\n    |           ^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "empty_log_range_exhausts_queue",
+    "type": "boundary",
+    "code": "proof fn phi_5_empty_log_range_exhausts_queue<DT: Dispatch>(\n    queue: Seq<ReqId>,\n    log: Map<LogIdx, LogEntry<DT>>,\n    nodeId: NodeId,\n    updates: Map<ReqId, UpdateState<DT>>,\n    idx: LogIdx,\n    qi: nat,\n)\n    requires\n        qi <= queue.len(),\n        LogRangeMatchesQueue(queue, log, qi, idx, idx, nodeId, updates),\n    ensures\n        qi == queue.len(),\n{\n}",
+    "reason": "Empty log range forces queue index to equal queue length \u2014 base case of the recursion",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,76 @@
+===PHI_START===
+NAME: write_preserves_pml4
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_write_preserves_pml4(pt: PTMem, addr: usize, value: usize)
+    ensures
+        pt.write(addr, value).pml4 == pt.pml4,
+{
+}
+```
+REASON: `write` never modifies `pml4` — even writing to the address that stores the PML4 pointer leaves the `pml4` field unchanged, allowing the PML4 base to diverge from physical memory
+===PHI_END===
+
+===PHI_START===
+NAME: write_overwrites_silently
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_write_overwrites_silently(pt: PTMem, addr: usize, v1: usize, v2: usize)
+    requires
+        v1 != v2,
+    ensures
+        pt.write(addr, v1).write(addr, v2).mem[addr] == v2,
+{
+}
+```
+REASON: Sequential writes to the same address silently overwrite — no write-ordering or consistency check, so a concurrent writer could clobber page table entries without detection
+===PHI_END===
+
+===PHI_START===
+NAME: write_seq_empty_identity
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_write_seq_empty_identity(pt: PTMem)
+    ensures
+        pt.write_seq(Seq::empty()) === pt,
+{
+}
+```
+REASON: `write_seq` with an empty sequence is identity — tests the base case of `fold_left`
+===PHI_END===
+
+===PHI_START===
+NAME: write_expands_domain
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_write_expands_domain(pt: PTMem, addr: usize, value: usize)
+    requires
+        !pt.mem.contains_key(addr),
+    ensures
+        pt.write(addr, value).mem.contains_key(addr),
+{
+}
+```
+REASON: Writing to an unmapped address creates a new entry — there's no guard preventing writes to addresses outside the allocated page table region, allowing arbitrary memory expansion
+===PHI_END===
+
+===PHI_START===
+NAME: write_seq_order_matters
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_write_seq_order_matters(pt: PTMem, addr: usize, v1: usize, v2: usize)
+    requires
+        v1 != v2,
+    ensures
+        pt.write_seq(seq![(addr, v1), (addr, v2)]).mem[addr] == v2,
+        pt.write_seq(seq![(addr, v2), (addr, v1)]).mem[addr] == v1,
+{
+}
+```
+REASON: `write_seq` is order-dependent via `fold_left` — the last write to a given address wins, meaning reordering the write sequence changes the final state
+===PHI_END===

@@ -1,0 +1,98 @@
+[
+  {
+    "name": "process_received_packet_next_impl",
+    "code": "fn process_received_packet_next_impl(&mut self, netc: &mut NetClient) -> (rc: (bool, Ghost<EventResults>))\n    requires\n        Self::next_requires(*old(self), *old(netc)),\n    ensures ({\n        let (ok, res) = rc;\n        &&& ok == netc.ok()\n        &&& (*self).invariants(&netc.my_end_point())\n        &&& ok ==> {\n            ||| process_received_packet_next((*old(self))@, (*self)@, abstractify_raw_log_to_ios(res@.ios))\n            ||| ignore_nonsensical_delegation_packet((*old(self))@, (*self)@, abstractify_raw_log_to_ios(res@.ios))\n            }\n        &&& self.constants == (*old(self)).constants\n        &&& ok ==> res@.event_seq() == res@.ios\n        &&& ok || (res@.sends.len()>0) ==> (*netc).history() == (*old(netc)).history() + res@.event_seq()\n        &&& res@.well_typed_events()\n        &&& no_invalid_sends(abstractify_raw_log_to_ios(res@.ios))\n        })\n    {\n        let ghost old_self = *self;\n\n        // A lot of the cases below require that we establish that the delegation map was complete at the outset.\n        // So we prove this first.\n\n        proof {\n            old_self.delegation_map.valid_implies_complete();\n        }\n\n        // First, check if we should process this message. If not, do nothing. It's pretty weird that\n        // we don't set received_packet to None, but Ironfleet doesn't do it either. I guess the liveness\n        // proof relies on the fact that these messages are never actually sent.\n\n        if !self.should_process_received_message_impl() {\n            let res = make_empty_event_results();\n            proof {\n                // The following assert isn't really necessary, but it may help the solver see that\n                // we're in the case of process_received_packet_next, not the case of ignore_unparseable_packet.\n                assert (process_received_packet_next(old_self@, (*self)@, abstractify_raw_log_to_ios(res@.ios)));\n                assert (res@.ios == res@.event_seq());\n                assert (true || (res@.sends.len()>0) ==> (*netc).history() == (*old(netc)).history() + res@.event_seq());\n            }\n            return (true, res)\n        }\n\n        // Second, check if this is something other than a CSingleMessage::Message (e.g., an ack)\n        // If so, process it by just setting self.received_packet = None.\n\n        match self.received_packet.as_ref().unwrap().msg {\n            CSingleMessage::Message{..} => {},\n            _ => {\n                self.received_packet = None;\n                let res = make_empty_event_results();\n                proof {\n                    // The following assert isn't really necessary, but it may help the solver see that\n                    // we're in the case of process_received_packet_next, not the case of ignore_unparseable_packet.\n                    assert (process_received_packet_next(old_self@, (*self)@, abstractify_raw_log_to_ios(res@.ios)));\n                };\n                return (true, res)\n            }\n        }\n\n        assert (self.sd.valid());\n        assert (self.received_packet is Some);\n        assert (self.received_packet.arrow_Some_0().msg is Message);\n        assert (self.host_state_common_preconditions());\n        let sent_packets = self.host_model_next_receive_message();\n        let (ok, net_event_log, ios) = self.deliver_outbound_packets(netc, &sent_packets);\n        if !ok {\n            return (false, make_empty_event_results());\n        }\n        else {\n            proof {\n                if process_message(old(self)@, self@,\n                                   abstractify_seq_of_cpackets_to_set_of_sht_packets(sent_packets@)) {\n                    assert (process_received_packet_next((*old(self))@, (*self)@, ios@));\n                }\n                else {\n                    assert (Self::host_ignoring_unparseable(old(self)@, self@,\n                                                            abstractify_seq_of_cpackets_to_set_of_sht_packets(\n                                                                sent_packets@)));\n                    assert_by_contradiction!(sent_packets@.len() == 0, {\n                        let p = sent_packets@[0];\n                        let s = abstractify_seq_of_cpackets_to_set_of_sht_packets(sent_packets@);\n                        //XXX lemma_len0_is_empty(s);\n                        assert (sent_packets@.map_values(|cp: CPacket| cp@)[0] == p@);\n                        assert (s.contains(p@));\n                    });\n                    assert (ignore_nonsensical_delegation_packet((*old(self))@, (*self)@, ios@));\n                }\n            }\n            return (true, make_send_only_event_results(net_event_log));\n        }\n    }"
+  },
+  {
+    "name": "to_vec",
+    "code": "#[verifier(external_body)]\n    #[verifier(when_used_as_spec(spec_to_vec))]\n    pub fn to_vec(&self) -> (res: Vec<CKeyKV>)\n      ensures res == self.spec_to_vec()\n    {\n        unimplemented!()\n    }"
+  },
+  {
+    "name": "hashtable_lookup",
+    "code": "pub open spec(checked) fn hashtable_lookup(h: Hashtable, k: AbstractKey) -> Option<AbstractValue>\n{\n    if h.dom().contains(k) { Some(h[k]) } else { None }\n}"
+  },
+  {
+    "name": "bulk_update_domain",
+    "code": "pub open spec(checked) fn bulk_update_domain(h: Hashtable, kr: KeyRange<AbstractKey>, u: Hashtable) -> Set<AbstractKey>\n{\n    Set::<AbstractKey>::new(|k| (h.dom().contains(k) || u.dom().contains(k))\n                                && (kr.contains(k) ==> u.dom().contains(k)))\n}"
+  },
+  {
+    "name": "valid_optional_value",
+    "code": "pub open spec(checked) fn valid_optional_value(ov: Option<AbstractValue>) -> bool\n{\n    match ov {\n        None => true,\n        Some(value) => valid_value(value),\n    }\n}"
+  },
+  {
+    "name": "next_get_request_reply",
+    "code": "pub open spec(checked) fn next_get_request_reply(pre: AbstractHostState, post: AbstractHostState, src: AbstractEndPoint, seqno: nat, k: AbstractKey, sm: SingleMessage<Message>, m: Message, out: Set<Packet>, should_send: bool) -> bool\n    recommends pre.delegation_map.is_complete()\n{\n    let owner = pre.delegation_map[k];\n    if should_send && valid_key(k) {\n        &&& if owner == pre.constants.me {\n                &&& m == Message::Reply{key: k, value: hashtable_lookup(pre.h, k)}\n                &&& post.received_requests == pre.received_requests.push(AppRequest::AppGetRequest{seqno, key: k})\n            } else {\n                &&& m == Message::Redirect{key: k, id: owner}\n                &&& post.received_requests == pre.received_requests\n            }\n        &&& SingleDelivery::send_single_message(pre.sd, post.sd, m, src, Some(sm), pre.constants.params)\n        &&& sm.arrow_Message_dst() == src\n        &&& out == set![ Packet{dst: src, src: pre.constants.me, msg: sm} ]\n    } else {\n        &&& post == AbstractHostState { received_packet: post.received_packet, ..pre }\n        &&& out == Set::<Packet>::empty()\n    }\n}"
+  },
+  {
+    "name": "next_get_request",
+    "code": "pub open spec(checked) fn next_get_request(pre: AbstractHostState, post: AbstractHostState, pkt: Packet, out: Set<Packet>) -> bool\n    recommends\n        pkt.msg is Message,\n        pre.delegation_map.is_complete(),\n{\n    &&& pkt.msg.arrow_Message_m() is GetRequest\n    &&& post.delegation_map == pre.delegation_map\n    &&& post.h == pre.h\n    &&& post.num_delegations == pre.num_delegations\n    &&& (exists |sm,m,b| next_get_request_reply(pre, post, pkt.src, pkt.msg.arrow_Message_seqno(), pkt.msg.arrow_Message_m().arrow_GetRequest_key(), sm, m, out, b))\n}"
+  },
+  {
+    "name": "next_set_request_complete",
+    "code": "pub open spec(checked) fn next_set_request_complete(\n    pre: AbstractHostState,\n    post: AbstractHostState,\n    src: AbstractEndPoint,\n    seqno: nat,\n    reqm: Message,\n    sm: SingleMessage<Message>,\n    replym: Message,\n    out: Set<Packet>,\n    should_send: bool\n    ) -> bool\n    recommends\n        pre.delegation_map.is_complete(),\n        reqm is SetRequest,\n{\n    let k = reqm.arrow_SetRequest_key();\n    let ov = reqm.arrow_SetRequest_value();\n    let owner = pre.delegation_map[k];\n    if should_send && valid_key(k) && valid_optional_value(ov) {\n        &&& if owner == pre.constants.me {\n               &&& post.h == match ov { None => pre.h.remove(k), Some(v) => pre.h.insert(k, v) }\n               &&& replym == Message::Reply { key: k, value: ov }\n               &&& post.received_requests == pre.received_requests.push(AppRequest::AppSetRequest { seqno: seqno, key: k, ov: ov })\n           }\n           else {\n               &&& post.h == pre.h\n               &&& replym == Message::Redirect { key: k, id: owner }\n               &&& post.received_requests == pre.received_requests\n           }\n        &&& SingleDelivery::send_single_message(pre.sd, post.sd, replym, src, Some(sm), pre.constants.params)\n        &&& sm.arrow_Message_dst() == src\n        &&& out == set![Packet{dst: src, src: pre.constants.me, msg: sm}]\n    }\n    else {\n        &&& post == AbstractHostState { received_packet: post.received_packet, ..pre }\n        &&& out == Set::<Packet>::empty()\n    }\n}"
+  },
+  {
+    "name": "next_set_request",
+    "code": "pub open spec(checked) fn next_set_request(\n    pre: AbstractHostState,\n    post: AbstractHostState,\n    pkt: Packet,\n    out: Set<Packet>\n    ) -> bool\n    recommends\n        pkt.msg is Message,\n        pre.delegation_map.is_complete(),\n{\n    &&& pkt.msg.arrow_Message_m() is SetRequest\n    &&& exists |sm: SingleMessage<Message>, replym: Message, should_send: bool| next_set_request_complete(pre, post, pkt.src, pkt.msg.arrow_Message_seqno(), pkt.msg.arrow_Message_m(), sm, replym, out, should_send)\n    &&& post.delegation_map == pre.delegation_map\n    &&& post.num_delegations == pre.num_delegations\n}"
+  },
+  {
+    "name": "next_delegate",
+    "code": "pub open spec(checked) fn next_delegate(pre: AbstractHostState, post: AbstractHostState, pkt: Packet, out: Set<Packet>) -> bool\n    recommends\n        pkt.msg is Message,\n        pre.delegation_map.is_complete(),\n{\n    &&& pkt.msg.arrow_Message_m() is Delegate\n    &&& if pre.constants.host_ids.contains(pkt.src) {\n            let m = pkt.msg.arrow_Message_m();\n            &&& post.delegation_map == pre.delegation_map.update(m.arrow_Delegate_range(), pre.constants.me)\n            &&& post.h == bulk_update_hashtable(pre.h, m.arrow_Delegate_range(), m.arrow_Delegate_h())\n            &&& post.num_delegations == pre.num_delegations + 1\n        }\n        else  {\n            &&& post.delegation_map == pre.delegation_map\n            &&& post.h == pre.h\n            &&& post.num_delegations == pre.num_delegations\n        }\n    &&& SingleDelivery::<Message>::send_no_message(pre.sd, post.sd)\n    &&& SingleDelivery::<Message>::receive_no_message(pre.sd, post.sd)\n    &&& out == Set::<Packet>::empty()\n    &&& post.received_requests == pre.received_requests\n}"
+  },
+  {
+    "name": "next_shard",
+    "code": "pub open spec(checked) fn next_shard(\n    pre: AbstractHostState,\n    post: AbstractHostState,\n    out: Set<Packet>,\n    kr: KeyRange<AbstractKey>,\n    recipient: AbstractEndPoint,\n    sm: SingleMessage<Message>,\n    should_send: bool\n    ) -> bool\n    recommends\n        pre.delegation_map.is_complete(),\n{\n    &&& recipient != pre.constants.me\n    &&& pre.constants.host_ids.contains(recipient)\n    &&& pre.delegation_map.delegate_for_key_range_is_host(kr, pre.constants.me)\n    &&& SingleDelivery::send_single_message(pre.sd, post.sd, Message::Delegate{range: kr, h: extract_range(pre.h, kr)}, recipient, if should_send { Some(sm) } else { None }, pre.constants.params)\n    &&& should_send ==> recipient == sm.arrow_Message_dst()\n    &&& pre.constants == post.constants\n\n    &&& post.num_delegations == pre.num_delegations + 1\n    &&& post.received_requests == pre.received_requests\n    &&& if should_send {\n            &&& out == set![Packet{dst: recipient, src: pre.constants.me, msg: sm}]\n            &&& post.delegation_map == pre.delegation_map.update(kr, recipient)\n            &&& post.h == bulk_remove_hashtable(pre.h, kr)\n        }\n        else {\n            &&& out == Set::<Packet>::empty()\n            &&& post.delegation_map == pre.delegation_map\n            &&& post.h == pre.h\n        }\n}"
+  },
+  {
+    "name": "next_shard_wrapper",
+    "code": "pub open spec(checked) fn next_shard_wrapper(pre: AbstractHostState, post: AbstractHostState, pkt: Packet, out: Set<Packet>) -> bool\nrecommends\n    pkt.msg is Message,\n    pre.delegation_map.is_complete(),\n{\n    let m: Message = pkt.msg.arrow_Message_m();\n    let recipient = m.arrow_Shard_recipient();\n    let kr = m.arrow_Shard_range();\n\n    &&& m is Shard\n    &&& if next_shard_wrapper_must_reject(pre, m) {\n            &&& post == AbstractHostState { received_packet: post.received_packet, ..pre }\n            &&& out == Set::<Packet>::empty()\n        } else {\n            exists |sm: SingleMessage<Message>, b: bool| next_shard(pre, post, out, kr, recipient, sm, b)\n        }\n}"
+  },
+  {
+    "name": "next_reply",
+    "code": "pub open spec(checked) fn next_reply(pre: AbstractHostState, post: AbstractHostState, pkt: Packet, out: Set<Packet>) -> bool\nrecommends\n    pkt.msg is Message,\n    pre.delegation_map.is_complete(),\n{\n    &&& pkt.msg.arrow_Message_m() is Reply\n    &&& out == Set::<Packet>::empty()\n    &&& post == AbstractHostState { received_packet: post.received_packet, ..pre }\n}"
+  },
+  {
+    "name": "next_redirect",
+    "code": "pub open spec(checked) fn next_redirect(pre: AbstractHostState, post: AbstractHostState, pkt: Packet, out: Set<Packet>) -> bool\nrecommends\n    pkt.msg is Message,\n    pre.delegation_map.is_complete(),\n{\n    &&& pkt.msg.arrow_Message_m() is Redirect\n    &&& out == Set::<Packet>::empty()\n    &&& post == AbstractHostState { received_packet: post.received_packet, ..pre }\n}"
+  },
+  {
+    "name": "should_process_received_message",
+    "code": "pub open spec(checked) fn should_process_received_message(pre: AbstractHostState) -> bool {\n    &&& pre.received_packet.is_some()\n    &&& pre.received_packet.arrow_Some_0().msg is Message\n    &&& {\n        ||| pre.received_packet.arrow_Some_0().msg.arrow_Message_m() is Delegate\n        ||| pre.received_packet.arrow_Some_0().msg.arrow_Message_m() is Shard\n        } ==> pre.num_delegations < pre.constants.params.max_delegations - 2\n}"
+  },
+  {
+    "name": "process_message",
+    "code": "pub open spec(checked) fn process_message(pre: AbstractHostState, post: AbstractHostState, out: Set<Packet>) -> bool\n    recommends\n        pre.delegation_map.is_complete(),\n{\n    if should_process_received_message(pre) {\n        let packet = pre.received_packet.arrow_Some_0();\n        &&& {\n            ||| next_get_request(pre, post, packet, out)\n            ||| next_set_request(pre, post, packet, out)\n            ||| next_delegate(pre, post, packet, out)\n            ||| next_shard_wrapper(pre, post, packet, out)\n            ||| next_reply(pre, post, packet, out)\n            ||| next_redirect(pre, post, packet, out)\n        }\n        &&& post.received_packet is None\n    }\n    else {\n        &&& post == pre\n        &&& out == Set::<Packet>::empty()\n    }\n}"
+  },
+  {
+    "name": "process_received_packet",
+    "code": "pub open spec(checked) fn process_received_packet(pre: AbstractHostState, post: AbstractHostState, out: Set<Packet>) -> bool\n    recommends\n        pre.delegation_map.is_complete(),\n{\n    match pre.received_packet {\n        Some(_) => process_message(pre, post, out),\n        None => {\n            &&& post == pre\n            &&& out == Set::<Packet>::empty()\n        }\n    }\n}"
+  },
+  {
+    "name": "process_received_packet_next",
+    "code": "pub open spec(checked) fn process_received_packet_next(pre: AbstractHostState, post: AbstractHostState, ios: AbstractIos) -> bool\n{\n    &&& pre.delegation_map.is_complete()\n    &&& forall |i| 0 <= i < ios.len() ==> ios[i] is Send\n    &&& process_received_packet(pre, post, extract_packets_from_abstract_ios(ios))\n}"
+  },
+  {
+    "name": "ignore_nonsensical_delegation_packet",
+    "code": "pub open spec(checked) fn ignore_nonsensical_delegation_packet(pre: AbstractHostState, post: AbstractHostState, ios: AbstractIos) -> bool {\n    &&& ios.len() == 0\n    &&& pre.received_packet.is_some()\n    &&& pre.received_packet.arrow_Some_0().msg is Message\n    &&& match pre.received_packet.arrow_Some_0().msg.arrow_Message_m() {\n        Message::Delegate{range: range, h: h} => !({\n            // no need to check for valid_key_range(range)\n            // (See Distributed/Services/SHT/AppInterface.i.dfy: ValidKey() == true)\n            &&& valid_hashtable(h)\n            &&& !range.is_empty()\n            &&& pre.received_packet.arrow_Some_0().msg.arrow_Message_dst().valid_physical_address()\n        }),\n        _ => false,\n      }\n    &&& if should_process_received_message(pre) {\n          post == AbstractHostState{received_packet: None, ..pre}\n      } else {\n          post == pre\n      }\n}"
+  },
+  {
+    "name": "no_invalid_sends",
+    "code": "pub open spec(checked) fn no_invalid_sends(ios: AbstractIos) -> bool {\n    forall |i| #![auto] 0 <= i < ios.len() && ios[i] is Send ==> !(ios[i].arrow_Send_s().msg is InvalidMessage)\n}"
+  },
+  {
+    "name": "ack_state_lookup",
+    "code": "pub open spec(checked) fn ack_state_lookup<MT>(src: AbstractEndPoint, send_state: SendState<MT>) -> AckState<MT> {\n    if send_state.contains_key(src)\n        { send_state[src] }\n    else\n        { AckState{num_packets_acked: 0, un_acked: Seq::empty()} }\n}"
+  },
+  {
+    "name": "send_single_message",
+    "code": "pub open spec(checked) fn send_single_message(pre: Self, post: Self, m: MT, dst: AbstractEndPoint, /*out*/ sm: Option<SingleMessage<MT>>, params: AbstractParameters) -> bool\n    {\n        let old_ack_state = ack_state_lookup(dst, pre.send_state);\n        let new_seqno = old_ack_state.num_packets_acked + old_ack_state.un_acked.len() + 1;\n        if new_seqno > params.max_seqno {\n            // Packet shouldn't be sent if we exceed the maximum sequence number\n            &&& post == pre\n            &&& sm is None\n        } else {\n            &&& sm == Some(SingleMessage::<MT>::Message{\n                    seqno: new_seqno,\n                    m: m,\n                    dst: dst,\n                })\n            &&& post == SingleDelivery {\n                send_state: pre.send_state.insert(dst,\n                    AckState{\n                        un_acked: old_ack_state.un_acked.push(sm.unwrap()),\n                        ..old_ack_state }),\n                ..pre }\n        }\n    }"
+  },
+  {
+    "name": "receive_no_message",
+    "code": "pub open spec(checked) fn receive_no_message(pre: Self, post: Self) -> bool\n    {\n        post.receive_state == pre.receive_state\n    }"
+  },
+  {
+    "name": "send_no_message",
+    "code": "pub open spec(checked) fn send_no_message(pre: Self, post: Self) -> bool\n    {\n        post.send_state == pre.send_state\n    }"
+  }
+]

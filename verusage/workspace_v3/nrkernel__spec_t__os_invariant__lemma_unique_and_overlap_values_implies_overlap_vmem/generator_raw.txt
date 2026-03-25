@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: aligned_zero_size
+TARGET_FN: aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_aligned_zero_size(addr: nat)
+    ensures
+        aligned(addr, 0),
+{
+}
+```
+REASON: If aligned(addr, 0) is trivially true for all addr, zero-size alignment checks would silently pass, masking invalid frame sizes
+===PHI_END===
+
+===PHI_START===
+NAME: inv_allows_empty_arch
+TARGET_FN: inv
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_inv_allows_empty_arch(arch: Arch)
+    requires
+        arch.layers.len() == 0,
+    ensures
+        arch.inv(),
+{
+}
+```
+REASON: An architecture with zero layers is degenerate and should not satisfy the invariant, as it cannot describe any address translation
+===PHI_END===
+
+===PHI_START===
+NAME: upper_vaddr_leq_base
+TARGET_FN: upper_vaddr
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_upper_vaddr_leq_base(arch: Arch, layer: nat, base: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+        base > 0,
+    ensures
+        arch.upper_vaddr(layer, base) <= base,
+{
+}
+```
+REASON: upper_vaddr should always exceed base for a valid layer, since the mapped region has positive size; equality or less implies an empty or wrapping address space
+===PHI_END===
+
+===PHI_START===
+NAME: entry_base_zero_idx_neq_base
+TARGET_FN: entry_base
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_entry_base_zero_idx_neq_base(arch: Arch, layer: nat, base: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+    ensures
+        arch.entry_base(layer, base, 0) != base,
+{
+}
+```
+REASON: entry_base at index 0 should equal the base itself (base + 0 * entry_size == base); if this proves, the arithmetic identity is broken
+===PHI_END===
+
+===PHI_START===
+NAME: entry_size_next_layer_equal
+TARGET_FN: entry_size_is_next_layer_size
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_entry_size_next_layer_equal(arch: Arch, i: nat)
+    requires
+        arch.inv(),
+        i + 1 < arch.layers.len(),
+    ensures
+        arch.entry_size(i) == arch.entry_size((i + 1) as nat),
+{
+}
+```
+REASON: Consecutive layers having equal entry sizes would mean num_entries is 1, collapsing the page table hierarchy and defeating multi-level translation
+===PHI_END===

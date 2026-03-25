@@ -1,75 +1,61 @@
-# Summary: check_address_space_va_range_shareable
+# Test Summary: `check_address_space_va_range_shareable`
 
-## File Under Test
-`kernel__create_and_share_pages__impl0__check_address_space_va_range_shareable.rs`
+## Target Function
+`Kernel::check_address_space_va_range_shareable` — checks whether a VA range in a process's address space is shareable (all VAs mapped, all physical page reference counters have room for `va_range.len` more references).
 
-Defines `Kernel::check_address_space_va_range_shareable`, an exec function that checks whether a VA range in a target process's address space is shareable. It iterates over the range, verifying each VA is mapped and that each mapped page's reference counter won't overflow if shared. The spec `address_space_range_shareable` captures this as two universal quantifiers over the range indices.
+## Results Overview
 
-## Correctness Results (should all PASS)
+| Category | Total | Failed (expected) | Passed (unexpected) |
+|---|---|---|---|
+| Boundary Tests | 7 | 7 ✅ | 0 |
+| Behavioral Mutation Tests | 5 | 5 ✅ | 0 |
+| Logical Tests | 5 | 5 ✅ | 0 |
+| **Total** | **17** | **17 ✅** | **0** |
 
-| Test | Description | Expected | Actual |
-|------|-------------|----------|--------|
-| test_exec_postcondition | Exec fn result matches spec | PASS | ✅ PASS |
-| test_shareable_implies_mapped | Shareable → all VAs mapped | PASS | ✅ PASS |
-| test_shareable_implies_ref_bounded | Shareable → ref counters ≤ MAX - len | PASS | ✅ PASS |
-| test_empty_range_trivially_shareable | len==0 → trivially shareable | PASS | ✅ PASS |
-| test_shareable_single_va_mapped | Shareable with len==1 → VA[0] mapped | PASS | ✅ PASS |
-| test_shareable_single_va_ref_bounded | Shareable with len==1 → ref counter ≤ MAX-1 | PASS | ✅ PASS |
-| test_conditions_imply_shareable | Both conditions → shareable | PASS | ✅ PASS |
-| test_exec_shareable_returns_true | Shareable precondition → ret==true | PASS | ✅ PASS |
-| test_exec_not_shareable_returns_false | Not shareable → ret==false | PASS | ✅ PASS |
+**Verdict: All 17 adversarial tests were correctly rejected by the specification.**
 
-**Verification result: 51 verified, 0 errors**
+---
 
-## Completeness Results (should all FAIL)
+## Boundary Tests (7/7 failed ✅)
 
-### Round 1: Precondition Violations (4 errors)
-| Test | What it tests | Expected | Actual |
-|------|---------------|----------|--------|
-| test_missing_wf | Call without kernel.wf() | FAIL | ✅ FAIL (precondition not satisfied) |
-| test_missing_proc_dom | Call without proc_dom contains | FAIL | ✅ FAIL (precondition not satisfied) |
-| test_missing_va_range_wf | Call without va_range.wf() | FAIL | ✅ FAIL (precondition not satisfied) |
-| test_missing_all_preconditions | Call without any preconditions | FAIL | ✅ FAIL (precondition not satisfied) |
+| # | Test | Failure Mode | Result |
+|---|---|---|---|
+| 1 | `test_boundary_invalid_proc_ptr_assert_shareable` | Invalid proc_ptr, assert true | FAIL ✅ |
+| 2 | `test_boundary_invalid_proc_ptr_assert_not_shareable` | Invalid proc_ptr, assert false | FAIL ✅ |
+| 3 | `test_boundary_invalid_va_range_assert_shareable` | va_range not wf, assert true | FAIL ✅ |
+| 4 | `test_boundary_kernel_not_wf_assert_shareable` | Kernel not wf, assert true | FAIL ✅ |
+| 5 | `test_boundary_zero_len_assert_not_shareable` | Zero-length range, assert false | FAIL ✅ |
+| 6 | `test_boundary_max_len_assert_shareable` | Max len (usize::MAX), assert true | FAIL ✅ |
+| 7 | `test_boundary_kernel_not_wf_assert_not_shareable` | Kernel not wf, assert false | FAIL ✅ |
 
-### Round 2: Overly Strong Postconditions (4 errors)
-| Test | What it tests | Expected | Actual |
-|------|---------------|----------|--------|
-| test_always_true | Assert result is always true | FAIL | ✅ FAIL (assertion failed) |
-| test_shareable_implies_zero_ref | Assert ref counter == 0 | FAIL | ✅ FAIL (assertion failed) |
-| test_shareable_strict_bound | Assert strict < instead of ≤ | FAIL | ✅ FAIL (assertion failed) |
-| test_always_false | Assert result is always false | FAIL | ✅ FAIL (assertion failed) |
+## Behavioral Mutation Tests (5/5 failed ✅)
 
-### Round 3: Negated/Contradicted Postconditions (4 errors)
-| Test | What it tests | Expected | Actual |
-|------|---------------|----------|--------|
-| test_negate_ensures | Assert ret ≠ spec result | FAIL | ✅ FAIL (assertion failed) |
-| test_shareable_implies_unmapped | Assert shareable → VA NOT mapped | FAIL | ✅ FAIL (assertion failed) |
-| test_not_shareable_when_conditions_hold | Assert ¬shareable when conditions hold | FAIL | ✅ FAIL (assertion failed) |
-| test_shareable_implies_ref_exceeds_max | Assert ref counter > MAX - len | FAIL | ✅ FAIL (assertion failed) |
+| # | Test | Failure Mode | Result |
+|---|---|---|---|
+| 1 | `test_mutation_high_ref_counter_assert_shareable` | Ref counter too high, assert shareable | FAIL ✅ |
+| 2 | `test_mutation_unmapped_va_assert_shareable` | VA not mapped, assert shareable | FAIL ✅ |
+| 3 | `test_mutation_shareable_implies_va_unmapped` | Shareable → VA not mapped | FAIL ✅ |
+| 4 | `test_mutation_all_conditions_met_assert_not_shareable` | All conditions met, assert not shareable | FAIL ✅ |
+| 5 | `test_mutation_ref_counter_at_boundary_assert_not_shareable` | Ref counter at exact boundary, assert not shareable | FAIL ✅ |
 
-### Round 4: Wrong Specific Values (4 errors)
-| Test | What it tests | Expected | Actual |
-|------|---------------|----------|--------|
-| test_empty_range_not_shareable | Assert empty range is NOT shareable | FAIL | ✅ FAIL (assertion failed) |
-| test_shareable_implies_len_1 | Assert shareable → len == 1 | FAIL | ✅ FAIL (assertion failed) |
-| test_shareable_equal_ref_counters | Assert all ref counters equal | FAIL | ✅ FAIL (assertion failed) |
-| test_shareable_exact_ref_counter | Assert ref counter == MAX - len exactly | FAIL | ✅ FAIL (assertion failed) |
+## Logical Tests (5/5 failed ✅)
 
-### Round 5: Cross-function Misuse & Edge Cases (4 errors)
-| Test | What it tests | Expected | Actual |
-|------|---------------|----------|--------|
-| test_shareable_implies_empty_address_space | Assert shareable → address space empty | FAIL | ✅ FAIL (assertion failed) |
-| test_shareable_implies_other_proc_shareable | Assert shareable for proc1 → shareable for proc2 | FAIL | ✅ FAIL (assertion failed) |
-| test_shareable_implies_proc_has_ioid | Assert shareable → proc has IOid | FAIL | ✅ FAIL (assertion failed) |
-| test_not_shareable_implies_no_proc | Assert not shareable → proc not in domain | FAIL | ✅ FAIL (assertion failed) |
+| # | Test | Failure Mode | Result |
+|---|---|---|---|
+| 1 | `test_logical_shareable_cross_proc` | Shareability transfers across processes | FAIL ✅ |
+| 2 | `test_logical_shareable_implies_zero_ref_counter` | Shareable → ref counter == 0 | FAIL ✅ |
+| 3 | `test_logical_shareable_monotonicity` | Shareable for range N → shareable for N+1 | FAIL ✅ |
+| 4 | `test_logical_shareable_strict_inequality` | Shareable → ref counter < bound (strict) | FAIL ✅ |
+| 5 | `test_logical_shareable_unique_physical_pages` | Shareable → distinct physical pages | FAIL ✅ |
 
-## Overall Assessment
+---
 
-- **Correctness**: ✅ All 9 correctness tests pass. The spec `address_space_range_shareable` correctly captures the two-condition check (all VAs mapped + ref counters bounded), and the exec function's ensures clause faithfully reflects this spec.
-- **Completeness**: ✅ All 20 completeness tests fail as expected. The specs are tight enough to reject:
-  - Missing preconditions (wf, proc membership, va_range wf)
-  - Overly strong claims (always true/false, zero ref counter, strict bound)
-  - Negated postconditions (opposite of every guarantee)
-  - Wrong specific values (wrong len, equal counters, exact counter value)
-  - Cross-function misuse (transfer between procs, unrelated state claims)
-- **Spec Gaps Found**: None. The specifications are both correct and complete for the tested properties.
+## Conclusion
+
+The specification for `check_address_space_va_range_shareable` is **consistent** with respect to all tested properties:
+
+- **Boundary**: Invalid inputs (bad proc_ptr, bad va_range, non-wf kernel) are properly unresolvable — the spec does not entail any result without preconditions.
+- **Behavioral**: Incorrect input/output mutations are correctly rejected — the spec precisely characterizes when a range is shareable.
+- **Logical**: Unintended inferences (cross-process transfer, strict inequalities, monotonicity, physical page uniqueness) are correctly not entailed.
+
+No spec weaknesses were detected.

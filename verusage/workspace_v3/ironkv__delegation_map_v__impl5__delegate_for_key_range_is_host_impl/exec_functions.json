@@ -1,0 +1,18 @@
+[
+  {
+    "name": "get",
+    "code": "#[verifier(when_used_as_spec(get_spec))]\n    pub fn get(&self) -> (k: &K)\n        requires !self.is_end(),\n        ensures k == self.get_spec(),\n    {\n        self.k.as_ref().unwrap()\n    }"
+  },
+  {
+    "name": "is_end",
+    "code": "#[verifier::spinoff_prover]\n\n    #[verifier(when_used_as_spec(is_end_spec))]\n    pub fn is_end(&self) -> (b: bool)\n        ensures b == self.is_end_spec()\n    {\n        matches!(self.k, None)\n    }"
+  },
+  {
+    "name": "delegate_for_key_range_is_host_impl",
+    "code": "pub fn delegate_for_key_range_is_host_impl(&self, lo: &KeyIterator<AbstractKey>, hi: &KeyIterator<AbstractKey>, dst: &ID) -> (b: bool)\n        requires\n            self.valid(),\n        ensures\n            b == AbstractDelegationMap::delegate_for_key_range_is_host(AbstractDelegationMap(self@), KeyRange { lo: *lo, hi: *hi }, dst@),\n    {\n        let ret = self.range_consistent_impl(lo, hi, dst);\n        assert(ret == AbstractDelegationMap::delegate_for_key_range_is_host(AbstractDelegationMap(self@), KeyRange { lo: *lo, hi: *hi }, dst@)) by {\n            assert(ret == self.range_consistent(lo, hi, dst));\n            assert(ret == (forall |k| KeyIterator::between(*lo, KeyIterator::new_spec(k), *hi) ==> (#[trigger] self@[k]) == dst@));\n//            assert(forall |k: AbstractKey| KeyRange{lo: *lo, hi: *hi}.contains(k) ==> KeyIterator::between(*lo, KeyIterator::new_spec(k), *hi)); \n            if ret {\n            } else {\n                assert(!(forall |k| KeyIterator::between(*lo, KeyIterator::new_spec(k), *hi) ==> (#[trigger] self@[k]) == dst@));\n                assert(exists |k| KeyIterator::between(*lo, KeyIterator::new_spec(k), *hi) && (#[trigger] self@[k]) != dst@);\n                let myk = choose |k| KeyIterator::between(*lo, KeyIterator::new_spec(k), *hi) && (#[trigger] self@[k]) != dst@;\n\n                assert(KeyRange { lo: *lo, hi: *hi }.contains(myk)); \n                assert(exists |k: AbstractKey| #[trigger] KeyRange { lo: *lo, hi: *hi }.contains(k) && self@[k] != dst@);\n            }\n\n        }\n        /*\n        proof {\n            let kr = KeyRange { lo: *lo, hi: *hi };\n            if ret {\n                assert forall |k| #[trigger] kr.contains(k) implies self@[k] == dst@ by {\n                    assert(KeyIterator::between(*lo, KeyIterator::new_spec(k), *hi)); // Trigger for range_consistent\n                }\n            } else {\n                let k = choose |k| KeyIterator::between(*lo, KeyIterator::new_spec(k), *hi) && #[trigger] self@[k] != dst@;\n                assert(kr.contains(k));\n            }\n        }\n        */\n        ret\n    }"
+  },
+  {
+    "name": "clone",
+    "code": "fn clone(&self) -> (o: Self)\n        //ensures o == self\n    {\n        SHTKey{ukey: self.ukey}\n    }"
+  }
+]

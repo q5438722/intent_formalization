@@ -1,0 +1,47 @@
+[
+  {
+    "name": "marshal_preserves_integrity_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_marshal_preserves_integrity_external_body()\n    ensures\n        forall |o: VReplicaSetView| VReplicaSetView::unmarshal(#[trigger] o.marshal()) is Ok && o == VReplicaSetView::unmarshal(o.marshal())->Ok_0,\n{\n    VReplicaSetView::marshal_preserves_integrity();\n}",
+    "reason": "marshal_preserves_integrity is #[verifier::external_body] with unimplemented!() \u2014 the roundtrip axiom is assumed without proof, so any property built on it is trusted, not verified",
+    "entailed": true,
+    "verus_output": "oller__proof__liveness__terminate__reconcile_eventually_terminates_on_vrs_object/phi_1_marshal_preserves_integrity_external_body.rs:4788:117\n     |\n4788 |         ensures forall |o: Self| Self::unmarshal(#[trigger] o.marshal()) is Ok && o == Self::unmarshal(o.marshal()).get_Ok_0()\n     |                                                                                                                     ^^^^^^^^\n     |\n     = note: `#[warn(deprecated)]` on by default\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "unmarshal_ignores_state_validation",
+    "type": "behavioral",
+    "code": "proof fn phi_2_unmarshal_ignores_state_validation(obj: DynamicObjectView)\n    requires\n        obj.kind == VReplicaSetView::kind(),\n        VReplicaSetView::unmarshal_spec(obj.spec) is Ok,\n        VReplicaSetView::unmarshal_status(obj.status) is Ok,\n        !(VReplicaSetView::unmarshal(obj)->Ok_0).state_validation(),\n    ensures\n        VReplicaSetView::unmarshal(obj) is Ok,\n{\n}",
+    "reason": "unmarshal succeeds without checking state_validation, so structurally invalid objects can enter the system through deserialization",
+    "entailed": true,
+    "verus_output": "t_controller__proof__liveness__terminate__reconcile_eventually_terminates_on_vrs_object/phi_2_unmarshal_ignores_state_validation.rs:4788:117\n     |\n4788 |         ensures forall |o: Self| Self::unmarshal(#[trigger] o.marshal()) is Ok && o == Self::unmarshal(o.marshal()).get_Ok_0()\n     |                                                                                                                     ^^^^^^^^\n     |\n     = note: `#[warn(deprecated)]` on by default\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "update_request_key_namespace_disagrees_with_obj",
+    "type": "behavioral",
+    "code": "proof fn phi_3_update_request_key_namespace_disagrees_with_obj(req: UpdateRequest)\n    requires\n        req.obj.metadata.namespace is Some,\n        req.namespace != req.obj.metadata.namespace->0,\n    ensures\n        req.key().namespace != req.obj.metadata.namespace->0,\n{\n}",
+    "reason": "UpdateRequest::key uses self.namespace rather than self.obj.metadata.namespace, so the update target can silently disagree with the object's own namespace metadata",
+    "entailed": true,
+    "verus_output": "_proof__liveness__terminate__reconcile_eventually_terminates_on_vrs_object/phi_3_update_request_key_namespace_disagrees_with_obj.rs:4788:117\n     |\n4788 |         ensures forall |o: Self| Self::unmarshal(#[trigger] o.marshal()) is Ok && o == Self::unmarshal(o.marshal()).get_Ok_0()\n     |                                                                                                                     ^^^^^^^^\n     |\n     = note: `#[warn(deprecated)]` on by default\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "update_status_request_key_namespace_disagrees_with_obj",
+    "type": "behavioral",
+    "code": "proof fn phi_4_update_status_request_key_namespace_disagrees_with_obj(req: UpdateStatusRequest)\n    requires\n        req.obj.metadata.namespace is Some,\n        req.namespace != req.obj.metadata.namespace->0,\n    ensures\n        req.key().namespace != req.obj.metadata.namespace->0,\n{\n}",
+    "reason": "UpdateStatusRequest::key has the same namespace divergence as UpdateRequest \u2014 the key targets a different namespace than the object payload claims",
+    "entailed": true,
+    "verus_output": "_liveness__terminate__reconcile_eventually_terminates_on_vrs_object/phi_4_update_status_request_key_namespace_disagrees_with_obj.rs:4788:117\n     |\n4788 |         ensures forall |o: Self| Self::unmarshal(#[trigger] o.marshal()) is Ok && o == Self::unmarshal(o.marshal()).get_Ok_0()\n     |                                                                                                                     ^^^^^^^^\n     |\n     = note: `#[warn(deprecated)]` on by default\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "marshal_spec_no_injectivity",
+    "type": "logical",
+    "code": "proof fn phi_5_marshal_spec_no_injectivity(s1: VReplicaSetSpecView, s2: VReplicaSetSpecView)\n    requires\n        s1 != s2,\n        VReplicaSetView::marshal_spec(s1) == VReplicaSetView::marshal_spec(s2),\n    ensures\n        true,\n{\n}",
+    "reason": "marshal_spec is uninterpreted with no injectivity axiom, so two distinct specs could serialize to the same Value \u2014 the system cannot distinguish different configurations after storage",
+    "entailed": true,
+    "verus_output": "plicaset_controller__proof__liveness__terminate__reconcile_eventually_terminates_on_vrs_object/phi_5_marshal_spec_no_injectivity.rs:4788:117\n     |\n4788 |         ensures forall |o: Self| Self::unmarshal(#[trigger] o.marshal()) is Ok && o == Self::unmarshal(o.marshal()).get_Ok_0()\n     |                                                                                                                     ^^^^^^^^\n     |\n     = note: `#[warn(deprecated)]` on by default\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

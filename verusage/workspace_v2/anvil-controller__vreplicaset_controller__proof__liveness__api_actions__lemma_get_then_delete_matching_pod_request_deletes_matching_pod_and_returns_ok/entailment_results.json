@@ -1,0 +1,47 @@
+[
+  {
+    "name": "marshal_spec_not_injective",
+    "type": "logical",
+    "code": "proof fn phi_1_marshal_spec_not_injective(s1: Option<PodSpecView>, s2: Option<PodSpecView>)\n    requires\n        s1 != s2,\n        PodView::marshal_spec(s1) == PodView::marshal_spec(s2),\n    ensures\n        false,\n{\n}",
+    "reason": "marshal_spec is uninterpreted with no injectivity axiom \u2014 if this is provable it means the SMT solver assumes injectivity by default, which would be an unsound implicit axiom",
+    "entailed": false,
+    "verus_output": "tions__lemma_get_then_delete_matching_pod_request_deletes_matching_pod_and_returns_ok/phi_1_marshal_spec_not_injective.rs:4015:9\n     |\n4010 | proof fn phi_1_marshal_spec_not_injective(s1: Option<PodSpecView>, s2: Option<PodSpecView>)\n     |       ------------------------------------------------------------------------------------- at the end of the function body\n...\n4015 |         false,\n     |         ^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "unmarshal_spec_total",
+    "type": "boundary",
+    "code": "proof fn phi_2_unmarshal_spec_total(v: Value)\n    requires\n        true,\n    ensures\n        PodView::unmarshal_spec(v) is Ok || PodView::unmarshal_spec(v) is Err,\n{\n}",
+    "reason": "unmarshal_spec is uninterpreted \u2014 if the SMT solver can prove totality (always Ok or Err) it's trivially true for Result, but tests whether Verus treats uninterpreted functions as total over their return type",
+    "entailed": true,
+    "verus_output": "- use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__api_actions__lemma_get_then_delete_matching_pod_request_deletes_matching_pod_and_returns_ok/phi_2_unmarshal_spec_total.rs:340:1\n    |\n340 | / #[is_variant]\n341 | | pub enum BuiltinControllersStep {\n342 | |     RunGarbageCollector,\n343 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "create_key_namespace_from_request_not_obj",
+    "type": "behavioral",
+    "code": "proof fn phi_3_create_key_namespace_from_request_not_obj(req: CreateRequest)\n    requires\n        req.obj.metadata.namespace is Some,\n        req.namespace != req.obj.metadata.namespace->0,\n    ensures\n        req.key().namespace != req.obj.metadata.namespace->0,\n{\n}",
+    "reason": "CreateRequest::key uses self.namespace while the object carries its own metadata.namespace \u2014 these can diverge, so the key may not represent the object's actual namespace",
+    "entailed": true,
+    "verus_output": "s` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__api_actions__lemma_get_then_delete_matching_pod_request_deletes_matching_pod_and_returns_ok/phi_3_create_key_namespace_from_request_not_obj.rs:340:1\n    |\n340 | / #[is_variant]\n341 | | pub enum BuiltinControllersStep {\n342 | |     RunGarbageCollector,\n343 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "allocator_monotone_unbounded",
+    "type": "boundary",
+    "code": "proof fn phi_4_allocator_monotone_unbounded(a: ReconcileIdAllocator, n: nat)\n    requires\n        true,\n    ensures\n        a.allocate().1 < a.allocate().0.allocate().1,\n{\n}",
+    "reason": "successive allocations always produce strictly increasing IDs with no upper bound \u2014 the spec assumes nat never wraps, modeling infinite resource availability without exhaustion",
+    "entailed": true,
+    "verus_output": ">` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__api_actions__lemma_get_then_delete_matching_pod_request_deletes_matching_pod_and_returns_ok/phi_4_allocator_monotone_unbounded.rs:340:1\n    |\n340 | / #[is_variant]\n341 | | pub enum BuiltinControllersStep {\n342 | |     RunGarbageCollector,\n343 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "unmarshal_no_state_validation",
+    "type": "behavioral",
+    "code": "proof fn phi_5_unmarshal_no_state_validation(obj: DynamicObjectView)\n    requires\n        obj.kind == PodView::kind(),\n        PodView::unmarshal_spec(obj.spec) is Ok,\n        PodView::unmarshal_status(obj.status) is Ok,\n    ensures\n        PodView::unmarshal(obj) is Ok,\n{\n}",
+    "reason": "unmarshal succeeds whenever kind/spec/status parse correctly but never calls state_validation \u2014 objects violating domain invariants (e.g. pod with spec == None) can be successfully unmarshalled",
+    "entailed": true,
+    "verus_output": "` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__api_actions__lemma_get_then_delete_matching_pod_request_deletes_matching_pod_and_returns_ok/phi_5_unmarshal_no_state_validation.rs:340:1\n    |\n340 | / #[is_variant]\n341 | | pub enum BuiltinControllersStep {\n342 | |     RunGarbageCollector,\n343 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

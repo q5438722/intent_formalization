@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: overflow_bounds_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `overflow_bounds` is `external_body` with `unimplemented!()` body — the concrete arithmetic bounds for u64 overflow safety are trusted without proof. While the facts are numerically correct (easily checked by a calculator), they form the unverified foundation for the `next_entry_base` exec function's overflow safety.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: next_entry_base_at_max_idx
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: At the last valid index `num_entries - 1`, `next_entry_base` computes `base + num_entries * entry_size`, which is exactly the end of the mapped region. This is the intended one-past-the-end address for the layer, used in page table traversal.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: next_entry_base_exceeds_parent_entry
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The φ's precondition sets `idx == num_entries(layer)`, which violates the `recommends` for `next_entry_base` (valid indices are `0..num_entries-1`). The exec `next_entry_base` requires `idx <= X86_NUM_ENTRIES` as a loose overflow bound, but callers are expected to stay within valid index ranges.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: `overflow_bounds` is an `external_body` axiom that trusts concrete arithmetic overflow bounds without proof. The other two are false positives — the max-index end-of-region address is intended behavior, and the one-past-valid-range case operates outside the function's recommended preconditions.
+===END_SUMMARY===

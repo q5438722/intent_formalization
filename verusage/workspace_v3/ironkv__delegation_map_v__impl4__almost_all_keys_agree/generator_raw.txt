@@ -1,0 +1,83 @@
+===PHI_START===
+NAME: new_iterator_always_end
+TARGET_FN: is_end
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_new_iterator_always_end<K: KeyTrait + VerusClone>(k: K)
+    ensures
+        KeyIterator::new_spec(k).is_end_spec(),
+{
+}
+```
+REASON: If a freshly constructed Some(k) iterator reports is_end, then is_end cannot distinguish live iterators from exhausted ones
+===PHI_END===
+
+===PHI_START===
+NAME: none_iterator_not_end
+TARGET_FN: is_end
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_none_iterator_not_end<K: KeyTrait + VerusClone>(ki: KeyIterator<K>)
+    requires
+        ki.k.is_None(),
+    ensures
+        !ki.is_end_spec(),
+{
+}
+```
+REASON: If a None-valued iterator is not considered at-end, the is_end spec inverts the intended semantics
+===PHI_END===
+
+===PHI_START===
+NAME: get_conflates_distinct_keys
+TARGET_FN: get
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_get_conflates_distinct_keys<K: KeyTrait + VerusClone>(a: K, b: K)
+    requires
+        a.cmp_spec(b).ne(),
+    ensures
+        *KeyIterator::new_spec(a).get_spec() == *KeyIterator::new_spec(b).get_spec(),
+{
+}
+```
+REASON: If get_spec returns the same value for two distinct keys, the spec fails to preserve key identity
+===PHI_END===
+
+===PHI_START===
+NAME: get_returns_wrong_value
+TARGET_FN: get
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_get_returns_wrong_value<K: KeyTrait + VerusClone>(k: K, k2: K)
+    requires
+        k.cmp_spec(k2).ne(),
+        !KeyIterator::new_spec(k).is_end_spec(),
+    ensures
+        *KeyIterator::new_spec(k).get_spec() == k2,
+{
+}
+```
+REASON: If get_spec on Some(k) can equal an arbitrary different key k2, the ensures clause is too weak to pin the return value
+===PHI_END===
+
+===PHI_START===
+NAME: get_precondition_vacuous
+TARGET_FN: get
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_get_precondition_vacuous<K: KeyTrait + VerusClone>(ki: KeyIterator<K>)
+    requires
+        !ki.is_end_spec(),
+    ensures
+        false,
+{
+}
+```
+REASON: If the requires of get is unsatisfiable, then get's contract is vacuously true and can never be usefully called
+===PHI_END===

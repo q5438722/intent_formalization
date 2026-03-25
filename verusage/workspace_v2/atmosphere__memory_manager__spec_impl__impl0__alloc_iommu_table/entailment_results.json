@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize2pa_mem_valid_unconditional",
+    "type": "logical",
+    "code": "proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body ensures MEM_valid(ret) for ALL inputs \u2014 trusts without proof that masking any arbitrary usize yields a valid physical address",
+    "entailed": false,
+    "verus_output": "ent_formalization/verusage/workspace_v2/atmosphere__memory_manager__spec_impl__impl0__alloc_iommu_table/phi_1_usize2pa_mem_valid_unconditional.rs:870:9\n    |\n868 | proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    |       --------------------------------------------------- at the end of the function body\n869 |     ensures\n870 |         MEM_valid(usize2pa(v)),\n    |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 11 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "free_pcid_pagetable_is_empty",
+    "type": "behavioral",
+    "code": "proof fn phi_2_free_pcid_pagetable_is_empty(mm: MemoryManager, pcid: Pcid)\n    requires\n        mm.pagetables_wf(),\n        0 <= pcid < PCID_MAX,\n        mm.get_free_pcids_as_set().contains(pcid),\n    ensures\n        mm.page_tables@[pcid as int].unwrap().mapping_4k() == Map::<VAddr, MapEntry>::empty(),\n        mm.page_tables@[pcid as int].unwrap().mapping_2m() == Map::<VAddr, MapEntry>::empty(),\n        mm.page_tables@[pcid as int].unwrap().mapping_1g() == Map::<VAddr, MapEntry>::empty(),\n{\n}",
+    "reason": "Free PCIDs have is_empty() page tables, but is_empty only constrains user-space L4 entries (kernel_l4_end..512) \u2014 kernel entries below kernel_l4_end could still hold mappings while the table is considered \"empty\"",
+    "entailed": true,
+    "verus_output": "table_is_empty.rs:53:10\n   |\n53 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__memory_manager__spec_impl__impl0__alloc_iommu_table/phi_2_free_pcid_pagetable_is_empty.rs:62:10\n   |\n62 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 11 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "iommu_kernel_l4_end_zero",
+    "type": "boundary",
+    "code": "proof fn phi_3_iommu_kernel_l4_end_zero(mm: MemoryManager, ioid: IOid)\n    requires\n        mm.iommutables_wf(),\n        0 <= ioid < IOID_MAX,\n    ensures\n        mm.iommu_tables@[ioid as int].unwrap().kernel_l4_end == 0,\n{\n}",
+    "reason": "IOMMU tables have kernel_l4_end == 0, meaning is_empty checks ALL 512 L4 entries \u2014 but this also means IOMMU tables have no kernel region at all, so a device could potentially map the entire 512-entry address space with no kernel reservation",
+    "entailed": true,
+    "verus_output": "kernel_l4_end_zero.rs:53:10\n   |\n53 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__memory_manager__spec_impl__impl0__alloc_iommu_table/phi_3_iommu_kernel_l4_end_zero.rs:62:10\n   |\n62 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 11 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pagetable_hugepages_disabled",
+    "type": "behavioral",
+    "code": "proof fn phi_4_pagetable_hugepages_disabled(mm: MemoryManager, pcid: Pcid)\n    requires\n        mm.pagetables_wf(),\n        0 <= pcid < PCID_MAX,\n    ensures\n        mm.page_tables@[pcid as int].unwrap().mapping_2m().dom() == Set::<VAddr>::empty(),\n        mm.page_tables@[pcid as int].unwrap().mapping_1g().dom() == Set::<VAddr>::empty(),\n{\n}",
+    "reason": "The spec unconditionally disables hugepages for ALL pcids (including active ones) \u2014 this is a permanent architectural restriction baked into the invariant rather than a per-process policy decision",
+    "entailed": true,
+    "verus_output": "pages_disabled.rs:53:10\n   |\n53 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__memory_manager__spec_impl__impl0__alloc_iommu_table/phi_4_pagetable_hugepages_disabled.rs:62:10\n   |\n62 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 11 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pagetable_iommu_page_closure_disjoint",
+    "type": "logical",
+    "code": "proof fn phi_5_pagetable_iommu_page_closure_disjoint(mm: MemoryManager, pcid_i: Pcid, pcid_j: Pcid)\n    requires\n        mm.pagetables_wf(),\n        0 <= pcid_i < PCID_MAX,\n        0 <= pcid_j < PCID_MAX,\n        pcid_i != pcid_j,\n    ensures\n        mm.page_tables@[pcid_i as int].unwrap().page_closure().disjoint(\n            mm.page_tables@[pcid_j as int].unwrap().page_closure()),\n{\n}",
+    "reason": "Page table page closures are pairwise disjoint across ALL pcids including free ones \u2014 free pcids with is_empty tables still have cr3 in their l4_table dom, so if two free pcids share a cr3 pointer this would be violated, suggesting the spec silently assumes unique cr3 allocation",
+    "entailed": true,
+    "verus_output": "joint.rs:53:10\n   |\n53 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__memory_manager__spec_impl__impl0__alloc_iommu_table/phi_5_pagetable_iommu_page_closure_disjoint.rs:62:10\n   |\n62 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 11 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,116 @@
+===PHI_START===
+NAME: insert_removes_unrelated_key
+TARGET_FN: insert
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_insert_removes_unrelated_key(
+    pre: TombstoneTable, post: TombstoneTable,
+    src: AbstractEndPoint, last_seqno: u64,
+    other: AbstractEndPoint,
+)
+    requires
+        forall |k: AbstractEndPoint| #[trigger] pre.contains_key(k) ==> k.valid_physical_address(),
+        src.valid_physical_address(),
+        post =~= pre.insert(src, last_seqno as nat),
+        pre.contains_key(other),
+        other != src,
+    ensures
+        !post.contains_key(other),
+{
+}
+```
+REASON: Insert should preserve all pre-existing keys unrelated to src; losing them would silently drop tombstone entries
+===PHI_END===
+
+===PHI_START===
+NAME: insert_max_seqno_wraps_to_zero
+TARGET_FN: insert
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_insert_max_seqno_wraps_to_zero(
+    pre: TombstoneTable, post: TombstoneTable,
+    src: AbstractEndPoint,
+)
+    requires
+        forall |k: AbstractEndPoint| #[trigger] pre.contains_key(k) ==> k.valid_physical_address(),
+        src.valid_physical_address(),
+        post =~= pre.insert(src, 0xFFFF_FFFF_FFFF_FFFFu64 as nat),
+    ensures
+        post[src] == 0nat,
+{
+}
+```
+REASON: If u64::MAX as nat wraps to zero the tombstone table would record a wrong sequence number, enabling replayed messages
+===PHI_END===
+
+===PHI_START===
+NAME: insert_key_missing_after_insert
+TARGET_FN: insert
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_insert_key_missing_after_insert(
+    pre: TombstoneTable, post: TombstoneTable,
+    src: AbstractEndPoint, last_seqno: u64,
+)
+    requires
+        forall |k: AbstractEndPoint| #[trigger] pre.contains_key(k) ==> k.valid_physical_address(),
+        src.valid_physical_address(),
+        post =~= pre.insert(src, last_seqno as nat),
+    ensures
+        !post.contains_key(src),
+{
+}
+```
+REASON: The inserted key must be present afterward; its absence means the tombstone was silently discarded
+===PHI_END===
+
+===PHI_START===
+NAME: insert_corrupts_other_value
+TARGET_FN: insert
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_insert_corrupts_other_value(
+    pre: TombstoneTable, post: TombstoneTable,
+    src: AbstractEndPoint, last_seqno: u64,
+    other: AbstractEndPoint,
+)
+    requires
+        forall |k: AbstractEndPoint| #[trigger] pre.contains_key(k) ==> k.valid_physical_address(),
+        src.valid_physical_address(),
+        post =~= pre.insert(src, last_seqno as nat),
+        pre.contains_key(other),
+        other != src,
+    ensures
+        post[other] != pre[other],
+{
+}
+```
+REASON: Inserting one key must not mutate another key's sequence number, or unrelated tombstone records become corrupted
+===PHI_END===
+
+===PHI_START===
+NAME: insert_value_independent_of_arg
+TARGET_FN: insert
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_insert_value_independent_of_arg(
+    pre: TombstoneTable, post: TombstoneTable,
+    src: AbstractEndPoint, v1: u64, v2: u64,
+)
+    requires
+        forall |k: AbstractEndPoint| #[trigger] pre.contains_key(k) ==> k.valid_physical_address(),
+        src.valid_physical_address(),
+        post =~= pre.insert(src, v1 as nat),
+        v1 != v2,
+    ensures
+        post[src] == v2 as nat,
+{
+}
+```
+REASON: The stored value must equal the provided last_seqno; if any other value satisfies the spec, sequence-number tracking is broken
+===PHI_END===

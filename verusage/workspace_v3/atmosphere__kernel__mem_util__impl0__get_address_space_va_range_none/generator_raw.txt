@@ -1,0 +1,91 @@
+===PHI_START===
+NAME: map_entry_always_writable
+TARGET_FN: page_entry_to_map_entry
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_map_entry_always_writable(p: PageEntry)
+    requires
+        p.perm.write == false,
+    ensures
+        spec_page_entry_to_map_entry(&p).write == true,
+{
+}
+```
+REASON: If provable, the spec fails to preserve the write permission bit, silently granting write access to read-only pages
+===PHI_END===
+
+===PHI_START===
+NAME: map_entry_addr_zeroed
+TARGET_FN: page_entry_to_map_entry
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_map_entry_addr_zeroed(p: PageEntry)
+    requires
+        p.addr != 0,
+    ensures
+        spec_page_entry_to_map_entry(&p).addr == 0,
+{
+}
+```
+REASON: If provable, the spec discards the physical address, meaning all map entries alias to address zero regardless of input
+===PHI_END===
+
+===PHI_START===
+NAME: map_entry_perms_swapped
+TARGET_FN: page_entry_to_map_entry
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_map_entry_perms_swapped(p: PageEntry)
+    requires
+        p.perm.write == true,
+        p.perm.execute_disable == false,
+    ensures
+        spec_page_entry_to_map_entry(&p).write == false,
+        spec_page_entry_to_map_entry(&p).execute_disable == true,
+{
+}
+```
+REASON: If provable, write and execute_disable are transposed in the mapping, creating executable-but-unwritable entries from writable-executable inputs
+===PHI_END===
+
+===PHI_START===
+NAME: vacuous_empty_range
+TARGET_FN: get_address_space_va_range_none
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_vacuous_empty_range(va_range: VaRange4K, addr_space: Map<VAddr, MapEntry>, va: VAddr)
+    requires
+        va_range.wf(),
+        va_range.len == 0,
+        addr_space.dom().contains(va),
+    ensures
+        forall|i: int| #![auto] 0 <= i < va_range.len as int ==> !addr_space.dom().contains(va_range@[i]),
+{
+}
+```
+REASON: If provable, a zero-length range vacuously succeeds even with mapped VAs, letting callers skip real emptiness checks on degenerate inputs
+===PHI_END===
+
+===PHI_START===
+NAME: off_by_one_range_check
+TARGET_FN: get_address_space_va_range_none
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_off_by_one_range_check(va_range: VaRange4K, addr_space: Map<VAddr, MapEntry>)
+    requires
+        va_range.wf(),
+        va_range.len > 0,
+        addr_space.dom().contains(va_range@[(va_range.len - 1) as int]),
+        forall|i: int| #![auto] 0 <= i < va_range.len as int - 1 ==> !addr_space.dom().contains(va_range@[i]),
+    ensures
+        forall|i: int| #![auto] 0 <= i < va_range.len as int ==> !addr_space.dom().contains(va_range@[i]),
+{
+}
+```
+REASON: If provable, the spec's upper bound is effectively len-1 instead of len, missing the last VA and allowing the function to return true despite an existing mapping at the range boundary
+===PHI_END===

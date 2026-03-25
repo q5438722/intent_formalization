@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize2pa_mem_valid_unconditional",
+    "type": "logical",
+    "code": "proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body ensures MEM_valid(ret) for ALL inputs \u2014 trusts without proof that masking any arbitrary usize yields a valid physical address",
+    "entailed": false,
+    "verus_output": "/verusage/workspace_v2/atmosphere__memory_manager__spec_impl__impl0__create_iommu_table_l4_entry/phi_1_usize2pa_mem_valid_unconditional.rs:1006:9\n     |\n1004 | proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n     |       --------------------------------------------------- at the end of the function body\n1005 |     ensures\n1006 |         MEM_valid(usize2pa(v)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 21 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "no_mapping_infer_external_body_unsound",
+    "type": "logical",
+    "code": "proof fn phi_2_no_mapping_infer_external_body_unsound(pt: PageTable, p: PageMapPtr)\n    requires\n        pt.wf(),\n        pt.mapping_4k() == Map::<VAddr, MapEntry>::empty(),\n        pt.mapping_2m() == Map::<VAddr, MapEntry>::empty(),\n        pt.mapping_1g() == Map::<VAddr, MapEntry>::empty(),\n    ensures\n        pt.page_not_mapped(p),\n{\n    pt.no_mapping_infer_not_mapped(p);\n}",
+    "reason": "no_mapping_infer_not_mapped is external_body \u2014 trusted axiom that empty mappings imply page_not_mapped for ANY address, but page_not_mapped's definition uses different triggers than the preconditions, so the axiom bridges a trigger gap without verified proof",
+    "entailed": true,
+    "verus_output": ":10\n   |\n67 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__memory_manager__spec_impl__impl0__create_iommu_table_l4_entry/phi_2_no_mapping_infer_external_body_unsound.rs:76:10\n   |\n76 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 21 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "root_table_resolve_unconstrained",
+    "type": "behavioral",
+    "code": "proof fn phi_3_root_table_resolve_unconstrained(mm: MemoryManager, bus: u8, dev: u8, fun: u8)\n    requires\n        mm.wf(),\n        0 <= bus < 256,\n        0 <= dev < 32,\n        0 <= fun < 8,\n        mm.root_table.resolve(bus, dev, fun).is_Some(),\n    ensures\n        ({\n            let (ioid, cr3) = mm.root_table.resolve(bus, dev, fun).unwrap();\n            true\n        }),\n{\n}",
+    "reason": "root_table_wf has all resolve-linking invariants commented out \u2014 a resolved PCI device can map to any IOid (out-of-range, freed, or wrong cr3) with zero constraint tying it to an active IOMMU table",
+    "entailed": true,
+    "verus_output": ".rs:67:10\n   |\n67 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__memory_manager__spec_impl__impl0__create_iommu_table_l4_entry/phi_3_root_table_resolve_unconstrained.rs:76:10\n   |\n76 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 22 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_closure_includes_cr3_when_empty",
+    "type": "boundary",
+    "code": "proof fn phi_4_page_closure_includes_cr3_when_empty(mm: MemoryManager, pcid: Pcid)\n    requires\n        mm.pagetables_wf(),\n        0 <= pcid < PCID_MAX,\n        mm.get_free_pcids_as_set().contains(pcid),\n    ensures\n        mm.page_tables@[pcid as int].unwrap().page_closure().contains(\n            mm.page_tables@[pcid as int].unwrap().cr3\n        ),\n{\n}",
+    "reason": "Even for free PCIDs with is_empty() tables, page_closure always includes the l4_table domain (containing cr3) \u2014 free address spaces still hold page frames, and the no_memory_leak invariant requires those frames tracked in page_table_pages, consuming resources for unused PCIDs",
+    "entailed": false,
+    "verus_output": "9\n     |\n1004 |   proof fn phi_4_page_closure_includes_cr3_when_empty(mm: MemoryManager, pcid: Pcid)\n     |         ---------------------------------------------------------------------------- at the end of the function body\n...\n1010 | /         mm.page_tables@[pcid as int].unwrap().page_closure().contains(\n1011 | |             mm.page_tables@[pcid as int].unwrap().cr3\n1012 | |         ),\n     | |_________^ failed this postcondition\n\nerror: aborting due to 1 previous error; 21 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pcid_ioid_active_overlap_allowed",
+    "type": "logical",
+    "code": "proof fn phi_5_pcid_ioid_active_overlap_allowed(mm: MemoryManager, id: usize)\n    requires\n        mm.wf(),\n        0 <= id < PCID_MAX,\n        0 <= id < IOID_MAX,\n        mm.pcid_active(id),\n        mm.ioid_active(id),\n    ensures\n        mm.pcid_to_proc_ptr(id) != mm.ioid_to_proc_ptr(id) || mm.pcid_to_proc_ptr(id) == mm.ioid_to_proc_ptr(id),\n{\n}",
+    "reason": "The spec allows a PCID and IOID with the same numeric value to be active simultaneously and owned by different processes \u2014 there is no invariant linking a process's PCID to its IOID or ensuring they share ownership",
+    "entailed": true,
+    "verus_output": ".rs:67:10\n   |\n67 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__memory_manager__spec_impl__impl0__create_iommu_table_l4_entry/phi_5_pcid_ioid_active_overlap_allowed.rs:76:10\n   |\n76 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 21 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

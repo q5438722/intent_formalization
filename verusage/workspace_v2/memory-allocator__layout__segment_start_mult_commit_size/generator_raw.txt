@@ -1,0 +1,75 @@
+===PHI_START===
+NAME: segment_start_mult_segment_size
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_segment_start_mult_segment_size(segment_id: SegmentId)
+    ensures
+        segment_start(segment_id) % SEGMENT_SIZE as int == 0,
+{
+}
+```
+REASON: Segment start is always SEGMENT_SIZE-aligned — a trivial consequence of `id * SEGMENT_SIZE`, but over-constrains placement to natural alignment
+===PHI_END===
+
+===PHI_START===
+NAME: segment_start_zero_for_id_zero
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_segment_start_zero_for_id_zero(segment_id: SegmentId)
+    requires
+        segment_id.id == 0,
+    ensures
+        segment_start(segment_id) == 0,
+{
+}
+```
+REASON: Segment ID 0 maps to address 0 (null) — address 0 is conventionally invalid, yet the spec allows it as a valid segment start
+===PHI_END===
+
+===PHI_START===
+NAME: segment_start_nonneg
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_segment_start_nonneg(segment_id: SegmentId)
+    ensures
+        segment_start(segment_id) >= 0,
+{
+}
+```
+REASON: Segment starts are always non-negative since `id: nat` — no constraint prevents `id == 0` which yields address 0
+===PHI_END===
+
+===PHI_START===
+NAME: distinct_ids_distinct_starts
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_distinct_ids_distinct_starts(s1: SegmentId, s2: SegmentId)
+    requires
+        s1.id != s2.id,
+    ensures
+        segment_start(s1) != segment_start(s2),
+{
+    assert(SEGMENT_SIZE > 0) by (compute);
+}
+```
+REASON: Different segment IDs always yield different start addresses — but `SegmentId`s with same `id` but different `provenance`/`uniq` are semantically distinct segments sharing the same address
+===PHI_END===
+
+===PHI_START===
+NAME: commit_size_equals_slice_size
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_commit_size_equals_slice_size()
+    ensures
+        COMMIT_SIZE == SLICE_SIZE,
+        COMMIT_SIZE == 65536,
+{
+}
+```
+REASON: `COMMIT_SIZE` is defined as `SLICE_SIZE` — commit granularity is locked to slice granularity with no independent configuration, so changing one silently changes the other
+===PHI_END===

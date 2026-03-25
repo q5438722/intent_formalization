@@ -1,0 +1,47 @@
+[
+  {
+    "name": "option_none_some_empty_serialize_differ",
+    "type": "logical",
+    "code": "proof fn phi_1_option_none_some_empty_serialize_differ()\n    ensures\n        ({\n            let none_val: Option<Vec<u8>> = None;\n            let some_empty: Option<Vec<u8>> = Some(Vec::empty());\n            none_val.ghost_serialize() != some_empty.ghost_serialize()\n        }),\n{\n    assert(spec_u64_to_le_bytes(0).len() == 8) by {\n        lemma_auto_spec_u64_to_from_le_bytes();\n    }\n}",
+    "reason": "None serializes to `[0]` (1 byte) while Some(empty_vec) serializes to `[1] + len_prefix(0)` (9 bytes) \u2014 the tag byte distinguishes them, but the asymmetric lengths mean deserializing from a fixed-size buffer could silently truncate or misparse",
+    "entailed": false,
+    "verus_output": "n from_raw_parts(ptr: *mut T, length: usize, capacity: usize) -> Self {\n     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nhelp: there is a method `is_empty` with a similar name\n     |\n2197 |             let some_empty: Option<Vec<u8>> = Some(Vec::is_empty());\n     |                                                         +++\n\nerror: aborting due to 1 previous error; 6 warnings emitted\n\nFor more information about this error, try `rustc --explain E0599`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "tuple_serialize_no_length_prefix",
+    "type": "logical",
+    "code": "proof fn phi_2_tuple_serialize_no_length_prefix(a1: Vec<u8>, a2: Vec<u8>, b1: Vec<u8>, b2: Vec<u8>)\n    requires\n        a1.is_marshalable(),\n        a2.is_marshalable(),\n        b1.is_marshalable(),\n        b2.is_marshalable(),\n        a1@ != b1@,\n        a1.ghost_serialize() + a2.ghost_serialize() == b1.ghost_serialize() + b2.ghost_serialize(),\n    ensures\n        (a1, a2).ghost_serialize() == (b1, b2).ghost_serialize(),\n{\n}",
+    "reason": "Tuple serialization is simple concatenation `a.serialize() + b.serialize()` \u2014 two distinct pairs with different first elements can produce identical serialized bytes if the length-prefixed Vec<u8> fields happen to align, violating injectivity of tuple serialization at the composite level",
+    "entailed": true,
+    "verus_output": "d: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__host_impl_v__impl2__host_noreceive_noclock_next/phi_2_tuple_serialize_no_length_prefix.rs:1536:91\n     |\n1536 |       || (!self.k.is_None() && !other.k.is_None() && self.k.get_Some_0().cmp_spec(other.k.get_Some_0()).lt())\n     |                                                                                           ^^^^^^^^^^\n\nwarning: 6 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "csingle_message_seqno_truncation",
+    "type": "boundary",
+    "code": "proof fn phi_3_csingle_message_seqno_truncation()\n    ensures\n        ({\n            let msg1 = CSingleMessage::Ack { ack_seqno: 0 };\n            let msg2 = CSingleMessage::Ack { ack_seqno: 0 };\n            msg1@ == msg2@\n        }),\n        ({\n            let msg = CSingleMessage::Ack { ack_seqno: u64::MAX };\n            msg@.get_Ack_ack_seqno() == u64::MAX as nat\n        }),\n{\n}",
+    "reason": "CSingleMessage::view casts `ack_seqno` from u64 to nat via `as nat` \u2014 the abstract SingleMessage uses nat for seqno, so two different protocol implementations could disagree on seqno overflow semantics since the concrete type silently caps at u64::MAX",
+    "entailed": false,
+    "verus_output": "d `get_Ack_ack_seqno` not found for this enum\n...\n2202 |             msg@.get_Ack_ack_seqno() == u64::MAX as nat\n     |                  ^^^^^^^^^^^^^^^^^\n     |\nhelp: there is a method `arrow_Ack_ack_seqno` with a similar name\n     |\n2202 -             msg@.get_Ack_ack_seqno() == u64::MAX as nat\n2202 +             msg@.arrow_Ack_ack_seqno() == u64::MAX as nat\n     |\n\nerror: aborting due to 1 previous error; 6 warnings emitted\n\nFor more information about this error, try `rustc --explain E0599`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "ghost_serialize_trait_uninterpreted",
+    "type": "logical",
+    "code": "proof fn phi_4_ghost_serialize_trait_uninterpreted()\n    ensures\n        ({\n            let x: u64 = 42;\n            x.ghost_serialize().len() == 8\n        }),\n{\n    lemma_auto_spec_u64_to_from_le_bytes();\n}",
+    "reason": "The trait-level `ghost_serialize` is `external_body` with an uninterpreted default \u2014 the u64 impl overrides it with `spec_u64_to_le_bytes`, but any code calling through the trait (not the concrete impl) could get the uninterpreted version, silently losing the 8-byte length guarantee",
+    "entailed": true,
+    "verus_output": "https://verus-lang.github.io/verus/guide/datatypes_enum.html\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__host_impl_v__impl2__host_noreceive_noclock_next/phi_4_ghost_serialize_trait_uninterpreted.rs:1536:91\n     |\n1536 |       || (!self.k.is_None() && !other.k.is_None() && self.k.get_Some_0().cmp_spec(other.k.get_Some_0()).lt())\n     |                                                                                           ^^^^^^^^^^\n\nwarning: 6 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "abstractify_cmessage_seq_loses_duplicates",
+    "type": "behavioral",
+    "code": "proof fn phi_5_abstractify_cmessage_seq_loses_duplicates(m1: CSingleMessage, m2: CSingleMessage)\n    requires\n        m1@ == m2@,\n    ensures\n        abstractify_cmessage_seq(seq![m1, m2]).len() == 2,\n        abstractify_cmessage_seq(seq![m1, m2])[0] == abstractify_cmessage_seq(seq![m1, m2])[1],\n{\n}",
+    "reason": "`abstractify_cmessage_seq` preserves sequence length including duplicates, but `abstractify_seq_of_cpackets_to_set_of_sht_packets` converts to a Set which deduplicates \u2014 two functions on the same conceptual data use different collection types, so duplicate-counting invariants silently disagree between Seq-based and Set-based abstractions",
+    "entailed": true,
+    "verus_output": "//verus-lang.github.io/verus/guide/datatypes_enum.html\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__host_impl_v__impl2__host_noreceive_noclock_next/phi_5_abstractify_cmessage_seq_loses_duplicates.rs:1536:91\n     |\n1536 |       || (!self.k.is_None() && !other.k.is_None() && self.k.get_Some_0().cmp_spec(other.k.get_Some_0()).lt())\n     |                                                                                           ^^^^^^^^^^\n\nwarning: 6 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

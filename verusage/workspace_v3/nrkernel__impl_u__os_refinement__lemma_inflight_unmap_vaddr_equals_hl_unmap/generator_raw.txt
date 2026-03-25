@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: aligned_zero_size
+TARGET_FN: aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_aligned_zero_size()
+    ensures
+        forall|addr: nat| aligned(addr, 0),
+{
+}
+```
+REASON: If alignment to size 0 is trivially true for all addresses, the spec lacks a guard against degenerate zero-size alignment
+===PHI_END===
+
+===PHI_START===
+NAME: inv_empty_arch
+TARGET_FN: inv
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_inv_empty_arch()
+    ensures
+        (Arch { layers: seq![] }).inv(),
+{
+}
+```
+REASON: An architecture with zero layers is degenerate and should not satisfy the well-formedness invariant
+===PHI_END===
+
+===PHI_START===
+NAME: upper_vaddr_no_progress
+TARGET_FN: upper_vaddr
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_upper_vaddr_no_progress(arch: Arch, layer: nat, base: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+    ensures
+        arch.upper_vaddr(layer, base) == base,
+{
+}
+```
+REASON: If upper_vaddr equals base under a valid invariant, the layer covers zero address space, making the architecture useless
+===PHI_END===
+
+===PHI_START===
+NAME: entry_base_collapses_indices
+TARGET_FN: entry_base
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_entry_base_collapses_indices(arch: Arch, layer: nat, base: nat, i: nat, j: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+        i < arch.num_entries(layer),
+        j < arch.num_entries(layer),
+        i != j,
+    ensures
+        arch.entry_base(layer, base, i) == arch.entry_base(layer, base, j),
+{
+}
+```
+REASON: If two distinct indices map to the same entry base, page table entries would alias and the address space partitioning is broken
+===PHI_END===
+
+===PHI_START===
+NAME: entry_size_next_layer_vacuous
+TARGET_FN: entry_size_is_next_layer_size
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_entry_size_next_layer_vacuous(arch: Arch)
+    requires
+        arch.inv(),
+        arch.layers.len() > 1,
+    ensures
+        arch.entry_size(0) == arch.entry_size(1),
+{
+}
+```
+REASON: If the first and second layer have equal entry sizes despite the decomposition property requiring entry_size(0) == entry_size(1) * num_entries(1) with num_entries > 1, the invariant would be contradictory or num_entries is forced to 1
+===PHI_END===

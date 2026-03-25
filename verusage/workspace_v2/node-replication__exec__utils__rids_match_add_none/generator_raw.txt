@@ -1,0 +1,96 @@
+===PHI_START===
+NAME: rids_match_empty_ranges
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_rids_match_empty_ranges(bools: Seq<Option<ReqId>>, rids: Seq<ReqId>, b: nat, r: nat)
+    requires
+        b <= bools.len(),
+        r <= rids.len(),
+    ensures
+        rids_match(bools, rids, b, b, r, r),
+{
+}
+```
+REASON: Empty bools range matches empty rids range regardless of position — correct but shows rids_match is trivially satisfied at any aligned empty window
+===PHI_END===
+
+===PHI_START===
+NAME: rids_match_all_none_empty_rids
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_rids_match_all_none_empty_rids(bools: Seq<Option<ReqId>>, rids: Seq<ReqId>, bools_start: nat, bools_end: nat, rids_pos: nat)
+    requires
+        0 <= bools_start <= bools_end <= bools.len(),
+        rids_pos <= rids.len(),
+        forall |i: nat| bools_start <= i < bools_end ==> bools[i as int].is_None(),
+    ensures
+        rids_match(bools, rids, bools_start, bools_end, rids_pos, rids_pos),
+    decreases bools_end - bools_start,
+{
+    if bools_end > bools_start {
+        phi_2_rids_match_all_none_empty_rids(bools, rids, bools_start, (bools_end - 1) as nat, rids_pos);
+    }
+}
+```
+REASON: A bools range of all `None` matches an empty rids range — correct but shows `rids_match` ignores `None` entries entirely
+===PHI_END===
+
+===PHI_START===
+NAME: rids_match_single_some
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_rids_match_single_some(bools: Seq<Option<ReqId>>, rids: Seq<ReqId>, b: nat, r: nat, rid: ReqId)
+    requires
+        b < bools.len(),
+        r < rids.len(),
+        bools[b as int] == Option::Some(rid),
+        rids[r as int] == rid,
+    ensures
+        rids_match(bools, rids, b, (b + 1) as nat, r, (r + 1) as nat),
+{
+}
+```
+REASON: A single `Some(rid)` in bools matches a single matching rid — tests the base case of the recursive matching
+===PHI_END===
+
+===PHI_START===
+NAME: rids_match_add_none_extends
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_rids_match_add_none_extends(bools: Seq<Option<ReqId>>, rids: Seq<ReqId>, bools_start: nat, bools_end: nat, rids_start: nat, rids_end: nat)
+    requires
+        0 <= bools_start <= bools_end <= bools.len(),
+        0 <= rids_start <= rids_end <= rids.len(),
+        rids_match(bools, rids, bools_start, bools_end, rids_start, rids_end),
+    ensures
+        rids_match(bools.push(Option::None), rids, bools_start, (bools_end + 1) as nat, rids_start, rids_end),
+{
+    rids_match_add_none(bools, rids, bools_start, bools_end, rids_start, rids_end);
+    // After push, bools_new[bools_end] == None, so extending bools_end by 1 skips it
+}
+```
+REASON: Pushing `None` and extending the bools window by 1 still matches the same rids range — the `None` at the new position is silently skipped
+===PHI_END===
+
+===PHI_START===
+NAME: rids_match_no_rid_order_constraint
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_rids_match_no_rid_order_constraint(rid1: ReqId, rid2: ReqId)
+    requires
+        rid1 != rid2,
+    ensures ({
+        let bools = seq![Option::Some(rid1), Option::Some(rid2)];
+        let rids = seq![rid1, rid2];
+        rids_match(bools, rids, 0, 2, 0, 2)
+    }),
+{
+}
+```
+REASON: `rids_match` pairs bools and rids right-to-left — `bools[1]` pairs with `rids[1]` and `bools[0]` with `rids[0]`; tests whether arbitrary distinct rids are accepted in order
+===PHI_END===

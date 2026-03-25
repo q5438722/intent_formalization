@@ -1,0 +1,89 @@
+===PHI_START===
+NAME: clone_always_zero
+TARGET_FN: clone
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_clone_always_zero(key: SHTKey, out: SHTKey)
+    requires
+        out == key,  // from clone's ensures
+    ensures
+        out.ukey == 0u64,
+{
+}
+```
+REASON: Undesirable if clone always produces a key with ukey 0 regardless of input
+===PHI_END===
+
+===PHI_START===
+NAME: clone_collapses_distinct_keys
+TARGET_FN: clone
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_clone_collapses_distinct_keys(k1: SHTKey, k2: SHTKey, out1: SHTKey, out2: SHTKey)
+    requires
+        k1.ukey != k2.ukey,
+        out1 == k1,  // clone ensures for k1
+        out2 == k2,  // clone ensures for k2
+    ensures
+        out1 == out2,
+{
+}
+```
+REASON: Undesirable if cloning two distinct keys yields equal outputs, meaning clone loses information
+===PHI_END===
+
+===PHI_START===
+NAME: sorted_keys_empty_is_unsorted
+TARGET_FN: sorted_keys
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_sorted_keys_empty_is_unsorted(v: Vec<CKeyKV>, res: bool)
+    requires
+        v.len() == 0,
+        res == spec_sorted_keys(v),
+    ensures
+        res == false,
+{
+}
+```
+REASON: Undesirable if an empty vector is reported as unsorted; the vacuous forall should be true
+===PHI_END===
+
+===PHI_START===
+NAME: sorted_keys_descending_accepted
+TARGET_FN: sorted_keys
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_sorted_keys_descending_accepted(v: Vec<CKeyKV>, res: bool)
+    requires
+        v.len() == 2,
+        v@[0].k.ukey > v@[1].k.ukey,
+        res == spec_sorted_keys(v),
+    ensures
+        res == true,
+{
+}
+```
+REASON: Undesirable if a strictly descending pair is accepted as sorted
+===PHI_END===
+
+===PHI_START===
+NAME: sorted_keys_always_true
+TARGET_FN: sorted_keys
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_sorted_keys_always_true(v: Vec<CKeyKV>, res: bool)
+    requires
+        res == spec_sorted_keys(v),
+    ensures
+        res == true,
+{
+}
+```
+REASON: Undesirable if sorted_keys is trivially true for all inputs, meaning it never rejects unsorted vectors
+===PHI_END===

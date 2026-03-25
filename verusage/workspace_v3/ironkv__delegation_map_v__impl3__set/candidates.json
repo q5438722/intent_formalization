@@ -1,0 +1,37 @@
+[
+  {
+    "name": "set_loses_existing_key",
+    "target_fn": "set",
+    "type": "behavioral",
+    "code": "proof fn phi_1_set_loses_existing_key<K: KeyTrait + VerusClone>(\n    pre_map: Map<K, ID>, k: K, v: ID, j: K,\n)\n    requires\n        pre_map.dom().finite(),\n        pre_map.contains_key(j),\n        j != k,\n    ensures\n        !pre_map.insert(k, v).contains_key(j),\n{\n}",
+    "reason": "If entailed, set could silently drop existing keys unrelated to the inserted key, violating map update semantics."
+  },
+  {
+    "name": "set_value_wrong_for_key",
+    "target_fn": "set",
+    "type": "behavioral",
+    "code": "proof fn phi_2_set_value_wrong_for_key<K: KeyTrait + VerusClone>(\n    pre_map: Map<K, ID>, k: K, v: ID,\n)\n    requires\n        pre_map.dom().finite(),\n    ensures\n        pre_map.insert(k, v)[k] != v,\n{\n}",
+    "reason": "If entailed, the value stored at the inserted key would differ from the value passed in, making set fundamentally broken."
+  },
+  {
+    "name": "set_modifies_other_value",
+    "target_fn": "set",
+    "type": "behavioral",
+    "code": "proof fn phi_3_set_modifies_other_value<K: KeyTrait + VerusClone>(\n    pre_map: Map<K, ID>, k: K, v: ID, j: K,\n)\n    requires\n        pre_map.dom().finite(),\n        pre_map.contains_key(j),\n        j != k,\n    ensures\n        pre_map.insert(k, v)[j] != pre_map[j],\n{\n}",
+    "reason": "If entailed, inserting one key-value pair would corrupt the value of an unrelated existing key, breaking frame preservation."
+  },
+  {
+    "name": "set_adds_spurious_key",
+    "target_fn": "set",
+    "type": "logical",
+    "code": "proof fn phi_4_set_adds_spurious_key<K: KeyTrait + VerusClone>(\n    pre_map: Map<K, ID>, k: K, v: ID, j: K,\n)\n    requires\n        pre_map.dom().finite(),\n        !pre_map.contains_key(j),\n        j != k,\n    ensures\n        pre_map.insert(k, v).contains_key(j),\n{\n}",
+    "reason": "If entailed, set would introduce phantom keys into the domain that were never inserted, violating the domain-change guarantee."
+  },
+  {
+    "name": "set_gap_survives_insertion",
+    "target_fn": "set",
+    "type": "boundary",
+    "code": "proof fn phi_5_set_gap_survives_insertion<K: KeyTrait + VerusClone>(\n    pre_map: Map<K, ID>, k: K, v: ID,\n    lo: KeyIterator<K>, hi: KeyIterator<K>,\n)\n    requires\n        pre_map.dom().finite(),\n        forall |ki: KeyIterator<K>| lo.lt_spec(ki) && ki.lt_spec(hi)\n            ==> !pre_map.contains_key(*ki.get_spec()),\n        lo.lt_spec(KeyIterator::<K>::new_spec(k)),\n        KeyIterator::<K>::new_spec(k).lt_spec(hi),\n    ensures\n        forall |ki: KeyIterator<K>| lo.lt_spec(ki) && ki.lt_spec(hi)\n            ==> !pre_map.insert(k, v).contains_key(*ki.get_spec()),\n{\n}",
+    "reason": "If entailed, a gap that previously contained k would remain empty even after inserting k, meaning the gap postcondition fails to detect new keys."
+  }
+]

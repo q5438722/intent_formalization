@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "region_flush_idempotent_external_body",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`lemma_if_no_outstanding_writes_to_region_then_flush_is_idempotent` is `external_body` with `unimplemented!()`. The property requires showing that `state.map(|_, b| b.flush())` produces a sequence extensionally equal to the original when all outstanding writes are `None` \u2014 this needs per-element reasoning plus `ext_equal` on sequences, which is trusted rather than verified."
+  },
+  {
+    "phi": "flush_outstanding_write_takes_new_value",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`flush_byte` with `outstanding_write == Some(val)` returns `val`, so `flush().state_at_last_flush == val`. The second ensures is a tautology (`a != b || val == b`). Both follow directly from the definitions."
+  },
+  {
+    "phi": "flush_region_preserves_length",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`flush` uses `self.state.map(...)` which preserves sequence length by the vstd `map` axiom. Correct by construction."
+  },
+  {
+    "phi": "no_outstanding_writes_after_flush",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Each `b.flush()` sets `outstanding_write: None`. After `map`, every element at index `k` has `outstanding_write.is_none()`. The quantifier in `no_outstanding_writes` is satisfied by SMT unfolding."
+  },
+  {
+    "phi": "no_outstanding_writes_in_empty_range",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`no_outstanding_writes_in_range(i, i)` quantifies over `k` where `i <= k < i`, which is empty. Vacuously true."
+  }
+]

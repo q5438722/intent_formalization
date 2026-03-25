@@ -1,0 +1,87 @@
+===PHI_START===
+NAME: collapsing_distinct_ptrs
+TARGET_FN: page_ptr2page_index
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_collapsing_distinct_ptrs(ptr1: usize, ptr2: usize)
+    requires
+        ptr1 % 0x1000 == 0,
+        ptr2 % 0x1000 == 0,
+        ptr1 != ptr2,
+    ensures
+        spec_page_ptr2page_index(ptr1) == spec_page_ptr2page_index(ptr2),
+{
+}
+```
+REASON: If two distinct page-aligned pointers map to the same index, the allocator cannot distinguish pages and would corrupt state
+===PHI_END===
+
+===PHI_START===
+NAME: roundtrip_ptr_idx_ptr_fails
+TARGET_FN: page_ptr2page_index
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_roundtrip_ptr_idx_ptr_fails(ptr: usize)
+    requires
+        ptr % 0x1000 == 0,
+    ensures
+        spec_page_index2page_ptr(spec_page_ptr2page_index(ptr)) != ptr,
+{
+}
+```
+REASON: If converting ptr->index->ptr does not round-trip, address lookups after allocation would return wrong physical pages
+===PHI_END===
+
+===PHI_START===
+NAME: roundtrip_idx_ptr_idx_fails
+TARGET_FN: page_index2page_ptr
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_roundtrip_idx_ptr_idx_fails(i: usize)
+    requires
+        0 <= i < NUM_PAGES,
+    ensures
+        spec_page_ptr2page_index(spec_page_index2page_ptr(i)) != i,
+{
+}
+```
+REASON: If converting index->ptr->index does not round-trip, the page_array indexing invariant would break causing out-of-bounds access
+===PHI_END===
+
+===PHI_START===
+NAME: index2ptr_not_page_aligned
+TARGET_FN: page_index2page_ptr
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_index2ptr_not_page_aligned(i: usize)
+    requires
+        0 <= i < NUM_PAGES,
+    ensures
+        spec_page_index2page_ptr(i) % 0x1000 != 0,
+{
+}
+```
+REASON: If page_index2page_ptr produces non-aligned addresses, it violates the precondition of page_ptr2page_index and hardware page alignment requirements
+===PHI_END===
+
+===PHI_START===
+NAME: nonzero_ptr_maps_to_zero_index
+TARGET_FN: page_ptr2page_index
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_nonzero_ptr_maps_to_zero_index(ptr: usize)
+    requires
+        ptr % 0x1000 == 0,
+        ptr > 0,
+    ensures
+        spec_page_ptr2page_index(ptr) == 0,
+{
+}
+```
+REASON: If a nonzero page-aligned pointer maps to index 0, it aliases with the null/first page and could allow use-after-free or double-allocation
+===PHI_END===

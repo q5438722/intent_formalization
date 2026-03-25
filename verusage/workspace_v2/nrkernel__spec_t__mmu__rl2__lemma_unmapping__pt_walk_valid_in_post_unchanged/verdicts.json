@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "update_range_length_preserved",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`update_range` is `s.subrange(0, idx) + new + s.subrange(idx + new.len(), s.len())`. The lengths are `idx + new.len() + (s.len() - idx - new.len()) = s.len()`. This is correct by basic arithmetic on sequence concatenation."
+  },
+  {
+    "phi": "valid_op_size_excludes_3",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`valid_op_size` is defined as `op_size() == 1 || == 2 || == 4 || == 8`. Since 3 is none of these values, `op_size() != 3` follows trivially. This is correct and intentional \u2014 x86 memory operations are power-of-2 sized."
+  },
+  {
+    "phi": "is_base_pt_walk_vbase_alignment",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`is_base_pt_walk` requires `vbase == vaddr` where `vbase = align_to_usize(vaddr, L3_ENTRY_SIZE)`. Since `align_to_usize(va, 4096) == va` iff `va % 4096 == 0`, this correctly forces page alignment. This is intentional \u2014 base addresses in x86 page tables are always page-aligned."
+  },
+  {
+    "phi": "all_mb0_bits_are_zero_gates_pde_validity",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`all_mb0_bits_are_zero` is `external_body` with `unimplemented!()` and gates `PDE::view` \u2014 when it returns false, present entries (P bit set) are treated as Invalid. Since the predicate is completely opaque, Verus cannot verify that it correctly checks the must-be-zero bits for each layer, potentially misclassifying valid or invalid entries."
+  }
+]

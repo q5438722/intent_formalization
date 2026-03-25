@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "insert_implies_interp_aux_insert_external_body",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`lemma_interp_of_entry_insert_implies_interp_aux_insert` is `external_body` with `unimplemented!()` body \u2014 the inductive proof that inserting a mapping into one entry's interpretation propagates correctly through `interp_aux`'s `union_prefer_right` chain is trusted without proof."
+  },
+  {
+    "phi": "insert_overwrites_existing_key",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is a direct consequence of the same external_body axiom already captured by \u03c61, combined with standard `Map::insert` semantics. The commented-out precondition `!self.interp_aux(i).contains_key(base)` was removed intentionally \u2014 `Map::insert` overwrites by definition."
+  },
+  {
+    "phi": "update_preserves_other_entries",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`update` replaces only index `j` in the entries sequence via `Seq::update`, so `entries[k as int]` is unchanged for `k != j`. Since `entry_base(k)` depends on `base_vaddr` and `layer` (both preserved by `update`), `interp_of_entry(k)` is trivially equal. Correct by open spec unfolding."
+  },
+  {
+    "phi": "insert_interp_implies_insert_interp_public",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Direct downstream consequence of the external_body axiom already captured by \u03c61. The public wrapper `lemma_interp_of_entry_insert_implies_interp_insert` just calls the external_body with `i=0` \u2014 no new trust assumption."
+  },
+  {
+    "phi": "inv_no_base_vaddr_alignment",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The commented-out `aligned(self.base_vaddr, self.entry_size() * self.num_entries())` in `well_formed()` means `inv()` accepts any `base_vaddr`, including misaligned values like 7. On real x86 page tables, directory base addresses must be aligned to entry boundaries."
+  }
+]

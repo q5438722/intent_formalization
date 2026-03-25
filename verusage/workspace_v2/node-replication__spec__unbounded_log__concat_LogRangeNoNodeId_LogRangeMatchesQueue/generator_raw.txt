@@ -1,0 +1,120 @@
+===PHI_START===
+NAME: no_node_id_empty_range
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_no_node_id_empty_range<DT: Dispatch>(
+    log: Map<LogIdx, LogEntry<DT>>,
+    idx: LogIdx,
+    node_id: NodeId,
+)
+    ensures
+        LogRangeNoNodeId::<DT>(log, idx, idx, node_id),
+{
+}
+```
+REASON: An empty range `[idx, idx)` vacuously satisfies `LogRangeNoNodeId` — tests that the base case holds regardless of log contents
+===PHI_END===
+
+===PHI_START===
+NAME: concat_no_node_extends_match
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_concat_no_node_extends_match<DT: Dispatch>(
+    queue: Seq<ReqId>,
+    log: Map<LogIdx, LogEntry<DT>>,
+    nodeId: NodeId,
+    updates: Map<ReqId, UpdateState<DT>>,
+    a: LogIdx,
+    b: LogIdx,
+    c: LogIdx,
+)
+    requires
+        a <= b <= c,
+        LogRangeNoNodeId(log, a, b, nodeId),
+        LogRangeMatchesQueue(queue, log, 0, b, c, nodeId, updates),
+    ensures
+        LogRangeMatchesQueue(queue, log, 0, a, c, nodeId, updates),
+{
+    concat_LogRangeNoNodeId_LogRangeMatchesQueue(queue, log, 0, a, b, c, nodeId, updates);
+}
+```
+REASON: Prepending a no-node-id range to a matching range extends the match — tests that remote-only log entries can be freely prepended
+===PHI_END===
+
+===PHI_START===
+NAME: all_remote_empty_queue
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_all_remote_empty_queue<DT: Dispatch>(
+    log: Map<LogIdx, LogEntry<DT>>,
+    nodeId: NodeId,
+    updates: Map<ReqId, UpdateState<DT>>,
+    start: LogIdx,
+    end: LogIdx,
+)
+    requires
+        start <= end,
+        LogRangeNoNodeId(log, start, end, nodeId),
+    ensures
+        LogRangeMatchesQueue(Seq::<ReqId>::empty(), log, 0, start, end, nodeId, updates),
+{
+    concat_LogRangeNoNodeId_LogRangeMatchesQueue(Seq::empty(), log, 0, start, end, end, nodeId, updates);
+}
+```
+REASON: A log range with no local entries matches an empty queue — tests that all-remote ranges require zero queue elements
+===PHI_END===
+
+===PHI_START===
+NAME: no_node_id_single_entry
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_no_node_id_single_entry<DT: Dispatch>(
+    log: Map<LogIdx, LogEntry<DT>>,
+    idx: LogIdx,
+    nodeId: NodeId,
+    remoteId: NodeId,
+)
+    requires
+        log.contains_key(idx),
+        log[idx].node_id == remoteId,
+        remoteId != nodeId,
+    ensures
+        LogRangeNoNodeId::<DT>(log, idx, idx + 1, nodeId),
+{
+}
+```
+REASON: A single remote entry satisfies LogRangeNoNodeId — tests the one-element inductive case
+===PHI_END===
+
+===PHI_START===
+NAME: no_node_id_ignores_extra_keys
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_no_node_id_ignores_extra_keys<DT: Dispatch>(
+    log: Map<LogIdx, LogEntry<DT>>,
+    extra_entry: LogEntry<DT>,
+    start: LogIdx,
+    end: LogIdx,
+    extra_idx: LogIdx,
+    nodeId: NodeId,
+)
+    requires
+        start <= end,
+        extra_idx >= end,
+        LogRangeNoNodeId(log, start, end, nodeId),
+    ensures
+        LogRangeNoNodeId(log.insert(extra_idx, extra_entry), start, end, nodeId),
+    decreases end - start,
+{
+    if start < end {
+        phi_5_no_node_id_ignores_extra_keys(log, extra_entry, start + 1, end, extra_idx, nodeId);
+    }
+}
+```
+REASON: Inserting a log entry at or beyond `end` doesn't affect `LogRangeNoNodeId` — tests that the predicate is insensitive to out-of-range mutations
+===PHI_END===

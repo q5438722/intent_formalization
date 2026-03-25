@@ -1,0 +1,52 @@
+[
+  {
+    "name": "arch_inv_allows_empty_layers",
+    "target_fn": "inv (Arch)",
+    "type": "boundary",
+    "reason": "If inv() is satisfiable with zero layers, the architecture is vacuously valid but maps no address space \u2014 likely a degenerate case the spec should exclude.",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": " | proof fn phi_1_arch_inv_allows_empty_layers(arch: Arch)\n    |       ------------------------------------------------- at the end of the function body\n...\n261 |         arch.layers.len() == 0,\n    |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "arch_inv_forces_equal_entry_sizes",
+    "target_fn": "entry_size (Arch)",
+    "type": "behavioral",
+    "reason": "If inv() forced adjacent layers to have equal entry sizes, the hierarchical size decomposition would be broken \u2014 each layer should cover a strictly larger region than the next.",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": "sizes(arch: Arch)\n    |       ------------------------------------------------------ at the end of the function body\n...\n262 |         arch.entry_size(0) == arch.entry_size(1),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "entry_base_collision_distinct_indices",
+    "target_fn": "entry_base (Arch)",
+    "type": "logical",
+    "reason": "If two distinct entry indices produced the same base address, page table entries would alias and the MMU mapping would be ambiguous.",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": "-------------------------------- at the end of the function body\n...\n265 |         arch.entry_base(layer, base, i) == arch.entry_base(layer, base, j),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "well_formed_forces_layer_zero",
+    "target_fn": "well_formed",
+    "type": "behavioral",
+    "reason": "If well_formed() could only be satisfied at layer 0, subdirectories at deeper layers could never be well-formed, breaking the recursive directory invariant.",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": " |\n257 | proof fn phi_4_well_formed_forces_layer_zero(dir: Directory)\n    |       ------------------------------------------------------ at the end of the function body\n...\n261 |         dir.layer == 0,\n    |         ^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "inv_allows_zero_size_page_frame",
+    "target_fn": "pages_match_entry_size",
+    "type": "boundary",
+    "reason": "If a directory satisfying inv() could contain a page with a zero-size frame, it would represent an empty memory mapping \u2014 violating the expectation that every mapped page covers a positive region.",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": "ectory)\n    |       -------------------------------------------------------- at the end of the function body\n...\n263 |         dir.entries[0int]->Page_0.frame.size == 0nat,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

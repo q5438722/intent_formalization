@@ -1,0 +1,37 @@
+[
+  {
+    "name": "is_lt_true_for_greater",
+    "target_fn": "is_lt",
+    "type": "behavioral",
+    "code": "proof fn phi_1_is_lt_true_for_greater()\n    ensures\n        Ordering::Greater.lt(),\n{\n}",
+    "reason": "If Greater satisfies lt(), is_lt would conflate Greater with Less, breaking ordering logic everywhere."
+  },
+  {
+    "name": "end_lt_self",
+    "target_fn": "end",
+    "type": "boundary",
+    "code": "proof fn phi_2_end_lt_self<K: KeyTrait + VerusClone>()\n    ensures\n        KeyIterator::<K>::end_spec().lt_spec(KeyIterator::<K>::end_spec()),\n{\n}",
+    "reason": "If end is strictly less than itself, lt_spec is not irreflexive and range queries using end as a bound would be unsound."
+  },
+  {
+    "name": "above_self_key",
+    "target_fn": "above",
+    "type": "logical",
+    "code": "proof fn phi_3_above_self_key<K: KeyTrait + VerusClone>(k: K)\n    ensures\n        KeyIterator::new_spec(k).above_spec(k),\n{\n}",
+    "reason": "If an iterator is above its own key, the gap/between predicates used by range_consistent would include keys they should exclude."
+  },
+  {
+    "name": "new_spec_is_end",
+    "target_fn": "is_end",
+    "type": "boundary",
+    "code": "proof fn phi_4_new_spec_is_end<K: KeyTrait + VerusClone>(k: K)\n    ensures\n        KeyIterator::new_spec(k).is_end_spec(),\n{\n}",
+    "reason": "If a Some-carrying iterator reports is_end, get's precondition becomes unsatisfiable and every range collapses to empty."
+  },
+  {
+    "name": "range_consistent_always_true",
+    "target_fn": "range_consistent_impl",
+    "type": "behavioral",
+    "code": "proof fn phi_5_range_consistent_always_true<K: KeyTrait + VerusClone>(dm: DelegationMap<K>, lo: KeyIterator<K>, hi: KeyIterator<K>, dst: ID)\n    requires\n        dm.valid(),\n        lo.lt_spec(hi),\n    ensures\n        dm.range_consistent(&lo, &hi, &dst),\n{\n}",
+    "reason": "If range_consistent is trivially true for any dst, the implementation cannot detect delegation mismatches, voiding its purpose."
+  }
+]

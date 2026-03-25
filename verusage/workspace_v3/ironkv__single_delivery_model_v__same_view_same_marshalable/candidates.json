@@ -1,0 +1,37 @@
+[
+  {
+    "name": "to_vec_always_empty",
+    "target_fn": "to_vec",
+    "type": "behavioral",
+    "code": "proof fn phi_1_to_vec_always_empty(m: CKeyHashMap)\n    requires\n        m.is_marshalable(),\n    ensures\n        m.spec_to_vec().len() == 0,\n{\n}",
+    "reason": "If entailed, to_vec would always return an empty vector regardless of map contents, losing all entries."
+  },
+  {
+    "name": "to_vec_len_always_one",
+    "target_fn": "to_vec",
+    "type": "boundary",
+    "code": "proof fn phi_2_to_vec_len_always_one(m: CKeyHashMap)\n    requires\n        m.is_marshalable(),\n    ensures\n        m.spec_to_vec().len() <= 1,\n{\n}",
+    "reason": "If entailed, to_vec collapses any multi-entry map to at most one element, silently discarding data."
+  },
+  {
+    "name": "to_vec_ignores_map_contents",
+    "target_fn": "to_vec",
+    "type": "logical",
+    "code": "proof fn phi_3_to_vec_ignores_map_contents(m1: CKeyHashMap, m2: CKeyHashMap)\n    requires\n        m1.is_marshalable(),\n        m2.is_marshalable(),\n    ensures\n        m1.spec_to_vec() =~= m2.spec_to_vec(),\n{\n}",
+    "reason": "If entailed, to_vec produces identical output for any two maps, meaning the result is independent of actual contents."
+  },
+  {
+    "name": "to_vec_not_marshalable",
+    "target_fn": "to_vec",
+    "type": "boundary",
+    "code": "proof fn phi_4_to_vec_not_marshalable(m: CKeyHashMap)\n    requires\n        m.is_marshalable(),\n        m.spec_to_vec().len() > 0,\n    ensures\n        !m.spec_to_vec().is_marshalable(),\n{\n}",
+    "reason": "If entailed, the result of to_vec on a marshalable map is itself not marshalable, breaking serialization round-trips."
+  },
+  {
+    "name": "to_vec_view_equal_symmetric_fail",
+    "target_fn": "to_vec",
+    "type": "logical",
+    "code": "proof fn phi_5_to_vec_view_equal_symmetric_fail(m1: CKeyHashMap, m2: CKeyHashMap)\n    requires\n        m1.is_marshalable(),\n        m2.is_marshalable(),\n        m1.view_equal(&m2),\n    ensures\n        !(m1.spec_to_vec() =~= m2.spec_to_vec()),\n{\n}",
+    "reason": "If entailed, view-equal maps produce different to_vec results, violating the extensional equality contract."
+  }
+]

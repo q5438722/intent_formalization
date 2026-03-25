@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: success_breaks_wellformedness
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: medium
+REASONING: Given that φ2 (success_unreachable) is verified, the success spec is unsatisfiable under the stated preconditions (wf, valid thread, running state, valid va_range). This makes φ1's requires block unsatisfiable, so the proof is vacuously true. It does not independently demonstrate a wellformedness-preservation bug.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: success_unreachable
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: This is the root cause property. It shows that under well-formed preconditions, `syscall_receive_pages_spec_success` is never satisfiable—the function always takes the error path. This means the success spec is vacuously true and imposes no real constraints, rendering page-transfer functionality dead code at the spec level. This is a serious spec defect (overly restrictive success conditions or an internal inconsistency).
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: error_leaks_pages
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: This property is independent of the success-path issues: it concerns only the error/fail spec. It shows that after a failed `syscall_receive_pages`, the free 4K page count strictly decreases. Error paths should be resource-neutral; a decrease indicates the fail spec either fails to roll back partial allocations or is under-constrained in a way that permits resource leaks.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: success_no_pages_consumed
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: medium
+REASONING: Since φ2 establishes that the success spec is unreachable under well-formed preconditions, the requires block of this property is unsatisfiable. The proof is vacuously true. It does not independently demonstrate that the success spec fails to account for page-table page consumption.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: success_implies_fail
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: medium
+REASONING: Like φ1 and φ4, this is a direct consequence of success being unreachable (φ2). If `syscall_receive_pages_spec_success` is unsatisfiable under the given preconditions, then "success implies X" is vacuously true for any X, including the fail spec. This does not independently demonstrate that the success and failure specs overlap.
+===VERDICT_END===
+
+===SUMMARY===
+Two independent spec issues were identified in `syscall_receive_pages`. The primary defect (φ2) is that the success specification is unreachable under well-formed preconditions—no valid state transition can satisfy `syscall_receive_pages_spec_success`, making the entire success path vacuously true and the page-transfer functionality unspecified. This root cause renders three other success-path properties (φ1, φ4, φ5) vacuously true and therefore false positives. The second independent defect (φ3) shows the error/fail specification leaks 4K free pages, indicating the failure path either omits rollback of partial allocations or is under-constrained regarding resource accounting. Together, these two issues mean the syscall has no usable success path and its only reachable path (error) silently loses pages.
+===END_SUMMARY===

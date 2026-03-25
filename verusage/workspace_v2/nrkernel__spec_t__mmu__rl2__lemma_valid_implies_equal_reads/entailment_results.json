@@ -1,0 +1,47 @@
+[
+  {
+    "name": "lemma_write_seq_idle_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_lemma_write_seq_idle_external_body(mem: PTMem, writes: Seq<(usize, usize)>, addr: usize)\n    requires\n        forall|i| 0 <= i < writes.len() ==> (#[trigger] writes[i]).0 != addr,\n    ensures\n        mem.write_seq(writes).read(addr) == mem.read(addr),\n{\n    mem.lemma_write_seq_idle(writes, addr);\n}",
+    "reason": "`lemma_write_seq_idle` is `external_body` \u2014 the frame property that writes to other addresses don't affect a read is trusted without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "non_writer_core_mem_equals_pt_mem",
+    "type": "behavioral",
+    "code": "proof fn phi_2_non_writer_core_mem_equals_pt_mem(state: State, c: Constants, core: Core)\n    requires\n        state.non_writer_sbufs_are_empty(c),\n        c.valid_core(core),\n        core != state.writes.core,\n    ensures\n        state.core_mem(core) === state.pt_mem,\n{\n}",
+    "reason": "Non-writer cores have empty sbufs, so `core_mem(core) == pt_mem.write_seq(seq![]) == pt_mem` \u2014 tests that empty sbuf gives identity, but this relies on fold_left base case",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "valid_implies_equal_reads_uses_external_body",
+    "type": "logical",
+    "code": "proof fn phi_3_valid_implies_equal_reads_uses_external_body(state: State, c: Constants, core: Core, addr: usize)\n    requires\n        state.inv_sbuf_facts(c),\n        state.inv_mapping__valid_is_not_in_sbuf(c),\n        c.valid_core(core),\n        core != state.writes.core,\n        aligned(addr as nat, 8),\n        state.core_mem(core).read(addr) & 1 == 1,\n    ensures\n        state.core_mem(core).read(addr) == state.writer_mem().read(addr),\n{\n    lemma_valid_implies_equal_reads(state, c, core, addr);\n}",
+    "reason": "The proof of equal reads between non-writer and writer core depends on `lemma_write_seq_idle` (external_body) \u2014 the entire TSO consistency argument chains through an unverified lemma",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "contains_fst_implies_exists_entry",
+    "type": "behavioral",
+    "code": "proof fn phi_4_contains_fst_implies_exists_entry(s: Seq<(usize, usize)>, addr: usize)\n    requires\n        s.contains_fst(addr),\n    ensures\n        exists|i| 0 <= i < s.len() && (#[trigger] s[i]).0 == addr,\n{\n}",
+    "reason": "`contains_fst` uses `s[i] == (fst, s[i].1)` which should imply `s[i].0 == fst` \u2014 tests that the existential witness decomposition is correct",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "inv_mapping_valid_not_in_sbuf_contrapositive",
+    "type": "logical",
+    "code": "proof fn phi_5_inv_mapping_valid_not_in_sbuf_contrapositive(state: State, c: Constants, core: Core, addr: usize)\n    requires\n        state.inv_mapping__valid_is_not_in_sbuf(c),\n        c.valid_core(core),\n        core != state.writes.core,\n        aligned(addr as nat, 8),\n        state.writer_sbuf().contains_fst(addr),\n    ensures\n        state.core_mem(core).read(addr) & 1 != 1,\n{\n}",
+    "reason": "By contrapositive of `inv_mapping__valid_is_not_in_sbuf`, if addr is in writer sbuf then non-writer core reads must have P bit unset \u2014 tests whether the invariant correctly constrains staleness",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

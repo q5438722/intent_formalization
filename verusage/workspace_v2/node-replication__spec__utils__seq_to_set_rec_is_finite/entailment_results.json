@@ -1,0 +1,47 @@
+[
+  {
+    "name": "seq_to_set_rec_empty_is_empty",
+    "type": "boundary",
+    "code": "proof fn phi_1_seq_to_set_rec_empty_is_empty()\n    ensures\n        seq_to_set_rec(Seq::<nat>::empty()) == Set::<nat>::empty(),\n{\n}",
+    "reason": "Empty sequence produces empty set \u2014 tests the base case directly",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "seq_to_set_rec_singleton_contains",
+    "type": "boundary",
+    "code": "proof fn phi_2_seq_to_set_rec_singleton_contains(x: nat)\n    ensures\n        seq_to_set_rec(seq![x]).contains(x),\n{\n}",
+    "reason": "Singleton sequence's set contains the element \u2014 tests one-step recursion",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "seq_to_set_rec_always_finite",
+    "type": "behavioral",
+    "code": "proof fn phi_3_seq_to_set_rec_always_finite(seq: Seq<nat>)\n    ensures\n        seq_to_set_rec(seq).finite(),\n{\n    seq_to_set_rec_is_finite(seq);\n}",
+    "reason": "The resulting set is always finite \u2014 direct consequence of the verified lemma",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "seq_to_set_rec_last_in_set",
+    "type": "behavioral",
+    "code": "proof fn phi_4_seq_to_set_rec_last_in_set(seq: Seq<nat>)\n    requires\n        seq.len() > 0,\n    ensures\n        seq_to_set_rec(seq).contains(seq.last()),\n{\n}",
+    "reason": "The last element is always in the set \u2014 follows from the recursive definition inserting `seq.last()`, but only the last element is guaranteed per step",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "seq_to_set_rec_len_leq_seq_len",
+    "type": "boundary",
+    "code": "proof fn phi_5_seq_to_set_rec_len_leq_seq_len(seq: Seq<nat>)\n    ensures\n        seq_to_set_rec(seq).finite(),\n        seq_to_set_rec(seq).len() <= seq.len(),\n    decreases seq.len(),\n{\n    if seq.len() == 0 {\n    } else {\n        let sub = seq.drop_last();\n        phi_5_seq_to_set_rec_len_leq_seq_len(sub);\n        seq_to_set_rec_is_finite(sub);\n    }\n}",
+    "reason": "The set can be strictly smaller than the sequence due to deduplication \u2014 the set size is bounded by but not equal to the sequence length, so callers cannot rely on a bijection",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

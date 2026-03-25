@@ -1,0 +1,20 @@
+[
+  {
+    "phi": "nonneg_nonpos_mutually_exclusive",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`is_nonneg_write` requires `read(addr) & 1 == 0` while `is_nonpos_write` requires `read(addr) & 1 == 1`. These are contradictory \u2014 `x & 1` is either 0 or 1, never both. Similarly `value & 1 == 1` vs `value & 1 == 0` are contradictory. This mutual exclusivity is correct by bitvector arithmetic."
+  },
+  {
+    "phi": "write_read_roundtrip",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`write` sets `mem: self.mem.insert(addr, value)` and `read` returns `self.mem[addr]`. By vstd Map axioms, `m.insert(k, v)[k] == v`. This is a correct fundamental property of the Map data structure."
+  },
+  {
+    "phi": "walk_flags_accesses_beyond_path_len",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`Walk::flags` computes `flags1`, `flags2`, `flags3` using out-of-bounds indices, but the final `if path.len() == 1 { flags0 }` branch discards them. Verus evaluates spec functions lazily/symbolically \u2014 the unused intermediate values don't affect the result. The function correctly returns `flags0` for single-entry paths."
+  }
+]

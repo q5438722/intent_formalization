@@ -1,0 +1,47 @@
+[
+  {
+    "name": "bitmask_l0_range",
+    "type": "boundary",
+    "code": "proof fn phi_1_bitmask_l0_range(vaddr: usize)\n    ensures\n        l0_bits!(vaddr) < 512,\n{\n    assert(((vaddr & bitmask_inc!(39usize,47usize)) >> 39usize) < 512) by (bit_vector);\n}",
+    "reason": "l0_bits extracts bits 39-47 (9 bits) so the result must be < 512 \u2014 tests that the bitmask correctly bounds the index",
+    "entailed": true,
+    "verus_output": "verification results:: 34 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "align_to_usize_idempotent",
+    "type": "behavioral",
+    "code": "proof fn phi_2_align_to_usize_idempotent(a: usize, b: usize)\n    requires\n        b > 0,\n        a % b == 0,\n    ensures\n        align_to_usize(a, b) == a,\n{\n}",
+    "reason": "Aligning an already-aligned address should be identity \u2014 tests that `sub(a, 0) == a`",
+    "entailed": true,
+    "verus_output": "verification results:: 32 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "align_to_usize_rounds_down",
+    "type": "behavioral",
+    "code": "proof fn phi_3_align_to_usize_rounds_down(a: usize, b: usize)\n    requires\n        b > 0,\n        a >= b,\n    ensures\n        align_to_usize(a, b) <= a,\n{\n    assert(sub(a, a % b) <= a) by (bit_vector)\n        requires b > 0 && a >= b;\n}",
+    "reason": "`align_to_usize` should always round down \u2014 if it rounds up, aligned addresses could exceed the original",
+    "entailed": false,
+    "verus_output": "verification results:: 33 verified, 1 errors\nerror: bitvector assertion not satisfied (with arch-size set to 64 bits): Resource limit (rlimit) exceeded; consider rerunning with --profile for more details\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_bits_align_to_usize/phi_3_align_to_usize_rounds_down.rs:109:5\n    |\n109 |     assert(sub(a, a % b) <= a) by (bit_vector)\n    |     ^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "l3_bits_zero_for_page_aligned",
+    "type": "boundary",
+    "code": "proof fn phi_4_l3_bits_zero_for_page_aligned(vaddr: usize)\n    requires\n        vaddr % L2_ENTRY_SIZE as usize == 0,\n    ensures\n        l3_bits!(vaddr) == 0,\n{\n    let l2_es = L2_ENTRY_SIZE;\n    assert(((vaddr & bitmask_inc!(12usize,20usize)) >> 12usize) == 0) by (bit_vector)\n        requires vaddr % l2_es == 0, l2_es == 512 * 4096;\n}",
+    "reason": "An L2-aligned address should have zero L3 bits \u2014 tests that L2 alignment implies the L3 index field is zero",
+    "entailed": true,
+    "verus_output": "verification results:: 34 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "align_to_usize_underflow",
+    "type": "boundary",
+    "code": "proof fn phi_5_align_to_usize_underflow(b: usize)\n    requires\n        b > 0,\n    ensures\n        align_to_usize(0, b) == 0,\n{\n}",
+    "reason": "Aligning zero should produce zero regardless of alignment size \u2014 tests that `sub(0, 0 % b) == 0` doesn't underflow",
+    "entailed": true,
+    "verus_output": "verification results:: 32 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

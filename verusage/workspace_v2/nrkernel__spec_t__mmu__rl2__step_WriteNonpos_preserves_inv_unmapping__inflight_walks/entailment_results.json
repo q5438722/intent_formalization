@@ -1,0 +1,47 @@
+[
+  {
+    "name": "lemma_pt_walk_external_body_completeness",
+    "type": "logical",
+    "code": "proof fn phi_1_lemma_pt_walk_external_body_completeness(mem: PTMem, va: usize)\n    ensures\n        mem.pt_walk(va).complete,\n        0 < mem.pt_walk(va).path.len() <= 4,\n{\n    mem.lemma_pt_walk(va);\n}",
+    "reason": "`lemma_pt_walk` is `external_body` with `unimplemented!()` \u2014 it asserts every walk is complete with path length 1..4, but this is trusted without proof; if the walk could diverge or produce empty paths, downstream reasoning would be unsound",
+    "entailed": false,
+    "verus_output": "mma_pt_walk(mem: PTMem, va: usize)\n     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nhelp: use associated function syntax instead\n     |\n1599 -     mem.lemma_pt_walk(va);\n1599 +     PTMem::lemma_pt_walk(mem, va);\n     |\nhelp: there is a method `pt_walk` with a similar name\n     |\n1599 -     mem.lemma_pt_walk(va);\n1599 +     mem.pt_walk(va);\n     |\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\nFor more information about this error, try `rustc --explain E0599`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "lemma_pt_walk_valid_implies_p_bit",
+    "type": "logical",
+    "code": "proof fn phi_2_lemma_pt_walk_valid_implies_p_bit(mem: PTMem, va: usize)\n    requires\n        mem.pt_walk(va).result() is Valid,\n    ensures\n        mem.read(mem.pt_walk(va).path.last().0) & 1 == 1,\n{\n    mem.lemma_pt_walk(va);\n}",
+    "reason": "`lemma_pt_walk` trusts that valid walk results have P-bit set on the last entry \u2014 this is asserted via `external_body` without verifying the `pt_walk` definition actually guarantees it",
+    "entailed": false,
+    "verus_output": "mma_pt_walk(mem: PTMem, va: usize)\n     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nhelp: use associated function syntax instead\n     |\n1600 -     mem.lemma_pt_walk(va);\n1600 +     PTMem::lemma_pt_walk(mem, va);\n     |\nhelp: there is a method `pt_walk` with a similar name\n     |\n1600 -     mem.lemma_pt_walk(va);\n1600 +     mem.pt_walk(va);\n     |\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\nFor more information about this error, try `rustc --explain E0599`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "lemma_pt_walk_intermediate_are_directories",
+    "type": "logical",
+    "code": "proof fn phi_3_lemma_pt_walk_intermediate_are_directories(mem: PTMem, va: usize, i: int)\n    requires\n        0 <= i < mem.pt_walk(va).path.len() - 1,\n    ensures\n        mem.pt_walk(va).path[i].1 is Directory,\n        mem.read(mem.pt_walk(va).path[i].0) & 1 == 1,\n{\n    mem.lemma_pt_walk(va);\n}",
+    "reason": "`lemma_pt_walk` trusts that all intermediate walk entries are Directory variants with P-bit set \u2014 this structural invariant over the walk path is asserted without proof",
+    "entailed": false,
+    "verus_output": "mma_pt_walk(mem: PTMem, va: usize)\n     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nhelp: use associated function syntax instead\n     |\n1601 -     mem.lemma_pt_walk(va);\n1601 +     PTMem::lemma_pt_walk(mem, va);\n     |\nhelp: there is a method `pt_walk` with a similar name\n     |\n1601 -     mem.lemma_pt_walk(va);\n1601 +     mem.pt_walk(va);\n     |\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\nFor more information about this error, try `rustc --explain E0599`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "all_mb0_bits_are_zero_external_body",
+    "type": "logical",
+    "code": "proof fn phi_4_all_mb0_bits_are_zero_external_body(entry: usize)\n    ensures\n        (PDE { entry, layer: Ghost(0) }).all_mb0_bits_are_zero(),\n{\n}",
+    "reason": "`all_mb0_bits_are_zero` is `external_body` \u2014 if it returns true for arbitrary entries (including ones with reserved bits set), the PDE view would parse invalid entries as valid Directory/Page variants",
+    "entailed": false,
+    "verus_output": "nflight_walks/phi_4_all_mb0_bits_are_zero_external_body.rs:1596:9\n     |\n1594 | proof fn phi_4_all_mb0_bits_are_zero_external_body(entry: usize)\n     |       ---------------------------------------------------------- at the end of the function body\n1595 |     ensures\n1596 |         (PDE { entry, layer: Ghost(0) }).all_mb0_bits_are_zero(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "view_opaque_base_walk_only",
+    "type": "behavioral",
+    "code": "proof fn phi_5_view_opaque_base_walk_only(mem: PTMem, va: usize)\n    requires\n        va < MAX_BASE,\n        mem.pt_walk(va).result() matches WalkResult::Valid { vbase, pte } && vbase == va,\n    ensures\n        mem@.contains_key(va),\n{\n    reveal(PTMem::view);\n}",
+    "reason": "`PTMem::view` is opaque and defined via `is_base_pt_walk` \u2014 revealing it should show that base-aligned valid walks produce map entries; if the opaque barrier hides incorrect filtering logic, the view map could silently drop valid mappings",
+    "entailed": true,
+    "verus_output": "epr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__step_WriteNonpos_preserves_inv_unmapping__inflight_walks/phi_5_view_opaque_base_walk_only.rs:193:9\n    |\n193 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

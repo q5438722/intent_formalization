@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize2pa_mem_valid_unconditional",
+    "type": "logical",
+    "code": "proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body ensures MEM_valid(ret) for ALL inputs \u2014 trusts without proof that masking any arbitrary usize yields a valid physical address",
+    "entailed": false,
+    "verus_output": " /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagemap__impl0__init/phi_1_usize2pa_mem_valid_unconditional.rs:259:9\n    |\n257 | proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    |       --------------------------------------------------- at the end of the function body\n258 |     ensures\n259 |         MEM_valid(usize2pa(v)),\n    |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "zero_is_empty_external_body_trusted",
+    "type": "logical",
+    "code": "proof fn phi_2_zero_is_empty_external_body_trusted()\n    ensures\n        spec_usize2page_entry(0).is_empty(),\n        spec_usize2page_entry(0).addr == 0,\n        spec_usize2page_entry(0).perm.present == false,\n{\n    zero_leads_is_empty_page_entry();\n}",
+    "reason": "zero_leads_is_empty_page_entry is external_body \u2014 the critical property that zero decodes to an empty entry is axiomatically trusted rather than verified via bit_vector proofs",
+    "entailed": true,
+    "verus_output": "_empty_external_body_trusted.rs:83:10\n   |\n83 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagemap__impl0__init/phi_2_zero_is_empty_external_body_trusted.rs:92:10\n   |\n92 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "init_does_not_preserve_ar_contents",
+    "type": "behavioral",
+    "code": "proof fn phi_3_init_does_not_preserve_ar_contents(pm: PageMap, i: int)\n    requires\n        pm.wf(),\n        forall|j: int| #![trigger pm@[j].is_empty()] 0 <= j < 512 ==> pm@[j].is_empty(),\n        0 <= i < 512,\n    ensures\n        pm.ar@[i] == 0 || pm.ar@[i] != 0,\n{\n}",
+    "reason": "After init, wf() only requires usize2page_entry(ar[i]) =~= spec_seq[i], but does NOT require ar[i]==0 for empty entries \u2014 the commented-out biconditional (ar[i]==0 <==> is_empty) means non-zero raw values could still decode as \"empty\"",
+    "entailed": true,
+    "verus_output": "does_not_preserve_ar_contents.rs:83:10\n   |\n83 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagemap__impl0__init/phi_3_init_does_not_preserve_ar_contents.rs:92:10\n   |\n92 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pagemap_spec_seq_ghost_desyncs",
+    "type": "behavioral",
+    "code": "proof fn phi_4_pagemap_spec_seq_ghost_desyncs(pm: PageMap, i: usize)\n    requires\n        pm.wf(),\n        0 <= i < 512,\n    ensures\n        pm.spec_seq@[i as int] =~= usize2page_entry(pm.ar@[i as int]),\n        pm@[i as int] =~= pm.spec_seq@[i as int],\n{\n}",
+    "reason": "The view() function returns spec_seq@ directly without asserting it equals the ar-derived sequence \u2014 if spec_seq is mutated independently of ar (as done in init's proof block), wf() is the only guard, and callers must always assume wf()",
+    "entailed": true,
+    "verus_output": "_4_pagemap_spec_seq_ghost_desyncs.rs:83:10\n   |\n83 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagemap__impl0__init/phi_4_pagemap_spec_seq_ghost_desyncs.rs:92:10\n   |\n92 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "array_set_no_bounds_check_runtime",
+    "type": "boundary",
+    "code": "proof fn phi_5_array_set_no_bounds_check_runtime(ar: Array<usize, 512>, i: usize)\n    requires\n        ar.wf(),\n        0 <= i < 512,\n    ensures\n        ar@.len() == 512,\n        ({\n            let new_ar = ar@.update(i as int, 0usize);\n            new_ar.len() == 512\n            &&\n            new_ar[i as int] == 0usize\n            &&\n            forall|j: int| 0 <= j < 512 && j != i as int ==> new_ar[j] == ar@[j]\n        }),\n{\n}",
+    "reason": "Array::set is external_body \u2014 the frame condition (only index i changes) and bounds safety are axiomatically trusted without verification of the actual array implementation",
+    "entailed": true,
+    "verus_output": "ver instantiates a quantifier whenever some expression matches the\n      pattern specified by one of the quantifier's triggers.)\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagemap__impl0__init/phi_5_array_set_no_bounds_check_runtime.rs:269:13\n    |\n269 |             forall|j: int| 0 <= j < 512 && j != i as int ==> new_ar[j] == ar@[j]\n    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

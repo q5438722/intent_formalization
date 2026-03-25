@@ -1,0 +1,47 @@
+[
+  {
+    "name": "serialize_injective_derives_view_equal_from_empty",
+    "type": "logical",
+    "code": "proof fn phi_1_serialize_injective_derives_view_equal_from_empty(a: Vec<u8>, b: Vec<u8>)\n    requires\n        a.is_marshalable(),\n        b.is_marshalable(),\n        a@.len() == 0,\n        b@.len() == 0,\n    ensures\n        a.view_equal(&b),\n{\n    a.lemma_serialize_injective(&b);\n}",
+    "reason": "Two empty `Vec<u8>` values have identical serializations (same length prefix + empty content), so `lemma_serialize_injective` derives `view_equal` \u2014 but this relies on the external_body axiom being correct without machine-checked proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "ghost_serialize_external_body_unconstrained",
+    "type": "logical",
+    "code": "proof fn phi_2_ghost_serialize_external_body_unconstrained(a: u64, b: u64)\n    requires\n        a != b,\n        a.is_marshalable(),\n        b.is_marshalable(),\n    ensures\n        a.ghost_serialize() != b.ghost_serialize(),\n{\n    a.lemma_serialize_injective(&b);\n}",
+    "reason": "`lemma_serialize_injective` is external_body and claims `ghost_serialize` equal implies `view_equal` \u2014 by contrapositive this derives serialization distinctness for distinct u64 values, but the trait-level `ghost_serialize` is also external_body with no axioms connecting the trait-level spec to the impl-level open spec",
+    "entailed": false,
+    "verus_output": "ondition not satisfied\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__marshal_ironsht_specific_v__impl2__lemma_serialize_injective/phi_2_ghost_serialize_external_body_unconstrained.rs:382:5\n    |\n 83 |       self.ghost_serialize() == other.ghost_serialize(),\n    |       ------------------------------------------------- failed precondition\n...\n382 |     a.lemma_serialize_injective(&b);\n    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "prefix_freedom_no_marshalable_guard",
+    "type": "logical",
+    "code": "proof fn phi_3_prefix_freedom_no_marshalable_guard(a: Vec<u8>, b: Vec<u8>)\n    requires\n        !a.view_equal(&b),\n        a.ghost_serialize().len() <= b.ghost_serialize().len(),\n    ensures\n        a.ghost_serialize() != b.ghost_serialize().subrange(0, a.ghost_serialize().len() as int),\n{\n    a.lemma_serialization_is_not_a_prefix_of(&b);\n}",
+    "reason": "`lemma_serialization_is_not_a_prefix_of` has no `is_marshalable` precondition \u2014 it grants prefix-freedom for ANY values including non-marshalable ones, where `ghost_serialize` is only guarded by a `recommends` and could be arbitrary",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "vec_t_fold_serialize_collision",
+    "type": "behavioral",
+    "code": "proof fn phi_4_vec_t_fold_serialize_collision(a: Vec<Vec<u8>>, b: Vec<Vec<u8>>)\n    requires\n        a.is_marshalable(),\n        b.is_marshalable(),\n        a@.len() == 1,\n        b@.len() == 1,\n        a@[0]@.len() != b@[0]@.len(),\n    ensures\n        a.ghost_serialize() != b.ghost_serialize(),\n{\n    a.lemma_serialize_injective(&b);\n}",
+    "reason": "`Vec<Vec<u8>>` serialization concatenates inner element serializations without per-element delimiters \u2014 the external_body `lemma_serialize_injective` claims injectivity but this is never machine-verified; if the fold-based concatenation has collisions, the axiom is unsound",
+    "entailed": false,
+    "verus_output": "\nerror: precondition not satisfied\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__marshal_ironsht_specific_v__impl2__lemma_serialize_injective/phi_4_vec_t_fold_serialize_collision.rs:384:5\n    |\n 83 |       self.ghost_serialize() == other.ghost_serialize(),\n    |       ------------------------------------------------- failed precondition\n...\n384 |     a.lemma_serialize_injective(&b);\n    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 2 previous errors\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "sorted_keys_singleton_trivially_sorted",
+    "type": "boundary",
+    "code": "proof fn phi_5_sorted_keys_singleton_trivially_sorted(kv: CKeyKV)\n    ensures\n        spec_sorted_keys(Vec { inner: Ghost(seq![kv]) }),\n{\n}",
+    "reason": "A single-element vector is vacuously sorted since the forall over adjacent pairs has no witnesses \u2014 combined with `CKeyHashMap`'s marshalability requiring `spec_sorted_keys`, any single-entry hashmap is trivially marshalable regardless of key validity",
+    "entailed": false,
+    "verus_output": "ianyu/intent_formalization/verusage/workspace_v2/ironkv__marshal_ironsht_specific_v__impl2__lemma_serialize_injective/phi_5_sorted_keys_singleton_trivially_sorted.rs:376:32\n    |\n376 |         spec_sorted_keys(Vec { inner: Ghost(seq![kv]) }),\n    |                                ^^^^^ `std::vec::Vec<_, _>` does not have this field\n    |\n    = note: all struct fields are already assigned\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0560`.\n",
+    "timed_out": false
+  }
+]

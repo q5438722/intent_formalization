@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: align_is_noop_for_unaligned
+TARGET_FN: align_to_usize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_align_is_noop_for_unaligned(a: usize, b: usize)
+    requires
+        b > 0,
+        a % b != 0,
+    ensures
+        align_to_usize(a, b) == a,
+{
+}
+```
+REASON: If alignment returns the original value even when the input is not aligned, the function fails its purpose.
+===PHI_END===
+
+===PHI_START===
+NAME: align_changes_already_aligned
+TARGET_FN: align_to_usize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_align_changes_already_aligned(a: usize, b: usize)
+    requires
+        b > 0,
+        a % b == 0,
+    ensures
+        align_to_usize(a, b) != a,
+{
+}
+```
+REASON: If aligning an already-aligned value changes it, the function incorrectly modifies valid inputs.
+===PHI_END===
+
+===PHI_START===
+NAME: align_exceeds_input
+TARGET_FN: align_to_usize
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_align_exceeds_input(a: usize, b: usize)
+    requires
+        b > 0,
+    ensures
+        align_to_usize(a, b) > a,
+{
+}
+```
+REASON: Downward alignment must never produce a value larger than the original input.
+===PHI_END===
+
+===PHI_START===
+NAME: align_result_not_multiple
+TARGET_FN: align_to_usize
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_align_result_not_multiple(a: usize, b: usize)
+    requires
+        b > 0,
+    ensures
+        align_to_usize(a, b) % b != 0,
+{
+}
+```
+REASON: The result of alignment to b should always be a multiple of b; violating this breaks all page-table address invariants.
+===PHI_END===
+
+===PHI_START===
+NAME: align_not_idempotent
+TARGET_FN: align_to_usize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_align_not_idempotent(a: usize, b: usize)
+    requires
+        b > 0,
+    ensures
+        align_to_usize(align_to_usize(a, b), b) != align_to_usize(a, b),
+{
+}
+```
+REASON: Alignment should be idempotent; applying it twice must yield the same result as once, otherwise downstream walk computations diverge.
+===PHI_END===

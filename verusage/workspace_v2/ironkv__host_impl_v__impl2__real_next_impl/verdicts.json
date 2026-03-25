@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "ordering_lt_only_less",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`Ordering::lt` correctly implements strict less-than by matching only `Ordering::Less`. The absence of `le`/`ge`/`gt` helpers is simply incomplete API surface, not a spec gap \u2014 `between` uses `lt_spec` which is the appropriate comparator for half-open interval semantics used throughout the delegation map."
+  },
+  {
+    "phi": "between_excludes_lower_bound",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`between` implements a standard half-open interval `[lhs, rhs)` \u2014 `!ki.lt_spec(lhs)` means `ki >= lhs` and `ki.lt_spec(rhs)` means `ki < rhs`. When all three are equal, the range `[x, x)` is correctly empty. This is the standard convention for range iteration in key-value stores and delegation maps."
+  },
+  {
+    "phi": "cmessage_delegate_no_abstractability_check_on_h",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`CMessage::abstractable` checks `id@.abstractable()` for `Redirect` and `recipient@.abstractable()` for `Shard`, but the `Delegate` variant falls through to `_ => true` without checking `h` (the CKeyHashMap). This is inconsistent with the pattern of checking abstractability on complex fields, allowing an unchecked hash map into the abstract model."
+  },
+  {
+    "phi": "tuple_serialize_ambiguous_concatenation",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The PHI merely confirms the definitional equality of tuple serialization. While bare concatenation could theoretically cause ambiguity, `Vec<u8>::ghost_serialize` includes a length prefix, so `(Vec<u8>, Vec<u8>)` tuples are in fact unambiguously parseable. The serialization format's injectivity depends on the inner types being self-delimiting, which length-prefixed types satisfy."
+  }
+]

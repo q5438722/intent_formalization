@@ -1,0 +1,85 @@
+===PHI_START===
+NAME: controller_state_exists_without_model
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_controller_state_exists_without_model(cluster: Cluster, spec: TempPred<ClusterState>, controller_id: int)
+    requires
+        spec.entails(lift_state(cluster.init())),
+        spec.entails(always(lift_action(cluster.next()))),
+    ensures
+        spec.entails(always(lift_state(Cluster::there_is_the_controller_state(controller_id)))),
+{
+}
+```
+REASON: lemma_always_there_is_the_controller_state requires controller_models.contains_key(controller_id) — without that precondition, an unregistered controller should NOT be guaranteed to have state
+===PHI_END===
+
+===PHI_START===
+NAME: unmarshal_spec_roundtrip_on_arbitrary_value
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_unmarshal_spec_roundtrip_on_arbitrary_value<T: ResourceView>(v: Value)
+    requires
+        T::unmarshal_spec(v) is Ok,
+    ensures
+        T::marshal_spec(T::unmarshal_spec(v)->Ok_0) == v,
+{
+}
+```
+REASON: only marshal→unmarshal roundtrip is axiomatized (via external_body), not the reverse direction unmarshal→marshal — uninterpreted functions should not entail this stronger bijectivity
+===PHI_END===
+
+===PHI_START===
+NAME: cr_states_unmarshallable_for_wrong_reconciler
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_cr_states_unmarshallable_for_wrong_reconciler<S: Marshallable, K: CustomResourceView>(
+    cluster: Cluster, spec: TempPred<ClusterState>, controller_id: int
+)
+    requires
+        spec.entails(lift_state(cluster.init())),
+        spec.entails(always(lift_action(cluster.next()))),
+        cluster.controller_models.contains_key(controller_id),
+        // NOTE: no requirement that the installed reconcile_model matches
+    ensures
+        spec.entails(always(lift_state(Cluster::cr_states_are_unmarshallable::<S, K>(controller_id)))),
+{
+}
+```
+REASON: lemma_always_cr_states_are_unmarshallable requires the reconcile_model to match the installed one — without that coupling, arbitrary local states need not be unmarshallable as S
+===PHI_END===
+
+===PHI_START===
+NAME: marshal_preserves_integrity_implies_unmarshal_total
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_marshal_preserves_integrity_implies_unmarshal_total<T: ResourceView>(obj: DynamicObjectView)
+    requires
+        obj.kind == T::kind(),
+    ensures
+        T::unmarshal(obj) is Ok,
+{
+}
+```
+REASON: marshal_preserves_integrity is external_body and only guarantees unmarshal(marshal(o)) succeeds — it does NOT make unmarshal total on all DynamicObjectViews with matching kind since unmarshal_spec/unmarshal_status may fail
+===PHI_END===
+
+===PHI_START===
+NAME: allocate_produces_unique_ids_across_allocators
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_allocate_produces_unique_ids_across_allocators(a1: ReconcileIdAllocator, a2: ReconcileIdAllocator)
+    requires
+        a1 != a2,
+    ensures
+        a1.allocate().1 != a2.allocate().1,
+{
+}
+```
+REASON: allocate returns the current counter value — two distinct allocators may differ only in other fields or have the same counter, so distinct allocators do NOT imply distinct allocated IDs
+===PHI_END===

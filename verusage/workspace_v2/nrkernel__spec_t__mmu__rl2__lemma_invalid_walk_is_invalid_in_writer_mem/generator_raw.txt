@@ -1,0 +1,83 @@
+The file is truncated. Let me work with what's visible.
+
+===PHI_START===
+NAME: valid_core_external_body_unconstrained
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_valid_core_external_body_unconstrained(c: Constants, core1: Core, core2: Core)
+    requires
+        core1.node_id == core2.node_id,
+        core1.core_id == core2.core_id,
+    ensures
+        c.valid_core(core1) == c.valid_core(core2),
+{
+}
+```
+REASON: `valid_core` is `external_body` with `unimplemented!()` — completely opaque, so identical cores could theoretically get different validity results
+===PHI_END===
+
+===PHI_START===
+NAME: memories_disjoint_implies_range_ordering
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_memories_disjoint_implies_range_ordering(c: Constants)
+    requires
+        c.memories_disjoint(),
+    ensures
+        c.range_mem.1 < c.range_ptmem.0,
+        c.range_ptmem.0 < c.range_ptmem.1,
+{
+}
+```
+REASON: `memories_disjoint` uses strict ordering to separate physical memory and page table memory ranges — tests that the gap between ranges is at least 1 byte, which may be too weak (no alignment requirement)
+===PHI_END===
+
+===PHI_START===
+NAME: in_ptmem_range_zero_size
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_in_ptmem_range_zero_size(c: Constants, addr: nat)
+    requires
+        c.memories_disjoint(),
+        c.range_ptmem.0 <= addr,
+        addr <= c.range_ptmem.1,
+    ensures
+        c.in_ptmem_range(addr, 0),
+{
+}
+```
+REASON: `in_ptmem_range` with size=0 is satisfied for any address within or at the boundary — a zero-size region at the end of ptmem range passes the check, which may allow degenerate empty regions
+===PHI_END===
+
+===PHI_START===
+NAME: core_mem_writer_sbuf_relationship
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_core_mem_writer_sbuf_relationship(pre: State)
+    ensures
+        pre.core_mem(pre.writes.core) == pre.writer_mem(),
+{
+}
+```
+REASON: `writer_mem` should be equivalent to `core_mem(writes.core)` — tests that the inline helper correctly aliases the writer's view of page table memory
+===PHI_END===
+
+===PHI_START===
+NAME: pt_walk_agrees_with_core_mem_walk
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_pt_walk_agrees_with_core_mem_walk(pre: State, core: Core, vaddr: usize)
+    requires
+        pre.sbuf[core].len() == 0,
+    ensures
+        pre.core_mem(core).pt_walk(vaddr) == pre.pt_mem.pt_walk(vaddr),
+{
+}
+```
+REASON: When a core's store buffer is empty, its view of page table memory should equal the global view — tests that `write_seq` of an empty sequence is identity
+===PHI_END===

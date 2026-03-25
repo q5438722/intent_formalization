@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize2pa_mem_valid_unconditional",
+    "type": "logical",
+    "code": "proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body ensures MEM_valid(ret) for ALL inputs \u2014 trusts without proof that bitmasking any arbitrary usize yields a valid physical address",
+    "entailed": false,
+    "verus_output": "verusage/workspace_v2/atmosphere__kernel__syscall_send_empty__impl0__syscall_send_empty_no_block/phi_1_usize2pa_mem_valid_unconditional.rs:2472:9\n     |\n2470 | proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n     |       --------------------------------------------------- at the end of the function body\n2471 |     ensures\n2472 |         MEM_valid(usize2pa(v)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 23 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "sll_len_no_wf_required",
+    "type": "behavioral",
+    "code": "proof fn phi_2_sll_len_no_wf_required<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    ensures\n        sll.len() == sll.value_list_len,\n{\n}",
+    "reason": "StaticLinkedList::len unconditionally ensures `l == self.value_list_len` without requiring wf \u2014 a corrupted list reports its raw field as length with no integrity check",
+    "entailed": false,
+    "verus_output": "pl0__syscall_send_empty_no_block/phi_2_sll_len_no_wf_required.rs:2472:9\n     |\n2470 | proof fn phi_2_sll_len_no_wf_required<T, const N: usize>(sll: StaticLinkedList<T, N>)\n     |       ------------------------------------------------------------------------------- at the end of the function body\n2471 |     ensures\n2472 |         sll.len() == sll.value_list_len,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 23 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "get_proc_ensures_beyond_spec",
+    "type": "behavioral",
+    "code": "proof fn phi_3_get_proc_ensures_beyond_spec(pm: ProcessManager, p_ptr: ProcPtr)\n    requires\n        pm.proc_perms_wf(),\n        pm.process_fields_wf(),\n        pm.proc_dom().contains(p_ptr),\n        pm.wf(),\n    ensures\n        pm.container_dom().contains(pm.get_proc(p_ptr).owning_container),\n{\n}",
+    "reason": "get_proc's external_body ensures `self.wf() ==> self.container_dom().contains(ret.owning_container)` \u2014 this cross-subsystem invariant is trusted without proof, potentially masking a missing link between proc_perms and container_perms",
+    "entailed": false,
+    "verus_output": "oc_ensures_beyond_spec.rs:2477:9\n     |\n2470 | proof fn phi_3_get_proc_ensures_beyond_spec(pm: ProcessManager, p_ptr: ProcPtr)\n     |       ------------------------------------------------------------------------- at the end of the function body\n...\n2477 |         pm.container_dom().contains(pm.get_proc(p_ptr).owning_container),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 23 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "get_thread_leaks_container_wf",
+    "type": "logical",
+    "code": "proof fn phi_4_get_thread_leaks_container_wf(pm: ProcessManager, t_ptr: ThreadPtr)\n    requires\n        pm.wf(),\n        pm.thread_dom().contains(t_ptr),\n    ensures\n        pm.get_container(pm.get_thread(t_ptr).owning_container).scheduler.wf(),\n        pm.get_container(pm.get_thread(t_ptr).owning_container).owned_procs.wf(),\n        pm.get_container(pm.get_thread(t_ptr).owning_container).children.wf(),\n{\n}",
+    "reason": "get_thread's external_body ensures scheduler/owned_procs/children wf for the owning container \u2014 these container-internal invariants are asserted by the thread accessor without proof, creating a trust dependency chain",
+    "entailed": false,
+    "verus_output": "rs:2476:9\n     |\n2470 | proof fn phi_4_get_thread_leaks_container_wf(pm: ProcessManager, t_ptr: ThreadPtr)\n     |       ---------------------------------------------------------------------------- at the end of the function body\n...\n2476 |         pm.get_container(pm.get_thread(t_ptr).owning_container).owned_procs.wf(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 2 previous errors; 23 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "thread_inv_external_body_soundness",
+    "type": "logical",
+    "code": "proof fn phi_5_thread_inv_external_body_soundness(pm: ProcessManager, t_ptr: ThreadPtr)\n    requires\n        pm.wf(),\n        pm.thread_dom().contains(t_ptr),\n    ensures\n        pm.proc_dom().contains(pm.get_thread(t_ptr).owning_proc),\n        pm.get_proc(pm.get_thread(t_ptr).owning_proc).owning_container == pm.get_thread(t_ptr).owning_container,\n{\n}",
+    "reason": "thread_inv is external_body \u2014 the critical invariant that a thread's owning_proc exists and shares the same owning_container is axiomatically assumed, not derived from wf sub-components",
+    "entailed": false,
+    "verus_output": "s(pm: ProcessManager, t_ptr: ThreadPtr)\n     |       --------------------------------------------------------------------------------- at the end of the function body\n...\n2476 |         pm.get_proc(pm.get_thread(t_ptr).owning_proc).owning_container == pm.get_thread(t_ptr).owning_container,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 2 previous errors; 23 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

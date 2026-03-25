@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: disjoint_mappings_external_body_unsound
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `lemma_interp_of_entry_disjoint_mappings` is `external_body` claiming disjoint keys for distinct entries. While `arch.inv()` ensures `entry_size > 0` which makes `entry_base(i) != entry_base(j)` for Page entries at different indices, the lemma is entirely trusted — and for Directory entries, the subdirectory mappings' containment within their entry's range is also unverified (backed only by the other external_body lemma `lemma_interp_of_entry_between`).
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: interp_of_entry_between_no_alignment_guard
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `lemma_interp_of_entry_between` is `external_body` claiming `va + pte.frame.size <= next_entry_base(i)`. For Page entries this follows from `pages_match_entry_size`, but for Directory entries this requires proving subdirectory mappings are contained within the parent's entry range — which depends on the commented-out alignment constraint and recursive containment that is never verified.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: inv_allows_unaligned_base_vaddr
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The alignment check on `base_vaddr` is explicitly commented out in `well_formed()`. A directory with `base_vaddr = 1` passes `inv()`, which undermines the assumptions of both external_body lemmas that implicitly depend on alignment for their entry-range containment and disjointness guarantees.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: entry_containment_allows_cross_entry_mapping
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures `entry_base(i) < va + pte.frame.size` is a correct and desirable property — it states that the mapping is non-empty (has positive size). Since `arch.inv()` guarantees `entry_size > 0` and `pages_match_entry_size` ensures `frame.size == entry_size`, this strict inequality holds. The concern about needing `entry_size > 0` is addressed by the invariant.
+===VERDICT_END===
+
+===SUMMARY===
+Three true positives and one false positive. The most clear-cut issue is the commented-out alignment check on `base_vaddr` (φ3), which allows misaligned directories to satisfy `inv()`. The two external_body lemmas (φ1 disjointness, φ2 containment) are trusted axioms whose correctness depends on properties not fully established by the invariant — particularly alignment and recursive containment for Directory entries. The entry containment strict inequality (φ4) is a false positive since `entry_size > 0` is guaranteed by `arch.inv()`, making the non-empty mapping property correct.
+===END_SUMMARY===

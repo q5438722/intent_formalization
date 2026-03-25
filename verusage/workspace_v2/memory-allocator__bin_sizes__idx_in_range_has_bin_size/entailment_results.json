@@ -1,0 +1,47 @@
+[
+  {
+    "name": "smallest_bin_fitting_size_roundtrip",
+    "type": "behavioral",
+    "code": "proof fn phi_1_smallest_bin_fitting_size_roundtrip(size: int)\n    requires\n        1 <= size <= 8,\n    ensures\n        size_of_bin(smallest_bin_fitting_size(size)) >= size,\n{\n    reveal(size_of_bin);\n    lemma_bin_sizes_constants();\n}",
+    "reason": "If the smallest bin fitting a size couldn't actually hold that size, the allocator would return undersized blocks",
+    "entailed": true,
+    "verus_output": "verification results:: 25 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "pfd_lower_upper_coverage",
+    "type": "logical",
+    "code": "proof fn phi_2_pfd_lower_upper_coverage(bin_idx: int)\n    requires\n        valid_bin_idx(bin_idx),\n        bin_idx > 1,\n    ensures\n        pfd_lower(bin_idx) > pfd_upper(bin_idx - 1),\n{\n    reveal(size_of_bin);\n    lemma_bin_sizes_constants();\n}",
+    "reason": "If lower bound of bin N exceeds upper bound of bin N-1, there's a gap \u2014 word sizes between bins would have no valid bin, causing allocation failures",
+    "entailed": true,
+    "verus_output": "verification results:: 25 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "size_of_bin_monotone",
+    "type": "behavioral",
+    "code": "proof fn phi_3_size_of_bin_monotone(b1: int, b2: int)\n    requires\n        valid_bin_idx(b1),\n        valid_bin_idx(b2),\n        b1 < b2,\n    ensures\n        size_of_bin(b1) <= size_of_bin(b2),\n{\n    reveal(size_of_bin);\n    lemma_bin_sizes_constants();\n}",
+    "reason": "If bin sizes weren't monotonically increasing, the binary-search-like logic in smallest_bin_fitting_size would return incorrect bins",
+    "entailed": true,
+    "verus_output": "verification results:: 25 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "size_of_bin_divisible_by_8",
+    "type": "behavioral",
+    "code": "proof fn phi_4_size_of_bin_divisible_by_8(bin_idx: int)\n    requires\n        valid_bin_idx(bin_idx),\n    ensures\n        size_of_bin(bin_idx) % 8 == 0,\n{\n    reveal(size_of_bin);\n    lemma_bin_sizes_constants();\n}",
+    "reason": "All bin sizes should be word-aligned (divisible by 8) \u2014 if not, allocations would return misaligned blocks causing undefined behavior on architectures requiring alignment",
+    "entailed": true,
+    "verus_output": "verification results:: 25 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "pfd_lower_leq_upper",
+    "type": "logical",
+    "code": "proof fn phi_5_pfd_lower_leq_upper(bin_idx: int)\n    requires\n        valid_bin_idx(bin_idx),\n    ensures\n        pfd_lower(bin_idx) <= pfd_upper(bin_idx),\n{\n    reveal(size_of_bin);\n    lemma_bin_sizes_constants();\n}",
+    "reason": "If the lower bound of a bin exceeded its upper bound, the bin would represent an empty range of word sizes \u2014 no allocation could ever use that bin",
+    "entailed": true,
+    "verus_output": "verification results:: 25 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

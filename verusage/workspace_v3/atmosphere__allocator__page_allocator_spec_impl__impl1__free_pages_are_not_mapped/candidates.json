@@ -1,0 +1,37 @@
+[
+  {
+    "name": "roundtrip_ptr_to_index_to_ptr_fails",
+    "target_fn": "page_ptr2page_index",
+    "type": "behavioral",
+    "code": "proof fn phi_1_roundtrip_ptr_to_index_to_ptr_fails(ptr: usize)\n    requires\n        ptr % 0x1000 == 0,\n    ensures\n        spec_page_index2page_ptr(spec_page_ptr2page_index(ptr)) != ptr,\n{\n}",
+    "reason": "If ptr\u2192index\u2192ptr is not the identity on aligned pointers, the two conversions are inconsistent and page lookups would silently corrupt addresses."
+  },
+  {
+    "name": "roundtrip_index_to_ptr_to_index_fails",
+    "target_fn": "page_index2page_ptr",
+    "type": "behavioral",
+    "code": "proof fn phi_2_roundtrip_index_to_ptr_to_index_fails(i: usize)\n    requires\n        0 <= i < NUM_PAGES,\n    ensures\n        spec_page_ptr2page_index(spec_page_index2page_ptr(i)) != i,\n{\n}",
+    "reason": "If index\u2192ptr\u2192index is not the identity for valid indices, page array indexing after a pointer round-trip would access the wrong page entry."
+  },
+  {
+    "name": "index2ptr_breaks_alignment",
+    "target_fn": "page_index2page_ptr",
+    "type": "logical",
+    "code": "proof fn phi_3_index2ptr_breaks_alignment(i: usize)\n    requires\n        0 <= i < NUM_PAGES,\n    ensures\n        spec_page_index2page_ptr(i) % 0x1000 != 0,\n{\n}",
+    "reason": "If index-to-pointer conversion produces non-4k-aligned addresses, the result violates the precondition of page_ptr2page_index and cannot be used as a valid page pointer."
+  },
+  {
+    "name": "zero_ptr_maps_to_nonzero_index",
+    "target_fn": "page_ptr2page_index",
+    "type": "boundary",
+    "code": "proof fn phi_4_zero_ptr_maps_to_nonzero_index()\n    requires\n        0usize % 0x1000 == 0,\n    ensures\n        spec_page_ptr2page_index(0usize) != 0usize,\n{\n}",
+    "reason": "If the zero address (trivially aligned) does not map to index 0, the base-case correspondence between the page array and physical memory is broken."
+  },
+  {
+    "name": "ptr2index_non_injective",
+    "target_fn": "page_ptr2page_index",
+    "type": "logical",
+    "code": "proof fn phi_5_ptr2index_non_injective(p1: usize, p2: usize)\n    requires\n        p1 % 0x1000 == 0,\n        p2 % 0x1000 == 0,\n        p1 != p2,\n    ensures\n        spec_page_ptr2page_index(p1) == spec_page_ptr2page_index(p2),\n{\n}",
+    "reason": "If two distinct aligned pointers map to the same index, the page array cannot distinguish them, causing aliasing bugs where operations on one page silently affect another."
+  }
+]

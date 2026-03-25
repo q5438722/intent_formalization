@@ -1,0 +1,52 @@
+[
+  {
+    "name": "aligned_zero_size",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "reason": "If alignment to size 0 is trivially true for all addresses, the spec fails to guard against meaningless zero-size alignment checks",
+    "entailed": false,
+    "verified": 13,
+    "errors": 1,
+    "output_tail": " proof fn phi_1_aligned_zero_size(addr: nat)\n     |       ------------------------------------- at the end of the function body\n1033 |     ensures\n1034 |         aligned(addr, 0),\n     |         ^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n"
+  },
+  {
+    "name": "inv_allows_empty_arch",
+    "target_fn": "inv",
+    "type": "boundary",
+    "reason": "If an architecture with zero layers satisfies inv(), then page table reasoning becomes vacuous and no translations are possible",
+    "entailed": true,
+    "verified": 14,
+    "errors": 0,
+    "output_tail": "t__lemma_candidate_mapping_inflight_pmem_overlap_hl_implies_os/phi_2_inv_allows_empty_arch.rs:1020:60\n     |\n1020 |                     assert(overlap(candidate.frame, result.get_Ok_0().frame));\n     |                                                            ^^^^^^^^\n\nwarning: 2 warnings emitted\n\n"
+  },
+  {
+    "name": "upper_vaddr_no_progress",
+    "target_fn": "upper_vaddr",
+    "type": "behavioral",
+    "reason": "If upper_vaddr equals base, the layer maps zero address space, making the entire page table level useless",
+    "entailed": false,
+    "verified": 13,
+    "errors": 1,
+    "output_tail": " ------------------------------------------------------------------- at the end of the function body\n...\n1037 |         arch.upper_vaddr(layer, base) == base,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n"
+  },
+  {
+    "name": "entry_size_uniform_across_layers",
+    "target_fn": "entry_size_is_next_layer_size",
+    "type": "logical",
+    "reason": "If adjacent layers have identical entry sizes, the hierarchical decomposition is broken and multi-level translation provides no granularity benefit",
+    "entailed": false,
+    "verified": 13,
+    "errors": 1,
+    "output_tail": " |       ----------------------------------------------------- at the end of the function body\n...\n1037 |         arch.entry_size(0) == arch.entry_size(1),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n"
+  },
+  {
+    "name": "entry_base_non_monotonic",
+    "target_fn": "entry_base",
+    "type": "behavioral",
+    "reason": "If a higher index yields a lower-or-equal entry base address, the virtual address space ordering is violated and page table walks cannot correctly partition memory",
+    "entailed": false,
+    "verified": 13,
+    "errors": 1,
+    "output_tail": "---------- at the end of the function body\n...\n1039 |         arch.entry_base(layer, base, j) <= arch.entry_base(layer, base, i),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n"
+  }
+]

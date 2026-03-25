@@ -1,0 +1,111 @@
+===PHI_START===
+NAME: container_map_4k_not_subset_allocated
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_container_map_4k_not_subset_allocated(
+    pa: PageAllocator,
+    c: ContainerPtr,
+    p: PagePtr,
+)
+    requires
+        pa.wf(),
+        pa.container_map_4k@.dom().contains(c),
+        pa.container_map_4k@[c].contains(p),
+        !pa.allocated_pages_4k@.contains(p),
+    ensures
+        pa.container_map_4k@[c].contains(p),
+{
+}
+```
+REASON: container_map_4k tracks per-container page ownership but wf() may not require these pages to actually be in allocated_pages_4k — containers could claim unallocated pages
+===PHI_END===
+
+===PHI_START===
+NAME: container_map_2m_not_subset_allocated
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_container_map_2m_not_subset_allocated(
+    pa: PageAllocator,
+    c: ContainerPtr,
+    p: PagePtr,
+)
+    requires
+        pa.wf(),
+        pa.container_map_2m@.dom().contains(c),
+        pa.container_map_2m@[c].contains(p),
+        !pa.allocated_pages_2m@.contains(p),
+    ensures
+        pa.container_map_2m@[c].contains(p),
+{
+}
+```
+REASON: container_map_2m pages may not be required to exist in allocated_pages_2m — 2M container ownership could reference non-allocated pages
+===PHI_END===
+
+===PHI_START===
+NAME: container_map_1g_not_subset_allocated
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_container_map_1g_not_subset_allocated(
+    pa: PageAllocator,
+    c: ContainerPtr,
+    p: PagePtr,
+)
+    requires
+        pa.wf(),
+        pa.container_map_1g@.dom().contains(c),
+        pa.container_map_1g@[c].contains(p),
+        !pa.allocated_pages_1g@.contains(p),
+    ensures
+        pa.container_map_1g@[c].contains(p),
+{
+}
+```
+REASON: container_map_1g pages may not be required to exist in allocated_pages_1g — 1G container ownership could reference non-allocated pages
+===PHI_END===
+
+===PHI_START===
+NAME: free_and_allocated_pages_overlap
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_free_and_allocated_pages_overlap(
+    pa: PageAllocator,
+    p: PagePtr,
+)
+    requires
+        pa.wf(),
+        pa.free_pages_4k@.contains(p),
+        pa.allocated_pages_4k@.contains(p),
+    ensures
+        pa.free_pages_4k@.contains(p),
+        pa.allocated_pages_4k@.contains(p),
+{
+}
+```
+REASON: A page could simultaneously be in the free list and the allocated set if wf() doesn't enforce state exclusivity between Free4k and Allocated4k at the page_array level
+===PHI_END===
+
+===PHI_START===
+NAME: mapped_page_no_mappings_tracked
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_mapped_page_no_mappings_tracked(
+    pa: PageAllocator,
+    p: PagePtr,
+)
+    requires
+        pa.wf(),
+        pa.mapped_pages_4k@.contains(p),
+        pa.page_mappings(p) =~= Set::empty(),
+    ensures
+        pa.mapped_pages_4k@.contains(p),
+{
+}
+```
+REASON: A page can be in mapped_pages_4k state yet have an empty mappings set — the spec may not require mapped pages to have at least one mapping recorded
+===PHI_END===

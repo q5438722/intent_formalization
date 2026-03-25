@@ -1,0 +1,47 @@
+[
+  {
+    "name": "rl3_interp_external_body_view_chain",
+    "type": "logical",
+    "code": "proof fn phi_1_rl3_interp_external_body_view_chain(s: crate::rl3::State)\n    ensures\n        s@.pt_mem === s.interp().writer_mem(),\n{\n}",
+    "reason": "`rl3::State::interp` is `external_body` `closed spec` \u2014 the rl1 view's `pt_mem` is set to `rl2.writer_mem()` by `rl2::interp`, but the rl3\u2192rl2 interp is opaque; if it maps fields incorrectly, the entire refinement chain's pt_mem is wrong",
+    "entailed": true,
+    "verus_output": " `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__os_invariant__lemma_candidate_mapping_inflight_pmem_overlap_hl_implies_os/phi_1_rl3_interp_external_body_view_chain.rs:1020:60\n     |\n1020 |                     assert(overlap(candidate.frame, result.get_Ok_0().frame));\n     |                                                            ^^^^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "overlap_not_symmetric",
+    "type": "behavioral",
+    "code": "proof fn phi_2_overlap_not_symmetric(r1: MemRegion, r2: MemRegion)\n    requires\n        overlap(r1, r2),\n    ensures\n        overlap(r2, r1),\n{\n}",
+    "reason": "`overlap` has an asymmetric definition (splits on `region1.base <= region2.base`) \u2014 if the two branches don't correctly mirror each other, overlap could be non-symmetric, breaking mapping conflict detection",
+    "entailed": true,
+    "verus_output": "precated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__os_invariant__lemma_candidate_mapping_inflight_pmem_overlap_hl_implies_os/phi_2_overlap_not_symmetric.rs:1020:60\n     |\n1020 |                     assert(overlap(candidate.frame, result.get_Ok_0().frame));\n     |                                                            ^^^^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "overlap_zero_size_region",
+    "type": "boundary",
+    "code": "proof fn phi_3_overlap_zero_size_region(base1: nat, base2: nat)\n    requires\n        base1 != base2,\n    ensures\n        !overlap(\n            MemRegion { base: base1, size: 0 },\n            MemRegion { base: base2, size: 0 },\n        ),\n{\n}",
+    "reason": "Zero-size regions at different bases should never overlap \u2014 if the overlap function returns true for empty regions, phantom conflicts would block valid mappings",
+    "entailed": true,
+    "verus_output": "cated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__os_invariant__lemma_candidate_mapping_inflight_pmem_overlap_hl_implies_os/phi_3_overlap_zero_size_region.rs:1020:60\n     |\n1020 |                     assert(overlap(candidate.frame, result.get_Ok_0().frame));\n     |                                                            ^^^^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "candidate_mapping_in_bounds_allows_overflow",
+    "type": "boundary",
+    "code": "proof fn phi_4_candidate_mapping_in_bounds_allows_overflow(base: nat, pte: PTE)\n    requires\n        candidate_mapping_in_bounds(base, pte),\n    ensures\n        base < x86_arch_spec.upper_vaddr(0, 0),\n        pte.frame.size < x86_arch_spec.upper_vaddr(0, 0),\n{\n}",
+    "reason": "`candidate_mapping_in_bounds` checks `base + pte.frame.size < upper_vaddr` using strict `<` \u2014 tests whether base and size are individually bounded; if frame.size could be enormous with a small base, the check passes but the mapping spans unreasonable ranges",
+    "entailed": true,
+    "verus_output": " `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__os_invariant__lemma_candidate_mapping_inflight_pmem_overlap_hl_implies_os/phi_4_candidate_mapping_in_bounds_allows_overflow.rs:1020:60\n     |\n1020 |                     assert(overlap(candidate.frame, result.get_Ok_0().frame));\n     |                                                            ^^^^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "arch_entry_size_layer0_equals_l0",
+    "type": "behavioral",
+    "code": "proof fn phi_5_arch_entry_size_layer0_equals_l0()\n    ensures\n        x86_arch_spec.entry_size(0) == L0_ENTRY_SIZE as nat,\n{\n}",
+    "reason": "Layer 0 entry size should match `L0_ENTRY_SIZE` (512 * L1_ENTRY_SIZE) \u2014 if the arch spec layers disagree with the constants, walk result sizes and alignment would be incorrect",
+    "entailed": true,
+    "verus_output": "use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__os_invariant__lemma_candidate_mapping_inflight_pmem_overlap_hl_implies_os/phi_5_arch_entry_size_layer0_equals_l0.rs:1020:60\n     |\n1020 |                     assert(overlap(candidate.frame, result.get_Ok_0().frame));\n     |                                                            ^^^^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

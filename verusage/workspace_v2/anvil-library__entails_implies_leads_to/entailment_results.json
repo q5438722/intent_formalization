@@ -1,0 +1,47 @@
+[
+  {
+    "name": "valid_p_implies_always_p_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_1_valid_p_implies_always_p_intensional_bridge(p: TempPred<int>)\n    requires\n        valid(p),\n    ensures\n        valid(always(p)),\n{\n    valid_p_implies_always_p::<int>(p);\n}",
+    "reason": "valid_p_implies_always_p is external_body bridging valid(p) to valid(always(p)) \u2014 always wraps p in a forall-over-suffix closure inside TempPred::new, and the axiom silently resolves this intensional gap",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "always_implies_to_leads_to_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_2_always_implies_to_leads_to_intensional_bridge(spec: TempPred<int>, p: TempPred<int>, q: TempPred<int>)\n    requires\n        spec.entails(always(p.implies(q))),\n    ensures\n        spec.entails(p.leads_to(q)),\n{\n    always_implies_to_leads_to::<int>(spec, p, q);\n}",
+    "reason": "always_implies_to_leads_to is external_body bridging always(p\u2192q) to always(p\u2192eventually(q)) \u2014 the eventually(q) wrapping introduces an existential-over-suffix closure intensionally distinct from the direct implication",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "entails_leads_to_any_spec",
+    "type": "boundary",
+    "code": "proof fn phi_3_entails_leads_to_any_spec(p: TempPred<int>, q: TempPred<int>, spec: TempPred<int>)\n    requires\n        p.entails(q),\n    ensures\n        spec.entails(p.leads_to(q)),\n{\n    entails_implies_leads_to::<int>(spec, p, q);\n}",
+    "reason": "if p entails q then ANY spec (including unsatisfiable or unrelated ones) entails p.leads_to(q) \u2014 the liveness property is derived without any reference to spec's content, making spec irrelevant",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "false_spec_entails_leads_to",
+    "type": "boundary",
+    "code": "proof fn phi_4_false_spec_entails_leads_to(p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.entails(q),\n    ensures\n        TempPred::<int>::new(|ex: Execution<int>| false).entails(p.leads_to(q)),\n{\n    entails_implies_leads_to::<int>(TempPred::new(|ex: Execution<int>| false), p, q);\n}",
+    "reason": "an unsatisfiable spec vacuously entails leads_to \u2014 entails_implies_leads_to propagates this without checking spec satisfiability, potentially hiding specification errors",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "leads_to_self_trivial",
+    "type": "behavioral",
+    "code": "proof fn phi_5_leads_to_self_trivial(spec: TempPred<int>, p: TempPred<int>)\n    ensures\n        spec.entails(p.leads_to(p)),\n{\n    entails_implies_leads_to::<int>(spec, p, p);\n}",
+    "reason": "p.leads_to(p) holds for any spec unconditionally with no preconditions at all \u2014 every property trivially leads to itself, meaning leads_to cannot distinguish any spec from any other for reflexive queries",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

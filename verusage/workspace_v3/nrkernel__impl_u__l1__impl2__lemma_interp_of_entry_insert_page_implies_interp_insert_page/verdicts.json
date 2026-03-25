@@ -1,0 +1,14 @@
+[
+  {
+    "phi": "empty_arch_satisfies_inv",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`Arch::inv()` uses a vacuously true universal quantifier when `layers.len() == 0`, so an empty architecture passes the invariant. This is a genuine spec weakness \u2014 a zero-layer arch represents no valid page table structure, yet `inv()` accepts it. The spec should require `self.layers.len() > 0`. This targets `Arch::inv()` which is a spec function, but it's the core invariant governing all executable operations on page tables."
+  },
+  {
+    "phi": "degenerate_arch_satisfies_inv",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "An architecture with `entry_size=1` and `num_entries=1` satisfies all constraints in `Arch::inv()` \u2014 entry_size is in (0, X86_MAX_ENTRY_SIZE], num_entries is in (0, 512], and the single-layer arch trivially satisfies `entry_size_is_next_layer_size`. Yet a 1-byte, 1-entry page table layer is nonsensical for x86. The spec lacks a lower bound on entry_size (should be \u2265 4096) and arguably on num_entries, allowing degenerate architectures."
+  }
+]

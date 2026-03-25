@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "valid_core_external_body_unconstrained",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`valid_core` is `external_body` with `unimplemented!()` \u2014 a completely opaque predicate used to determine core validity throughout the MMU specification. Its semantics are entirely unverified and unauditable, representing a trust assumption in the system."
+  },
+  {
+    "phi": "memories_disjoint_implies_range_ordering",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This directly follows from the definition of `memories_disjoint()` which explicitly requires `range_mem.1 < range_ptmem.0 < range_ptmem.1`. The strict ordering is correct and desirable \u2014 it ensures non-overlapping, non-empty ranges."
+  },
+  {
+    "phi": "in_ptmem_range_zero_size",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Zero-size range checks passing is standard behavior for interval containment predicates. The predicate `addr + 0 <= range_ptmem.1` is trivially satisfied when `addr <= range_ptmem.1`. This is not a spec gap \u2014 callers that need non-empty ranges add their own `size > 0` preconditions."
+  },
+  {
+    "phi": "core_mem_writer_sbuf_relationship",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`writer_mem` is defined as an inline alias for `core_mem(writes.core)`. Their equivalence is correct by construction and desirable \u2014 it confirms the helper correctly provides the writer core's memory view."
+  },
+  {
+    "phi": "pt_walk_agrees_with_core_mem_walk",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "When the store buffer is empty, `write_seq` of an empty sequence is identity via `fold_left` on an empty `Seq`. So `core_mem(core) == pt_mem`, making their walks identical. This is correct and expected TSO semantics."
+  }
+]

@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "walk_next_external_body_unconstrained",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`walk_next` is `external_body` with `unimplemented!()` \u2014 the entire page table walk stepping function is completely opaque and unverified. Since `iter_walk` depends on it, all walk results inherit this trust gap. This is a fundamental unverified assumption in the MMU specification."
+  },
+  {
+    "phi": "lemma_aux1_external_body_path_equality",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`lemma_iter_walk_result_vbase_equal_aux1` is `external_body` with `unimplemented!()` \u2014 the path equality property (walking from an aligned result vaddr produces the same path) is asserted without proof. This is an unverified trust assumption in the walk idempotency chain."
+  },
+  {
+    "phi": "lemma_aux2_external_body_vaddr_idempotent",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`lemma_iter_walk_result_vbase_equal_aux2` is `external_body` with `unimplemented!()` \u2014 the vaddr idempotency property is asserted without proof. Combined with aux1, the entire `lemma_iter_walk_result_vbase_equal` is built on two unverified assumptions."
+  },
+  {
+    "phi": "flags_eagerly_computed_beyond_path",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "In Verus spec mode, out-of-bounds indexing on `Seq` returns an arbitrary value but doesn't cause unsoundness \u2014 the result is never used because the `if path.len() == 2` branch selects `flags1`. The final flags value is correct for the actual path length."
+  },
+  {
+    "phi": "walk_result_invalid_aligns_to_page",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "For a page-aligned vaddr, `align_to_usize(vaddr, PAGE_SIZE) == vaddr` is trivially correct. The alignment behavior for non-aligned addresses is intentional \u2014 invalid walk results report at page granularity, which matches x86 page fault semantics."
+  }
+]

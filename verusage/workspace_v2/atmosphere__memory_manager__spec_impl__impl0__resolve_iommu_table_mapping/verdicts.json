@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "page_entry_to_map_entry_drops_present",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`spec_page_entry_to_map_entry` copies addr, write, and execute_disable but silently drops the present bit. This means a non-present page entry produces a MapEntry indistinguishable from a present one, which could mask bugs where non-present entries are accidentally treated as valid mappings."
+  },
+  {
+    "phi": "is_empty_l4_dom_unbounded",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`is_empty` clears l3/l2/l1 domains to empty and empties all mappings, but never constrains `l4_table@.dom()`. This allows an \"empty\" page table's `page_closure()` to contain arbitrary extra L4 pointers beyond cr3, potentially interfering with page ownership disjointness invariants."
+  },
+  {
+    "phi": "resolve_4k_ignores_2m_ps",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`spec_resolve_mapping_l2` already filters out entries with `ps == true` by returning `None`. So `spec_resolve_mapping_l2(...).is_Some()` combined with `ps == true` is an unsatisfiable precondition \u2014 this PHI's requires clause is vacuously true, not a real spec gap."
+  },
+  {
+    "phi": "resolve_l2_no_ps_check",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This confirms the correct behavior of `spec_resolve_mapping_l2`: when an L2 entry has `ps == true`, the function returns `None`, correctly excluding 2MB huge pages from the 4k page walk. This is the intended design."
+  }
+]

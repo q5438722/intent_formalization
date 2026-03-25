@@ -1,0 +1,75 @@
+===PHI_START===
+NAME: max_phyaddr_width_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_max_phyaddr_width_external_body()
+    ensures
+        32 <= MAX_PHYADDR_WIDTH <= 52,
+{
+    axiom_max_phyaddr_width_facts();
+}
+```
+REASON: `MAX_PHYADDR_WIDTH` is `external_body` and its bounds are asserted by an axiom function — the actual value is opaque and trusted
+===PHI_END===
+
+===PHI_START===
+NAME: max_phyaddr_lower_bound
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_max_phyaddr_lower_bound()
+    ensures
+        MAX_PHYADDR >= 0xFFFFFFFF,
+{
+    lemma_maxphyaddr_facts();
+}
+```
+REASON: MAX_PHYADDR is at least 4GB-1 — derived from the axiom that `MAX_PHYADDR_WIDTH >= 32`, meaning the spec assumes at least 32-bit physical addressing
+===PHI_END===
+
+===PHI_START===
+NAME: max_phyaddr_upper_bound
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_max_phyaddr_upper_bound()
+    ensures
+        MAX_PHYADDR <= 0xFFFFFFFFFFFFF,
+{
+    lemma_maxphyaddr_facts();
+}
+```
+REASON: MAX_PHYADDR is at most 52-bit — the axiom trusts that hardware never exceeds 52-bit physical addressing, but future x86 extensions could widen this
+===PHI_END===
+
+===PHI_START===
+NAME: max_phyaddr_fits_usize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_max_phyaddr_fits_usize()
+    ensures
+        MAX_PHYADDR < 0x10000000000000000,
+{
+    lemma_maxphyaddr_facts();
+}
+```
+REASON: MAX_PHYADDR fits in a u64/usize — follows from the 52-bit upper bound, but the entire chain depends on the unverified `external_body` constant and axiom
+===PHI_END===
+
+===PHI_START===
+NAME: max_phyaddr_spec_equals_exec
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_max_phyaddr_spec_equals_exec()
+    ensures
+        MAX_PHYADDR == MAX_PHYADDR_SPEC,
+        MAX_PHYADDR_SPEC == ((1usize << MAX_PHYADDR_WIDTH) - 1usize) as usize,
+{
+    axiom_max_phyaddr_width_facts();
+}
+```
+REASON: The exec and spec constants are linked via `when_used_as_spec` — the spec definition `(1 << WIDTH) - 1` produces a bitmask, but the correspondence depends on the external_body axiom for overflow safety
+===PHI_END===

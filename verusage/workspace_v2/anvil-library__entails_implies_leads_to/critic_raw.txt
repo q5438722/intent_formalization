@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: valid_p_implies_always_p_intensional_bridge
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `valid_p_implies_always_p` is external_body bridging `valid(p)` to `valid(always(p))`, where `always` wraps `p` in a forall-over-suffix closure inside `TempPred::new`. This is an unverified trust assumption resolving the intensional closure gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: always_implies_to_leads_to_intensional_bridge
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `always_implies_to_leads_to` is external_body bridging `always(p.implies(q))` to `p.leads_to(q)` which expands to `always(p.implies(eventually(q)))`. The `eventually` wrapper introduces an existential-over-suffix closure that is intensionally distinct, and the strengthening from `q` to `eventually(q)` is semantically nontrivial — this is a separate unverified trust assumption.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: entails_leads_to_any_spec
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: If `p.entails(q)` (i.e., `valid(p.implies(q))`), then `p.leads_to(q)` is `always(p.implies(eventually(q)))` which is valid because whenever p holds, q holds immediately (hence eventually). Any spec entailing a valid property is standard — the spec-independence is correct.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: false_spec_entails_leads_to
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is a specific instance of φ3 with an unsatisfiable spec. Ex falso quodlibet — a false spec entailing anything is standard logic, not a spec gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: leads_to_self_trivial
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `p.leads_to(p)` is a standard temporal logic tautology — whenever p holds, p holds at suffix 0, so eventually(p) is satisfied. This is expected and desirable, not a spec gap.
+===VERDICT_END===
+
+===SUMMARY===
+Two true positives: `valid_p_implies_always_p` and `always_implies_to_leads_to` are independent external_body axioms each bridging distinct intensional closure gaps — valid-to-always lifting and always-implies-to-leads-to strengthening, respectively. The remaining three are false positives: spec-independent entailment of valid leads_to properties, ex falso on false specs, and reflexive leads_to are all standard temporal logic properties.
+===END_SUMMARY===

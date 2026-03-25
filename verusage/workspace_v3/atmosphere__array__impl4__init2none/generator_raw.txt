@@ -1,0 +1,102 @@
+===PHI_START===
+NAME: set_is_noop
+TARGET_FN: set
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_set_is_noop(pre_seq: Seq<int>, post_seq: Seq<int>, i: int, out: int, n: int)
+    requires
+        n > 0,
+        0 <= i < n,
+        pre_seq.len() == n,
+        post_seq =~= pre_seq.update(i, out),
+        post_seq.len() == n,
+    ensures
+        pre_seq =~= post_seq,
+{
+}
+```
+REASON: If provable, set never modifies the array, making the operation a no-op regardless of the value written
+===PHI_END===
+
+===PHI_START===
+NAME: set_corrupts_other_index
+TARGET_FN: set
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_set_corrupts_other(pre_seq: Seq<int>, post_seq: Seq<int>, i: int, j: int, out: int, n: int)
+    requires
+        n > 1,
+        0 <= i < n,
+        0 <= j < n,
+        i != j,
+        pre_seq.len() == n,
+        post_seq =~= pre_seq.update(i, out),
+        post_seq.len() == n,
+    ensures
+        pre_seq[j] != post_seq[j],
+{
+}
+```
+REASON: If provable, set has unintended side effects on indices other than the target index
+===PHI_END===
+
+===PHI_START===
+NAME: set_ignores_value
+TARGET_FN: set
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_set_ignores_value(pre_seq: Seq<int>, post_seq: Seq<int>, i: int, out: int, n: int)
+    requires
+        n > 0,
+        0 <= i < n,
+        pre_seq.len() == n,
+        post_seq =~= pre_seq.update(i, out),
+        post_seq.len() == n,
+    ensures
+        post_seq[i] != out,
+{
+}
+```
+REASON: If provable, set does not actually store the provided value at the target index
+===PHI_END===
+
+===PHI_START===
+NAME: init2none_first_is_some
+TARGET_FN: init2none
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_init2none_first_is_some(post_seq: Seq<Option<int>>, n: int)
+    requires
+        n > 0,
+        post_seq.len() == n,
+        forall|index: int| 0 <= index < n ==> (#[trigger] post_seq[index]).is_None(),
+    ensures
+        post_seq[0].is_Some(),
+{
+}
+```
+REASON: If provable, init2none leaves the first element as Some, directly contradicting its all-None guarantee
+===PHI_END===
+
+===PHI_START===
+NAME: init2none_empties_seq
+TARGET_FN: init2none
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_init2none_empties_seq(post_seq: Seq<Option<int>>, n: int)
+    requires
+        n > 0,
+        post_seq.len() == n,
+        forall|index: int| 0 <= index < n ==> (#[trigger] post_seq[index]).is_None(),
+    ensures
+        post_seq =~= Seq::<Option<int>>::empty(),
+{
+}
+```
+REASON: If provable, init2none collapses the array to an empty sequence instead of preserving length while filling with None
+===PHI_END===

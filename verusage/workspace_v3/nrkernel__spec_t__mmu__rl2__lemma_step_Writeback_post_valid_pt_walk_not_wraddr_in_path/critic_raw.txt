@@ -1,0 +1,23 @@
+Looking at this carefully:
+
+`align_to_usize` is defined as:
+```rust
+pub open spec(checked) fn align_to_usize(a: usize, b: usize) -> usize {
+    sub(a, a % b)
+}
+```
+
+This is a **spec function**, not an exec function.
+
+The φ claims `align_to_usize(a, b) == a` when `a % b != 0`, which contradicts the definition (`sub(a, a % b)` would yield `a - (a % b) < a`). However, the classification question is what it targets.
+
+===VERDICT_START===
+PHI: align_identity_when_unaligned
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `align_to_usize` is declared as `pub open spec(checked) fn`, making it a pure spec function, not an executable function. The φ therefore targets a spec fn rather than an exec fn's specification. Additionally, the claimed property directly contradicts the transparent definition `sub(a, a % b)`, so it is unlikely to actually verify under satisfiable preconditions.
+===VERDICT_END===
+
+===SUMMARY===
+The single candidate property `align_identity_when_unaligned` is a false positive. It targets `align_to_usize`, which is a `spec(checked)` function—not an executable function—so it falls outside the scope of exec-spec consistency analysis. Moreover, the asserted behavior (identity when unaligned) flatly contradicts the open definition `sub(a, a % b)`, meaning the property is either vacuously true due to type-level unsatisfiability of its preconditions or simply would not verify, making it uninformative about any real spec weakness.
+===END_SUMMARY===

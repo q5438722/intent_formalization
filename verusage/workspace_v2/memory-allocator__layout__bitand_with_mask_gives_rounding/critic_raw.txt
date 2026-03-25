@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: two_mul_with_bit0_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `two_mul_with_bit0` is `external_body` trusting `(2*x)/(2*y) == x/y` without proof. While mathematically correct for Euclidean division (scaling numerator and denominator by the same positive factor preserves the quotient, and for negative factor the signs cancel), this is an unverified trust gap that the main theorem depends on.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: two_mul_with_bit1_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `two_mul_with_bit1` is `external_body` trusting `(2*x+1)/(2*y) == x/y` without proof. This is the more subtle of the two lemmas — the odd remainder `+1` is absorbed because `2*y` divides evenly, but this is unverified and any error would propagate to the main theorem.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: power_of_two_rounddown
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is the intended main theorem — bitwise AND with a power-of-two mask equals arithmetic round-down. The proof is mostly verified with bit_vector assertions; only the two external_body helper lemmas are trusted. The property itself is correct and desirable.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: two_mul_bit1_negative_y
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The external_body lemma only requires `y1 != 0` but is instantiated with `y1 = -1`. For Verus Euclidean division, `(2*x+1)/(-2)` vs `x/(-1)` — this is a concrete negative case where the trusted axiom applies without restriction, and the Euclidean division semantics for negative divisors are non-trivial.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: two_mul_bit0_negative_both
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The external_body axiom applies to all `y1 < 0, x1 < 0` without restriction. While `(2*x)/(2*y) == x/y` does hold for Euclidean division when scaling by a common factor, this negative-argument regime is never used by the main theorem (which operates on `usize` values) and represents an over-broad trust assumption.
+===VERDICT_END===
+
+===SUMMARY===
+Two core true positives: `two_mul_with_bit0` and `two_mul_with_bit1` are both `external_body` lemmas that the main `bitand_with_mask_gives_rounding` theorem depends on — they trust integer division scaling properties without proof. Two additional true positives highlight that these axioms accept negative arguments (never needed by the main theorem on `usize` values), making the trusted assumptions broader than necessary. One false positive: the main theorem itself is the intended result and is correct modulo the two trusted helpers.
+===END_SUMMARY===

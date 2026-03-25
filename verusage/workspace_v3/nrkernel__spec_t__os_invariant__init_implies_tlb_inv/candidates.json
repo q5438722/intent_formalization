@@ -1,0 +1,37 @@
+[
+  {
+    "name": "aligned_zero_size_vacuous",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "code": "proof fn phi_1_aligned_zero_size_vacuous()\n    ensures\n        aligned(42, 0),\n{\n}",
+    "reason": "If size==0 satisfies alignment, the spec fails to guard against division-by-zero, letting any address appear \"aligned to 0\""
+  },
+  {
+    "name": "aligned_odd_to_even",
+    "target_fn": "aligned",
+    "type": "behavioral",
+    "code": "proof fn phi_2_aligned_odd_to_even()\n    ensures\n        aligned(3, 2),\n{\n}",
+    "reason": "3 is not a multiple of 2; if provable, the modular-arithmetic check is fundamentally broken"
+  },
+  {
+    "name": "aligned_implies_zero_addr",
+    "target_fn": "aligned",
+    "type": "logical",
+    "code": "proof fn phi_3_aligned_implies_zero_addr(addr: nat)\n    requires\n        aligned(addr, 4096),\n    ensures\n        addr == 0nat,\n{\n}",
+    "reason": "Many nonzero addresses (e.g. 4096, 8192) are page-aligned; if the spec collapses them all to zero, it is far too restrictive"
+  },
+  {
+    "name": "aligned_sum_off_by_one",
+    "target_fn": "aligned",
+    "type": "logical",
+    "code": "proof fn phi_4_aligned_sum_off_by_one(a: nat, b: nat, s: nat)\n    requires\n        s > 1,\n        aligned(a, s),\n        aligned(b, s),\n    ensures\n        aligned(a + b + 1, s),\n{\n}",
+    "reason": "Adding 1 to a sum of two aligned values must break alignment for any size>1; provability would mean the spec ignores offsets"
+  },
+  {
+    "name": "aligned_cross_size",
+    "target_fn": "aligned",
+    "type": "logical",
+    "code": "proof fn phi_5_aligned_cross_size(addr: nat)\n    requires\n        addr > 0,\n        aligned(addr, 2),\n    ensures\n        aligned(addr, 3),\n{\n}",
+    "reason": "Alignment to 2 does not imply alignment to 3 (e.g. addr==4); if provable, the spec conflates coprime alignment classes"
+  }
+]

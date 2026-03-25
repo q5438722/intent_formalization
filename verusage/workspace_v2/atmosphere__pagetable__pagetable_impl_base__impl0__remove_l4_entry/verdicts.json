@@ -1,0 +1,20 @@
+[
+  {
+    "phi": "l1_entry_can_point_to_l1_table",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "The ensures clause is `true` (trivially satisfied), but the real test is whether the preconditions are satisfiable under `wf_l1`. `wf_l1` forbids L1 present entries from pointing to L2 tables, L3 tables, or cr3, but does NOT forbid them from pointing to L1 table addresses. Combined with `table_pages_wf` disjointness (not required here), this is a real gap in `wf_l1` alone \u2014 a present L1 entry could map user-accessible data to a page that is also an L1 page table page."
+  },
+  {
+    "phi": "disjoint_l3_only_non_ps_entries",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "The ensures is `true`, but the preconditions are satisfiable: `disjoint_l3` only requires address uniqueness when `!ps` for both entries. Two L3 entries with `ps == true` (1G hugepages) in different L3 tables can share the same physical address, allowing aliased 1G mappings to the same physical memory from different virtual addresses. This is a spec gap \u2014 the disjointness invariant should cover hugepage entries too if physical page aliasing is undesirable."
+  },
+  {
+    "phi": "page_closure_missing_cr3",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`page_closure` is defined as `l3_tables.dom() + l2_tables.dom() + l1_tables.dom() + l4_table.dom()`, and `wf_l4` ensures `l4_table.dom() =~= {cr3}`, so cr3 is indeed always in page_closure. This is the expected and correct behavior \u2014 the cr3 page IS a page table page and SHOULD be in the closure. The observation about L1 entries potentially mapping to cr3 is addressed by `wf_l1` which explicitly forbids `cr3 != l1_entry.addr`."
+  }
+]

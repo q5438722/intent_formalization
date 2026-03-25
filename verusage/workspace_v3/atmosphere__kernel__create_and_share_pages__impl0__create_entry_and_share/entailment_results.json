@@ -1,0 +1,52 @@
+[
+  {
+    "name": "share_flips_write_perm",
+    "target_fn": "create_entry_and_share",
+    "type": "behavioral",
+    "reason": "If sharing flips write permissions, a read-only page could become writable in the target, breaking memory safety",
+    "entailed": false,
+    "verified": 41,
+    "errors": 1,
+    "output_tail": "    | |_- at the end of the function body\n...\n2824 |           new_target_space[target_va].write != old_src_space[src_va].write,\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 30 warnings emitted\n\n"
+  },
+  {
+    "name": "same_proc_src_va_corrupted",
+    "target_fn": "create_entry_and_share",
+    "type": "boundary",
+    "reason": "When src_proc_ptr == target_proc_ptr, the original source VA mapping must be preserved; corruption would silently remap existing memory",
+    "entailed": false,
+    "verified": 41,
+    "errors": 1,
+    "output_tail": ": VAddr,\n2816 | |     target_va: VAddr,\n2817 | | )\n     | |_- at the end of the function body\n...\n2823 |           new_space[src_va] != old_space[src_va],\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 30 warnings emitted\n\n"
+  },
+  {
+    "name": "page_mapping_drops_source",
+    "target_fn": "create_entry_and_share",
+    "type": "logical",
+    "reason": "If inserting the new share target drops the original source tracking entry, the kernel would lose the ability to revoke or unmap the source's access",
+    "entailed": false,
+    "verified": 41,
+    "errors": 1,
+    "output_tail": " |\n2818 | |     target_va: VAddr,\n2819 | | )\n     | |_- at the end of the function body\n...\n2824 |           !new_set.contains((src_proc_ptr, src_va)),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 30 warnings emitted\n\n"
+  },
+  {
+    "name": "refcount_not_incremented",
+    "target_fn": "create_entry_and_share",
+    "type": "behavioral",
+    "reason": "If the physical page reference counter does not increase after sharing, premature page reclamation could cause use-after-free",
+    "entailed": false,
+    "verified": 41,
+    "errors": 1,
+    "output_tail": "     old_refcount: usize,\n2814 | |     new_refcount: usize,\n2815 | | )\n     | |_- at the end of the function body\n...\n2820 |           new_refcount <= old_refcount,\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 30 warnings emitted\n\n"
+  },
+  {
+    "name": "target_gains_extra_mappings",
+    "target_fn": "create_entry_and_share",
+    "type": "boundary",
+    "reason": "If sharing introduces unintended extra VA mappings in the target, the target process gains access to memory it should not see",
+    "entailed": false,
+    "verified": 41,
+    "errors": 1,
+    "output_tail": "  |\n2818 | |     extra_va: VAddr,\n2819 | | )\n     | |_- at the end of the function body\n...\n2827 |           new_target_space.dom().contains(extra_va),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 30 warnings emitted\n\n"
+  }
+]

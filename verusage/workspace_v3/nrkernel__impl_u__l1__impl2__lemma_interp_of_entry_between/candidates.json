@@ -1,0 +1,37 @@
+[
+  {
+    "name": "aligned_zero_trivially_true",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "code": "proof fn phi_1_aligned_zero_trivially_true()\n    ensures\n        aligned(42, 0),\n{\n}",
+    "reason": "If aligned(x, 0) is provable, any address is \"aligned\" to zero, enabling vacuous reasoning through the alignment preconditions"
+  },
+  {
+    "name": "arch_upper_vaddr_equals_base",
+    "target_fn": "upper_vaddr",
+    "type": "behavioral",
+    "code": "proof fn phi_2_arch_upper_vaddr_equals_base(arch: Arch, layer: nat, base: nat)\n    requires\n        arch.inv(),\n        layer < arch.layers.len(),\n    ensures\n        arch.upper_vaddr(layer, base) == base,\n{\n}",
+    "reason": "If upper_vaddr equals base for a valid arch, the mapped address region has zero size, making the entire layer useless"
+  },
+  {
+    "name": "entry_base_collision_different_idx",
+    "target_fn": "entry_base",
+    "type": "logical",
+    "code": "proof fn phi_3_entry_base_collision_different_idx(arch: Arch, layer: nat, base: nat, i: nat, j: nat)\n    requires\n        arch.inv(),\n        layer < arch.layers.len(),\n        i < arch.num_entries(layer),\n        j < arch.num_entries(layer),\n        i != j,\n    ensures\n        arch.entry_base(layer, base, i) == arch.entry_base(layer, base, j),\n{\n}",
+    "reason": "If two distinct indices map to the same entry base, page table entries would alias and translations would be ambiguous"
+  },
+  {
+    "name": "well_formed_zero_entries",
+    "target_fn": "well_formed",
+    "type": "boundary",
+    "code": "proof fn phi_4_well_formed_zero_entries(d: Directory)\n    requires\n        d.well_formed(),\n    ensures\n        d.num_entries() == 0,\n{\n}",
+    "reason": "If a well-formed directory can have zero entries, the invariant fails to enforce that page tables have meaningful structure"
+  },
+  {
+    "name": "directory_upper_leq_base",
+    "target_fn": "upper_vaddr",
+    "type": "behavioral",
+    "code": "proof fn phi_5_directory_upper_leq_base(d: Directory)\n    requires\n        d.inv(),\n    ensures\n        d.upper_vaddr() <= d.base_vaddr,\n{\n}",
+    "reason": "If a valid directory's upper_vaddr is at or below its base, the directory covers no address space or wraps around, breaking address containment"
+  }
+]

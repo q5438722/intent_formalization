@@ -1,0 +1,37 @@
+[
+  {
+    "name": "src_loses_descriptor",
+    "target_fn": "pass_endpoint",
+    "type": "behavioral",
+    "code": "proof fn phi_1_src_loses_descriptor(\n    old_pm: ProcessManager,\n    new_pm: ProcessManager,\n    src_thread_ptr: ThreadPtr,\n    src_endpoint_index: EndpointIdx,\n    dst_thread_ptr: ThreadPtr,\n    dst_endpoint_index: EndpointIdx,\n)\n    requires\n        old_pm.wf(),\n        old_pm.thread_dom().contains(src_thread_ptr),\n        old_pm.thread_dom().contains(dst_thread_ptr),\n        src_thread_ptr != dst_thread_ptr,\n        0 <= src_endpoint_index < MAX_NUM_ENDPOINT_DESCRIPTORS,\n        0 <= dst_endpoint_index < MAX_NUM_ENDPOINT_DESCRIPTORS,\n        old_pm.get_thread(src_thread_ptr).endpoint_descriptors@[src_endpoint_index as int].is_Some(),\n        old_pm.get_thread(dst_thread_ptr).endpoint_descriptors@[dst_endpoint_index as int].is_None(),\n        new_pm.wf(),\n        new_pm.thread_dom() == old_pm.thread_dom(),\n        forall|t_ptr: ThreadPtr|\n            #![trigger old_pm.get_thread(t_ptr)]\n            old_pm.thread_dom().contains(t_ptr) && t_ptr != dst_thread_ptr\n            ==> old_pm.get_thread(t_ptr) =~= new_pm.get_thread(t_ptr),\n    ensures\n        new_pm.get_thread(src_thread_ptr).endpoint_descriptors@[src_endpoint_index as int].is_None(),\n{\n    assert(old_pm.get_thread(src_thread_ptr) =~= new_pm.get_thread(src_thread_ptr));\n}",
+    "reason": "If the source thread's descriptor is cleared, pass_endpoint would behave as a move instead of a share, violating the intended reference-counting semantics"
+  },
+  {
+    "name": "dst_slot_stays_empty",
+    "target_fn": "pass_endpoint",
+    "type": "boundary",
+    "code": "proof fn phi_2_dst_slot_stays_empty(\n    old_pm: ProcessManager,\n    new_pm: ProcessManager,\n    src_thread_ptr: ThreadPtr,\n    src_endpoint_index: EndpointIdx,\n    dst_thread_ptr: ThreadPtr,\n    dst_endpoint_index: EndpointIdx,\n)\n    requires\n        old_pm.wf(),\n        old_pm.thread_dom().contains(src_thread_ptr),\n        old_pm.thread_dom().contains(dst_thread_ptr),\n        src_thread_ptr != dst_thread_ptr,\n        0 <= src_endpoint_index < MAX_NUM_ENDPOINT_DESCRIPTORS,\n        0 <= dst_endpoint_index < MAX_NUM_ENDPOINT_DESCRIPTORS,\n        old_pm.get_thread(src_thread_ptr).endpoint_descriptors@[src_endpoint_index as int].is_Some(),\n        old_pm.get_thread(dst_thread_ptr).endpoint_descriptors@[dst_endpoint_index as int].is_None(),\n        new_pm.wf(),\n        new_pm.thread_dom() == old_pm.thread_dom(),\n        new_pm.get_thread(dst_thread_ptr).endpoint_descriptors@ =~= old_pm.get_thread(\n            dst_thread_ptr,\n        ).endpoint_descriptors@.update(\n            dst_endpoint_index as int,\n            Some(old_pm.get_thread(src_thread_ptr).endpoint_descriptors@[src_endpoint_index as int].unwrap()),\n        ),\n    ensures\n        new_pm.get_thread(dst_thread_ptr).endpoint_descriptors@[dst_endpoint_index as int].is_None(),\n{\n}",
+    "reason": "If the destination slot remains None after the pass, the endpoint was never actually transferred and the operation is a no-op"
+  },
+  {
+    "name": "owning_threads_lose_member",
+    "target_fn": "pass_endpoint",
+    "type": "logical",
+    "code": "proof fn phi_3_owning_threads_lose_member(\n    old_pm: ProcessManager,\n    new_pm: ProcessManager,\n    src_thread_ptr: ThreadPtr,\n    src_endpoint_index: EndpointIdx,\n    dst_thread_ptr: ThreadPtr,\n    dst_endpoint_index: EndpointIdx,\n    endpoint_ptr: EndpointPtr,\n    witness_pair: (ThreadPtr, EndpointIdx),\n)\n    requires\n        old_pm.wf(),\n        old_pm.thread_dom().contains(src_thread_ptr),\n        old_pm.thread_dom().contains(dst_thread_ptr),\n        src_thread_ptr != dst_thread_ptr,\n        0 <= src_endpoint_index < MAX_NUM_ENDPOINT_DESCRIPTORS,\n        0 <= dst_endpoint_index < MAX_NUM_ENDPOINT_DESCRIPTORS,\n        old_pm.get_thread(src_thread_ptr).endpoint_descriptors@[src_endpoint_index as int] == Some(endpoint_ptr),\n        old_pm.get_thread(dst_thread_ptr).endpoint_descriptors@[dst_endpoint_index as int].is_None(),\n        old_pm.endpoint_dom().contains(endpoint_ptr),\n        new_pm.wf(),\n        new_pm.endpoint_dom() == old_pm.endpoint_dom(),\n        new_pm.get_endpoint(endpoint_ptr).owning_threads@ == old_pm.get_endpoint(endpoint_ptr).owning_threads@.insert((dst_thread_ptr, dst_endpoint_index)),\n        old_pm.get_endpoint(endpoint_ptr).owning_threads@.contains(witness_pair),\n        witness_pair != (dst_thread_ptr, dst_endpoint_index),\n    ensures\n        !new_pm.get_endpoint(endpoint_ptr).owning_threads@.contains(witness_pair),\n{\n}",
+    "reason": "If existing owning thread pairs are lost during the set insert, passing an endpoint would silently revoke other threads' references, breaking isolation"
+  },
+  {
+    "name": "other_descriptor_changed",
+    "target_fn": "thread_set_endpoint_descriptor",
+    "type": "boundary",
+    "code": "proof fn phi_4_other_descriptor_changed(\n    thread_ptr: ThreadPtr,\n    old_perm: PointsTo<Thread>,\n    new_perm: PointsTo<Thread>,\n    endpoint_index: EndpointIdx,\n    other_index: EndpointIdx,\n    endpoint_op: Option<EndpointPtr>,\n)\n    requires\n        old_perm.is_init(),\n        old_perm.addr() == thread_ptr,\n        0 <= endpoint_index < MAX_NUM_ENDPOINT_DESCRIPTORS,\n        0 <= other_index < MAX_NUM_ENDPOINT_DESCRIPTORS,\n        endpoint_index != other_index,\n        new_perm.is_init(),\n        new_perm.addr() == thread_ptr,\n        new_perm.value().endpoint_descriptors@ == old_perm.value().endpoint_descriptors@.update(endpoint_index as int, endpoint_op),\n        old_perm.value().endpoint_descriptors@[other_index as int].is_Some(),\n    ensures\n        new_perm.value().endpoint_descriptors@[other_index as int].is_None(),\n{\n}",
+    "reason": "If updating one descriptor index corrupts an unrelated index, a single pass_endpoint call could silently destroy other endpoint references held by the thread"
+  },
+  {
+    "name": "set_to_some_becomes_none",
+    "target_fn": "thread_set_endpoint_descriptor",
+    "type": "behavioral",
+    "code": "proof fn phi_5_set_to_some_becomes_none(\n    thread_ptr: ThreadPtr,\n    old_perm: PointsTo<Thread>,\n    new_perm: PointsTo<Thread>,\n    endpoint_index: EndpointIdx,\n    endpoint_ptr: EndpointPtr,\n)\n    requires\n        old_perm.is_init(),\n        old_perm.addr() == thread_ptr,\n        0 <= endpoint_index < MAX_NUM_ENDPOINT_DESCRIPTORS,\n        new_perm.is_init(),\n        new_perm.addr() == thread_ptr,\n        new_perm.value().endpoint_descriptors@ == old_perm.value().endpoint_descriptors@.update(endpoint_index as int, Some(endpoint_ptr)),\n    ensures\n        new_perm.value().endpoint_descriptors@[endpoint_index as int].is_None(),\n{\n}",
+    "reason": "If writing Some(endpoint_ptr) at an index produces None, the descriptor update silently drops endpoint references, making pass_endpoint appear to succeed while losing the endpoint"
+  }
+]

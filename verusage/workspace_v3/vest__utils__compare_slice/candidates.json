@@ -1,0 +1,37 @@
+[
+  {
+    "name": "always_returns_true",
+    "target_fn": "compare_slice",
+    "type": "behavioral",
+    "code": "proof fn phi_1_always_returns_true(x: Seq<u8>, y: Seq<u8>, res: bool)\n    requires\n        res == (x =~= y),\n    ensures\n        res == true,\n{\n    // If provable, the spec cannot distinguish equal from unequal slices\n}",
+    "reason": "The spec would be vacuous if compare_slice always returns true regardless of inputs"
+  },
+  {
+    "name": "always_returns_false",
+    "target_fn": "compare_slice",
+    "type": "behavioral",
+    "code": "proof fn phi_2_always_returns_false(x: Seq<u8>, y: Seq<u8>, res: bool)\n    requires\n        res == (x =~= y),\n    ensures\n        res == false,\n{\n    // If provable, the spec never reports equality\n}",
+    "reason": "The spec would be vacuous if compare_slice always returns false regardless of inputs"
+  },
+  {
+    "name": "different_lengths_equal",
+    "target_fn": "compare_slice",
+    "type": "boundary",
+    "code": "proof fn phi_3_different_lengths_equal(x: Seq<u8>, y: Seq<u8>, res: bool)\n    requires\n        res == (x =~= y),\n        x.len() == 2,\n        y.len() == 3,\n    ensures\n        res == true,\n{\n    // If provable, the spec ignores length differences\n}",
+    "reason": "Slices of different lengths should never be considered equal by the spec"
+  },
+  {
+    "name": "single_diff_still_equal",
+    "target_fn": "compare_slice",
+    "type": "logical",
+    "code": "proof fn phi_4_single_diff_still_equal(x: Seq<u8>, y: Seq<u8>, res: bool)\n    requires\n        res == (x =~= y),\n        x.len() == 2,\n        y.len() == 2,\n        x[0] == y[0],\n        x[1] != y[1],\n    ensures\n        res == true,\n{\n    // If provable, the spec misses element-wise differences\n}",
+    "reason": "Slices differing at even one position should not be reported as equal"
+  },
+  {
+    "name": "equal_slices_return_false",
+    "target_fn": "compare_slice",
+    "type": "logical",
+    "code": "proof fn phi_5_equal_slices_return_false(x: Seq<u8>, y: Seq<u8>, res: bool)\n    requires\n        res == (x =~= y),\n        x.len() == y.len(),\n        forall|i: int| 0 <= i < x.len() ==> x[i] == y[i],\n    ensures\n        res == false,\n{\n    // If provable, the spec says identical slices are unequal\n}",
+    "reason": "Elementwise-identical slices must be reported as equal, not unequal"
+  }
+]

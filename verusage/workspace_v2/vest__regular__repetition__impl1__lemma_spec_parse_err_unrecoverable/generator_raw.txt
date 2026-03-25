@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: parse_zero_always_succeeds
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_parse_zero_always_succeeds<C: SecureSpecCombinator>(c: &RepeatN<C>, s: Seq<u8>)
+    requires
+        c.1 == 0usize,
+    ensures
+        c.spec_parse(s) == Some((0int, seq![])),
+{
+}
+```
+REASON: Parsing 0 repetitions succeeds for ANY input including malformed data — the parser produces a valid result without examining the input at all
+===PHI_END===
+
+===PHI_START===
+NAME: parse_zero_ignores_input_content
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_parse_zero_ignores_input_content<C: SecureSpecCombinator>(c: &RepeatN<C>, s1: Seq<u8>, s2: Seq<u8>)
+    requires
+        c.1 == 0usize,
+    ensures
+        c.spec_parse(s1) == c.spec_parse(s2),
+{
+}
+```
+REASON: With n=0, the parse result is identical for any two inputs — the repetition combinator is completely input-agnostic at count zero, which could mask corruption in a prefix
+===PHI_END===
+
+===PHI_START===
+NAME: error_propagates_upward
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_error_propagates_upward<C: SecureSpecCombinator>(c: &RepeatN<C>, s: Seq<u8>, n1: usize, n2: usize)
+    requires
+        n1 <= n2,
+        RepeatN(c.0, n1).spec_parse(s).is_none(),
+    ensures
+        RepeatN(c.0, n2).spec_parse(s).is_none(),
+{
+    let c1 = RepeatN(c.0, n1);
+    let c2 = RepeatN(c.0, n2);
+    c1.lemma_spec_parse_err_unrecoverable(s, n1, n2);
+}
+```
+REASON: If parsing fails at repetition count n1, it fails for all larger counts — this monotonicity is proven but depends on the closed spec; if the sequential parsing order had a bug, the lemma would still hold vacuously
+===PHI_END===
+
+===PHI_START===
+NAME: parse_one_delegates_to_inner
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_parse_one_delegates_to_inner<C: SecureSpecCombinator>(c: &RepeatN<C>, s: Seq<u8>, k: int, v: C::Type)
+    requires
+        c.1 == 1usize,
+        c.0.spec_parse(s) == Some((k, v)),
+    ensures
+        c.spec_parse(s) == Some((k, seq![v])),
+{
+}
+```
+REASON: Parsing a single repetition should directly wrap the inner parser's result — if the sequential helper introduced extra offset or reordering, single-element parsing would disagree with the inner combinator
+===PHI_END===
+
+===PHI_START===
+NAME: parse_none_on_empty_input_nonzero_count
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_parse_none_on_empty_input_nonzero_count<C: SecureSpecCombinator>(c: &RepeatN<C>, n: usize)
+    requires
+        c.1 == n,
+        n > 0,
+        c.0.spec_parse(seq![]).is_none(),
+    ensures
+        c.spec_parse(seq![]).is_none(),
+{
+}
+```
+REASON: If the inner combinator rejects empty input, then RepeatN with count > 0 should also reject empty input — if it somehow succeeded, the repetition parser would produce elements from nothing
+===PHI_END===

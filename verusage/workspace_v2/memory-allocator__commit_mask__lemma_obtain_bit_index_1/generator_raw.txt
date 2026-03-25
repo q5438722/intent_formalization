@@ -1,0 +1,94 @@
+===PHI_START===
+NAME: obtain_bit_aux_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_obtain_bit_aux_external_body(a: u64, hi: u64) -> (i: u64)
+    requires
+        a != 0,
+        hi <= 64,
+        a >> hi == 0,
+    ensures
+        i < hi,
+        is_bit_set!(a, i),
+{
+    lemma_obtain_bit_index_1_aux(a, hi)
+}
+```
+REASON: `lemma_obtain_bit_index_1_aux` is `external_body` — the existence of a set bit index below `hi` in a nonzero value is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: obtain_bit_hi_1_forces_bit_0
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_obtain_bit_hi_1_forces_bit_0(a: u64) -> (i: u64)
+    requires
+        a != 0,
+        a >> 1 == 0,
+    ensures
+        i == 0,
+        is_bit_set!(a, 0u64),
+{
+    let i = lemma_obtain_bit_index_1_aux(a, 1);
+    i
+}
+```
+REASON: With `hi=1`, the only valid index is 0 — the external_body axiom forces `is_bit_set(a, 0)` for any nonzero `a` with `a >> 1 == 0`, which should only be `a == 1`; if the axiom is wrong this narrows incorrectly
+===PHI_END===
+
+===PHI_START===
+NAME: is_bit_set_opaque_reveal
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_is_bit_set_opaque_reveal(a: usize, b: usize)
+    requires
+        b < 64,
+        a & (1usize << b) == (1usize << b),
+    ensures
+        is_bit_set(a, b),
+{
+    reveal(is_bit_set);
+}
+```
+REASON: `is_bit_set` is a non-opaque spec fn whose body is `a & (1usize << b) == (1usize << b)` — revealing it should be equivalent to the body, but if bitvector reasoning interacts unexpectedly with the spec definition, this could fail or succeed unsoundly
+===PHI_END===
+
+===PHI_START===
+NAME: obtain_bit_index_any_nonzero
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_obtain_bit_index_any_nonzero(a: usize)
+    requires
+        a != 0,
+    ensures
+        exists|b: usize| b < 64 && is_bit_set(a, b),
+{
+    let b = lemma_obtain_bit_index_1(a);
+}
+```
+REASON: The lemma claims any nonzero usize has a set bit below 64 — this relies on `global size_of usize == 8` and the external_body axiom; if either is wrong for a target platform, this existential is unsound
+===PHI_END===
+
+===PHI_START===
+NAME: obtain_bit_aux_hi_zero_vacuous
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_obtain_bit_aux_hi_zero_vacuous(a: u64)
+    requires
+        a != 0,
+        0u64 <= 64u64,
+        a >> 0 == 0,
+    ensures
+        false,
+{
+    let i = lemma_obtain_bit_index_1_aux(a, 0);
+    assert(i < 0) by { }
+}
+```
+REASON: With `hi=0` and `a >> 0 == 0` (meaning `a == 0`), the preconditions `a != 0` and `a >> 0 == 0` are contradictory — but if the external_body axiom doesn't handle this edge correctly, it could derive `false` from a satisfiable-looking precondition
+===PHI_END===

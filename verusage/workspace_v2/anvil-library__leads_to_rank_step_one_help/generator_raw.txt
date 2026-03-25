@@ -1,0 +1,82 @@
+===PHI_START===
+NAME: leads_to_self_temp_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_leads_to_self_temp_intensional_bridge(p: TempPred<int>, spec: TempPred<int>)
+    ensures
+        spec.entails(p.leads_to(p)),
+{
+    leads_to_self_temp::<int>(p);
+}
+```
+REASON: leads_to_self_temp is external_body deriving valid(p.leads_to(p)) which makes any spec entail p.leads_to(p) — the reflexive leads_to requires resolving nested always/implies/eventually closure gaps without proof
+===PHI_END===
+
+===PHI_START===
+NAME: leads_to_trans_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_leads_to_trans_intensional_bridge(spec: TempPred<int>, p: TempPred<int>, q: TempPred<int>, r: TempPred<int>)
+    requires
+        spec.entails(p.leads_to(q)),
+        spec.entails(q.leads_to(r)),
+    ensures
+        spec.entails(p.leads_to(r)),
+{
+    leads_to_trans::<int>(spec, p, q, r);
+}
+```
+REASON: leads_to_trans is external_body composing two leads_to into a transitive chain — each leads_to involves nested always/implies/eventually closures and the composition bridges intensional gaps without proof
+===PHI_END===
+
+===PHI_START===
+NAME: leads_to_trans_chain_unbounded
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_leads_to_trans_chain_unbounded(spec: TempPred<int>, p: spec_fn(nat) -> TempPred<int>, n: nat)
+    requires
+        forall |n: nat| #![trigger p(n)] (n > 0 ==> spec.entails(p(n).leads_to(p((n - 1) as nat)))),
+    ensures
+        spec.entails(p(n).leads_to(p(0))),
+{
+    leads_to_rank_step_one_help::<int>(spec, p, n);
+}
+```
+REASON: chaining leads_to_trans inductively over unbounded n composes arbitrarily many external_body axiom invocations — each step trusts leads_to_trans to resolve fresh intensional closure gaps
+===PHI_END===
+
+===PHI_START===
+NAME: false_spec_any_leads_to
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_false_spec_any_leads_to(p: TempPred<int>, q: TempPred<int>, r: TempPred<int>)
+    requires
+        TempPred::<int>::new(|ex: Execution<int>| false).entails(p.leads_to(q)),
+        TempPred::<int>::new(|ex: Execution<int>| false).entails(q.leads_to(r)),
+    ensures
+        TempPred::<int>::new(|ex: Execution<int>| false).entails(p.leads_to(r)),
+{
+    leads_to_trans::<int>(TempPred::new(|ex: Execution<int>| false), p, q, r);
+}
+```
+REASON: an unsatisfiable spec vacuously entails any leads_to chain — leads_to_trans propagates vacuous truth without detecting spec inconsistency
+===PHI_END===
+
+===PHI_START===
+NAME: leads_to_self_any_spec
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_leads_to_self_any_spec(spec: TempPred<int>, p: TempPred<int>)
+    ensures
+        spec.entails(p.leads_to(p)),
+{
+    leads_to_self_temp::<int>(p);
+}
+```
+REASON: leads_to_self_temp produces valid(p.leads_to(p)) with no preconditions — any spec (including unrelated or unsatisfiable ones) entails reflexive leads_to, making the spec parameter irrelevant
+===PHI_END===

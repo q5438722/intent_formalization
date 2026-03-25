@@ -1,0 +1,89 @@
+===PHI_START===
+NAME: always_unfold_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_always_unfold_intensional_bridge(ex: Execution<int>, p: TempPred<int>, i: nat)
+    requires
+        always(p).satisfied_by(ex),
+    ensures
+        p.satisfied_by(ex.suffix(i)),
+{
+    always_unfold::<int>(ex, p);
+}
+```
+REASON: always_unfold is external_body bridging always's TempPred::new closure-wrapped forall to a bare forall — resolves closure identity gap without proof
+===PHI_END===
+
+===PHI_START===
+NAME: implies_apply_closure_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_implies_apply_closure_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>)
+    requires
+        p.implies(q).satisfied_by(ex),
+        p.satisfied_by(ex),
+    ensures
+        q.satisfied_by(ex),
+{
+    implies_apply::<int>(ex, p, q);
+}
+```
+REASON: implies_apply is external_body bridging p.implies(q)'s TempPred::new closure-wrapped implication to modus ponens — resolves closure identity gap without proof
+===PHI_END===
+
+===PHI_START===
+NAME: eventually_proved_by_witness_closure_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_eventually_proved_by_witness_closure_bridge(ex: Execution<int>, p: TempPred<int>, witness_idx: nat)
+    requires
+        p.satisfied_by(ex.suffix(witness_idx)),
+    ensures
+        eventually(p).satisfied_by(ex),
+{
+    eventually_proved_by_witness::<int>(ex, p, witness_idx);
+}
+```
+REASON: eventually_proved_by_witness is external_body bridging a concrete witness to eventually's TempPred::new closure-wrapped existential — resolves closure identity gap without proof
+===PHI_END===
+
+===PHI_START===
+NAME: always_p_or_eventually_q_induction_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_always_p_or_eventually_q_induction_bridge(ex: Execution<int>, next: TempPred<int>, p: TempPred<int>, q: TempPred<int>)
+    requires
+        always(p.and(next).implies(later(p).or(later(q)))).satisfied_by(ex),
+        always(next).satisfied_by(ex),
+    ensures
+        always(p.implies(always(p).or(eventually(q)))).satisfied_by(ex),
+{
+    always_p_or_eventually_q::<int>(ex, next, p, q);
+}
+```
+REASON: always_p_or_eventually_q is external_body performing temporal induction — derives always(p => □p ∨ ◇q) from a step condition, bridging multiple layers of closure nesting (always/implies/or/later/eventually) without proof
+===PHI_END===
+
+===PHI_START===
+NAME: transform_leads_to_with_until_bridge
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_transform_leads_to_with_until_bridge(spec: TempPred<int>, next: TempPred<int>, p1: TempPred<int>, q1: TempPred<int>, p2: TempPred<int>, q2: TempPred<int>, ex: Execution<int>)
+    requires
+        spec.entails(p1.leads_to(q1)),
+        spec.entails(always(p2.and(next).implies(later(p2).or(later(q2))))),
+        spec.entails(always(next)),
+        spec.satisfied_by(ex),
+    ensures
+        p1.and(p2).leads_to((q1.and(p2)).or(q2)).satisfied_by(ex),
+{
+    transform_leads_to_with_until::<int>(spec, next, p1, q1, p2, q2);
+}
+```
+REASON: chains all four external_body axioms to derive that p1∧p2 leads to (q1∧p2)∨q2 — if any intensional bridge is unsound, this enables combining leads-to with persistence/until reasoning unsoundly
+===PHI_END===

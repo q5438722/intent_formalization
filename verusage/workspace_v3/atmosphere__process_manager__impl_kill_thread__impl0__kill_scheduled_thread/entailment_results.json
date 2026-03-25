@@ -1,0 +1,52 @@
+[
+  {
+    "name": "returned_page_in_proc_dom",
+    "target_fn": "kill_scheduled_thread",
+    "type": "behavioral",
+    "reason": "The freed thread page being simultaneously in the process domain would violate the memory_disjoint invariant between thread and process regions.",
+    "entailed": false,
+    "verified": 23,
+    "errors": 1,
+    "output_tail": " ThreadPtr,\n1685 | |     ret_page: PagePtr,\n1686 | | )\n     | |_- at the end of the function body\n...\n1698 |           pm_new.proc_dom().contains(ret_page),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 20 warnings emitted\n\n"
+  },
+  {
+    "name": "extra_thread_removed",
+    "target_fn": "kill_scheduled_thread",
+    "type": "behavioral",
+    "reason": "Killing one scheduled thread should not cause a different, unrelated thread to also disappear from the thread domain.",
+    "entailed": false,
+    "verified": 23,
+    "errors": 1,
+    "output_tail": "     other_thread: ThreadPtr,\n1686 | | )\n     | |_- at the end of the function body\n...\n1696 |           !pm_new.thread_dom().contains(other_thread),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 20 warnings emitted\n\n"
+  },
+  {
+    "name": "proc_threads_always_empty",
+    "target_fn": "kill_scheduled_thread",
+    "type": "boundary",
+    "reason": "When a process owns multiple threads, killing one should leave the remaining threads intact rather than emptying the entire thread list.",
+    "entailed": false,
+    "verified": 23,
+    "errors": 1,
+    "output_tail": "y\n...\n1698 |           pm_new.get_proc(pm_old.get_thread(thread_ptr).owning_proc).owned_threads@.len() == 0,\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 20 warnings emitted\n\n"
+  },
+  {
+    "name": "page_closure_extra_removal",
+    "target_fn": "kill_scheduled_thread",
+    "type": "logical",
+    "reason": "The page closure should shrink by exactly one element (the freed thread page); any additional page disappearing indicates a resource leak or corruption.",
+    "entailed": false,
+    "verified": 23,
+    "errors": 1,
+    "output_tail": " | |     other_page: PagePtr,\n1687 | | )\n     | |_- at the end of the function body\n...\n1698 |           !pm_new.page_closure().contains(other_page),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 20 warnings emitted\n\n"
+  },
+  {
+    "name": "kill_spec_inconsistency",
+    "target_fn": "kill_scheduled_thread",
+    "type": "logical",
+    "reason": "If the combined preconditions and postconditions of kill_scheduled_thread entail false, the entire specification is vacuously inconsistent and proves anything.",
+    "entailed": false,
+    "verified": 23,
+    "errors": 1,
+    "output_tail": "\n1683 | |     pm_new: ProcessManager,\n1684 | |     thread_ptr: ThreadPtr,\n1685 | |     ret_page: PagePtr,\n1686 | | )\n     | |_- at the end of the function body\n...\n1704 |           false,\n     |           ^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 21 warnings emitted\n\n"
+  }
+]

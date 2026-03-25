@@ -1,0 +1,89 @@
+===PHI_START===
+NAME: is_end_always_true
+TARGET_FN: is_end
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_is_end_always_true<K: KeyTrait + VerusClone>(iter: &KeyIterator<K>)
+    ensures
+        iter.is_end_spec(),
+{
+}
+```
+REASON: If entailed, every KeyIterator would be considered at-end, making get() unreachable and the iterator useless.
+===PHI_END===
+
+===PHI_START===
+NAME: some_reported_as_end
+TARGET_FN: is_end
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_some_reported_as_end<K: KeyTrait + VerusClone>(iter: &KeyIterator<K>, v: K)
+    requires
+        iter.k == Some(v),
+    ensures
+        iter.is_end_spec(),
+{
+}
+```
+REASON: If entailed, a KeyIterator holding a valid key would be classified as at-end, contradicting the Some/None semantics.
+===PHI_END===
+
+===PHI_START===
+NAME: get_mismatches_key
+TARGET_FN: get
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_get_mismatches_key<K: KeyTrait + VerusClone>(iter: &KeyIterator<K>, v: K)
+    requires
+        iter.k == Some(v),
+    ensures
+        *iter.get_spec() != v,
+{
+}
+```
+REASON: If entailed, get() would return a value different from the stored key, breaking the fundamental accessor contract.
+===PHI_END===
+
+===PHI_START===
+NAME: non_end_implies_end
+TARGET_FN: is_end
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_non_end_implies_end<K: KeyTrait + VerusClone>(iter: &KeyIterator<K>)
+    requires
+        !iter.is_end_spec(),
+    ensures
+        iter.is_end_spec(),
+{
+}
+```
+REASON: If entailed, the is_end spec would be self-contradictory, meaning the KeyIterator type is uninhabitable in non-end states.
+===PHI_END===
+
+===PHI_START===
+NAME: get_conflates_distinct_keys
+TARGET_FN: get
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_get_conflates_distinct_keys<K: KeyTrait + VerusClone>(
+    iter1: &KeyIterator<K>,
+    iter2: &KeyIterator<K>,
+    v1: K,
+    v2: K,
+)
+    requires
+        iter1.k == Some(v1),
+        iter2.k == Some(v2),
+        v1 != v2,
+    ensures
+        *iter1.get_spec() == *iter2.get_spec(),
+{
+}
+```
+REASON: If entailed, get() could not distinguish different keys, meaning the spec collapses all key values to a single equivalence class.
+===PHI_END===

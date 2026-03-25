@@ -1,0 +1,50 @@
+[
+  {
+    "name": "host_model_receive_packet",
+    "code": "fn host_model_receive_packet(&mut self, cpacket: CPacket) -> (rc: (Vec<CPacket>, Ghost<CPacket>))\n    requires\n        old(self).valid(),\n        old(self).host_state_packet_preconditions(cpacket),\n        !(cpacket.msg is InvalidMessage),\n        cpacket.dst@ == old(self).constants.me@,\n    ensures ({\n        let (sent_packets, ack) = rc;\n        &&& outbound_packet_seq_is_valid(sent_packets@)\n        &&& receive_packet(old(self)@, self@, cpacket@, abstractify_seq_of_cpackets_to_set_of_sht_packets(sent_packets@), ack@@)\n        // The Dafny Ironfleet \"common preconditions\" take an explicit cpacket, but we need to talk\n        // about\n        &&& self.host_state_common_postconditions(*old(self), cpacket, sent_packets@)\n        })\n    {\n        let mut sent_packets = Vec::new();\n\n        if self.received_packet.is_none() {\n            let recv_rr = self.sd.receive_impl(&cpacket);\n\n            if matches!(recv_rr, ReceiveImplResult::AckOrInvalid) {\n                let ghost g_ack: CPacket = arbitrary();\n                proof {\n                    assert( !Set::<Packet>::empty().contains(g_ack@) );   // trigger\n                    assert(\n                        abstractify_seq_of_cpackets_to_set_of_sht_packets(sent_packets@) =~=\n                        extract_packets_from_lsht_packets(abstractify_outbound_packets_to_seq_of_lsht_packets(sent_packets@)) );\n\n//                     assert( self.host_state_common_postconditions(*old(self), cpacket, sent_packets@) );\n//                     assert( receive_packet(old(self)@, self@, cpacket@, abstractify_seq_of_cpackets_to_set_of_sht_packets(sent_packets@), g_ack@) );\n                }\n                (sent_packets, Ghost(g_ack))\n            } else {\n                match recv_rr {\n                    ReceiveImplResult::FreshPacket{ack} => {\n                        sent_packets.push(ack);\n                        self.received_packet = Some(cpacket);\n                    }\n                    ReceiveImplResult::DuplicatePacket{ack} => {\n                        sent_packets.push(ack);\n                    }\n                    _ => { unreached() }\n                };\n                let ghost g_ack = recv_rr.get_ack();\n\n                proof {\n                    lemma_map_values_singleton_auto::<CPacket, Packet>();\n                    lemma_to_set_singleton_auto::<Packet>();\n                    let abs_seq_lsht = abstractify_outbound_packets_to_seq_of_lsht_packets(sent_packets@);\n                    let ext_seq = abs_seq_lsht.map_values(|lp: LSHTPacket| extract_packet_from_lsht_packet(lp));\n                    assert( ext_seq =~= seq![g_ack@] );   // trigger auto lemmas\n//                     assert( receive_packet(old(self)@, self@, cpacket@, abstractify_seq_of_cpackets_to_set_of_sht_packets(sent_packets@), g_ack@) );\n                }\n                (sent_packets, Ghost(g_ack))\n            }\n        } else {\n            let ack = Ghost(cpacket);   // NB cpacket is a garbage value, since rc.0 vec is empty\n            proof {\n                assert(\n                    abstractify_seq_of_cpackets_to_set_of_sht_packets(sent_packets@) =~=\n                    extract_packets_from_lsht_packets(abstractify_outbound_packets_to_seq_of_lsht_packets(sent_packets@)) );\n\n                assert( abstractify_seq_of_cpackets_to_set_of_sht_packets(sent_packets@) =~= Set::empty() );\n//                 assert( receive_packet(old(self)@, self@, cpacket@, abstractify_seq_of_cpackets_to_set_of_sht_packets(sent_packets@), ack@@) );\n            }\n            (sent_packets, ack)\n        }\n    }"
+  },
+  {
+    "name": "to_vec",
+    "code": "#[verifier(external_body)]\n    #[verifier(when_used_as_spec(spec_to_vec))]\n    pub fn to_vec(&self) -> (res: Vec<CKeyKV>)\n      ensures res == self.spec_to_vec()\n    {\n        unimplemented!()\n    }"
+  },
+  {
+    "name": "receive_packet",
+    "code": "pub open spec(checked) fn receive_packet(pre: AbstractHostState, post: AbstractHostState, pkt: Packet, out: Set<Packet>, ack: Packet) -> bool {\n    ||| {\n           &&& pre.received_packet is None // No packet currently waiting to be processed (buffered in my state)\n            // Record incoming packet in my state and possibly ack it\n           &&& SingleDelivery::receive(pre.sd, post.sd, pkt, ack, out)\n           &&& if SingleDelivery::new_single_message(pre.sd, pkt) {\n                   post.received_packet == Some(pkt)   // Enqueue this packet for processing\n              } else {\n                  post.received_packet is None\n              }\n           &&& post == AbstractHostState {sd: post.sd, received_packet: post.received_packet, ..post} // Nothing else changes\n       }\n    ||| {\n           // internal buffer full or okay to ignore packets; drop this message and wait for it to be retransmitted.\n           &&& pre.received_packet is Some || okay_to_ignore_packets()\n           &&& post == pre\n           &&& out == Set::<Packet>::empty()\n       }\n}"
+  },
+  {
+    "name": "truncate_un_ack_list",
+    "code": "pub open spec(checked) fn truncate_un_ack_list<MT>(un_acked: AckList<MT>, seqno_acked: nat) -> Seq<SingleMessage<MT>>\ndecreases un_acked.len()\n{\n    if un_acked.len() > 0 && un_acked[0] is Message && un_acked[0].arrow_Message_seqno() <= seqno_acked {\n        truncate_un_ack_list(un_acked.skip(1), seqno_acked)\n    } else {\n        un_acked\n    }\n}"
+  },
+  {
+    "name": "ack_state_lookup",
+    "code": "pub open spec(checked) fn ack_state_lookup<MT>(src: AbstractEndPoint, send_state: SendState<MT>) -> AckState<MT> {\n    if send_state.contains_key(src)\n        { send_state[src] }\n    else\n        { AckState{num_packets_acked: 0, un_acked: Seq::empty()} }\n}"
+  },
+  {
+    "name": "new_single_message",
+    "code": "pub open spec(checked) fn new_single_message(self, pkt: Packet) -> bool {\n        let last_seqno = tombstone_table_lookup(pkt.src, self.receive_state);\n        &&& pkt.msg is Message\n        &&& pkt.msg.arrow_Message_seqno() == last_seqno + 1\n    }"
+  },
+  {
+    "name": "receive_ack",
+    "code": "pub open spec(checked) fn receive_ack(pre: Self, post: Self, pkt: Packet, acks:Set<Packet>) -> bool\n    recommends\n        pkt.msg is Ack,\n    {\n        &&& acks.is_empty()\n        &&& {\n            let old_ack_state = ack_state_lookup(pkt.src, pre.send_state);\n            if pkt.msg.arrow_Ack_ack_seqno() > old_ack_state.num_packets_acked {\n                let new_ack_state = AckState{\n                        num_packets_acked: pkt.msg.arrow_Ack_ack_seqno(),\n                        un_acked: truncate_un_ack_list(old_ack_state.un_acked, pkt.msg.arrow_Ack_ack_seqno()),\n                        .. old_ack_state};\n                post =~= Self{ send_state: pre.send_state.insert(pkt.src, new_ack_state), ..post }\n            } else {\n                post == pre\n            }\n        }\n    }"
+  },
+  {
+    "name": "receive_real_packet",
+    "code": "pub open spec(checked) fn receive_real_packet(self, post: Self, pkt: Packet) -> bool {\n        if self.new_single_message(pkt) {\n            let last_seqno = tombstone_table_lookup(pkt.src, self.receive_state);\n            // Mark it received\n            post == Self{ receive_state: self.receive_state.insert(pkt.src, (last_seqno + 1) as nat), ..self }\n        } else {\n            post == self\n        }\n    }"
+  },
+  {
+    "name": "should_ack_single_message",
+    "code": "pub open spec(checked) fn should_ack_single_message(self, pkt: Packet) -> bool\n    {\n        &&& pkt.msg is Message  // Don't want to ack acks\n        &&& {\n            let last_seqno = tombstone_table_lookup(pkt.src, self.receive_state);\n            pkt.msg.arrow_Message_seqno() <= last_seqno\n            }\n    }"
+  },
+  {
+    "name": "send_ack",
+    "code": "pub open spec(checked) fn send_ack(self, pkt: Packet, ack: Packet, acks:Set<Packet>) -> bool\n    recommends\n        self.should_ack_single_message(pkt),\n    {\n        &&& ack.msg is Ack\n        &&& ack.msg.arrow_Ack_ack_seqno() == pkt.msg.arrow_Message_seqno()\n        &&& ack.src == pkt.dst\n        &&& ack.dst == pkt.src\n        &&& acks == set![ ack ]\n    }"
+  },
+  {
+    "name": "maybe_ack_packet",
+    "code": "pub open spec(checked) fn maybe_ack_packet(pre: Self, pkt: Packet, ack: Packet, acks:Set<Packet>) -> bool {\n        if pre.should_ack_single_message(pkt) {\n            pre.send_ack(pkt, ack, acks)\n        } else {\n            acks.is_empty()\n        }\n    }"
+  },
+  {
+    "name": "receive",
+    "code": "pub open spec(checked) fn receive(pre: Self, post: Self, pkt: Packet, ack: Packet, acks:Set<Packet>) -> bool {\n        match pkt.msg {\n            SingleMessage::Ack{ack_seqno: _} => Self::receive_ack(pre, post, pkt, acks),\n            SingleMessage::Message{seqno, dst: _, m} => {\n                &&& Self::receive_real_packet(pre, post, pkt)\n                &&& Self::maybe_ack_packet(post, pkt, ack, acks)\n            }\n            SingleMessage::InvalidMessage{} => {\n                &&& post === pre\n                &&& acks === Set::empty()\n            }\n        }\n    }"
+  }
+]

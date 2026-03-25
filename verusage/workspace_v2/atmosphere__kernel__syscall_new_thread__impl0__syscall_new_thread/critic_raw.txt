@@ -1,0 +1,17 @@
+===VERDICT_START===
+PHI: is_empty_vacuous_when_kernel_l4_end_ge_512
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: In practice, `kernel_l4_end` is constrained to `KERNEL_MEM_END_L4INDEX` (= 1) by `pagetables_wf` and to 0 by `iommutables_wf`. The vacuous case `kernel_l4_end >= 512` is unreachable for any well-formed page table in the system.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: page_closure_includes_l4_even_when_empty
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is by design. Every page table owns its L4 root page (cr3) regardless of whether user-space mappings exist — the L4 page is a structural resource that must be tracked for allocation/deallocation. The kernel's `memory_wf` accounts for all page table pages through `mem_man.page_closure()`, and an "empty" page table still physically exists.
+===VERDICT_END===
+
+===SUMMARY===
+Both candidates are false positives. The vacuous `is_empty` with `kernel_l4_end >= 512` is unreachable because `pagetables_wf` and `iommutables_wf` constrain `kernel_l4_end` to fixed small values (1 and 0 respectively). The page_closure including cr3 for empty page tables is intentional — every page table owns its root L4 page as a physical resource that must be tracked in the allocator's accounting.
+===END_SUMMARY===

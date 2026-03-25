@@ -1,0 +1,60 @@
+use vstd::prelude::*;
+
+fn main() {}
+
+verus!{
+
+#[allow(unused_macros)]
+macro_rules! bitmask_inc {
+    ($low:expr,$high:expr) => {
+        (!(!0usize << (($high+1usize)-$low))) << $low
+    }
+}
+
+#[allow(unused_macros)]
+macro_rules! l0_bits {
+    ($addr:expr) => { ($addr & bitmask_inc!(39usize,47usize)) >> 39usize }
+}
+
+#[allow(unused_macros)]
+macro_rules! l1_bits {
+    ($addr:expr) => { ($addr & bitmask_inc!(30usize,38usize)) >> 30usize }
+}
+
+#[allow(unused_macros)]
+macro_rules! l2_bits {
+    ($addr:expr) => { ($addr & bitmask_inc!(21usize,29usize)) >> 21usize }
+}
+
+#[allow(unused_macros)]
+macro_rules! l3_bits {
+    ($addr:expr) => { ($addr & bitmask_inc!(12usize,20usize)) >> 12usize }
+}
+
+pub proof fn lemma_bit_indices_less_512(va: usize)
+    ensures
+        l0_bits!(va) < 512,
+        l1_bits!(va) < 512,
+        l2_bits!(va) < 512,
+        l3_bits!(va) < 512,
+{
+    assert(l0_bits!(va) < 512) by (bit_vector);
+    assert(l1_bits!(va) < 512) by (bit_vector);
+    assert(l2_bits!(va) < 512) by (bit_vector);
+    assert(l3_bits!(va) < 512) by (bit_vector);
+}
+
+
+
+
+// === Entailment query ===
+proof fn phi_4_all_index_bits_reconstruct_addr(va: usize)
+    ensures
+        (l0_bits!(va) << 39usize) | (l1_bits!(va) << 30usize) | (l2_bits!(va) << 21usize) | (l3_bits!(va) << 12usize)
+            == va & bitmask_inc!(12usize, 47usize),
+{
+    assert((l0_bits!(va) << 39usize) | (l1_bits!(va) << 30usize) | (l2_bits!(va) << 21usize) | (l3_bits!(va) << 12usize)
+        == va & bitmask_inc!(12usize, 47usize)) by (bit_vector);
+}
+
+}

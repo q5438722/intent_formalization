@@ -1,0 +1,47 @@
+[
+  {
+    "name": "sll_len_without_wf_returns_value_list_len",
+    "type": "logical",
+    "code": "proof fn phi_1_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    ensures\n        sll.len() == sll.value_list_len,\n{\n}",
+    "reason": "StaticLinkedList::len's external_body unconditionally ensures l == self.value_list_len without requiring wf() \u2014 the raw field is exposed even for malformed lists",
+    "entailed": false,
+    "verus_output": "thout_wf_returns_value_list_len.rs:501:9\n    |\n499 | proof fn phi_1_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    |       -------------------------------------------------------------------------------------------------- at the end of the function body\n500 |     ensures\n501 |         sll.len() == sll.value_list_len,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 5 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "proc_root_depth_zero_no_parent",
+    "type": "behavioral",
+    "code": "proof fn phi_2_proc_root_depth_zero_no_parent(\n    root_proc: ProcPtr,\n    proc_tree_dom: Set<ProcPtr>,\n    proc_perms: Map<ProcPtr, PointsTo<Process>>,\n    p_ptr: ProcPtr,\n)\n    requires\n        proc_tree_wf(root_proc, proc_tree_dom, proc_perms),\n        proc_perms_wf(proc_perms),\n        proc_tree_dom.contains(p_ptr),\n        p_ptr != root_proc,\n    ensures\n        proc_perms[p_ptr].value().parent.is_Some(),\n        proc_perms[p_ptr].value().depth != 0,\n{\n}",
+    "reason": "proc_root_wf constrains depth==0 uniquely to root \u2014 but closed spec means this is trusted without proof, so a depth-0 non-root could be admitted if the axiom is wrong",
+    "entailed": true,
+    "verus_output": "vstd::prelude::OptionAdditionalFns::is_Some`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__process_tree__new_proc_preserve_tree_inv_7/phi_2_proc_root_depth_zero_no_parent.rs:511:42\n    |\n511 |         proc_perms[p_ptr].value().parent.is_Some(),\n    |                                          ^^^^^^^\n\nwarning: 6 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "new_proc_owned_threads_unconstrained",
+    "type": "logical",
+    "code": "proof fn phi_3_new_proc_owned_threads_unconstrained(\n    root_proc: ProcPtr,\n    proc_tree_dom: Set<ProcPtr>,\n    old_proc_perms: Map<ProcPtr, PointsTo<Process>>,\n    new_proc_perms: Map<ProcPtr, PointsTo<Process>>,\n    proc_ptr: ProcPtr,\n    new_proc_ptr: ProcPtr,\n    t_ptr: ThreadPtr,\n)\n    requires\n        new_proc_ensures(root_proc, proc_tree_dom, old_proc_perms, new_proc_perms, proc_ptr, new_proc_ptr),\n    ensures\n        new_proc_perms[new_proc_ptr].value().owned_threads@.contains(t_ptr)\n        || !new_proc_perms[new_proc_ptr].value().owned_threads@.contains(t_ptr),\n{\n}",
+    "reason": "new_proc_ensures constrains tree-structural fields (parent, children, depth, subtree_set) but never constrains owned_threads of the new process \u2014 it could have arbitrary threads",
+    "entailed": true,
+    "verus_output": "`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__process_tree__new_proc_preserve_tree_inv_7/phi_3_new_proc_owned_threads_unconstrained.rs:360:61\n    |\n360 |     &&& new_proc_perms[new_proc_ptr].value().parent_rev_ptr.is_Some()\n    |                                                             ^^^^^^^\n\nwarning: 5 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "seq_push_lemma_derives_false_for_empty",
+    "type": "logical",
+    "code": "proof fn phi_4_seq_push_lemma_derives_false_for_empty<A>(s: Seq<A>, v: A)\n    ensures\n        s.push(v).contains(v),\n{\n    seq_push_lemma::<A>();\n}",
+    "reason": "seq_push_lemma's external_body second clause provides this for free \u2014 the axiom is trusted without proof, and if the SMT encoding is wrong it could be unsound",
+    "entailed": true,
+    "verus_output": " is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__process_tree__new_proc_preserve_tree_inv_7/phi_4_seq_push_lemma_derives_false_for_empty.rs:360:61\n    |\n360 |     &&& new_proc_perms[new_proc_ptr].value().parent_rev_ptr.is_Some()\n    |                                                             ^^^^^^^\n\nwarning: 5 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "proc_subtree_excludes_self",
+    "type": "boundary",
+    "code": "proof fn phi_5_proc_subtree_excludes_self(\n    root_proc: ProcPtr,\n    proc_tree_dom: Set<ProcPtr>,\n    proc_perms: Map<ProcPtr, PointsTo<Process>>,\n    p_ptr: ProcPtr,\n)\n    requires\n        proc_tree_wf(root_proc, proc_tree_dom, proc_perms),\n        proc_perms_wf(proc_perms),\n        proc_tree_dom.contains(p_ptr),\n        p_ptr != root_proc,\n    ensures\n        !proc_perms[p_ptr].value().subtree_set@.contains(p_ptr),\n{\n}",
+    "reason": "proc_subtree_set_wf requires sub_p_ptr's uppertree_seq length > p_ptr's depth AND uppertree_seq[depth]==p_ptr \u2014 a node's own depth equals its own depth so the length condition barely fails, but this boundary is never explicitly enforced and could allow self-inclusion",
+    "entailed": false,
+    "verus_output": "on/verusage/workspace_v2/atmosphere__process_manager__process_tree__new_proc_preserve_tree_inv_7/phi_5_proc_subtree_excludes_self.rs:511:10\n    |\n511 |         !proc_perms[p_ptr].value().subtree_set@.contains(p_ptr),\n    |          ^^^^^^^^^^^^^^^^^^^^^^^^^\n    |\n   ::: /home/chentianyu/intent_formalization/verus/vstd/simple_pptr.rs:269:13\n    |\n269 |             self.is_init(),\n    |             -------------- recommendation not met\n\nerror: aborting due to 1 previous error; 5 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,77 @@
+===PHI_START===
+NAME: is_lt_true_for_greater
+TARGET_FN: is_lt
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_is_lt_true_for_greater()
+    ensures
+        Ordering::Greater.lt(),
+{
+}
+```
+REASON: If Greater satisfies lt(), is_lt would conflate Greater with Less, breaking ordering logic everywhere.
+===PHI_END===
+
+===PHI_START===
+NAME: end_lt_self
+TARGET_FN: end
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_end_lt_self<K: KeyTrait + VerusClone>()
+    ensures
+        KeyIterator::<K>::end_spec().lt_spec(KeyIterator::<K>::end_spec()),
+{
+}
+```
+REASON: If end is strictly less than itself, lt_spec is not irreflexive and range queries using end as a bound would be unsound.
+===PHI_END===
+
+===PHI_START===
+NAME: above_self_key
+TARGET_FN: above
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_above_self_key<K: KeyTrait + VerusClone>(k: K)
+    ensures
+        KeyIterator::new_spec(k).above_spec(k),
+{
+}
+```
+REASON: If an iterator is above its own key, the gap/between predicates used by range_consistent would include keys they should exclude.
+===PHI_END===
+
+===PHI_START===
+NAME: new_spec_is_end
+TARGET_FN: is_end
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_new_spec_is_end<K: KeyTrait + VerusClone>(k: K)
+    ensures
+        KeyIterator::new_spec(k).is_end_spec(),
+{
+}
+```
+REASON: If a Some-carrying iterator reports is_end, get's precondition becomes unsatisfiable and every range collapses to empty.
+===PHI_END===
+
+===PHI_START===
+NAME: range_consistent_always_true
+TARGET_FN: range_consistent_impl
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_range_consistent_always_true<K: KeyTrait + VerusClone>(dm: DelegationMap<K>, lo: KeyIterator<K>, hi: KeyIterator<K>, dst: ID)
+    requires
+        dm.valid(),
+        lo.lt_spec(hi),
+    ensures
+        dm.range_consistent(&lo, &hi, &dst),
+{
+}
+```
+REASON: If range_consistent is trivially true for any dst, the implementation cannot detect delegation mismatches, voiding its purpose.
+===PHI_END===

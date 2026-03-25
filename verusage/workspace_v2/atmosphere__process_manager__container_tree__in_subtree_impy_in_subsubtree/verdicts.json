@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "owned_endpoints_shared_across_containers",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "The ensures restates preconditions, but the preconditions are simultaneously satisfiable \u2014 neither `container_perms_wf` nor `container_tree_wf` places any constraint on `owned_endpoints`. The code comments explicitly describe unique ownership intent (\"each endpoint can ONLY be referenced by threads in the subtree\"), yet no spec enforces endpoint disjointness."
+  },
+  {
+    "phi": "scheduler_contains_non_owned_thread",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "The spec never relates `scheduler` contents to `owned_threads`. A container's scheduler can contain threads not in its `owned_threads` set, breaking the containment model where only owned threads should be schedulable."
+  },
+  {
+    "phi": "subtree_transitivity_unsound_without_dom",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is a desirable property. `container_subtree_set_wf` requires `sub_c_ptr`'s depth strictly greater than `c_ptr`'s depth. Since a container cannot have depth strictly greater than itself, no container can be in its own subtree \u2014 this is the standard definition of a proper subtree (excluding self) and prevents cycles."
+  },
+  {
+    "phi": "root_parent_unconstrained",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The ensures `is_None() || is_Some()` is a tautology (law of excluded middle) \u2014 it verifies trivially regardless of spec content. While the observation about root's parent being unconstrained may have merit, this PHI fails to demonstrate it since the ensures proves nothing."
+  }
+]

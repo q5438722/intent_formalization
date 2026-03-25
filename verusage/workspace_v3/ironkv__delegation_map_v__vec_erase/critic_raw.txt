@@ -1,0 +1,47 @@
+Looking at the spec for `vec_erase`:
+
+```
+ensures
+    v@ == old(v)@.subrange(0, start as int) + old(v)@.subrange(end as int, old(v)@.len() as int),
+```
+
+This postcondition is a complete, correct specification for erasing elements in `[start, end)`. I'll evaluate each φ against it.
+
+===VERDICT_START===
+PHI: length_unchanged_after_erase
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The spec gives `v.len() == start + (old_v.len() - end) == old_v.len() - (end - start)`. With `start < end`, this is strictly less than `old_v.len()`, so the ensures `v.len() == old_v.len()` is mathematically false and will not verify. The spec correctly implies the length decreases.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: full_erase_leaves_elements
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: With `start=0, end=old_v.len()`, the spec yields `old_v.subrange(0,0) + old_v.subrange(len,len)` which is `empty + empty = empty`. The ensures `v.len() > 0` is false and will not verify. The spec correctly produces an empty vector for a full erase.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: any_erase_empties_vector
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The requires include `old_v.len() > end`, so `old_v.subrange(end, old_v.len())` is non-empty, giving `v.len() >= old_v.len() - end >= 1`. The ensures `v.len() == 0` is mathematically false and will not verify. The spec correctly preserves surviving elements.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: erased_element_still_present
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: By sequence concatenation semantics, `v[start]` indexes into the second subrange at offset 0, yielding `old_v[end]`, not `old_v[start]`. The ensures `v[start] == old_v[start]` is not generally true and will not verify. The spec correctly places `old_v[end]` at position `start`.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: noop_erase_changes_length
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: When `start == end`, the spec gives `old_v.subrange(0, start) + old_v.subrange(start, old_v.len()) == old_v`, so `v.len() == old_v.len()`. The ensures `v.len() != old_v.len()` is false and will not verify. The spec correctly treats an empty-range erase as a no-op.
+===VERDICT_END===
+
+===SUMMARY===
+All five candidate properties are false positives. The postcondition `v@ == old(v)@.subrange(0, start) + old(v)@.subrange(end, old(v)@.len())` is a complete and correct specification for erasing elements in the half-open range `[start, end)`. Each φ asserts a mathematically false consequence of this spec—claiming unchanged length after a non-empty erase (φ1), non-emptiness after full erase (φ2), emptiness when elements survive (φ3), persistence of erased elements (φ4), and length change on a no-op (φ5). None of these can be verified by Verus's SMT solver because they directly contradict the arithmetic and sequence-algebra implications of the correct postcondition. The `ensures true` conjunct is harmless (redundant), and the real spec is both sound and sufficiently strong.
+===END_SUMMARY===

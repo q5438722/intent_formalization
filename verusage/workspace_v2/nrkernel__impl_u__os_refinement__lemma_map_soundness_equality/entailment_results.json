@@ -1,0 +1,47 @@
+[
+  {
+    "name": "ptmem_view_external_body_write_invisible",
+    "type": "logical",
+    "code": "proof fn phi_1_ptmem_view_external_body_write_invisible(pt: PTMem, addr: usize, value: usize)\n    requires\n        true,\n    ensures\n        pt.write(addr, value)@ === pt@,\n{\n}",
+    "reason": "`PTMem::view` is `external_body` with no postconditions \u2014 writes to page table memory may have no observable effect on the PTE interpretation",
+    "entailed": false,
+    "verus_output": "undness_equality/phi_1_ptmem_view_external_body_write_invisible.rs:1206:9\n     |\n1202 | proof fn phi_1_ptmem_view_external_body_write_invisible(pt: PTMem, addr: usize, value: usize)\n     |       --------------------------------------------------------------------------------------- at the end of the function body\n...\n1206 |         pt.write(addr, value)@ === pt@,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "rl3_interp_external_body_collapses",
+    "type": "logical",
+    "code": "proof fn phi_2_rl3_interp_external_body_collapses(s1: crate::rl3::State, s2: crate::rl3::State)\n    requires\n        true,\n    ensures\n        s1.interp() === s2.interp(),\n{\n}",
+    "reason": "`rl3::State::interp` is `external_body` closed spec with no postconditions \u2014 any two rl3 states could have identical rl2 interpretations",
+    "entailed": false,
+    "verus_output": "a_map_soundness_equality/phi_2_rl3_interp_external_body_collapses.rs:1206:9\n     |\n1202 | proof fn phi_2_rl3_interp_external_body_collapses(s1: crate::rl3::State, s2: crate::rl3::State)\n     |       ----------------------------------------------------------------------------------------- at the end of the function body\n...\n1206 |         s1.interp() === s2.interp(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "step_map_sound_no_existing_vmem_check",
+    "type": "behavioral",
+    "code": "proof fn phi_3_step_map_sound_no_existing_vmem_check(mappings: Map<nat, PTE>, inflights: Set<crate::hlspec::ThreadState>, vaddr: nat, pte: PTE)\n    requires\n        crate::hlspec::step_Map_sound(mappings, inflights, vaddr, pte),\n        crate::candidate_mapping_overlaps_existing_vmem(mappings, vaddr, pte),\n    ensures\n        true,\n{\n}",
+    "reason": "`step_Map_sound` checks inflight vmem overlap and existing/inflight pmem overlap but does NOT check `candidate_mapping_overlaps_existing_vmem` \u2014 a new mapping can overlap an existing virtual memory mapping",
+    "entailed": true,
+    "verus_output": "_Ok_0`: get_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__impl_u__os_refinement__lemma_map_soundness_equality/phi_3_step_map_sound_no_existing_vmem_check.rs:645:49\n    |\n645 |             let size = if result is Ok { result.get_Ok_0().frame.size } else { 0 };\n    |                                                 ^^^^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "overlap_zero_size_equal_base",
+    "type": "boundary",
+    "code": "proof fn phi_4_overlap_zero_size_equal_base()\n    ensures\n        overlap(MemRegion { base: 0, size: 0 }, MemRegion { base: 0, size: 0 }),\n{\n}",
+    "reason": "Two zero-size regions at the same base are considered overlapping \u2014 `overlap` returns true via the `region1.base == region2.base` branch even when both regions are empty",
+    "entailed": true,
+    "verus_output": "cFns::get_Ok_0`: get_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__impl_u__os_refinement__lemma_map_soundness_equality/phi_4_overlap_zero_size_equal_base.rs:645:49\n    |\n645 |             let size = if result is Ok { result.get_Ok_0().frame.size } else { 0 };\n    |                                                 ^^^^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "candidate_pmem_overlap_symmetric",
+    "type": "behavioral",
+    "code": "proof fn phi_5_candidate_pmem_overlap_symmetric(mappings: Map<nat, PTE>, pte: PTE, b: nat)\n    requires\n        mappings.contains_key(b),\n        overlap(pte.frame, mappings[b].frame),\n    ensures\n        crate::candidate_mapping_overlaps_existing_pmem(mappings, pte),\n{\n}",
+    "reason": "Tests that the existential witness in `candidate_mapping_overlaps_existing_pmem` is correctly triggered \u2014 a concrete overlapping base should satisfy the exists clause",
+    "entailed": true,
+    "verus_output": "::get_Ok_0`: get_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__impl_u__os_refinement__lemma_map_soundness_equality/phi_5_candidate_pmem_overlap_symmetric.rs:645:49\n    |\n645 |             let size = if result is Ok { result.get_Ok_0().frame.size } else { 0 };\n    |                                                 ^^^^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

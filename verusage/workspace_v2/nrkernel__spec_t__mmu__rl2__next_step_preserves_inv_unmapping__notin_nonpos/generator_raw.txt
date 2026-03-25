@@ -1,0 +1,76 @@
+===PHI_START===
+NAME: write_preserves_other_reads
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_write_preserves_other_reads(mem: PTMem, addr1: usize, addr2: usize, value: usize)
+    requires
+        addr1 != addr2,
+    ensures
+        mem.write(addr1, value).read(addr2) == mem.read(addr2),
+{
+}
+```
+REASON: Writing at `addr1` should not affect reads at a different `addr2` — tests non-interference of the Map insert operation; failure would indicate aliasing in the PTMem memory model
+===PHI_END===
+
+===PHI_START===
+NAME: write_seq_empty_is_identity
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_write_seq_empty_is_identity(mem: PTMem)
+    ensures
+        mem.write_seq(Seq::<(usize, usize)>::empty()) == mem,
+{
+}
+```
+REASON: Applying an empty write sequence via `fold_left` should return the original PTMem — tests that `fold_left` with empty Seq returns the accumulator; failure would break the base case of write_seq induction
+===PHI_END===
+
+===PHI_START===
+NAME: pde_same_entry_layer_same_view
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_pde_same_entry_layer_same_view(e: usize, l: nat)
+    ensures
+        (PDE { entry: e, layer: Ghost(l) })@ == (PDE { entry: e, layer: Ghost(l) })@,
+{
+}
+```
+REASON: PDE::view should be deterministic — same entry and layer should always produce the same GPDE; but `all_mb0_bits_are_zero` is `external_body`, so if it were nondeterministic, two calls could disagree (this is trivially true by referential transparency but tests the assumption)
+===PHI_END===
+
+===PHI_START===
+NAME: from_bits_supervisor_inverted
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_from_bits_supervisor_inverted()
+    ensures
+        Flags::from_bits(true, true, false).is_supervisor == false,
+        Flags::from_bits(true, false, false).is_supervisor == true,
+{
+}
+```
+REASON: `from_bits` sets `is_supervisor: !flag_US` — so US=true means not-supervisor and US=false means supervisor; this inversion matches x86 semantics where the US bit grants user access, but if inverted incorrectly, kernel pages would be accessible from userspace
+===PHI_END===
+
+===PHI_START===
+NAME: pt_walk_only_depends_on_reachable_memory
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_pt_walk_only_depends_on_reachable_memory(mem1: PTMem, mem2: PTMem, vaddr: usize)
+    requires
+        mem1.pml4 == mem2.pml4,
+        mem1.read(add(mem1.pml4, mul(l0_bits!(vaddr), WORD_SIZE))) & 1 == 0,
+        mem2.read(add(mem2.pml4, mul(l0_bits!(vaddr), WORD_SIZE))) == mem1.read(add(mem1.pml4, mul(l0_bits!(vaddr), WORD_SIZE))),
+    ensures
+        mem1.pt_walk(vaddr).path == mem2.pt_walk(vaddr).path,
+{
+}
+```
+REASON: If two memories agree on pml4 and the L0 entry (which is non-present), the walk should terminate at L0 with the same path — tests that pt_walk short-circuits on Invalid entries and doesn't read further memory
+===PHI_END===

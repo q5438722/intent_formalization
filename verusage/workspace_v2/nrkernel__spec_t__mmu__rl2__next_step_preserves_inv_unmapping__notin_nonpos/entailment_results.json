@@ -1,0 +1,47 @@
+[
+  {
+    "name": "write_preserves_other_reads",
+    "type": "behavioral",
+    "code": "proof fn phi_1_write_preserves_other_reads(mem: PTMem, addr1: usize, addr2: usize, value: usize)\n    requires\n        addr1 != addr2,\n    ensures\n        mem.write(addr1, value).read(addr2) == mem.read(addr2),\n{\n}",
+    "reason": "Writing at `addr1` should not affect reads at a different `addr2` \u2014 tests non-interference of the Map insert operation; failure would indicate aliasing in the PTMem memory model",
+    "entailed": true,
+    "verus_output": "ed to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__next_step_preserves_inv_unmapping__notin_nonpos/phi_1_write_preserves_other_reads.rs:164:9\n    |\n164 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "write_seq_empty_is_identity",
+    "type": "behavioral",
+    "code": "proof fn phi_2_write_seq_empty_is_identity(mem: PTMem)\n    ensures\n        mem.write_seq(Seq::<(usize, usize)>::empty()) == mem,\n{\n}",
+    "reason": "Applying an empty write sequence via `fold_left` should return the original PTMem \u2014 tests that `fold_left` with empty Seq returns the accumulator; failure would break the base case of write_seq induction",
+    "entailed": true,
+    "verus_output": "ed to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__next_step_preserves_inv_unmapping__notin_nonpos/phi_2_write_seq_empty_is_identity.rs:164:9\n    |\n164 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pde_same_entry_layer_same_view",
+    "type": "logical",
+    "code": "proof fn phi_3_pde_same_entry_layer_same_view(e: usize, l: nat)\n    ensures\n        (PDE { entry: e, layer: Ghost(l) })@ == (PDE { entry: e, layer: Ghost(l) })@,\n{\n}",
+    "reason": "PDE::view should be deterministic \u2014 same entry and layer should always produce the same GPDE; but `all_mb0_bits_are_zero` is `external_body`, so if it were nondeterministic, two calls could disagree (this is trivially true by referential transparency but tests the assumption)",
+    "entailed": true,
+    "verus_output": "to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__next_step_preserves_inv_unmapping__notin_nonpos/phi_3_pde_same_entry_layer_same_view.rs:164:9\n    |\n164 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "from_bits_supervisor_inverted",
+    "type": "behavioral",
+    "code": "proof fn phi_4_from_bits_supervisor_inverted()\n    ensures\n        Flags::from_bits(true, true, false).is_supervisor == false,\n        Flags::from_bits(true, false, false).is_supervisor == true,\n{\n}",
+    "reason": "`from_bits` sets `is_supervisor: !flag_US` \u2014 so US=true means not-supervisor and US=false means supervisor; this inversion matches x86 semantics where the US bit grants user access, but if inverted incorrectly, kernel pages would be accessible from userspace",
+    "entailed": true,
+    "verus_output": " to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__next_step_preserves_inv_unmapping__notin_nonpos/phi_4_from_bits_supervisor_inverted.rs:164:9\n    |\n164 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pt_walk_only_depends_on_reachable_memory",
+    "type": "behavioral",
+    "code": "proof fn phi_5_pt_walk_only_depends_on_reachable_memory(mem1: PTMem, mem2: PTMem, vaddr: usize)\n    requires\n        mem1.pml4 == mem2.pml4,\n        mem1.read(add(mem1.pml4, mul(l0_bits!(vaddr), WORD_SIZE))) & 1 == 0,\n        mem2.read(add(mem2.pml4, mul(l0_bits!(vaddr), WORD_SIZE))) == mem1.read(add(mem1.pml4, mul(l0_bits!(vaddr), WORD_SIZE))),\n    ensures\n        mem1.pt_walk(vaddr).path == mem2.pt_walk(vaddr).path,\n{\n}",
+    "reason": "If two memories agree on pml4 and the L0 entry (which is non-present), the walk should terminate at L0 with the same path \u2014 tests that pt_walk short-circuits on Invalid entries and doesn't read further memory",
+    "entailed": false,
+    "verus_output": "reachable_memory.rs:1333:9\n     |\n1327 | proof fn phi_5_pt_walk_only_depends_on_reachable_memory(mem1: PTMem, mem2: PTMem, vaddr: usize)\n     |       ----------------------------------------------------------------------------------------- at the end of the function body\n...\n1333 |         mem1.pt_walk(vaddr).path == mem2.pt_walk(vaddr).path,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

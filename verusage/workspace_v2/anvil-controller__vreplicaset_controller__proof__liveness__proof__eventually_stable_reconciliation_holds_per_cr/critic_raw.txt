@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: create_key_namespace_diverges_from_obj
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `CreateRequest::key()` derives namespace from `self.namespace` rather than `self.obj.metadata.namespace`. If these diverge, the key identifies a different namespace than the object claims, potentially storing the object under the wrong key.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: unmarshal_skips_state_validation
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Unmarshal is intentionally a parsing/deserialization step separate from validation. In Kubernetes, state validation is applied by the API server as a distinct admission phase after unmarshalling.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: update_key_kind_from_obj_body
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This directly restates the definition of `UpdateRequest::key()`. Deriving the kind from the embedded object matches Kubernetes API semantics where the request's identity comes from the object being updated.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: `CreateRequest::key()` uses `self.namespace` instead of `self.obj.metadata.namespace`, allowing namespace divergence between the key and the object's own metadata. The other two are false positives — unmarshal intentionally separates parsing from validation, and UpdateRequest deriving kind from the embedded object is standard Kubernetes semantics.
+===END_SUMMARY===

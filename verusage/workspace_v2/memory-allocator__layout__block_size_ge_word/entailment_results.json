@@ -1,0 +1,47 @@
+[
+  {
+    "name": "block_ptr_within_segment",
+    "type": "behavioral",
+    "code": "proof fn phi_1_block_ptr_within_segment(p: *mut u8, block_id: BlockId)\n    requires\n        is_block_ptr(p, block_id),\n    ensures\n        segment_start(block_id.page_id.segment_id) < p as int\n            <= segment_start(block_id.page_id.segment_id) + SEGMENT_SIZE,\n{\n    reveal(is_block_ptr1);\n}",
+    "reason": "Block pointers are constrained to within the segment \u2014 but the spec only checks the start address of the block, not that the entire block (start + block_size) fits within the segment or slice",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "block_end_exceeds_slice",
+    "type": "behavioral",
+    "code": "proof fn phi_2_block_end_exceeds_slice(p: *mut u8, block_id: BlockId)\n    requires\n        is_block_ptr(p, block_id),\n    ensures\n        // The spec does NOT guarantee that the block END fits within the slice\n        // Only the block START is checked against the slice range\n        true,\n{\n    reveal(is_block_ptr1);\n    // is_block_ptr1 checks:\n    //   segment_start + slice_idx*SLICE_SIZE <= ptr < segment_start + slice_idx*SLICE_SIZE + SLICE_SIZE\n    // but does NOT check:\n    //   ptr + block_size <= segment_start + slice_idx*SLICE_SIZE + SLICE_SIZE\n}",
+    "reason": "The spec constrains the block's start address to be within a slice but never checks that `ptr + block_size` fits within the slice \u2014 a large block_size could extend past the slice boundary",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "slice_idx_not_linked_to_page_idx",
+    "type": "logical",
+    "code": "proof fn phi_3_slice_idx_not_linked_to_page_idx(p: *mut u8, block_id: BlockId)\n    requires\n        is_block_ptr(p, block_id),\n        block_id.page_id.idx == 5,\n    ensures\n        block_id.slice_idx <= SLICES_PER_SEGMENT,\n        // slice_idx is NOT constrained to be >= page_id.idx\n{\n    reveal(is_block_ptr1);\n}",
+    "reason": "`slice_idx` is only bounded `0 <= slice_idx <= SLICES_PER_SEGMENT` but has no constraint relating it to `page_id.idx` \u2014 a block could claim to be in slice 0 while belonging to page 5",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "segment_id_nat_allows_overflow",
+    "type": "boundary",
+    "code": "proof fn phi_4_segment_id_nat_allows_overflow(block_id: BlockId)\n    requires\n        block_id.page_id.segment_id.id == 1000000,\n        block_id.block_size == 8,\n        block_id.idx == 0,\n        block_id.page_id.idx == 0,\n        block_id.slice_idx == 0,\n    ensures\n        block_start(block_id) == 1000000 * SEGMENT_SIZE + start_offset(8),\n{\n}",
+    "reason": "`segment_id.id` is `nat` with no upper bound \u2014 `segment_start` computes `id * SEGMENT_SIZE` which for large IDs yields addresses far exceeding `usize::MAX`, though `is_block_ptr1` does check `< usize::MAX`",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_idx_unbounded",
+    "type": "boundary",
+    "code": "proof fn phi_5_page_idx_unbounded(page_id: PageId)\n    requires\n        page_id.idx == 1000,\n    ensures\n        page_start(page_id) == segment_start(page_id.segment_id) + SLICE_SIZE * 1000,\n{\n}",
+    "reason": "`page_id.idx` is `nat` with no upper bound in `page_start` \u2014 idx=1000 exceeds `SLICES_PER_SEGMENT=512`, placing the page start beyond the segment end; `is_block_ptr1` constrains `slice_idx` but not `page_id.idx`",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

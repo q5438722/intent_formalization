@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: va_1g_valid_returns_spec_va_2m_valid
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The `va_1g_valid` function has `#[verifier(when_used_as_spec(spec_va_2m_valid))]` — clearly a copy-paste bug from `va_2m_valid`. This means whenever `va_1g_valid` is used in spec context it resolves to `spec_va_2m_valid` instead of `spec_va_1g_valid`, silently accepting 2MB-aligned addresses as 1GB-valid.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: va_1g_valid_not_spec_va_1g_valid
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: This is a direct consequence of the copy-paste bug: a 2MB-aligned but non-1GB-aligned address passes `va_1g_valid` because the spec resolves to `spec_va_2m_valid`. This would allow misaligned addresses into 1GB page table operations, a real soundness gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: v2l2index_accepts_non_1g_via_va_1g
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: This demonstrates the downstream impact of the copy-paste bug: `v2l2index`'s precondition `va_1g_valid(va)` is weaker than intended, accepting any 2MB-valid address through the 1GB disjunct. While `v2l2index` itself computes correctly for any address, callers relying on the 1GB path to guarantee 1GB alignment would be unsound.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: kernel_mem_end_l4index_allows_low_addresses
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `KERNEL_MEM_END_L4INDEX = 1` is an intentional design constant that excludes L4 index 0 (the lowest 512GB) from valid kernel addresses. The property simply restates this design decision. Whether index 1 overlaps with user-space is an OS-level policy choice, not a spec bug.
+===VERDICT_END===
+
+===SUMMARY===
+Three of the four candidates are true positives, all stemming from the same root cause: a copy-paste bug where `va_1g_valid` has `when_used_as_spec(spec_va_2m_valid)` instead of `when_used_as_spec(spec_va_1g_valid)`. This causes the 1GB validity check to silently degrade to a 2MB validity check in spec context, allowing misaligned addresses into 1GB page operations and weakening downstream preconditions like `v2l2index`. The kernel memory boundary constant is an intentional design choice and not a spec issue.
+===END_SUMMARY===

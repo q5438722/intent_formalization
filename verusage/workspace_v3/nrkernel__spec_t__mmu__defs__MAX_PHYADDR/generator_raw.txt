@@ -1,0 +1,89 @@
+===PHI_START===
+NAME: ret_is_zero
+TARGET_FN: MAX_PHYADDR
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_ret_is_zero(ret: usize)
+    requires
+        ret == MAX_PHYADDR_SPEC,
+    ensures
+        ret == 0usize,
+{
+    axiom_max_phyaddr_width_facts();
+}
+```
+REASON: If the return value is zero, there is no usable physical address space, indicating a degenerate spec.
+===PHI_END===
+
+===PHI_START===
+NAME: ret_below_32bit_mask
+TARGET_FN: MAX_PHYADDR
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_ret_below_32bit_mask(ret: usize)
+    requires
+        ret == MAX_PHYADDR_SPEC,
+    ensures
+        ret < 0xFFFF_FFFFusize,
+{
+    axiom_max_phyaddr_width_facts();
+}
+```
+REASON: If the max physical address is strictly below a 32-bit mask, the width axiom lower bound of 32 is violated.
+===PHI_END===
+
+===PHI_START===
+NAME: ret_exceeds_52bit_range
+TARGET_FN: MAX_PHYADDR
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_ret_exceeds_52bit_range(ret: usize)
+    requires
+        ret == MAX_PHYADDR_SPEC,
+    ensures
+        ret >= (1usize << 52usize),
+{
+    axiom_max_phyaddr_width_facts();
+}
+```
+REASON: If the mask reaches or exceeds 2^52, it contradicts the upper bound on MAX_PHYADDR_WIDTH and could allow out-of-range physical addresses.
+===PHI_END===
+
+===PHI_START===
+NAME: ret_is_usize_max
+TARGET_FN: MAX_PHYADDR
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_ret_is_usize_max(ret: usize)
+    requires
+        ret == MAX_PHYADDR_SPEC,
+    ensures
+        ret == 0xFFFF_FFFF_FFFF_FFFFusize,
+{
+    axiom_max_phyaddr_width_facts();
+}
+```
+REASON: If the max physical address equals usize::MAX, the mask imposes no effective upper bound, defeating address-space isolation.
+===PHI_END===
+
+===PHI_START===
+NAME: ret_is_even
+TARGET_FN: MAX_PHYADDR
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_ret_is_even(ret: usize)
+    requires
+        ret == MAX_PHYADDR_SPEC,
+    ensures
+        ret % 2usize == 0usize,
+{
+    axiom_max_phyaddr_width_facts();
+}
+```
+REASON: A bitmask of the form (1<<w)-1 with w>=1 is always odd; an even result would indicate an off-by-one or shift error in the spec.
+===PHI_END===

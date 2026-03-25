@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "is_bit_set_not0_no_bound",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The axiom `forall|j: usize| is_bit_set(!0usize, j)` has no `j < 64` guard. For `j >= 64`, `1usize << j` wraps, so the axiom asserts properties about non-existent bit positions that could enable unsound reasoning chains."
+  },
+  {
+    "phi": "or_bit_set_no_bound",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The OR biconditional axiom lacks a `j < 64` guard. For `j >= 64`, `1usize << j` wraps around, and the biconditional relates three `is_bit_set` calls at wrapped positions where the logical meaning breaks down."
+  },
+  {
+    "phi": "and_bit_set_no_bound",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Same issue as OR \u2014 the AND biconditional has no `j < 64` guard. For out-of-range bit positions, `1usize << j` wraps and the biconditional asserts equivalences about wrapped bit operations that don't correspond to actual bit semantics."
+  },
+  {
+    "phi": "lemma_view_no_range_guard",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The first ensures of `lemma_view` decomposes any `i` in `self@` into `a = i/64` and `b = i%64` then accesses `self.mask[a]` without guarding `0 <= a < 8`. The `view()` definition constrains elements to valid ranges, but the external_body lemma doesn't faithfully reflect this bound, allowing spec-level out-of-bounds access for out-of-range `i`."
+  }
+]

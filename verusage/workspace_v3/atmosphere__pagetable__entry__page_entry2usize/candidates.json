@@ -1,0 +1,37 @@
+[
+  {
+    "name": "mem_valid_vacuous",
+    "target_fn": "page_entry2usize",
+    "type": "boundary",
+    "code": "proof fn phi_1_mem_valid_vacuous(addr: PAddr)\n    requires\n        MEM_valid(addr),\n    ensures\n        false,\n{\n}",
+    "reason": "If MEM_valid is unsatisfiable, all page_entry2usize postconditions hold vacuously and the spec is meaningless"
+  },
+  {
+    "name": "present_result_even",
+    "target_fn": "page_entry2usize",
+    "type": "behavioral",
+    "code": "proof fn phi_2_present_result_even(page_entry: PageEntry, ret: usize)\n    requires\n        MEM_valid(page_entry.addr),\n        page_entry.perm.present == true,\n        usize2present(ret) == page_entry.perm.present,\n        usize2ps(ret) == page_entry.perm.ps,\n        usize2write(ret) == page_entry.perm.write,\n        usize2execute_disable(ret) == page_entry.perm.execute_disable,\n        usize2user(ret) == page_entry.perm.user,\n        usize2pa(ret) == page_entry.addr,\n        usize2page_entry_perm(ret) =~= page_entry.perm,\n    ensures\n        ret & 1usize == 0usize,\n{\n}",
+    "reason": "A present page entry must have bit 0 set (odd result); proving the result even would indicate the present bit is not encoded or the precondition is vacuous"
+  },
+  {
+    "name": "ps_not_injective",
+    "target_fn": "page_entry2usize",
+    "type": "logical",
+    "code": "proof fn phi_3_ps_not_injective(pe1: PageEntry, ret1: usize, pe2: PageEntry, ret2: usize)\n    requires\n        MEM_valid(pe1.addr),\n        MEM_valid(pe2.addr),\n        pe1.addr == pe2.addr,\n        pe1.perm.present == pe2.perm.present,\n        pe1.perm.write == pe2.perm.write,\n        pe1.perm.execute_disable == pe2.perm.execute_disable,\n        pe1.perm.user == pe2.perm.user,\n        pe1.perm.ps == true,\n        pe2.perm.ps == false,\n        usize2present(ret1) == pe1.perm.present,\n        usize2ps(ret1) == pe1.perm.ps,\n        usize2write(ret1) == pe1.perm.write,\n        usize2execute_disable(ret1) == pe1.perm.execute_disable,\n        usize2user(ret1) == pe1.perm.user,\n        usize2pa(ret1) == pe1.addr,\n        usize2present(ret2) == pe2.perm.present,\n        usize2ps(ret2) == pe2.perm.ps,\n        usize2write(ret2) == pe2.perm.write,\n        usize2execute_disable(ret2) == pe2.perm.execute_disable,\n        usize2user(ret2) == pe2.perm.user,\n        usize2pa(ret2) == pe2.addr,\n    ensures\n        ret1 == ret2,\n{\n}",
+    "reason": "Entries differing only in the PS flag must encode to different usize values; equal results would mean the PS bit position is lost"
+  },
+  {
+    "name": "all_perms_true_vacuous",
+    "target_fn": "page_entry2usize",
+    "type": "boundary",
+    "code": "proof fn phi_4_all_perms_true_vacuous(page_entry: PageEntry, ret: usize)\n    requires\n        MEM_valid(page_entry.addr),\n        page_entry.addr != 0usize,\n        page_entry.perm.present == true,\n        page_entry.perm.ps == true,\n        page_entry.perm.write == true,\n        page_entry.perm.execute_disable == true,\n        page_entry.perm.user == true,\n        usize2present(ret) == page_entry.perm.present,\n        usize2ps(ret) == page_entry.perm.ps,\n        usize2write(ret) == page_entry.perm.write,\n        usize2execute_disable(ret) == page_entry.perm.execute_disable,\n        usize2user(ret) == page_entry.perm.user,\n        usize2pa(ret) == page_entry.addr,\n        usize2page_entry_perm(ret) =~= page_entry.perm,\n    ensures\n        false,\n{\n}",
+    "reason": "If there is no valid non-zero address that can carry all permission bits, the spec is vacuously satisfied for the most critical case of a fully-permissioned entry"
+  },
+  {
+    "name": "addr_zeroed_when_present",
+    "target_fn": "page_entry2usize",
+    "type": "behavioral",
+    "code": "proof fn phi_5_addr_zeroed_when_present(page_entry: PageEntry, ret: usize)\n    requires\n        MEM_valid(page_entry.addr),\n        page_entry.perm.present == true,\n        page_entry.addr != 0usize,\n        usize2present(ret) == page_entry.perm.present,\n        usize2ps(ret) == page_entry.perm.ps,\n        usize2write(ret) == page_entry.perm.write,\n        usize2execute_disable(ret) == page_entry.perm.execute_disable,\n        usize2user(ret) == page_entry.perm.user,\n        usize2pa(ret) == page_entry.addr,\n        usize2page_entry_perm(ret) =~= page_entry.perm,\n    ensures\n        usize2pa(ret) == 0usize,\n{\n}",
+    "reason": "ORing the present bit into the address must not corrupt the physical address field; a zeroed PA would mean the address-permission encoding is destructive"
+  }
+]

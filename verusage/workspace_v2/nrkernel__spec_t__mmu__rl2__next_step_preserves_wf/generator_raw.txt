@@ -1,0 +1,82 @@
+===PHI_START===
+NAME: is_base_pt_walk_requires_aligned_vaddr
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_is_base_pt_walk_requires_aligned_vaddr(mem: PTMem, vaddr: usize)
+    requires
+        mem.is_base_pt_walk(vaddr),
+        mem.pt_walk(vaddr).path.len() == 4,
+    ensures
+        aligned(vaddr as nat, L3_ENTRY_SIZE as nat),
+{
+}
+```
+REASON: `is_base_pt_walk` requires `vbase == vaddr` and `vbase = align_to_usize(vaddr, L3_ENTRY_SIZE)` for 4-level walks — so `vaddr` must already be page-aligned; if this holds for non-aligned vaddrs, the alignment rounding is broken
+===PHI_END===
+
+===PHI_START===
+NAME: is_base_pt_walk_l1_requires_1g_aligned
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_is_base_pt_walk_l1_requires_1g_aligned(mem: PTMem, vaddr: usize)
+    requires
+        mem.is_base_pt_walk(vaddr),
+        mem.pt_walk(vaddr).path.len() == 2,
+    ensures
+        aligned(vaddr as nat, L1_ENTRY_SIZE as nat),
+{
+}
+```
+REASON: For 2-level walks (1GB pages), `is_base_pt_walk` forces `vaddr == align_to_usize(vaddr, L1_ENTRY_SIZE)` — vaddr must be 1GB-aligned; tests that huge page base walk semantics correctly constrain alignment
+===PHI_END===
+
+===PHI_START===
+NAME: ptmem_view_external_body_no_domain_constraint
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_ptmem_view_external_body_no_domain_constraint(mem1: PTMem, mem2: PTMem)
+    requires
+        mem1.pml4 == mem2.pml4,
+        mem1.mem === mem2.mem,
+    ensures
+        mem1@ === mem2@,
+{
+}
+```
+REASON: `PTMem::view` is `external_body` — two PTMem values with identical fields should produce identical views, but this is unverified; if `view` could differ for structurally equal inputs, the abstraction would be unsound
+===PHI_END===
+
+===PHI_START===
+NAME: walk_result_valid_implies_page_last
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_walk_result_valid_implies_page_last(w: Walk)
+    requires
+        w.path.len() >= 2,
+        w.path.len() <= 4,
+        w.result() is Valid,
+    ensures
+        w.path.last().1 is Page,
+{
+}
+```
+REASON: `Walk::result` returns Valid only when `path.last().1 is Page` (the if-branch); otherwise it returns `arbitrary()` — tests that the converse holds: if result is Valid with reasonable path length, the last entry must be Page
+===PHI_END===
+
+===PHI_START===
+NAME: max_base_exceeds_48bit_vaddr_space
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_max_base_exceeds_48bit_vaddr_space()
+    ensures
+        MAX_BASE == 512 * 512 * 512 * 512 * 4096,
+{
+}
+```
+REASON: `MAX_BASE = X86_MAX_ENTRY_SIZE * X86_NUM_ENTRIES = (512^3 * 4096) * 512 = 512^4 * 4096 = 2^48` — tests that the virtual address space bound is exactly 256TB (2^48), the canonical x86-64 limit; if wrong, `is_base_pt_walk` would accept or reject valid addresses incorrectly
+===PHI_END===

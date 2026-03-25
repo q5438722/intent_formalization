@@ -1,0 +1,99 @@
+===PHI_START===
+NAME: roundtrip_external_body_trusted
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_roundtrip_external_body_trusted<C: SecureSpecCombinator>(
+    c: &C,
+    v: C::Type,
+)
+    requires
+        c.requires(),
+        c.wf(v),
+    ensures
+        c.spec_parse(c.spec_serialize(v)) == Some((c.spec_serialize(v).len() as int, v)),
+{
+    c.theorem_serialize_parse_roundtrip(v);
+}
+```
+REASON: `theorem_serialize_parse_roundtrip` is `external_body` with `unimplemented!()` — the fundamental serialize-parse roundtrip is an unverified trust assumption that any concrete combinator inherits for free
+===PHI_END===
+
+===PHI_START===
+NAME: serialize_injective_from_external
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_serialize_injective_from_external<C: SecureSpecCombinator>(
+    c: &C,
+    v1: C::Type,
+    v2: C::Type,
+)
+    requires
+        c.requires(),
+        c.wf(v1),
+        c.wf(v2),
+        c.spec_serialize(v1) == c.spec_serialize(v2),
+    ensures
+        v1 == v2,
+{
+    c.theorem_serialize_parse_roundtrip(v1);
+    c.theorem_serialize_parse_roundtrip(v2);
+}
+```
+REASON: Serialize injectivity is derived from the unverified `external_body` roundtrip — a buggy combinator could have non-injective serialization accepted as sound
+===PHI_END===
+
+===PHI_START===
+NAME: parse_some_for_all_serialized
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_parse_some_for_all_serialized<C: SecureSpecCombinator>(
+    c: &C,
+    v: C::Type,
+)
+    requires
+        c.requires(),
+        c.wf(v),
+    ensures
+        c.spec_parse(c.spec_serialize(v)).is_some(),
+{
+    c.theorem_serialize_parse_roundtrip(v);
+}
+```
+REASON: The roundtrip guarantees parse always succeeds on serialized output — but this is entirely from the `external_body` axiom; a combinator whose parse rejects its own serialize output would still be "verified"
+===PHI_END===
+
+===PHI_START===
+NAME: wf_vacuously_true_default
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_wf_vacuously_true_default<C: SpecCombinator>(
+    c: &C,
+    v: C::Type,
+)
+    ensures
+        c.wf(v),
+{
+}
+```
+REASON: The default `wf` returns `true` for all values — any combinator that forgets to override `wf` would have the roundtrip theorem's precondition satisfied for ALL values including malformed ones
+===PHI_END===
+
+===PHI_START===
+NAME: requires_vacuously_true_default
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_requires_vacuously_true_default<C: SpecCombinator>(
+    c: &C,
+)
+    ensures
+        c.requires(),
+{
+}
+```
+REASON: The default `requires` returns `true` unconditionally — any combinator needing initialization constraints but forgetting to override `requires` has all proof obligations trivially dischargeable
+===PHI_END===

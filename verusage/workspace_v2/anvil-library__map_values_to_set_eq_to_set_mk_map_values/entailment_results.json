@@ -1,0 +1,47 @@
+[
+  {
+    "name": "push_to_set_eq_to_set_insert_bridge",
+    "type": "logical",
+    "code": "proof fn phi_1_push_to_set_eq_to_set_insert_bridge(s: Seq<int>, e: int)\n    ensures\n        s.push(e).to_set() == s.to_set().insert(e),\n{\n    push_to_set_eq_to_set_insert(s, e);\n}",
+    "reason": "push_to_set_eq_to_set_insert is external_body asserting intensional equality between push-then-to_set and to_set-then-insert without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "empty_seq_map_values_to_set_empty",
+    "type": "boundary",
+    "code": "proof fn phi_2_empty_seq_map_values_to_set_empty(map: spec_fn(int) -> int)\n    ensures\n        Seq::<int>::empty().map_values(map).to_set() == Set::<int>::empty(),\n{\n    map_values_to_set_eq_to_set_mk_map_values(Seq::<int>::empty(), map);\n}",
+    "reason": "empty sequence mapped should produce empty set \u2014 tests whether mk_map on empty set produces empty map with empty values",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "singleton_map_values_to_set",
+    "type": "boundary",
+    "code": "proof fn phi_3_singleton_map_values_to_set(v: int, map: spec_fn(int) -> int)\n    ensures\n        seq![v].map_values(map).to_set() == Set::empty().insert(map(v)),\n{\n    map_values_to_set_eq_to_set_mk_map_values(seq![v], map);\n}",
+    "reason": "singleton sequence mapped should produce singleton set \u2014 tests base case interaction between to_set, mk_map, and values",
+    "entailed": false,
+    "verus_output": "et_mk_map_values/phi_3_singleton_map_values_to_set.rs:76:9\n   |\n74 | proof fn phi_3_singleton_map_values_to_set(v: int, map: spec_fn(int) -> int)\n   |       ---------------------------------------------------------------------- at the end of the function body\n75 |     ensures\n76 |         seq![v].map_values(map).to_set() == Set::empty().insert(map(v)),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "map_values_to_set_len_leq_seq_len",
+    "type": "behavioral",
+    "code": "proof fn phi_4_map_values_to_set_len_leq_seq_len(s: Seq<int>, map: spec_fn(int) -> int)\n    requires\n        s.to_set().finite(),\n    ensures\n        s.map_values(map).to_set().len() <= s.to_set().len(),\n{\n    map_values_to_set_eq_to_set_mk_map_values(s, map);\n}",
+    "reason": "mapping can collapse values so the image set should never exceed the domain set size \u2014 tests that mk_map values count is bounded by domain",
+    "entailed": false,
+    "verus_output": "eq_to_set_mk_map_values/phi_4_map_values_to_set_len_leq_seq_len.rs:78:9\n   |\n74 | proof fn phi_4_map_values_to_set_len_leq_seq_len(s: Seq<int>, map: spec_fn(int) -> int)\n   |       --------------------------------------------------------------------------------- at the end of the function body\n...\n78 |         s.map_values(map).to_set().len() <= s.to_set().len(),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "duplicate_push_to_set_idempotent",
+    "type": "behavioral",
+    "code": "proof fn phi_5_duplicate_push_to_set_idempotent(s: Seq<int>, e: int)\n    requires\n        s.contains(e),\n    ensures\n        s.push(e).to_set() == s.to_set(),\n{\n    push_to_set_eq_to_set_insert(s, e);\n}",
+    "reason": "pushing a duplicate element should not change the set \u2014 relies on external_body axiom plus set insert idempotence; if the axiom interacts incorrectly with to_set this could mask an inconsistency",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

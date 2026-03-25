@@ -1,0 +1,47 @@
+[
+  {
+    "name": "fold_left_sum_le_empty",
+    "type": "boundary",
+    "code": "proof fn phi_1_fold_left_sum_le_empty<A>(init: int, high: int, f: spec_fn(A) -> int)\n    ensures\n        Seq::<A>::empty().fold_left(init, |acc: int, x: A| acc + f(x)) <= init,\n{\n    lemma_seq_fold_left_sum_le(Seq::<A>::empty(), init, high, f);\n}",
+    "reason": "Empty sequence fold with any `high` (even negative) yields `<= init + 0*high = init` \u2014 but the bound holds vacuously since no elements are checked, and a negative `high` would tighten the bound incorrectly if elements existed",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "fold_left_sum_le_negative_high",
+    "type": "logical",
+    "code": "proof fn phi_2_fold_left_sum_le_negative_high<A>(s: Seq<A>, init: int, f: spec_fn(A) -> int)\n    requires\n        s.len() > 0,\n        forall |i: int| 0 <= i < s.len() ==> f(s[i]) <= -1,\n    ensures\n        s.fold_left(init, |acc: int, x: A| acc + f(x)) <= init - s.len(),\n{\n    lemma_seq_fold_left_sum_le(s, init, -1, f);\n    assert(init + s.len() * (-1int) == init - s.len()) by (nonlinear_arith);\n}",
+    "reason": "With negative `high`, the bound `init + len * high` can be below `init`, providing a useful upper bound \u2014 this is correct but callers might not realize the lemma works with negative bounds and assume it only provides bounds above `init`",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "fold_left_sum_le_zero_values",
+    "type": "behavioral",
+    "code": "proof fn phi_3_fold_left_sum_le_zero_values<A>(s: Seq<A>, init: int, f: spec_fn(A) -> int)\n    requires\n        s.len() > 0,\n        forall |i: int| 0 <= i < s.len() ==> f(s[i]) <= 0,\n    ensures\n        s.fold_left(init, |acc: int, x: A| acc + f(x)) <= init,\n{\n    lemma_seq_fold_left_sum_le(s, init, 0, f);\n}",
+    "reason": "When all values are non-positive, the fold result is bounded by `init` \u2014 this means adding \"non-positive\" elements can only decrease the accumulator, which is correct but the lemma provides no lower bound, so the result could be arbitrarily negative",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "fold_left_sum_le_high_much_larger",
+    "type": "boundary",
+    "code": "proof fn phi_4_fold_left_sum_le_high_much_larger<A>(s: Seq<A>, init: int, f: spec_fn(A) -> int)\n    requires\n        s.len() > 0,\n        forall |i: int| 0 <= i < s.len() ==> f(s[i]) <= 0,\n    ensures\n        s.fold_left(init, |acc: int, x: A| acc + f(x)) <= init + s.len() * 1000000,\n{\n    lemma_seq_fold_left_sum_le(s, init, 1000000, f);\n}",
+    "reason": "The lemma allows using any `high` that is a valid upper bound \u2014 even a wildly loose one \u2014 producing a useless bound; there is no tightness guarantee, so callers could derive arbitrarily weak conclusions",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "fold_left_sum_le_singleton",
+    "type": "behavioral",
+    "code": "proof fn phi_5_fold_left_sum_le_singleton<A>(a: A, init: int, high: int, f: spec_fn(A) -> int)\n    requires\n        f(a) <= high,\n    ensures\n        seq![a].fold_left(init, |acc: int, x: A| acc + f(x)) <= init + high,\n{\n    lemma_seq_fold_left_sum_le(seq![a], init, high, f);\n}",
+    "reason": "Singleton fold gives `init + f(a) <= init + high` \u2014 this directly follows from `f(a) <= high` without needing the fold machinery, suggesting the lemma's inductive structure may be overkill for the base+1 case and could hide off-by-one errors in longer sequences",
+    "entailed": false,
+    "verus_output": "ft_sum_le_singleton.rs:31:9\n   |\n27 | proof fn phi_5_fold_left_sum_le_singleton<A>(a: A, init: int, high: int, f: spec_fn(A) -> int)\n   |       ---------------------------------------------------------------------------------------- at the end of the function body\n...\n31 |         seq![a].fold_left(init, |acc: int, x: A| acc + f(x)) <= init + high,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

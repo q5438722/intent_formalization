@@ -1,0 +1,91 @@
+===PHI_START===
+NAME: deserialize_always_none
+TARGET_FN: deserialize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_deserialize_always_none(data: Vec<u8>, start: usize, res: Option<(CKeyHashMap, usize)>)
+    requires
+        match res {
+            Some((x, end)) => {
+                &&& x.is_marshalable()
+                &&& start <= end <= data.len()
+                &&& data@.subrange(start as int, end as int) == x.ghost_serialize()
+            }
+            None => true,
+        },
+    ensures
+        res is None,
+{
+}
+```
+REASON: If entailed, deserialize can never successfully produce a CKeyHashMap, making the spec vacuously true on success
+===PHI_END===
+
+===PHI_START===
+NAME: deserialize_result_empty_map
+TARGET_FN: deserialize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_deserialize_result_empty_map(data: Vec<u8>, start: usize, x: CKeyHashMap, end: usize)
+    requires
+        x.is_marshalable(),
+        start <= end <= data.len(),
+        data@.subrange(start as int, end as int) == x.ghost_serialize(),
+    ensures
+        x.spec_to_vec()@.len() == 0,
+{
+}
+```
+REASON: If entailed, every successfully deserialized CKeyHashMap is empty, meaning non-trivial maps can never round-trip
+===PHI_END===
+
+===PHI_START===
+NAME: deserialize_zero_bytes_consumed
+TARGET_FN: deserialize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_deserialize_zero_bytes_consumed(data: Vec<u8>, start: usize, x: CKeyHashMap, end: usize)
+    requires
+        x.is_marshalable(),
+        start <= end <= data.len(),
+        data@.subrange(start as int, end as int) == x.ghost_serialize(),
+    ensures
+        start == end,
+{
+}
+```
+REASON: If entailed, the serialized form is always zero-length, contradicting the length-prefix encoding of Vec<CKeyKV>
+===PHI_END===
+
+===PHI_START===
+NAME: to_vec_always_empty
+TARGET_FN: to_vec
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_to_vec_always_empty(m: CKeyHashMap)
+    ensures
+        m.spec_to_vec()@.len() == 0,
+{
+}
+```
+REASON: If entailed, spec_to_vec is trivially constant, meaning CKeyHashMap can never faithfully represent any key-value data
+===PHI_END===
+
+===PHI_START===
+NAME: never_marshalable
+TARGET_FN: to_vec
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_never_marshalable(m: CKeyHashMap)
+    ensures
+        !m.is_marshalable(),
+{
+}
+```
+REASON: If entailed, no CKeyHashMap instance can ever satisfy is_marshalable, so serialize/deserialize round-tripping is impossible for all inputs
+===PHI_END===

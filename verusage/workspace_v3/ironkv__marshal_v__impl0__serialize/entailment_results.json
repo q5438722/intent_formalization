@@ -1,0 +1,52 @@
+[
+  {
+    "name": "serialize_noop",
+    "target_fn": "serialize",
+    "type": "behavioral",
+    "reason": "Serialize of a u64 should always append bytes; a no-op (zero-length append) would mean the encoding is empty and undecodable.",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "w_data: Seq<u8>)\n    |       ----------------------------------------------------------------------- at the end of the function body\n...\n164 |         new_data.len() == old_data.len(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "serialize_not_injective",
+    "target_fn": "serialize",
+    "type": "logical",
+    "reason": "Two distinct u64 values sharing the same serialization would make deserialization ambiguous and break round-tripping.",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "ive(a: u64, b: u64)\n    |       ------------------------------------------------ at the end of the function body\n...\n163 |         a.ghost_serialize() == b.ghost_serialize(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "serialize_short_output",
+    "target_fn": "serialize",
+    "type": "boundary",
+    "reason": "Little-endian encoding of a u64 must always produce exactly 8 bytes; fewer bytes would corrupt downstream parsing of concatenated fields.",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": " proof fn phi_3_serialize_short_output(val: u64)\n    |       ----------------------------------------- at the end of the function body\n...\n161 |         val.ghost_serialize().len() < 8,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "serialize_constant_output",
+    "target_fn": "serialize",
+    "type": "behavioral",
+    "reason": "If every non-zero u64 serialized identically to zero, the encoding would carry no information and all values would be conflated.",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "val: u64)\n    |       -------------------------------------------- at the end of the function body\n...\n162 |         val.ghost_serialize() == (0u64).ghost_serialize(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "serialize_exceeds_8_bytes",
+    "target_fn": "serialize",
+    "type": "boundary",
+    "reason": "A u64 serialization longer than 8 bytes would violate the fixed-width encoding invariant and break offset calculations in composite serializations.",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": " fn phi_5_serialize_exceeds_8_bytes(val: u64)\n    |       -------------------------------------------- at the end of the function body\n...\n161 |         val.ghost_serialize().len() > 8,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

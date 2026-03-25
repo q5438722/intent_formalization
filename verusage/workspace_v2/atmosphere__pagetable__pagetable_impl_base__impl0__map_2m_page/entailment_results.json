@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize2pa_mem_valid_unconditional",
+    "type": "logical",
+    "code": "proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body unconditionally ensures MEM_valid(ret) for ANY input \u2014 arbitrary usize values produce \"valid\" physical addresses without proof",
+    "entailed": false,
+    "verus_output": "rmalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__map_2m_page/phi_1_usize2pa_mem_valid_unconditional.rs:1419:9\n     |\n1417 | proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n     |       --------------------------------------------------- at the end of the function body\n1418 |     ensures\n1419 |         MEM_valid(usize2pa(v)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 66 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_entry_to_map_entry_drops_user_bit",
+    "type": "behavioral",
+    "code": "proof fn phi_2_page_entry_to_map_entry_drops_user_bit(pe: PageEntry)\n    requires\n        pe.perm.user == true,\n        pe.perm.present == true,\n    ensures\n        spec_page_entry_to_map_entry(&pe) == spec_page_entry_to_map_entry(\n            &PageEntry { perm: PageEntryPerm { user: false, ..pe.perm }, ..pe }\n        ),\n{\n}",
+    "reason": "MapEntry contains only addr/write/execute_disable \u2014 the user/supervisor bit is silently dropped, making kernel-only and user-accessible pages indistinguishable in mappings",
+    "entailed": false,
+    "verus_output": "s scope\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__map_2m_page/phi_2_page_entry_to_map_entry_drops_user_bit.rs:1422:46\n     |\n1422 |         spec_page_entry_to_map_entry(&pe) == spec_page_entry_to_map_entry(\n     |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope\n\nerror: aborting due to 2 previous errors\n\nFor more information about this error, try `rustc --explain E0425`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_closure_l4_l3_can_overlap",
+    "type": "logical",
+    "code": "proof fn phi_3_page_closure_l4_l3_can_overlap(pt: PageTable, p: PageMapPtr)\n    requires\n        pt.wf_l4(),\n        pt.wf_l3(),\n        pt.l3_tables@.dom().contains(p),\n        p == pt.cr3,\n    ensures\n        pt.l4_table@.dom().contains(p) && pt.l3_tables@.dom().contains(p),\n{\n}",
+    "reason": "No cross-level disjointness constraint \u2014 the same physical page can appear in both l4_table and l3_tables domains, meaning it serves as two different page table levels simultaneously",
+    "entailed": true,
+    "verus_output": "3_can_overlap.rs:67:10\n   |\n67 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__map_2m_page/phi_3_page_closure_l4_l3_can_overlap.rs:76:10\n   |\n76 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 66 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_entry_to_map_entry_drops_ps_bit",
+    "type": "behavioral",
+    "code": "proof fn phi_4_page_entry_to_map_entry_drops_ps_bit(pe: PageEntry)\n    requires\n        pe.perm.ps == true,\n        pe.perm.present == true,\n    ensures\n        spec_page_entry_to_map_entry(&pe) == spec_page_entry_to_map_entry(\n            &PageEntry { perm: PageEntryPerm { ps: false, ..pe.perm }, ..pe }\n        ),\n{\n}",
+    "reason": "MapEntry does not preserve the ps (page size) bit \u2014 a 2M huge page entry and a 4K page table pointer with the same address become indistinguishable after conversion",
+    "entailed": false,
+    "verus_output": "his scope\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__map_2m_page/phi_4_page_entry_to_map_entry_drops_ps_bit.rs:1422:46\n     |\n1422 |         spec_page_entry_to_map_entry(&pe) == spec_page_entry_to_map_entry(\n     |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope\n\nerror: aborting due to 2 previous errors\n\nFor more information about this error, try `rustc --explain E0425`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_entry_to_map_entry_drops_present_bit",
+    "type": "behavioral",
+    "code": "proof fn phi_5_page_entry_to_map_entry_drops_present_bit(pe: PageEntry)\n    requires\n        pe.perm.present == false,\n    ensures\n        spec_page_entry_to_map_entry(&pe) == spec_page_entry_to_map_entry(\n            &PageEntry { perm: PageEntryPerm { present: true, ..pe.perm }, ..pe }\n        ),\n{\n}",
+    "reason": "MapEntry does not preserve the present bit \u2014 non-present (invalid) entries produce the same MapEntry as present (valid) entries, allowing non-present mappings to appear valid",
+    "entailed": false,
+    "verus_output": "cope\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__map_2m_page/phi_5_page_entry_to_map_entry_drops_present_bit.rs:1421:46\n     |\n1421 |         spec_page_entry_to_map_entry(&pe) == spec_page_entry_to_map_entry(\n     |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope\n\nerror: aborting due to 2 previous errors\n\nFor more information about this error, try `rustc --explain E0425`.\n",
+    "timed_out": false
+  }
+]

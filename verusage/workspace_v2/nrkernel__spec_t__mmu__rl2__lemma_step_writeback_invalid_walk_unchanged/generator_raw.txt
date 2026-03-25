@@ -1,0 +1,78 @@
+The file ends with `step_Writeback` visible. This is another round on the same rl2/rl3 source — I need to find fresh angles.
+
+===PHI_START===
+NAME: nonneg_nonpos_write_disjoint
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_nonneg_nonpos_write_disjoint(mem: PTMem, addr: usize, value: usize)
+    ensures
+        !(mem.is_nonneg_write(addr, value) && mem.is_nonpos_write(addr, value)),
+{
+}
+```
+REASON: A write cannot be both nonneg (P: 0→1) and nonpos (P: 1→0) — tests mutual exclusion of the two write classifications
+===PHI_END===
+
+===PHI_START===
+NAME: write_seq_single_equals_write
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_write_seq_single_equals_write(mem: PTMem, addr: usize, value: usize)
+    ensures
+        mem.write_seq(seq![(addr, value)]) == mem.write(addr, value),
+{
+}
+```
+REASON: `write_seq` of a single-element sequence should equal a single write — tests that fold_left correctly applies the single step
+===PHI_END===
+
+===PHI_START===
+NAME: max_phyaddr_width_gap
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_max_phyaddr_width_gap()
+    ensures
+        32 <= MAX_PHYADDR_WIDTH <= 52,
+{
+    axiom_max_phyaddr_width_facts();
+}
+```
+REASON: `MAX_PHYADDR_WIDTH` is `external_body` with value 52 but axiom only constrains to 32..=52 — the verification accepts any width in the range
+===PHI_END===
+
+===PHI_START===
+NAME: pt_walk_l0_invalid_single_path
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_pt_walk_l0_invalid_single_path(mem: PTMem, vaddr: usize)
+    requires
+        mem.read(add(mem.pml4, mul(l0_bits!(vaddr), WORD_SIZE))) & 1 == 0,
+    ensures
+        mem.pt_walk(vaddr).path.len() == 1,
+        mem.pt_walk(vaddr).complete,
+{
+}
+```
+REASON: When the L0 entry is non-present, the walk should terminate immediately — tests early termination for non-present root entries
+===PHI_END===
+
+===PHI_START===
+NAME: all_mb0_bits_are_zero_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_all_mb0_bits_are_zero_external_body(e1: usize, e2: usize, l: nat)
+    requires
+        e1 == e2,
+    ensures
+        (PDE { entry: e1, layer: Ghost(l) }).all_mb0_bits_are_zero()
+        == (PDE { entry: e2, layer: Ghost(l) }).all_mb0_bits_are_zero(),
+{
+}
+```
+REASON: `all_mb0_bits_are_zero` is `external_body` — the PDE validity predicate is entirely opaque and could behave inconsistently
+===PHI_END===

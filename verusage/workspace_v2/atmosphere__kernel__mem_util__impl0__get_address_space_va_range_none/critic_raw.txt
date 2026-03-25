@@ -1,0 +1,17 @@
+===VERDICT_START===
+PHI: page_entry_to_map_entry_drops_present
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `spec_page_entry_to_map_entry` constructs a `MapEntry` with `addr`, `write`, and `execute_disable` but drops `present`, `ps`, and `user` fields. When a non-present entry has a stale non-zero address, the resulting MapEntry carries that address with no indication the entry isn't present. Consumers of MapEntry cannot distinguish a valid mapping from a stale one, which is a real information loss in the spec abstraction.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: container_map_4k_allows_double_ownership
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The `container_map_4k` Ghost field has no disjointness constraint in the visible spec. The ensures clause correctly demonstrates that two distinct containers can simultaneously contain the same page, which is satisfiable given the preconditions. A sound page allocator should enforce exclusive page ownership across containers.
+===VERDICT_END===
+
+===SUMMARY===
+Both candidates are true positives. The `page_entry_to_map_entry_drops_present` PHI identifies a genuine abstraction leak: the conversion from PageEntry to MapEntry discards the `present` bit, meaning stale non-present entries with non-zero addresses produce MapEntries indistinguishable from valid mappings. The `container_map_4k_allows_double_ownership` PHI identifies that the Ghost field `container_map_4k` lacks disjointness constraints, permitting two containers to claim the same physical page — a real spec gap for exclusive ownership in a page allocator.
+===END_SUMMARY===

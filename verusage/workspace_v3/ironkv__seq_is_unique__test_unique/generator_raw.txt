@@ -1,0 +1,92 @@
+===PHI_START===
+NAME: empty_vec_not_unique
+TARGET_FN: test_unique
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_empty_vec_not_unique(endpoints: Vec<EndPoint>)
+    requires
+        endpoints@.len() == 0,
+    ensures
+        !seq_is_unique(abstractify_end_points(endpoints)),
+{
+    reveal(seq_is_unique::<AbstractEndPoint>);
+}
+```
+REASON: Empty collections are vacuously unique; if the spec entails they are not unique, the definition of seq_is_unique is wrong
+===PHI_END===
+
+===PHI_START===
+NAME: always_unique
+TARGET_FN: test_unique
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_always_unique(endpoints: Vec<EndPoint>)
+    requires
+        true,
+    ensures
+        seq_is_unique(abstractify_end_points(endpoints)),
+{
+    reveal(seq_is_unique::<AbstractEndPoint>);
+}
+```
+REASON: If every input is deemed unique, the function can never detect duplicates, making test_unique trivially true
+===PHI_END===
+
+===PHI_START===
+NAME: single_element_not_unique
+TARGET_FN: test_unique
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_single_element_not_unique(endpoints: Vec<EndPoint>)
+    requires
+        endpoints@.len() == 1,
+    ensures
+        !seq_is_unique(abstractify_end_points(endpoints)),
+{
+    reveal(seq_is_unique::<AbstractEndPoint>);
+}
+```
+REASON: A singleton sequence is trivially unique; if the spec says otherwise, seq_is_unique or abstractify_end_points is misstated
+===PHI_END===
+
+===PHI_START===
+NAME: duplicates_still_unique
+TARGET_FN: test_unique
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_duplicates_still_unique(endpoints: Vec<EndPoint>, i: int, j: int)
+    requires
+        0 <= i && i < endpoints@.len(),
+        0 <= j && j < endpoints@.len(),
+        i != j,
+        endpoints@[i]@ == endpoints@[j]@,
+    ensures
+        seq_is_unique(abstractify_end_points(endpoints)),
+{
+    reveal(seq_is_unique::<AbstractEndPoint>);
+}
+```
+REASON: A sequence with two equal elements at distinct indices is not unique; if the spec entails uniqueness here, duplicate detection is broken
+===PHI_END===
+
+===PHI_START===
+NAME: nonempty_never_unique
+TARGET_FN: test_unique
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_nonempty_never_unique(endpoints: Vec<EndPoint>)
+    requires
+        endpoints@.len() > 0,
+    ensures
+        !seq_is_unique(abstractify_end_points(endpoints)),
+{
+    reveal(seq_is_unique::<AbstractEndPoint>);
+}
+```
+REASON: If every non-empty collection is deemed non-unique, the function would always return false for non-empty inputs, making uniqueness checking useless
+===PHI_END===

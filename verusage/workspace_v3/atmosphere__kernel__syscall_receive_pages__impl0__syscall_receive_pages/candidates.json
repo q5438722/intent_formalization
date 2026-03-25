@@ -1,0 +1,37 @@
+[
+  {
+    "name": "success_breaks_wellformedness",
+    "target_fn": "syscall_receive_pages",
+    "type": "behavioral",
+    "code": "proof fn phi_1_success_breaks_wellformedness(old_self: Os, new_self: Os, receiver_thread_ptr: ThreadPtr, endpoint_idx: EndpointIdx, receiver_va_range: VaRange4K)\n    requires\n        old_self.wf(),\n        old_self.thread_dom().contains(receiver_thread_ptr),\n        0 <= endpoint_idx < MAX_NUM_ENDPOINT_DESCRIPTORS,\n        old_self.get_thread(receiver_thread_ptr).state == ThreadState::RUNNING,\n        receiver_va_range.wf(),\n        syscall_receive_pages_spec_success(old_self, new_self, receiver_thread_ptr, endpoint_idx, receiver_va_range),\n    ensures\n        !new_self.wf(),\n{\n}",
+    "reason": "Success should preserve well-formedness; if wf breaks after a successful receive, the spec is unsound"
+  },
+  {
+    "name": "success_unreachable",
+    "target_fn": "syscall_receive_pages",
+    "type": "logical",
+    "code": "proof fn phi_2_success_unreachable(old_self: Os, new_self: Os, receiver_thread_ptr: ThreadPtr, endpoint_idx: EndpointIdx, receiver_va_range: VaRange4K, ret: SyscallReturnStruct)\n    requires\n        old_self.wf(),\n        old_self.thread_dom().contains(receiver_thread_ptr),\n        0 <= endpoint_idx < MAX_NUM_ENDPOINT_DESCRIPTORS,\n        old_self.get_thread(receiver_thread_ptr).state == ThreadState::RUNNING,\n        receiver_va_range.wf(),\n        !ret.is_error() ==> syscall_receive_pages_spec_success(old_self, new_self, receiver_thread_ptr, endpoint_idx, receiver_va_range),\n        ret.is_error() ==> syscall_receive_pages_spec_fail(old_self, new_self, receiver_thread_ptr, endpoint_idx, receiver_va_range),\n    ensures\n        ret.is_error(),\n{\n}",
+    "reason": "If always error, the success spec is vacuously true and the function can never complete a page transfer"
+  },
+  {
+    "name": "error_leaks_pages",
+    "target_fn": "syscall_receive_pages",
+    "type": "boundary",
+    "code": "proof fn phi_3_error_leaks_pages(old_self: Os, new_self: Os, receiver_thread_ptr: ThreadPtr, endpoint_idx: EndpointIdx, receiver_va_range: VaRange4K)\n    requires\n        old_self.wf(),\n        old_self.thread_dom().contains(receiver_thread_ptr),\n        0 <= endpoint_idx < MAX_NUM_ENDPOINT_DESCRIPTORS,\n        old_self.get_thread(receiver_thread_ptr).state == ThreadState::RUNNING,\n        receiver_va_range.wf(),\n        syscall_receive_pages_spec_fail(old_self, new_self, receiver_thread_ptr, endpoint_idx, receiver_va_range),\n    ensures\n        new_self.page_alloc.free_pages_4k@.len() < old_self.page_alloc.free_pages_4k@.len(),\n{\n}",
+    "reason": "Error paths should not consume free pages; a decrease indicates a resource leak in the failure spec"
+  },
+  {
+    "name": "success_no_pages_consumed",
+    "target_fn": "syscall_receive_pages",
+    "type": "behavioral",
+    "code": "proof fn phi_4_success_no_pages_consumed(old_self: Os, new_self: Os, receiver_thread_ptr: ThreadPtr, endpoint_idx: EndpointIdx, receiver_va_range: VaRange4K)\n    requires\n        old_self.wf(),\n        old_self.thread_dom().contains(receiver_thread_ptr),\n        0 <= endpoint_idx < MAX_NUM_ENDPOINT_DESCRIPTORS,\n        old_self.get_thread(receiver_thread_ptr).state == ThreadState::RUNNING,\n        receiver_va_range.wf(),\n        syscall_receive_pages_spec_success(old_self, new_self, receiver_thread_ptr, endpoint_idx, receiver_va_range),\n    ensures\n        new_self.page_alloc.free_pages_4k@.len() >= old_self.page_alloc.free_pages_4k@.len(),\n{\n}",
+    "reason": "Success allocates page-table pages (code requires len*3 free); free count must decrease, so no-decrease is undesirable"
+  },
+  {
+    "name": "success_implies_fail",
+    "target_fn": "syscall_receive_pages",
+    "type": "logical",
+    "code": "proof fn phi_5_success_implies_fail(old_self: Os, new_self: Os, receiver_thread_ptr: ThreadPtr, endpoint_idx: EndpointIdx, receiver_va_range: VaRange4K)\n    requires\n        old_self.wf(),\n        old_self.thread_dom().contains(receiver_thread_ptr),\n        0 <= endpoint_idx < MAX_NUM_ENDPOINT_DESCRIPTORS,\n        old_self.get_thread(receiver_thread_ptr).state == ThreadState::RUNNING,\n        receiver_va_range.wf(),\n        syscall_receive_pages_spec_success(old_self, new_self, receiver_thread_ptr, endpoint_idx, receiver_va_range),\n    ensures\n        syscall_receive_pages_spec_fail(old_self, new_self, receiver_thread_ptr, endpoint_idx, receiver_va_range),\n{\n}",
+    "reason": "Success and failure specs should be mutually exclusive; if both hold for the same state transition the return value is meaningless"
+  }
+]

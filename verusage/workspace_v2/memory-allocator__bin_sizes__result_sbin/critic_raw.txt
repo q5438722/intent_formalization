@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: size_of_sbin_closed_spec_opaque
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `size_of_sbin(i) <= size_of_sbin(j) || size_of_sbin(i) > size_of_sbin(j)` is a tautology (P ∨ ¬P) that holds for any expression. It demonstrates nothing about the closed spec opacity — the ensures would verify regardless of `size_of_sbin`'s visibility.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: smallest_sbin_negative_input
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `smallest_sbin_fitting_size(-5) == -5` means negative slice counts produce negative sbin indices that violate `valid_sbin_idx`. While callers should validate inputs, the function silently returns invalid indices for negative inputs with no precondition guard, which could propagate into `size_of_sbin` with out-of-range arguments.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: pow2_negative_is_one
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `pow2` returning 1 for all negative exponents is mathematically non-standard (2^(-n) should be fractional). Within `size_of_sbin`, `group + 1` is always ≥ 1 for valid sbin indices 9–31 so it doesn't directly cause issues, but the definition silently masks errors if ever called with negative arguments in other contexts.
+===VERDICT_END===
+
+===SUMMARY===
+One false positive: the `size_of_sbin` opacity candidate is a trivial tautology proving nothing. Two true positives: `smallest_sbin_fitting_size` silently returns negative (invalid) sbin indices for negative inputs without any precondition guard, and `pow2` returning 1 for negative exponents is a non-standard design choice that could mask bugs if called with unexpected arguments, though it doesn't affect valid sbin index computations.
+===END_SUMMARY===

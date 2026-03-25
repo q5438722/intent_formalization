@@ -1,0 +1,47 @@
+[
+  {
+    "name": "fresh_rid_not_in_combiner_ids",
+    "type": "behavioral",
+    "code": "proof fn phi_1_fresh_rid_not_in_combiner_ids(\n    combiners: Map<NodeId, CombinerState>,\n    rid: ReqId,\n)\n    requires\n        combiners.dom().finite(),\n        combiner_request_id_fresh(combiners, rid),\n    ensures\n        !combiner_request_ids(combiners).contains(rid),\n{\n    combiner_request_ids_not_contains(combiners, rid);\n}",
+    "reason": "A fresh rid (not in any combiner's queued_ops) is absent from the aggregate set \u2014 tests one direction of the biconditional proved by `combiner_request_ids_not_contains`",
+    "entailed": true,
+    "verus_output": "tead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/node-replication__spec__unbounded_log__combiner_request_ids_not_contains/phi_1_fresh_rid_not_in_combiner_ids.rs:11:1\n   |\n11 | / #[is_variant]\n12 | | pub ghost enum CombinerState {\n13 | |     Ready,\n14 | |     Placed { queued_ops: Seq<ReqId> },\n...  |\n26 | |     UpdatedVersion { queued_ops: Seq<ReqId>, tail: LogIdx },\n27 | | }\n   | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "not_in_ids_implies_fresh",
+    "type": "logical",
+    "code": "proof fn phi_2_not_in_ids_implies_fresh(\n    combiners: Map<NodeId, CombinerState>,\n    rid: ReqId,\n)\n    requires\n        combiners.dom().finite(),\n        !combiner_request_ids(combiners).contains(rid),\n    ensures\n        combiner_request_id_fresh(combiners, rid),\n{\n    combiner_request_ids_not_contains(combiners, rid);\n}",
+    "reason": "The reverse direction \u2014 absence from the aggregate set implies freshness across all nodes \u2014 tests that the fold-over-choose correctly captures all combiners",
+    "entailed": true,
+    "verus_output": "` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/node-replication__spec__unbounded_log__combiner_request_ids_not_contains/phi_2_not_in_ids_implies_fresh.rs:11:1\n   |\n11 | / #[is_variant]\n12 | | pub ghost enum CombinerState {\n13 | |     Ready,\n14 | |     Placed { queued_ops: Seq<ReqId> },\n...  |\n26 | |     UpdatedVersion { queued_ops: Seq<ReqId>, tail: LogIdx },\n27 | | }\n   | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "single_combiner_fresh_iff_not_in_queue",
+    "type": "behavioral",
+    "code": "proof fn phi_3_single_combiner_fresh_iff_not_in_queue(\n    nid: NodeId,\n    cs: CombinerState,\n    rid: ReqId,\n)\n    requires\n        !cs.queued_ops().contains(rid),\n    ensures\n        combiner_request_id_fresh(Map::empty().insert(nid, cs), rid),\n{\n}",
+    "reason": "For a single-node combiner map, freshness reduces to the rid not being in that node's queue \u2014 tests the single-element case",
+    "entailed": true,
+    "verus_output": "ps://verus-lang.github.io/verus/guide/datatypes_enum.html\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/node-replication__spec__unbounded_log__combiner_request_ids_not_contains/phi_3_single_combiner_fresh_iff_not_in_queue.rs:11:1\n   |\n11 | / #[is_variant]\n12 | | pub ghost enum CombinerState {\n13 | |     Ready,\n14 | |     Placed { queued_ops: Seq<ReqId> },\n...  |\n26 | |     UpdatedVersion { queued_ops: Seq<ReqId>, tail: LogIdx },\n27 | | }\n   | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "combiner_ids_infinite_unconstrained",
+    "type": "boundary",
+    "code": "proof fn phi_4_combiner_ids_infinite_unconstrained(\n    combiners: Map<NodeId, CombinerState>,\n    rid: ReqId,\n)\n    requires\n        !combiners.dom().finite(),\n    ensures\n        combiner_request_ids(combiners).contains(rid),\n{\n}",
+    "reason": "When the domain is infinite, `combiner_request_ids` returns `arbitrary()` which could be any set \u2014 an infinite combiner map makes every rid appear to be contained (or not), depending on the arbitrary choice",
+    "entailed": false,
+    "verus_output": "equest_ids_not_contains/phi_4_combiner_ids_infinite_unconstrained.rs:125:9\n    |\n118 |   proof fn phi_4_combiner_ids_infinite_unconstrained(\n    |  _______-\n119 | |     combiners: Map<NodeId, CombinerState>,\n120 | |     rid: ReqId,\n121 | | )\n    | |_- at the end of the function body\n...\n125 |           combiner_request_ids(combiners).contains(rid),\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "ready_combiner_contributes_nothing",
+    "type": "behavioral",
+    "code": "proof fn phi_5_ready_combiner_contributes_nothing(\n    combiners: Map<NodeId, CombinerState>,\n    nid: NodeId,\n    rid: ReqId,\n)\n    requires\n        combiners.dom().finite(),\n        combiners.contains_key(nid),\n        combiners[nid] is Ready,\n        !combiner_request_ids(combiners.remove(nid)).contains(rid),\n    ensures\n        !combiner_request_ids(combiners).contains(rid),\n{\n    combiner_request_ids_not_contains(combiners, rid);\n    combiner_request_ids_not_contains(combiners.remove(nid), rid);\n}",
+    "reason": "A Ready combiner with empty queued_ops adds nothing to the aggregate set \u2014 tests that adding a Ready node doesn't spuriously include rids",
+    "entailed": true,
+    "verus_output": " https://verus-lang.github.io/verus/guide/datatypes_enum.html\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/node-replication__spec__unbounded_log__combiner_request_ids_not_contains/phi_5_ready_combiner_contributes_nothing.rs:11:1\n   |\n11 | / #[is_variant]\n12 | | pub ghost enum CombinerState {\n13 | |     Ready,\n14 | |     Placed { queued_ops: Seq<ReqId> },\n...  |\n26 | |     UpdatedVersion { queued_ops: Seq<ReqId>, tail: LogIdx },\n27 | | }\n   | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

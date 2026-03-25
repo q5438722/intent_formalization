@@ -1,0 +1,47 @@
+[
+  {
+    "name": "map_new_rec_contains_zero",
+    "type": "boundary",
+    "code": "proof fn phi_1_map_new_rec_contains_zero<V>(dom: nat, val: V)\n    ensures\n        map_new_rec(dom, val).contains_key(0),\n{\n    map_new_rec_dom_finite(dom, val);\n}",
+    "reason": "The map always contains key 0 regardless of `dom` \u2014 the base case inserts `0 => val` so the domain is `[0, dom]` not `[1, dom]` or empty",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "map_new_rec_all_same_value",
+    "type": "behavioral",
+    "code": "proof fn phi_2_map_new_rec_all_same_value<V>(dom: nat, val: V, n: nat)\n    requires\n        n <= dom,\n    ensures\n        map_new_rec(dom, val)[n] == val,\n{\n    map_new_rec_dom_finite(dom, val);\n}",
+    "reason": "Every key in the map maps to the same value \u2014 the map is a constant function, so it cannot represent heterogeneous initialization",
+    "entailed": false,
+    "verus_output": "hentianyu/intent_formalization/verusage/workspace_v2/node-replication__spec__utils__map_new_rec_dom_finite/phi_2_map_new_rec_all_same_value.rs:51:9\n   |\n47 | proof fn phi_2_map_new_rec_all_same_value<V>(dom: nat, val: V, n: nat)\n   |       ---------------------------------------------------------------- at the end of the function body\n...\n51 |         map_new_rec(dom, val)[n] == val,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "map_new_rec_dom_size",
+    "type": "boundary",
+    "code": "proof fn phi_3_map_new_rec_dom_size<V>(dom: nat, val: V)\n    ensures\n        map_new_rec(dom, val).dom().len() == dom + 1,\n{\n    map_new_rec_dom_finite(dom, val);\n    assert(map_new_rec(dom, val).dom() =~= Set::new(|n: nat| n <= dom));\n}",
+    "reason": "The domain has `dom + 1` elements (0 through dom inclusive) \u2014 callers might expect `dom` elements if they think `dom` is a count rather than an upper bound",
+    "entailed": false,
+    "verus_output": "anyu/intent_formalization/verusage/workspace_v2/node-replication__spec__utils__map_new_rec_dom_finite/phi_3_map_new_rec_dom_size.rs:49:9\n   |\n47 | proof fn phi_3_map_new_rec_dom_size<V>(dom: nat, val: V)\n   |       -------------------------------------------------- at the end of the function body\n48 |     ensures\n49 |         map_new_rec(dom, val).dom().len() == dom + 1,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "map_new_rec_dom_is_closed_interval",
+    "type": "logical",
+    "code": "proof fn phi_4_map_new_rec_dom_is_closed_interval<V>(dom: nat, val: V, n: nat)\n    requires\n        n > dom,\n    ensures\n        !map_new_rec(dom, val).contains_key(n),\n{\n    map_new_rec_dom_finite(dom, val);\n}",
+    "reason": "Keys beyond `dom` are absent \u2014 the domain is exactly `[0, dom]` with no stray keys, tests the upper bound exclusion",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "map_new_rec_zero_is_singleton",
+    "type": "boundary",
+    "code": "proof fn phi_5_map_new_rec_zero_is_singleton<V>(val: V)\n    ensures\n        map_new_rec(0, val) =~= map![0nat => val],\n{\n}",
+    "reason": "`map_new_rec(0, val)` is a singleton map `{0 => val}` \u2014 the base case creates a non-empty map, so there is no way to construct an empty map with this function",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

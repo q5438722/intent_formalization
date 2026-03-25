@@ -1,0 +1,47 @@
+[
+  {
+    "name": "instantiate_entailed_always_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_1_instantiate_entailed_always_intensional_bridge(ex: Execution<int>, i: nat, spec: TempPred<int>, p: TempPred<int>)\n    requires\n        spec.satisfied_by(ex),\n        spec.entails(always(p)),\n    ensures\n        p.satisfied_by(ex.suffix(i)),\n{\n    instantiate_entailed_always::<int>(ex, i, spec, p);\n}",
+    "reason": "instantiate_entailed_always is external_body bridging spec.implies(always(p)).satisfied_by(ex) through nested TempPred::new closures and extracting a forall-over-suffix to a specific index \u2014 resolves multiple intensional closure gaps without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "instantiate_entailed_leads_to_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_2_instantiate_entailed_leads_to_intensional_bridge(ex: Execution<int>, i: nat, spec: TempPred<int>, p: TempPred<int>, q: TempPred<int>)\n    requires\n        spec.satisfied_by(ex),\n        spec.entails(p.leads_to(q)),\n    ensures\n        p.implies(eventually(q)).satisfied_by(ex.suffix(i)),\n{\n    instantiate_entailed_leads_to::<int>(ex, i, spec, p, q);\n}",
+    "reason": "instantiate_entailed_leads_to is external_body bridging spec.implies(leads_to).satisfied_by(ex) through always/implies/eventually closure nesting to extract a specific suffix index \u2014 resolves multiple intensional closure gaps without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "borrow_false_inv_weakens_leads_to",
+    "type": "behavioral",
+    "code": "proof fn phi_3_borrow_false_inv_weakens_leads_to(spec: TempPred<int>, p: TempPred<int>, q: TempPred<int>)\n    requires\n        spec.entails(always(TempPred::<int>::new(|ex: Execution<int>| false))),\n    ensures\n        spec.entails(p.leads_to(q)),\n{\n    leads_to_by_borrowing_inv::<int>(spec, p, q, TempPred::new(|ex: Execution<int>| false));\n}",
+    "reason": "if spec entails always(false) then spec is vacuously inconsistent \u2014 leads_to_by_borrowing_inv derives any leads_to from such a spec without flagging the inconsistency",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "borrow_trivial_inv_any_leads_to",
+    "type": "behavioral",
+    "code": "proof fn phi_4_borrow_trivial_inv_any_leads_to(spec: TempPred<int>, p: TempPred<int>, q: TempPred<int>, inv: TempPred<int>)\n    requires\n        spec.entails(always(inv)),\n        valid(inv.implies(TempPred::<int>::new(|ex: Execution<int>| false))),\n    ensures\n        spec.entails(p.leads_to(q)),\n{\n    leads_to_by_borrowing_inv::<int>(spec, p, q, inv);\n}",
+    "reason": "if inv is always true under spec but inv implies false universally, then any leads_to is derivable \u2014 the borrowing pattern propagates vacuous inconsistency without detecting it",
+    "entailed": false,
+    "verus_output": "fied, 1 errors\nerror: precondition not satisfied\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-library__leads_to_by_borrowing_inv/phi_4_borrow_trivial_inv_any_leads_to.rs:119:5\n    |\n 95 |         spec.entails(p.and(inv).leads_to(q)),\n    |         ------------------------------------ failed precondition\n...\n119 |     leads_to_by_borrowing_inv::<int>(spec, p, q, inv);\n    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "leads_to_self_trivial",
+    "type": "boundary",
+    "code": "proof fn phi_5_leads_to_self_trivial(spec: TempPred<int>, p: TempPred<int>, inv: TempPred<int>)\n    requires\n        spec.entails(always(inv)),\n        spec.entails(p.and(inv).leads_to(p)),\n    ensures\n        spec.entails(p.leads_to(p)),\n{\n    leads_to_by_borrowing_inv::<int>(spec, p, p, inv);\n}",
+    "reason": "p.leads_to(p) should be trivially true without needing any invariant \u2014 that the proof requires borrowing an invariant and invoking two external_body axioms reveals the intensional closure gaps in the framework",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

@@ -1,115 +1,80 @@
-# Summary: Specification Testing for `range_create_and_share_mapping`
+# Adversarial Proof Test Summary
 
-## File Under Test
+**Target**: `kernel__create_and_share_pages__impl0__range_create_and_share_mapping.rs`
 
-`kernel__create_and_share_pages__impl0__range_create_and_share_mapping.rs` — Defines a kernel OS module for sharing page mappings between processes. Contains two key functions:
-
-1. **`create_entry_and_share`** (`#[verifier::external_body]`) — Shares a single page mapping from source to target process. Ensures kernel well-formedness is preserved, domains are unchanged, free pages decrease by at most 3, target address space is extended, and the physical page reference counter is incremented.
-
-2. **`range_create_and_share_mapping`** (verified loop) — Shares a range of VA mappings by iterating `create_entry_and_share`. Ensures the same invariants hold across the full range, with cumulative quota and free page consumption.
-
-Also tests helper spec functions: `spec_subtract_mem_4k`, `page_ptr_valid`, `page_index_valid`, `spec_page_ptr2page_index`, `spec_page_index2page_ptr`, `page_index_2m_valid`, `spec_page_index_truncate_2m`.
+**Functions tested**: `create_entry_and_share`, `range_create_and_share_mapping`
 
 ---
 
-## Correctness Results
+## Results Overview
 
-All tests **PASS** (58 verified, 0 errors).
+| Category | Total | Failed (expected) | Passed (unexpected) |
+|---|---|---|---|
+| Boundary Tests | 12 | 12 ✅ | 0 |
+| Behavioral Mutation Tests | 12 | 12 ✅ | 0 |
+| Logical Tests | 12 | 12 ✅ | 0 |
+| **Total** | **36** | **36** | **0** |
 
-| Test Name | Description | Expected | Actual |
-|-----------|-------------|----------|--------|
-| `test_subtract_mem_4k_concrete_match` | `spec_subtract_mem_4k` with concrete values (10-3=7) | PASS | PASS |
-| `test_subtract_mem_4k_zero` | Zero subtraction preserves quota unchanged | PASS | PASS |
-| `test_subtract_preserves_fields` | Parametric: mem_2m, mem_1g, pcid, ioid preserved | PASS | PASS |
-| `test_subtract_correct_mem4k` | Parametric: mem_4k - k == new.mem_4k | PASS | PASS |
-| `test_page_ptr_valid_zero` | ptr=0 is a valid page pointer | PASS | PASS |
-| `test_page_ptr_valid_aligned` | ptr=0x1000 is valid | PASS | PASS |
-| `test_page_index_valid_zero` | index=0 is valid | PASS | PASS |
-| `test_page_ptr_valid_implies_aligned` | Parametric: valid ptr → 4k-aligned | PASS | PASS |
-| `test_page_ptr_valid_implies_bounded` | Parametric: valid ptr → ptr/0x1000 < NUM_PAGES | PASS | PASS |
-| `test_page_index2ptr_def` | Parametric: index2ptr(i) == i*4096 | PASS | PASS |
-| `test_page_ptr2index_def` | Parametric: ptr2index(ptr) == ptr/4096 | PASS | PASS |
-| `test_domain_preservation_model` | Domain equality preserves membership | PASS | PASS |
-| `test_create_entry_ret_bounded` | ret ≤ 3 model check | PASS | PASS |
-| `test_free_pages_decrement` | Free pages decrease model | PASS | PASS |
-| `test_subtract_mem_4k_large` | Large quota values (1000-3=997) | PASS | PASS |
-| `test_address_space_insert_model` | Set insertion makes element a member | PASS | PASS |
-| `test_page_index_2m_valid_zero` | Index 0 is 2m-valid | PASS | PASS |
-| `test_page_index_2m_valid_512` | Index 512 is 2m-valid | PASS | PASS |
+All 36 adversarial tests correctly **failed verification**, indicating the specification correctly rejects:
+- Invalid inputs (boundary violations)
+- Incorrect behaviors (mutated postconditions)
+- Unintended logical inferences
 
 ---
 
-## Completeness Results
+## Boundary Tests (12/12 failed ✅)
 
-### Round 1: Precondition Violations (5 errors / 5 tests — all FAIL as expected)
+| # | Test | Violated Precondition |
+|---|---|---|
+| 1 | `test_boundary_src_proc_not_in_domain` | `proc_dom().contains(src_proc_ptr)` |
+| 2 | `test_boundary_target_proc_not_in_domain` | `proc_dom().contains(target_proc_ptr)` |
+| 3 | `test_boundary_same_src_and_target_proc` | `src_proc_ptr != target_proc_ptr` |
+| 4 | `test_boundary_insufficient_quota` | `quota.mem_4k >= 3 * range.len` |
+| 5 | `test_boundary_insufficient_free_pages` | `free_pages >= 3 * range.len` |
+| 6 | `test_boundary_range_length_mismatch` | `src_va_range.len == target_va_range.len` |
+| 7 | `test_boundary_src_va_zero` | `va_4k_valid(src_va)` |
+| 8 | `test_boundary_target_va_not_aligned` | `va_4k_valid(target_va)` |
+| 9 | `test_boundary_target_va_already_mapped` | `addr_space.contains(target_va) == false` |
+| 10 | `test_boundary_src_va_not_in_address_space` | `addr_space.contains(src_va) == true` |
+| 11 | `test_boundary_ref_counter_at_max` | `ref_counter <= usize::MAX - 1` |
+| 12 | `test_boundary_ref_counter_overflow_for_range` | `ref_counter <= usize::MAX - range.len` |
 
-| Test Name | What It Tests | Expected | Actual |
-|-----------|---------------|----------|--------|
-| `test_wrong_subtract_amount` | Wrong k value (5 instead of 3) | FAIL | FAIL |
-| `test_page_ptr_valid_unaligned` | Unaligned ptr (1) claimed valid | FAIL | FAIL |
-| `test_page_ptr_valid_too_large` | Out-of-range ptr claimed valid | FAIL | FAIL |
-| `test_page_index_out_of_range` | NUM_PAGES claimed valid index | FAIL | FAIL |
-| `test_subtract_mismatched_fields` | Changed mem_2m in subtraction | FAIL | FAIL |
+## Behavioral Mutation Tests (12/12 failed ✅)
 
-### Round 2: Overly Strong Postconditions (5 errors / 5 tests — all FAIL as expected)
+| # | Test | Mutated Postcondition |
+|---|---|---|
+| 1 | `test_mutation_proc_dom_shrinks` | proc_dom should be unchanged |
+| 2 | `test_mutation_thread_dom_changes` | thread_dom should be unchanged |
+| 3 | `test_mutation_free_pages_increase` | free_pages should decrease |
+| 4 | `test_mutation_ret_exceeds_bound` | ret should be ≤ 3 |
+| 5 | `test_mutation_target_addr_space_loses_old_entry` | old entries should be preserved |
+| 6 | `test_mutation_other_proc_addr_space_changed` | non-target proc space unchanged |
+| 7 | `test_mutation_endpoint_dom_changes` | endpoint_dom should be unchanged |
+| 8 | `test_mutation_ref_counter_wrong_increment` | ref counter should increment by 1 |
+| 9 | `test_mutation_shared_entry_addr_differs` | shared entry should match source |
+| 10 | `test_mutation_container_dom_changes` | container_dom should be unchanged |
+| 11 | `test_mutation_page_mapping_dom_changes` | page_mapping domain unchanged |
+| 12 | `test_mutation_quota_unchanged` | quota should subtract by ret |
 
-| Test Name | What It Tests | Expected | Actual |
-|-----------|---------------|----------|--------|
-| `test_ret_always_zero` | ret == 0 (spec says ≤ 3) | FAIL | FAIL |
-| `test_free_pages_unchanged` | Free pages unchanged (they decrease) | FAIL | FAIL |
-| `test_ret_always_three` | ret == 3 always (spec says ≤ 3) | FAIL | FAIL |
-| `test_subtract_also_changes_mem2m` | mem_2m changes (it's preserved) | FAIL | FAIL |
-| `test_page_ptr_strict_lower_bound` | ptr > 0 always (ptr=0 is valid) | FAIL | FAIL |
+## Logical Tests (12/12 failed ✅)
 
-### Round 3: Negated Postconditions (5 errors / 5 tests — all FAIL as expected)
-
-| Test Name | What It Tests | Expected | Actual |
-|-----------|---------------|----------|--------|
-| `test_subtract_preserves_mem4k` | mem_4k unchanged when k > 0 | FAIL | FAIL |
-| `test_valid_ptr_not_aligned` | Valid ptr is NOT aligned | FAIL | FAIL |
-| `test_valid_ptr_unbounded` | Valid ptr has index ≥ NUM_PAGES | FAIL | FAIL |
-| `test_domains_change` | Membership lost when domains equal | FAIL | FAIL |
-| `test_negate_page_index_range` | Out-of-range index is valid | FAIL | FAIL |
-
-### Round 4: Wrong Specific Values (5 errors / 5 tests — all FAIL as expected)
-
-| Test Name | What It Tests | Expected | Actual |
-|-----------|---------------|----------|--------|
-| `test_wrong_index_to_ptr` | index2ptr(1) == 8192 (should be 4096) | FAIL | FAIL |
-| `test_wrong_ptr_to_index` | ptr2index(4096) == 2 (should be 1) | FAIL | FAIL |
-| `test_wrong_subtract_concrete` | 10-3 = 8 (should be 7) | FAIL | FAIL |
-| `test_wrong_2m_valid` | Index 1 is 2m-valid (1%512≠0) | FAIL | FAIL |
-| `test_wrong_truncate_2m` | truncate_2m(513) == 513 (should be 512) | FAIL | FAIL |
-
-### Round 5: Cross-function Misuse & Edge Cases (5 errors / 5 tests — all FAIL as expected)
-
-| Test Name | What It Tests | Expected | Actual |
-|-----------|---------------|----------|--------|
-| `test_truncate_is_identity` | truncate_2m always identity (only for aligned) | FAIL | FAIL |
-| `test_4k_implies_2m` | 4k-valid implies 2m-valid (false) | FAIL | FAIL |
-| `test_subtract_commutative` | Subtraction is commutative (it's directional) | FAIL | FAIL |
-| `test_insert_no_growth` | Set insertion doesn't grow set (it does) | FAIL | FAIL |
-| `test_2m_implies_1g` | 2m-valid implies 1g-valid (much stronger) | FAIL | FAIL |
+| # | Test | Unentailed Property |
+|---|---|---|
+| 1 | `test_logical_ret_is_deterministic` | determinism of return value |
+| 2 | `test_logical_ret_always_positive` | ret > 0 (could be 0) |
+| 3 | `test_logical_ret_equals_max` | ret == 3 exactly |
+| 4 | `test_logical_free_pages_decrease_exact` | exact 3-page decrease per entry |
+| 5 | `test_logical_zero_length_forces_ret_zero` | zero-length ⇒ ret nonzero |
+| 6 | `test_logical_new_page_becomes_mapped` | new page becomes mapped |
+| 7 | `test_logical_src_page_mapping_unchanged` | src page mapping unchanged |
+| 8 | `test_logical_target_space_exact_size` | target space size == range_len |
+| 9 | `test_logical_unrelated_container_quota_unchanged` | quota unchanged after call |
+| 10 | `test_logical_partial_mapping_implies_full` | partial mapping ⇒ full mapping |
+| 11 | `test_logical_all_src_pages_shared` | all src pages shared to target |
+| 12 | `test_logical_all_page_mapping_values_unchanged` | all mapping values unchanged |
 
 ---
 
-## Overall Assessment
+## Conclusion
 
-### Correctness
-**The specs are correct.** All 18 correctness tests pass, confirming:
-- `spec_subtract_mem_4k` correctly models quota subtraction (only mem_4k changes, others preserved)
-- `page_ptr_valid` and `page_index_valid` correctly define validity constraints
-- `spec_page_ptr2page_index` and `spec_page_index2page_ptr` implement the expected arithmetic
-- The domain preservation postconditions of `create_entry_and_share` and `range_create_and_share_mapping` are logically consistent
-- The address space insertion model is correct
-
-### Completeness
-**The specs are complete (tight enough).** All 25 completeness tests fail as expected:
-- Invalid inputs are rejected (wrong arithmetic, unaligned pointers, out-of-range indices)
-- Overly strong claims are rejected (ret==0, unchanged free pages, ptr>0)
-- Negated postconditions are rejected
-- Wrong concrete values are rejected
-- Cross-function misuse is rejected (4k doesn't imply 2m, truncation isn't identity, subtraction isn't commutative)
-
-### Spec Gaps Found
-**None.** No unexpected passes in completeness tests. The specifications are both correct and tight.
+The specification for `range_create_and_share_mapping` and `create_entry_and_share` appears **well-formed and sufficiently strong**: it correctly rejects all 36 adversarial queries across boundary, behavioral, and logical categories. No spec weaknesses were detected.

@@ -1,0 +1,91 @@
+===PHI_START===
+NAME: lemma_write_seq_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_lemma_write_seq_external_body(pt: PTMem, writes: Seq<(usize, usize)>)
+    ensures
+        pt.write_seq(writes).pml4 == pt.pml4,
+        pt.mem.dom().subset_of(pt.write_seq(writes).mem.dom()),
+{
+    pt.lemma_write_seq(writes);
+}
+```
+REASON: `lemma_write_seq` is `external_body` with `unimplemented!()` — pml4 preservation and domain monotonicity are trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: valid_core_external_body_unconstrained
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_valid_core_external_body_unconstrained(c: Constants, core1: Core, core2: Core)
+    requires
+        core1.node_id != core2.node_id,
+    ensures
+        c.valid_core(core1) == c.valid_core(core2),
+{
+}
+```
+REASON: `valid_core` is `external_body` with no spec body — completely opaque, the SMT solver could derive anything about core validity
+===PHI_END===
+
+===PHI_START===
+NAME: core_mem_ignores_other_sbufs
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_core_mem_ignores_other_sbufs(s: State, c1: Core, c2: Core)
+    requires
+        c1 !== c2,
+        s.sbuf.contains_key(c1),
+        s.sbuf.contains_key(c2),
+        s.sbuf[c2].len() > 0,
+    ensures
+        s.core_mem(c1) == (State { sbuf: s.sbuf.insert(c2, Seq::empty()), ..s }).core_mem(c1),
+{
+}
+```
+REASON: `core_mem` only applies the store buffer of the given core — modifications to other cores' store buffers are invisible, meaning each core sees a potentially stale view of page table memory
+===PHI_END===
+
+===PHI_START===
+NAME: core_mem_pml4_relies_on_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_core_mem_pml4_relies_on_external_body(state: State, c: Constants, core: Core)
+    requires
+        c.valid_core(core),
+    ensures
+        state.core_mem(core).pml4 == state.pt_mem.pml4,
+{
+    lemma_core_mem_pml4(state, c, core);
+}
+```
+REASON: The proof that `core_mem` preserves `pml4` depends on `lemma_write_seq` (external_body) — the entire per-core memory consistency guarantee rests on an unverified lemma
+===PHI_END===
+
+===PHI_START===
+NAME: writes_tso_not_connected_to_sbuf
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_writes_tso_not_connected_to_sbuf(s: State, core: Core, addr: usize, value: usize)
+    requires
+        s.sbuf.contains_key(core),
+    ensures
+        ({
+            let s2 = State {
+                pt_mem: s.pt_mem,
+                sbuf: s.sbuf.insert(core, s.sbuf[core].push((addr, value))),
+                writes: s.writes,
+                ..s
+            };
+            s2.writes.tso === s.writes.tso
+        }),
+{
+}
+```
+REASON: Adding to a core's store buffer doesn't update `writes.tso` — the TSO tracking set and the actual store buffers are disconnected spec-level fields with no invariant linking them
+===PHI_END===

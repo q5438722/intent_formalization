@@ -1,0 +1,37 @@
+[
+  {
+    "name": "inv_allows_empty_arch",
+    "target_fn": "inv",
+    "type": "boundary",
+    "code": "proof fn phi_1_inv_allows_empty_arch()\n    ensures\n        (Arch { layers: Seq::empty() }).inv(),\n{\n}",
+    "reason": "An architecture with zero layers should not satisfy the invariant, as a valid MMU must have at least one page-table layer."
+  },
+  {
+    "name": "aligned_zero_to_any",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "code": "proof fn phi_2_aligned_zero_to_any(s: nat)\n    requires\n        s > 0,\n    ensures\n        aligned(0, s),\n{\n}",
+    "reason": "Address zero being trivially aligned to every size could allow degenerate zero-address mappings to bypass alignment checks throughout the MMU spec."
+  },
+  {
+    "name": "inv_allows_unit_entry_size",
+    "target_fn": "inv",
+    "type": "behavioral",
+    "code": "proof fn phi_3_inv_allows_unit_entry_size()\n    ensures\n        (Arch { layers: seq![ArchLayer { entry_size: 1, num_entries: 1 }] }).inv(),\n{\n}",
+    "reason": "A single-layer architecture with 1-byte entry size and 1 entry is degenerate and should be rejected; x86 pages are at least 4K."
+  },
+  {
+    "name": "inv_allows_equal_consecutive_entry_sizes",
+    "target_fn": "entry_size_is_next_layer_size",
+    "type": "logical",
+    "code": "proof fn phi_4_inv_allows_equal_consecutive_entry_sizes()\n    ensures\n        ({\n            let arch = Arch { layers: seq![\n                ArchLayer { entry_size: 4096, num_entries: 1 },\n                ArchLayer { entry_size: 4096, num_entries: 1 },\n            ] };\n            arch.inv() && arch.entry_size(0) == arch.entry_size(1)\n        }),\n{\n}",
+    "reason": "Consecutive layers having identical entry sizes (via num_entries=1) defeats the hierarchical structure; each deeper layer should map a strictly smaller region."
+  },
+  {
+    "name": "last_layer_max_entry_size",
+    "target_fn": "num_entries",
+    "type": "behavioral",
+    "code": "proof fn phi_5_last_layer_max_entry_size()\n    ensures\n        ({\n            let arch = Arch { layers: seq![ArchLayer { entry_size: X86_MAX_ENTRY_SIZE, num_entries: 512 }] };\n            arch.inv() && arch.num_entries(0) == 512\n        }),\n{\n}",
+    "reason": "The finest-granularity (and only) layer mapping 512 GB per entry is unrealistic for x86 paging; leaf-layer entry size should be bounded to 4K or at most 2M/1G."
+  }
+]

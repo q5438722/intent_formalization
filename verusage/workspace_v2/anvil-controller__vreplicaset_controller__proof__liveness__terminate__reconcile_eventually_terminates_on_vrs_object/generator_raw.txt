@@ -1,0 +1,84 @@
+===PHI_START===
+NAME: marshal_preserves_integrity_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_marshal_preserves_integrity_external_body()
+    ensures
+        forall |o: VReplicaSetView| VReplicaSetView::unmarshal(#[trigger] o.marshal()) is Ok && o == VReplicaSetView::unmarshal(o.marshal())->Ok_0,
+{
+    VReplicaSetView::marshal_preserves_integrity();
+}
+```
+REASON: marshal_preserves_integrity is #[verifier::external_body] with unimplemented!() — the roundtrip axiom is assumed without proof, so any property built on it is trusted, not verified
+===PHI_END===
+
+===PHI_START===
+NAME: unmarshal_ignores_state_validation
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_unmarshal_ignores_state_validation(obj: DynamicObjectView)
+    requires
+        obj.kind == VReplicaSetView::kind(),
+        VReplicaSetView::unmarshal_spec(obj.spec) is Ok,
+        VReplicaSetView::unmarshal_status(obj.status) is Ok,
+        !(VReplicaSetView::unmarshal(obj)->Ok_0).state_validation(),
+    ensures
+        VReplicaSetView::unmarshal(obj) is Ok,
+{
+}
+```
+REASON: unmarshal succeeds without checking state_validation, so structurally invalid objects can enter the system through deserialization
+===PHI_END===
+
+===PHI_START===
+NAME: update_request_key_namespace_disagrees_with_obj
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_update_request_key_namespace_disagrees_with_obj(req: UpdateRequest)
+    requires
+        req.obj.metadata.namespace is Some,
+        req.namespace != req.obj.metadata.namespace->0,
+    ensures
+        req.key().namespace != req.obj.metadata.namespace->0,
+{
+}
+```
+REASON: UpdateRequest::key uses self.namespace rather than self.obj.metadata.namespace, so the update target can silently disagree with the object's own namespace metadata
+===PHI_END===
+
+===PHI_START===
+NAME: update_status_request_key_namespace_disagrees_with_obj
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_update_status_request_key_namespace_disagrees_with_obj(req: UpdateStatusRequest)
+    requires
+        req.obj.metadata.namespace is Some,
+        req.namespace != req.obj.metadata.namespace->0,
+    ensures
+        req.key().namespace != req.obj.metadata.namespace->0,
+{
+}
+```
+REASON: UpdateStatusRequest::key has the same namespace divergence as UpdateRequest — the key targets a different namespace than the object payload claims
+===PHI_END===
+
+===PHI_START===
+NAME: marshal_spec_no_injectivity
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_marshal_spec_no_injectivity(s1: VReplicaSetSpecView, s2: VReplicaSetSpecView)
+    requires
+        s1 != s2,
+        VReplicaSetView::marshal_spec(s1) == VReplicaSetView::marshal_spec(s2),
+    ensures
+        true,
+{
+}
+```
+REASON: marshal_spec is uninterpreted with no injectivity axiom, so two distinct specs could serialize to the same Value — the system cannot distinguish different configurations after storage
+===PHI_END===

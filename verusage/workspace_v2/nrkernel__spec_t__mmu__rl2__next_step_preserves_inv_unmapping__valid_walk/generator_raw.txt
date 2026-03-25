@@ -1,0 +1,77 @@
+===PHI_START===
+NAME: view_only_contains_valid_walks
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_view_only_contains_valid_walks(mem: PTMem, va: usize)
+    requires
+        mem.is_base_pt_walk(va),
+    ensures
+        mem.pt_walk(va).result() is Valid,
+{
+}
+```
+REASON: `is_base_pt_walk` destructures result as `WalkResult::Valid { vbase, pte }` — tests that the pattern match implies the result variant; if the match semantics are looser than expected, non-Valid results could sneak into the view domain
+===PHI_END===
+
+===PHI_START===
+NAME: view_pte_equals_walk_pte
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_view_pte_equals_walk_pte(mem: PTMem, va: usize)
+    requires
+        mem.is_base_pt_walk(va),
+    ensures
+        ({ reveal(PTMem::view); mem@[va] }) == mem.pt_walk(va).result()->pte,
+{
+    reveal(PTMem::view);
+}
+```
+REASON: After revealing the opaque `view`, the PTE at `va` should equal the walk result's PTE — tests that the `Map::new` value function correctly extracts the PTE from the walk result
+===PHI_END===
+
+===PHI_START===
+NAME: lemma_pt_walk_complete_always_true
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_lemma_pt_walk_complete_always_true(mem: PTMem, va: usize)
+    ensures
+        mem.pt_walk(va).complete,
+{
+    PTMem::lemma_pt_walk(mem, va);
+}
+```
+REASON: `lemma_pt_walk` is `external_body` and asserts `.complete` for all walks — but `pt_walk` sets `complete: true` in all branches anyway; the external_body is redundant here but still an unverified trust assumption
+===PHI_END===
+
+===PHI_START===
+NAME: is_base_pt_walk_vaddr_bounded
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_is_base_pt_walk_vaddr_bounded(mem: PTMem, va: usize)
+    requires
+        mem.is_base_pt_walk(va),
+    ensures
+        va < MAX_BASE,
+{
+}
+```
+REASON: `is_base_pt_walk` includes `vaddr < MAX_BASE` — tests that the bound is actually enforced; if MAX_BASE were incorrectly large or the check were missing, walks for non-canonical addresses could pollute the view
+===PHI_END===
+
+===PHI_START===
+NAME: walk_vaddr_preserved_in_result
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_walk_vaddr_preserved_in_result(mem: PTMem, va: usize)
+    ensures
+        mem.pt_walk(va).vaddr == va,
+{
+}
+```
+REASON: `pt_walk` constructs `Walk { vaddr, ... }` in every branch — tests that the walk records the queried virtual address faithfully; if a different vaddr were stored, `is_base_pt_walk`'s `vbase == vaddr` check would compare against the wrong address
+===PHI_END===

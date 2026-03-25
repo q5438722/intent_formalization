@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize2pa_mem_valid_unconditional",
+    "type": "logical",
+    "code": "proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body ensures MEM_valid(ret) for ALL inputs \u2014 trusts without proof that masking any arbitrary usize yields a valid physical address",
+    "entailed": false,
+    "verus_output": "ization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__remove_l4_entry/phi_1_usize2pa_mem_valid_unconditional.rs:1281:9\n     |\n1279 | proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n     |       --------------------------------------------------- at the end of the function body\n1280 |     ensures\n1281 |         MEM_valid(usize2pa(v)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 48 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pcid_ioid_wf_allows_neither",
+    "type": "boundary",
+    "code": "proof fn phi_2_pcid_ioid_wf_allows_neither(pt: PageTable)\n    requires\n        pt.pcid.is_None(),\n        pt.ioid.is_None(),\n    ensures\n        pt.pcid_ioid_wf(),\n{\n}",
+    "reason": "pcid_ioid_wf uses `!=` (XOR) which is true when both are None \u2014 a page table with neither PCID nor IOID satisfies the well-formedness check, but hardware requires at least one identifier",
+    "entailed": false,
+    "verus_output": "/home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__remove_l4_entry/phi_2_pcid_ioid_wf_allows_neither.rs:1284:9\n     |\n1279 | proof fn phi_2_pcid_ioid_wf_allows_neither(pt: PageTable)\n     |       --------------------------------------------------- at the end of the function body\n...\n1284 |         pt.pcid_ioid_wf(),\n     |         ^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 50 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "l1_entry_can_point_to_l1_table",
+    "type": "behavioral",
+    "code": "proof fn phi_3_l1_entry_can_point_to_l1_table(pt: PageTable, p: PageMapPtr, q: PageMapPtr, i: L1Index)\n    requires\n        pt.wf_l1(),\n        pt.l1_tables@.dom().contains(p),\n        pt.l1_tables@.dom().contains(q),\n        0 <= i < 512,\n        pt.l1_tables@[p].value()[i].perm.present,\n        pt.l1_tables@[p].value()[i].addr == q,\n    ensures\n        true,\n{\n}",
+    "reason": "wf_l1 forbids L1 entries from pointing to L2, L3, or cr3 tables but does NOT forbid pointing to other L1 table pages \u2014 a data mapping could alias an L1 page table page",
+    "entailed": true,
+    "verus_output": "_l1_table.rs:66:10\n   |\n66 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__remove_l4_entry/phi_3_l1_entry_can_point_to_l1_table.rs:75:10\n   |\n75 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 48 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "disjoint_l3_only_non_ps_entries",
+    "type": "boundary",
+    "code": "proof fn phi_4_disjoint_l3_only_non_ps_entries(\n    pt: PageTable, pi: PageMapPtr, pj: PageMapPtr, l3i: L3Index, l3j: L3Index\n)\n    requires\n        pt.disjoint_l3(),\n        pt.l3_tables@.dom().contains(pi),\n        pt.l3_tables@.dom().contains(pj),\n        pi != pj,\n        0 <= l3i < 512,\n        0 <= l3j < 512,\n        pt.l3_tables@[pi].value()[l3i].perm.present,\n        pt.l3_tables@[pj].value()[l3j].perm.present,\n        pt.l3_tables@[pi].value()[l3i].perm.ps,\n        pt.l3_tables@[pj].value()[l3j].perm.ps,\n        pt.l3_tables@[pi].value()[l3i].addr == pt.l3_tables@[pj].value()[l3j].addr,\n    ensures\n        true,\n{\n}",
+    "reason": "disjoint_l3 only enforces address uniqueness for non-ps (non-hugepage) entries \u2014 two different L3 ps entries across different tables can map to the same 1G physical page, allowing aliased 1G mappings",
+    "entailed": true,
+    "verus_output": "_entries.rs:66:10\n   |\n66 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__remove_l4_entry/phi_4_disjoint_l3_only_non_ps_entries.rs:75:10\n   |\n75 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 48 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_closure_missing_cr3",
+    "type": "logical",
+    "code": "proof fn phi_5_page_closure_missing_cr3(pt: PageTable)\n    requires\n        pt.wf_l4(),\n        pt.l3_tables@.dom().finite(),\n        pt.l2_tables@.dom().finite(),\n        pt.l1_tables@.dom().finite(),\n    ensures\n        pt.page_closure().contains(pt.cr3),\n{\n}",
+    "reason": "page_closure includes l4_table dom (which is {cr3}), so cr3 is always in the closure \u2014 but this means cr3 cannot be used as a data page even though no spec prevents mapping a VA to cr3's physical address via L1 entries",
+    "entailed": true,
+    "verus_output": "ure_missing_cr3.rs:66:10\n   |\n66 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__remove_l4_entry/phi_5_page_closure_missing_cr3.rs:75:10\n   |\n75 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 48 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,37 @@
+[
+  {
+    "name": "ret_page_was_mapped",
+    "target_fn": "alloc_page_4k_for_new_container",
+    "type": "behavioral",
+    "code": "proof fn phi_1_ret_page_was_mapped(old_self: PageAllocator, new_self: PageAllocator, ret_ptr: PagePtr)\n    requires\n        old_self.wf(),\n        old_self.free_pages_4k.len() > 0,\n        new_self.wf(),\n        new_self.free_pages_4k() =~= old_self.free_pages_4k().remove(ret_ptr),\n        new_self.allocated_pages_4k() =~= old_self.allocated_pages_4k().insert(ret_ptr),\n        old_self.free_pages_4k().contains(ret_ptr),\n        old_self.allocated_pages_4k().contains(ret_ptr) == false,\n        page_ptr_valid(ret_ptr),\n    ensures\n        old_self.page_is_mapped(ret_ptr),\n{\n}",
+    "reason": "A free page returned by allocation should never have been in a mapped state \u2014 free and mapped must be disjoint under wf()"
+  },
+  {
+    "name": "ret_ptr_is_zero",
+    "target_fn": "alloc_page_4k_for_new_container",
+    "type": "boundary",
+    "code": "proof fn phi_2_ret_ptr_is_zero(old_self: PageAllocator, ret_ptr: PagePtr)\n    requires\n        old_self.wf(),\n        old_self.free_pages_4k.len() > 0,\n        old_self.free_pages_4k().contains(ret_ptr),\n        page_ptr_valid(ret_ptr),\n    ensures\n        ret_ptr == 0usize,\n{\n}",
+    "reason": "A valid page pointer should never be zero/null; if provable, page_ptr_valid is too weak"
+  },
+  {
+    "name": "ret_still_in_free_set",
+    "target_fn": "alloc_page_4k_for_new_container",
+    "type": "logical",
+    "code": "proof fn phi_3_ret_still_in_free_set(old_self: PageAllocator, new_self: PageAllocator, ret_ptr: PagePtr)\n    requires\n        old_self.wf(),\n        old_self.free_pages_4k.len() > 0,\n        new_self.wf(),\n        new_self.free_pages_4k() =~= old_self.free_pages_4k().remove(ret_ptr),\n        new_self.allocated_pages_4k() =~= old_self.allocated_pages_4k().insert(ret_ptr),\n        old_self.free_pages_4k().contains(ret_ptr),\n        page_ptr_valid(ret_ptr),\n    ensures\n        new_self.free_pages_4k().contains(ret_ptr),\n{\n}",
+    "reason": "After allocation the page must leave the free set; if provable, set-remove semantics or wf() is broken"
+  },
+  {
+    "name": "ret_in_allocated_1g",
+    "target_fn": "alloc_page_4k_for_new_container",
+    "type": "behavioral",
+    "code": "proof fn phi_4_ret_in_allocated_1g(old_self: PageAllocator, new_self: PageAllocator, ret_ptr: PagePtr)\n    requires\n        old_self.wf(),\n        old_self.free_pages_4k.len() > 0,\n        new_self.wf(),\n        new_self.allocated_pages_1g() =~= old_self.allocated_pages_1g(),\n        new_self.allocated_pages_4k() =~= old_self.allocated_pages_4k().insert(ret_ptr),\n        old_self.free_pages_4k().contains(ret_ptr),\n        old_self.allocated_pages_4k().contains(ret_ptr) == false,\n        page_ptr_valid(ret_ptr),\n    ensures\n        old_self.allocated_pages_1g().contains(ret_ptr),\n{\n}",
+    "reason": "A page free at 4k granularity should not simultaneously be allocated at 1g granularity \u2014 cross-size disjointness must hold"
+  },
+  {
+    "name": "ret_mapped_after_alloc",
+    "target_fn": "alloc_page_4k_for_new_container",
+    "type": "logical",
+    "code": "proof fn phi_5_ret_mapped_after_alloc(old_self: PageAllocator, new_self: PageAllocator, ret_ptr: PagePtr)\n    requires\n        old_self.wf(),\n        old_self.free_pages_4k.len() > 0,\n        new_self.wf(),\n        new_self.mapped_pages_4k() =~= old_self.mapped_pages_4k(),\n        new_self.allocated_pages_4k() =~= old_self.allocated_pages_4k().insert(ret_ptr),\n        old_self.free_pages_4k().contains(ret_ptr),\n        old_self.allocated_pages_4k().contains(ret_ptr) == false,\n        page_ptr_valid(ret_ptr),\n    ensures\n        new_self.mapped_pages_4k().contains(ret_ptr),\n{\n}",
+    "reason": "A freshly allocated page must not appear in the mapped set; if provable, allocated and mapped states are conflated under wf()"
+  }
+]

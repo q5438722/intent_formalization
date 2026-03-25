@@ -1,0 +1,77 @@
+===PHI_START===
+NAME: concat_empty_identity
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_concat_empty_identity(s: Seq<int>)
+    ensures
+        s + Seq::<int>::empty() == s,
+{
+}
+```
+REASON: concatenating empty sequence should be identity — tests basic Seq concat axiom that the lemma relies on
+===PHI_END===
+
+===PHI_START===
+NAME: concat_len_additive
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_concat_len_additive(s1: Seq<int>, s2: Seq<int>)
+    ensures
+        (s1 + s2).len() == s1.len() + s2.len(),
+{
+}
+```
+REASON: concat length should be sum of lengths — foundational axiom the proof depends on
+===PHI_END===
+
+===PHI_START===
+NAME: equal_seqs_same_suffix_equal
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_equal_seqs_same_suffix_equal(s1: Seq<int>, s2: Seq<int>, suffix: Seq<int>)
+    requires
+        s1 + suffix == s2 + suffix,
+    ensures
+        s1 == s2,
+{
+    seq_equal_preserved_by_add(s1, s2, suffix);
+}
+```
+REASON: tests the cancellation direction — if concat equality doesn't imply prefix equality, the biconditional is broken
+===PHI_END===
+
+===PHI_START===
+NAME: different_len_seqs_different_concat
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_different_len_seqs_different_concat(s1: Seq<int>, s2: Seq<int>, suffix: Seq<int>)
+    requires
+        s1.len() != s2.len(),
+    ensures
+        s1 + suffix != s2 + suffix,
+{
+    seq_equal_preserved_by_add(s1, s2, suffix);
+}
+```
+REASON: sequences of different lengths should produce different concatenations — tests contrapositive of the cancellation law
+===PHI_END===
+
+===PHI_START===
+NAME: prefix_not_equal_to_full
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_prefix_not_equal_to_full(s: Seq<int>, suffix: Seq<int>)
+    requires
+        suffix.len() > 0,
+    ensures
+        s != s + suffix,
+{
+}
+```
+REASON: a sequence should not equal itself with a nonempty suffix appended — tests that concat strictly increases length
+===PHI_END===

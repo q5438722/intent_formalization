@@ -1,0 +1,47 @@
+[
+  {
+    "name": "singleton_unique_symmetric",
+    "type": "logical",
+    "code": "proof fn phi_1_singleton_unique_symmetric(s: Set<nat>, a: nat, b: nat)\n    requires\n        s.finite(),\n        s.len() == 1,\n        s.contains(a),\n        s.contains(b),\n    ensures\n        b == a,\n{\n    singleton_set_unique_elt(s, a, b);\n}",
+    "reason": "Symmetry of the uniqueness result \u2014 trivially follows from `a == b`, testing the basic consequence",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "singleton_element_is_choose",
+    "type": "behavioral",
+    "code": "proof fn phi_2_singleton_element_is_choose(s: Set<nat>, a: nat)\n    requires\n        s.finite(),\n        s.len() == 1,\n        s.contains(a),\n    ensures\n        s.choose() == a,\n{\n    assert(s.contains(s.choose()));\n    singleton_set_unique_elt(s, a, s.choose());\n}",
+    "reason": "Any element in a singleton equals `choose()` \u2014 a correct consequence but shows the lemma determines `choose()` for singletons",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "singleton_insert_same",
+    "type": "behavioral",
+    "code": "proof fn phi_3_singleton_insert_same(a: nat)\n    ensures ({\n        let s = Set::<nat>::empty().insert(a);\n        forall |b: nat| s.contains(b) ==> a == b\n    }),\n{\n    let s = Set::<nat>::empty().insert(a);\n    assert forall |b: nat| s.contains(b) implies a == b by {\n        singleton_set_unique_elt(s, a, b);\n    }\n}",
+    "reason": "A concrete singleton `{a}` contains only `a` \u2014 correct but tests the lemma on a constructed singleton",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "remove_from_singleton_empty",
+    "type": "boundary",
+    "code": "proof fn phi_4_remove_from_singleton_empty(s: Set<nat>, a: nat)\n    requires\n        s.finite(),\n        s.len() == 1,\n        s.contains(a),\n    ensures\n        s.remove(a) =~= Set::<nat>::empty(),\n{\n    let r = s.remove(a);\n    assert(r.len() == 0);\n    assert forall |x: nat| !r.contains(x) by {}\n}",
+    "reason": "Removing the sole element from a singleton yields empty \u2014 tests the boundary interaction between `remove` and `len`",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "singleton_no_second_element",
+    "type": "logical",
+    "code": "proof fn phi_5_singleton_no_second_element(s: Set<nat>, a: nat, c: nat)\n    requires\n        s.finite(),\n        s.len() == 1,\n        s.contains(a),\n        c != a,\n    ensures\n        !s.contains(c),\n{\n    if s.contains(c) {\n        singleton_set_unique_elt(s, a, c);\n    }\n}",
+    "reason": "A singleton set cannot contain a distinct element \u2014 correct contrapositive of uniqueness, but confirms the lemma's full power",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

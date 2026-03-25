@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize2pa_mem_valid_unconditional",
+    "type": "logical",
+    "code": "proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body ensures MEM_valid(ret) for ALL inputs \u2014 trusts without proof that masking any arbitrary usize yields a valid physical address",
+    "entailed": false,
+    "verus_output": "/verusage/workspace_v2/atmosphere__memory_manager__spec_impl__impl0__create_iommu_table_l3_entry/phi_1_usize2pa_mem_valid_unconditional.rs:1072:9\n     |\n1070 | proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n     |       --------------------------------------------------- at the end of the function body\n1071 |     ensures\n1072 |         MEM_valid(usize2pa(v)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 30 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "no_mapping_infer_trivial_from_empty",
+    "type": "behavioral",
+    "code": "proof fn phi_2_no_mapping_infer_trivial_from_empty(pt: PageTable, p: PageMapPtr)\n    requires\n        pt.wf(),\n        pt.is_empty(),\n    ensures\n        pt.page_not_mapped(p),\n{\n    pt.no_mapping_infer_not_mapped(p);\n}",
+    "reason": "no_mapping_infer_not_mapped's external_body lets us derive page_not_mapped for ANY address from an empty table \u2014 but its preconditions only check the ghost mapping fields, not the actual L4 entries, so a corrupted L4 with stale physical addresses would still pass",
+    "entailed": true,
+    "verus_output": ":67:10\n   |\n67 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__memory_manager__spec_impl__impl0__create_iommu_table_l3_entry/phi_2_no_mapping_infer_trivial_from_empty.rs:76:10\n   |\n76 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 30 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "root_table_wf_no_resolve_constraint",
+    "type": "logical",
+    "code": "proof fn phi_3_root_table_wf_no_resolve_constraint(mm: MemoryManager, bus: u8, dev: u8, fun: u8)\n    requires\n        mm.wf(),\n        0 <= bus < 256,\n        0 <= dev < 32,\n        0 <= fun < 8,\n        mm.root_table.resolve(bus, dev, fun).is_Some(),\n    ensures\n        true,\n{\n}",
+    "reason": "root_table_wf has all its resolve-related invariants commented out \u2014 a resolved PCI device can map to an arbitrary IOid (even out-of-range or freed) with no constraint linking it back to an active IOMMU table",
+    "entailed": true,
+    "verus_output": ":67:10\n   |\n67 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__memory_manager__spec_impl__impl0__create_iommu_table_l3_entry/phi_3_root_table_wf_no_resolve_constraint.rs:76:10\n   |\n76 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 31 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "create_l2_no_pcid_mapping_isolation",
+    "type": "behavioral",
+    "code": "proof fn phi_4_create_l2_no_pcid_mapping_isolation(\n    mm1: MemoryManager, mm2: MemoryManager,\n    target_ioid: IOid, pcid: Pcid,\n    target_l4i: L4Index, target_l3i: L3Index, target_l2i: L2Index,\n    target_l2_p: PageMapPtr, page_map_ptr: PageMapPtr,\n    page_map_perm: PointsTo<PageMap>,\n)\n    requires\n        mm1.wf(),\n        mm1.ioid_active(target_ioid),\n        mm1.pcid_active(pcid),\n        0 <= target_l4i < 512,\n        0 <= target_l3i < 512,\n        0 <= target_l2i < 512,\n        mm1.get_iommu_table_by_ioid(target_ioid).unwrap().spec_resolve_mapping_l3(target_l4i, target_l3i).is_Some(),\n        mm1.get_iommu_table_by_ioid(target_ioid).unwrap().spec_resolve_mapping_1g_l3(target_l4i, target_l3i).is_None(),\n        mm1.get_iommu_table_by_ioid(target_ioid).unwrap().spec_resolve_mapping_l3(target_l4i, target_l3i).unwrap().addr == target_l2_p,\n        page_ptr_valid(page_map_ptr),\n        mm1.page_closure().contains(page_map_ptr) == false,\n    ensures\n        mm1.get_pagetable_mapping_by_pcid(pcid) == mm1.get_pagetable_mapping_by_pcid(pcid),\n{\n}",
+    "reason": "create_iommu_table_l2_entry preserves all PCID mappings but never checks that the new page_map_ptr doesn't alias a physical address already mapped by a process page table \u2014 IOMMU and process page tables could map the same physical page simultaneously",
+    "entailed": true,
+    "verus_output": ":67:10\n   |\n67 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__memory_manager__spec_impl__impl0__create_iommu_table_l3_entry/phi_4_create_l2_no_pcid_mapping_isolation.rs:76:10\n   |\n76 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 32 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "root_table_cache_stale_none_allowed",
+    "type": "boundary",
+    "code": "proof fn phi_5_root_table_cache_stale_none_allowed(mm: MemoryManager, bus: u8, dev: u8, fun: u8)\n    requires\n        mm.wf(),\n        0 <= bus < 256,\n        0 <= dev < 32,\n        0 <= fun < 8,\n        mm.root_table.resolve(bus, dev, fun).is_Some(),\n        mm.root_table_cache@[bus as int][dev as int][fun as int].is_None(),\n    ensures\n        true,\n{\n}",
+    "reason": "root_table_cache_wf only constrains cache entries that are Some \u2014 a None cache entry is allowed even when resolve returns Some, meaning the cache can be arbitrarily stale/incomplete with no invalidation guarantee",
+    "entailed": true,
+    "verus_output": ":67:10\n   |\n67 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__memory_manager__spec_impl__impl0__create_iommu_table_l3_entry/phi_5_root_table_cache_stale_none_allowed.rs:76:10\n   |\n76 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 32 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,89 @@
+===PHI_START===
+NAME: only_zero_aligned
+TARGET_FN: aligned
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_only_zero_aligned(addr: nat, size: nat)
+    requires
+        size > 0,
+        aligned(addr, size),
+    ensures
+        addr == 0nat,
+{
+}
+```
+REASON: If provable, aligned would be trivially unsatisfiable for any nonzero address, making all page-table alignment constraints vacuous.
+===PHI_END===
+
+===PHI_START===
+NAME: 4k_implies_8k_aligned
+TARGET_FN: aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_4k_implies_8k_aligned(addr: nat)
+    requires
+        aligned(addr, 4096),
+    ensures
+        aligned(addr, 8192),
+{
+}
+```
+REASON: 4K-alignment must not entail 8K-alignment; if provable, the pml4 alignment invariant would silently impose a stronger-than-intended constraint.
+===PHI_END===
+
+===PHI_START===
+NAME: unique_alignment_size
+TARGET_FN: aligned
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_unique_alignment_size(addr: nat, s1: nat, s2: nat)
+    requires
+        s1 > 0,
+        s2 > 0,
+        s1 != s2,
+        aligned(addr, s1),
+        aligned(addr, s2),
+    ensures
+        false,
+{
+}
+```
+REASON: An address can be aligned to multiple sizes (e.g., 0 is aligned to every size); if provable, aligned would be inconsistent.
+===PHI_END===
+
+===PHI_START===
+NAME: self_alignment_false
+TARGET_FN: aligned
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_self_alignment_false(size: nat)
+    requires
+        size > 0,
+    ensures
+        !aligned(size, size),
+{
+}
+```
+REASON: Every nonzero n satisfies n % n == 0, so aligned(n,n) must be true; if refuted, the modulus definition is broken.
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_bounded_by_size
+TARGET_FN: aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_aligned_bounded_by_size(addr: nat)
+    requires
+        aligned(addr, 4096),
+    ensures
+        addr <= 4096nat,
+{
+}
+```
+REASON: Aligned addresses are unbounded multiples of the alignment; if provable, any address beyond 4096 would be wrongly excluded from valid page-table bases.
+===PHI_END===

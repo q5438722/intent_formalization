@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize_u64_roundtrip_unconstrained",
+    "type": "logical",
+    "code": "proof fn phi_1_usize_u64_roundtrip_unconstrained(x: u64)\n    ensures\n        x as usize as u64 == x,\n{\n    lemma_usize_u64(x);\n}",
+    "reason": "lemma_usize_u64 is external_body with no requires \u2014 claims ALL u64 values roundtrip through usize, which is unsound on 32-bit platforms where usize is 32 bits",
+    "entailed": true,
+    "verus_output": "->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__allocator__page_allocator_spec_impl__impl1__free_pages_are_not_mapped/phi_1_usize_u64_roundtrip_unconstrained.rs:438:72\n    |\n438 |             0 <= i < NUM_PAGES && self.page_array@[i].owning_container.is_Some() ==> (\n    |                                                                        ^^^^^^^\n\nwarning: 4 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "large_u64_roundtrip",
+    "type": "boundary",
+    "code": "proof fn phi_2_large_u64_roundtrip()\n    ensures\n        u64::MAX as usize as u64 == u64::MAX,\n{\n    lemma_usize_u64(u64::MAX);\n}",
+    "reason": "u64::MAX (2^64-1) cannot roundtrip through usize on 32-bit \u2014 the unconstrained external_body axiom enables this unsound claim",
+    "entailed": true,
+    "verus_output": "ecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__allocator__page_allocator_spec_impl__impl1__free_pages_are_not_mapped/phi_2_large_u64_roundtrip.rs:438:72\n    |\n438 |             0 <= i < NUM_PAGES && self.page_array@[i].owning_container.is_Some() ==> (\n    |                                                                        ^^^^^^^\n\nwarning: 4 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "wf_external_body_opaque",
+    "type": "logical",
+    "code": "proof fn phi_3_wf_external_body_opaque(sll: StaticLinkedList<usize, 10>)\n    requires\n        sll.wf(),\n    ensures\n        sll.len() == sll@.len(),\n{\n    let _ = sll.len();\n}",
+    "reason": "StaticLinkedList::wf() is external_body closed spec \u2014 completely opaque, any property could be vacuously true if wf() is never satisfiable",
+    "entailed": false,
+    "verus_output": "/workspace_v2/atmosphere__allocator__page_allocator_spec_impl__impl1__free_pages_are_not_mapped/phi_3_wf_external_body_opaque.rs:693:9\n    |\n689 | proof fn phi_3_wf_external_body_opaque(sll: StaticLinkedList<usize, 10>)\n    |       ------------------------------------------------------------------ at the end of the function body\n...\n693 |         sll.len() == sll@.len(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "len_external_body_consistency",
+    "type": "behavioral",
+    "code": "proof fn phi_4_len_external_body_consistency(sll: StaticLinkedList<usize, 10>)\n    requires\n        sll.wf(),\n    ensures\n        sll.len() == sll.value_list_len,\n        sll.value_list_len == sll@.len(),\n{\n    let l = sll.len();\n}",
+    "reason": "StaticLinkedList::len() is external_body \u2014 unverified that value_list_len matches the ghost spec_seq length",
+    "entailed": false,
+    "verus_output": "page_allocator_spec_impl__impl1__free_pages_are_not_mapped/phi_4_len_external_body_consistency.rs:694:9\n    |\n689 | proof fn phi_4_len_external_body_consistency(sll: StaticLinkedList<usize, 10>)\n    |       ------------------------------------------------------------------------ at the end of the function body\n...\n694 |         sll.value_list_len == sll@.len(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 2 previous errors; 4 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "usize_u64_enables_overflow",
+    "type": "boundary",
+    "code": "proof fn phi_5_usize_u64_enables_overflow()\n    ensures\n        (MAX_USIZE + 1) as usize as u64 == MAX_USIZE + 1,\n{\n    lemma_usize_u64(MAX_USIZE + 1);\n}",
+    "reason": "MAX_USIZE+1 (~31GB+1) roundtrip claimed without proof \u2014 the external_body lemma applies to values beyond the system's intended address range",
+    "entailed": false,
+    "verus_output": " |\n    |     arguments to this function are incorrect\n    |\nnote: function defined here\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__allocator__page_allocator_spec_impl__impl1__free_pages_are_not_mapped/phi_5_usize_u64_enables_overflow.rs:23:14\n    |\n 23 | pub proof fn lemma_usize_u64(x: u64)\n    |              ^^^^^^^^^^^^^^^ ------\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\nFor more information about this error, try `rustc --explain E0308`.\n",
+    "timed_out": false
+  }
+]

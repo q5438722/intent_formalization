@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize2pa_mem_valid_unconditional",
+    "type": "logical",
+    "code": "proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body ensures MEM_valid(ret) for ALL inputs \u2014 trusts without proof that masking any arbitrary usize yields a valid physical address",
+    "entailed": false,
+    "verus_output": "ome/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__entry__page_entry2usize/phi_1_usize2pa_mem_valid_unconditional.rs:476:9\n    |\n474 | proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    |       --------------------------------------------------- at the end of the function body\n475 |     ensures\n476 |         MEM_valid(usize2pa(v)),\n    |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "roundtrip_loses_user_bit",
+    "type": "behavioral",
+    "code": "proof fn phi_2_roundtrip_loses_user_bit(pe: PageEntry)\n    requires\n        MEM_valid(pe.addr),\n        pe.perm.user == true,\n        pe.perm.present == false,\n        pe.perm.ps == false,\n        pe.perm.write == false,\n        pe.perm.execute_disable == false,\n    ensures\n        ({\n            let v = page_entry2usize_spec(pe);\n            usize2user(v) == true\n        }),\n{\n}",
+    "reason": "page_entry2usize only sets the user bit conditionally but there is no ensures clause guaranteeing usize2user(ret) == page_entry.perm.user \u2014 the user bit roundtrip is not specified",
+    "entailed": false,
+    "verus_output": "Entry) -> (ret: usize)\n 75 | |     requires\n 76 | |         MEM_valid(page_entry.addr),\n 77 | |     ensures\n...   |\n428 | |     return ret;\n429 | | }\n    | |_- similarly named function `page_entry2usize` defined here\n...\n484 |               let v = page_entry2usize_spec(pe);\n    |                       ^^^^^^^^^^^^^^^^^^^^^ help: a function with a similar name exists: `page_entry2usize`\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0425`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_entry2usize_missing_user_ensures",
+    "type": "logical",
+    "code": "proof fn phi_3_page_entry2usize_missing_user_ensures(pe: PageEntry, ret: usize)\n    requires\n        MEM_valid(pe.addr),\n        usize2present(ret) == pe.perm.present,\n        usize2ps(ret) == pe.perm.ps,\n        usize2write(ret) == pe.perm.write,\n        usize2execute_disable(ret) == pe.perm.execute_disable,\n        usize2user(ret) == pe.perm.user,\n        usize2pa(ret) == pe.addr,\n        usize2page_entry_perm(ret) =~= pe.perm,\n    ensures\n        spec_usize2page_entry_perm(ret).user == pe.perm.user,\n{\n}",
+    "reason": "The function's ensures include usize2page_entry_perm(ret) =~= page_entry.perm, which covers user \u2014 but the individual field ensures list omits usize2user(ret) == page_entry.perm.user, creating asymmetry",
+    "entailed": true,
+    "verus_output": "ze_missing_user_ensures.rs:13:10\n   |\n13 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__entry__page_entry2usize/phi_3_page_entry2usize_missing_user_ensures.rs:22:10\n   |\n22 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "encode_decode_addr_identity",
+    "type": "behavioral",
+    "code": "proof fn phi_4_encode_decode_addr_identity(pe: PageEntry)\n    requires\n        MEM_valid(pe.addr),\n    ensures\n        ({\n            let encoded = spec_page_entry2usize(pe);\n            spec_usize2pa(encoded) == pe.addr\n        }),\n{\n}",
+    "reason": "If the encode-decode roundtrip for addr doesn't hold, then writing a page entry and reading it back would silently corrupt the physical address",
+    "entailed": false,
+    "verus_output": "et: usize)\n 75 | |     requires\n 76 | |         MEM_valid(page_entry.addr),\n 77 | |     ensures\n...   |\n428 | |     return ret;\n429 | | }\n    | |_- similarly named function `page_entry2usize` defined here\n...\n479 |               let encoded = spec_page_entry2usize(pe);\n    |                             ^^^^^^^^^^^^^^^^^^^^^ help: a function with a similar name exists: `page_entry2usize`\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0425`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "execute_disable_bit63_overlaps_addr",
+    "type": "boundary",
+    "code": "proof fn phi_5_execute_disable_bit63_overlaps_addr(v: usize)\n    requires\n        v == 0x8000_0000_0000_1000usize,\n    ensures\n        usize2execute_disable(v) == true,\n        spec_usize2pa(v) == 0x0000_0000_0000_1000usize,\n        MEM_valid(spec_usize2pa(v)),\n{\n    assert(0x8000_0000_0000_1000usize & (0x1u64 << 63u64) as usize != 0) by (bit_vector);\n    assert(0x8000_0000_0000_1000usize & 0x0000_ffff_ffff_f000u64 as usize == 0x0000_0000_0000_1000usize) by (bit_vector);\n    assert(0x0000_0000_0000_1000usize & (!0x0000_ffff_ffff_f000u64) as usize == 0) by (bit_vector);\n}",
+    "reason": "Bit 63 is the execute-disable flag AND the MSB of the raw usize \u2014 MEM_MASK strips it from the address, but a raw value with bit 63 set gets silently split between permission and address without any warning that the original value exceeded the physical address space",
+    "entailed": true,
+    "verus_output": "sable_bit63_overlaps_addr.rs:13:10\n   |\n13 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__entry__page_entry2usize/phi_5_execute_disable_bit63_overlaps_addr.rs:22:10\n   |\n22 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

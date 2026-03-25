@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: inv_allows_empty_arch
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The `inv()` predicate uses `<=` for layer count and a vacuously-true universal quantifier over an empty sequence, so an `Arch` with zero layers satisfies it. A real x86 MMU architecture must have at least one layer (typically 4), so `inv` is too weak — it should require `self.layers.len() > 0`.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: aligned_zero_to_any
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `0 % s == 0` for any `s > 0` is a standard mathematical fact. Address zero being aligned is correct and expected — the `aligned` function is a pure math predicate, and any MMU policy restricting address zero would be enforced elsewhere, not in the alignment definition.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: inv_allows_unit_entry_size
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The invariant permits `entry_size: 1` and `num_entries: 1`, which represents a 1-byte page with a single entry — physically impossible on x86 where the minimum page size is 4K. The `inv` should enforce a minimum entry size (e.g., 4096) for the leaf layer to reflect actual hardware constraints.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: inv_allows_equal_consecutive_entry_sizes
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: When `num_entries` is 1, the constraint `entry_size(i) == entry_size(i+1) * num_entries(i+1)` degenerates to equal entry sizes across layers. This violates the hierarchical structure where each deeper layer must map a strictly smaller region. The invariant should require `num_entries > 1` or `entry_size` strictly decreasing.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: last_layer_max_entry_size
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: A single-layer architecture where each entry maps 512 GB is accepted by `inv`, but on x86 the leaf-level page size is 4K (or at most 1G for huge pages). The invariant's upper bound `X86_MAX_ENTRY_SIZE` is meant for the top layer, not for leaf entries. Without constraining the last layer's entry size to realistic page sizes, the spec is too permissive.
+===VERDICT_END===
+
+===SUMMARY===
+Four of five properties are true positives revealing that `Arch::inv()` is too permissive: it allows empty architectures (no layers), degenerate 1-byte pages, non-hierarchical layers with equal entry sizes, and leaf layers mapping 512 GB. The common theme is missing lower bounds — on layer count, minimum leaf entry size, and `num_entries > 1` for multi-layer hierarchies. The `aligned(0, s)` property is a false positive since zero alignment is mathematically correct and not a spec deficiency.
+===END_SUMMARY===

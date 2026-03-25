@@ -1,0 +1,52 @@
+[
+  {
+    "name": "zero_len_io_mmap_allowed",
+    "target_fn": "syscall_io_mmap",
+    "type": "boundary",
+    "reason": "Zero-length VA ranges satisfy all preconditions, allowing syscall_io_mmap to perform vacuous no-op allocations",
+    "entailed": true,
+    "verified": 44,
+    "errors": 0,
+    "output_tail": "g a specification for the derived Clone impl\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v3/atmosphere__kernel__syscall_io_mmap__impl0__syscall_io_mmap/phi_1_zero_len_io_mmap_allowed.rs:187:10\n    |\n187 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: 25 warnings emitted\n\n"
+  },
+  {
+    "name": "null_paddr_mem_valid",
+    "target_fn": "syscall_io_mmap",
+    "type": "behavioral",
+    "reason": "If null physical address 0 passes MEM_valid, IO mmap could create page mappings to the null address without detection",
+    "entailed": false,
+    "verified": 43,
+    "errors": 1,
+    "output_tail": " |\n2405 | proof fn phi_2_null_paddr_mem_valid()\n     |       ------------------------------- at the end of the function body\n2406 |     ensures\n2407 |         MEM_valid(0usize),\n     |         ^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 25 warnings emitted\n\n"
+  },
+  {
+    "name": "zero_raw_entry_is_empty",
+    "target_fn": "syscall_io_mmap",
+    "type": "logical",
+    "reason": "If zero-valued raw entries are always empty, uninitialized page table memory silently passes as valid empty entries during IO mapping",
+    "entailed": false,
+    "verified": 43,
+    "errors": 1,
+    "output_tail": "    |       ---------------------------------- at the end of the function body\n2406 |     ensures\n2407 |         spec_usize2page_entry(0usize).is_empty(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 25 warnings emitted\n\n"
+  },
+  {
+    "name": "zero_quota_bypasses_check",
+    "target_fn": "syscall_io_mmap",
+    "type": "boundary",
+    "reason": "A container with zero remaining quota can pass the quota check via a zero-length range, bypassing resource accounting in syscall_io_mmap",
+    "entailed": true,
+    "verified": 44,
+    "errors": 0,
+    "output_tail": " a specification for the derived Clone impl\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v3/atmosphere__kernel__syscall_io_mmap__impl0__syscall_io_mmap/phi_4_zero_quota_bypasses_check.rs:187:10\n    |\n187 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: 25 warnings emitted\n\n"
+  },
+  {
+    "name": "usize2pa_always_valid",
+    "target_fn": "syscall_io_mmap",
+    "type": "behavioral",
+    "reason": "If usize2pa produces a MEM_valid address for ANY input, garbage or attacker-controlled values fed through the IO mmap path are silently masked to valid addresses",
+    "entailed": false,
+    "verified": 43,
+    "errors": 1,
+    "output_tail": "ys_valid(v: usize)\n     |       ---------------------------------------- at the end of the function body\n2406 |     ensures\n2407 |         MEM_valid(spec_usize2pa(v)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 25 warnings emitted\n\n"
+  }
+]

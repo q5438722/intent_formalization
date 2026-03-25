@@ -1,0 +1,95 @@
+===PHI_START===
+NAME: block_ptr_within_segment
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_block_ptr_within_segment(p: *mut u8, block_id: BlockId)
+    requires
+        is_block_ptr(p, block_id),
+    ensures
+        segment_start(block_id.page_id.segment_id) < p as int
+            <= segment_start(block_id.page_id.segment_id) + SEGMENT_SIZE,
+{
+    reveal(is_block_ptr1);
+}
+```
+REASON: Block pointers are constrained to within the segment — but the spec only checks the start address of the block, not that the entire block (start + block_size) fits within the segment or slice
+===PHI_END===
+
+===PHI_START===
+NAME: block_end_exceeds_slice
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_block_end_exceeds_slice(p: *mut u8, block_id: BlockId)
+    requires
+        is_block_ptr(p, block_id),
+    ensures
+        // The spec does NOT guarantee that the block END fits within the slice
+        // Only the block START is checked against the slice range
+        true,
+{
+    reveal(is_block_ptr1);
+    // is_block_ptr1 checks:
+    //   segment_start + slice_idx*SLICE_SIZE <= ptr < segment_start + slice_idx*SLICE_SIZE + SLICE_SIZE
+    // but does NOT check:
+    //   ptr + block_size <= segment_start + slice_idx*SLICE_SIZE + SLICE_SIZE
+}
+```
+REASON: The spec constrains the block's start address to be within a slice but never checks that `ptr + block_size` fits within the slice — a large block_size could extend past the slice boundary
+===PHI_END===
+
+===PHI_START===
+NAME: slice_idx_not_linked_to_page_idx
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_slice_idx_not_linked_to_page_idx(p: *mut u8, block_id: BlockId)
+    requires
+        is_block_ptr(p, block_id),
+        block_id.page_id.idx == 5,
+    ensures
+        block_id.slice_idx <= SLICES_PER_SEGMENT,
+        // slice_idx is NOT constrained to be >= page_id.idx
+{
+    reveal(is_block_ptr1);
+}
+```
+REASON: `slice_idx` is only bounded `0 <= slice_idx <= SLICES_PER_SEGMENT` but has no constraint relating it to `page_id.idx` — a block could claim to be in slice 0 while belonging to page 5
+===PHI_END===
+
+===PHI_START===
+NAME: segment_id_nat_allows_overflow
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_segment_id_nat_allows_overflow(block_id: BlockId)
+    requires
+        block_id.page_id.segment_id.id == 1000000,
+        block_id.block_size == 8,
+        block_id.idx == 0,
+        block_id.page_id.idx == 0,
+        block_id.slice_idx == 0,
+    ensures
+        block_start(block_id) == 1000000 * SEGMENT_SIZE + start_offset(8),
+{
+}
+```
+REASON: `segment_id.id` is `nat` with no upper bound — `segment_start` computes `id * SEGMENT_SIZE` which for large IDs yields addresses far exceeding `usize::MAX`, though `is_block_ptr1` does check `< usize::MAX`
+===PHI_END===
+
+===PHI_START===
+NAME: page_idx_unbounded
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_page_idx_unbounded(page_id: PageId)
+    requires
+        page_id.idx == 1000,
+    ensures
+        page_start(page_id) == segment_start(page_id.segment_id) + SLICE_SIZE * 1000,
+{
+}
+```
+REASON: `page_id.idx` is `nat` with no upper bound in `page_start` — idx=1000 exceeds `SLICES_PER_SEGMENT=512`, placing the page start beyond the segment end; `is_block_ptr1` constrains `slice_idx` but not `page_id.idx`
+===PHI_END===

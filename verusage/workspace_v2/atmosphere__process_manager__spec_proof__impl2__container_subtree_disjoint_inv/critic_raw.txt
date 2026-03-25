@@ -1,0 +1,17 @@
+===VERDICT_START===
+PHI: get_thread_ensures_without_wf
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The `get_thread` external_body requires `self.wf()` as a precondition and ensures cross-domain membership as a postcondition. This is the intended design: `wf()` is the top-level well-formedness predicate that subsumes all sub-predicates, and the external_body serves as a convenience lemma extracting useful consequences. The cross-domain properties are desirable invariants that should hold under `wf()`.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: get_proc_owned_threads_wf_without_process_fields
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The `get_proc` external_body requires `proc_perms_wf()` and `process_fields_wf()` — and `process_fields_wf` explicitly states that for all procs in dom, `owned_threads.wf()` holds. The external_body's unconditional `ret.owned_threads.wf()` ensure simply mirrors what `process_fields_wf` already guarantees at the spec level. The `!pm.wf()` precondition is irrelevant since the needed sub-predicates are directly required.
+===VERDICT_END===
+
+===SUMMARY===
+Both candidates are false positives. The `get_thread` property correctly follows from the `wf()` precondition — cross-domain membership of thread owners is an intended invariant. The `get_proc` property's `owned_threads.wf()` is directly entailed by the `process_fields_wf()` precondition regardless of full `wf()` status, so the external_body is not leaking extra guarantees beyond what the open spec already provides.
+===END_SUMMARY===

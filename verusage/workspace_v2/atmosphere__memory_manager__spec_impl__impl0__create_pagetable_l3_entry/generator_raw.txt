@@ -1,0 +1,81 @@
+The file appears truncated. Let me work with what's available.
+
+===PHI_START===
+NAME: usize2pa_mem_valid_unconditional
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)
+    ensures
+        MEM_valid(usize2pa(v)),
+{
+}
+```
+REASON: usize2pa's external_body unconditionally ensures MEM_valid(ret) for ANY input — arbitrary usize values produce "valid" physical addresses without proof
+===PHI_END===
+
+===PHI_START===
+NAME: zero_entry_is_empty
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_zero_entry_is_empty()
+    ensures
+        usize2page_entry(0usize).is_empty(),
+{
+}
+```
+REASON: Relies on two independent external_body claims (usize2page_entry and usize2pa both special-case v==0) agreeing — if either is wrong the combined property is unsound
+===PHI_END===
+
+===PHI_START===
+NAME: no_mapping_infer_trivial_from_empty
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_no_mapping_infer_trivial_from_empty(pt: PageTable, p: PageMapPtr)
+    requires
+        pt.wf(),
+        pt.mapping_4k() == Map::<VAddr, MapEntry>::empty(),
+        pt.mapping_2m() == Map::<VAddr, MapEntry>::empty(),
+        pt.mapping_1g() == Map::<VAddr, MapEntry>::empty(),
+    ensures
+        pt.page_not_mapped(p),
+{
+    pt.no_mapping_infer_not_mapped(p);
+}
+```
+REASON: no_mapping_infer_not_mapped's external_body lets us derive page_not_mapped for ANY address from empty mappings — the proof lemma is trusted without verification
+===PHI_END===
+
+===PHI_START===
+NAME: page_closure_includes_l4_table
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_page_closure_includes_l4_table(pt: PageTable, p: PageMapPtr)
+    requires
+        pt.l4_table@.dom().contains(p),
+    ensures
+        pt.page_closure().contains(p),
+{
+}
+```
+REASON: page_closure unconditionally absorbs all l4_table domain pointers without checking disjointness against l3/l2/l1 tables — overlapping domains are silently merged
+===PHI_END===
+
+===PHI_START===
+NAME: resolve_l4_kernel_ignores_present
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_resolve_l4_kernel_ignores_present(pt: PageTable, l4i: L4Index)
+    requires
+        0 <= l4i < pt.kernel_l4_end,
+    ensures
+        pt.spec_resolve_mapping_l4(l4i) == Some(pt.l4_table@[pt.cr3].value()[l4i]),
+{
+}
+```
+REASON: spec_resolve_mapping_l4 returns Some for ALL kernel-region indices regardless of the present bit — a non-present kernel L4 entry is still treated as a valid resolved mapping
+===PHI_END===

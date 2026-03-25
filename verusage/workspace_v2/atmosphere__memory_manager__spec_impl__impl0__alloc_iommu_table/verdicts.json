@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "free_pcid_pagetable_is_empty",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Free PCIDs having empty mappings is the expected invariant \u2014 you don't want freed address spaces retaining stale mappings. The `is_empty` definition additionally clears all mapping ghosts to empty, so this is exactly the desired property."
+  },
+  {
+    "phi": "iommu_kernel_l4_end_zero",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "IOMMU tables are for device DMA, not CPU processes \u2014 they intentionally have no kernel region reservation. `kernel_l4_end == 0` means the full L4 range is available for device mapping, which is correct since devices don't execute kernel code."
+  },
+  {
+    "phi": "pagetable_hugepages_disabled",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The spec explicitly comments \"for now, we disable hugepages\" \u2014 this is an intentional design decision to simplify the current implementation. The empty 2m/1g mappings are a deliberate invariant, not an accidental over-constraint."
+  },
+  {
+    "phi": "pagetable_iommu_page_closure_disjoint",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Pairwise disjoint page closures across all PCIDs (including free ones) is a critical memory safety invariant \u2014 each page table's backing pages must be unique to prevent one address space from corrupting another's page table structures. This correctly implies unique cr3 allocation."
+  }
+]

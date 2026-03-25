@@ -1,0 +1,29 @@
+[
+  {
+    "name": "injective_map_values_finite",
+    "type": "logical",
+    "code": "proof fn phi_1_injective_map_values_finite(m: Map<int, int>)\n    requires\n        m.dom().finite(),\n        m.is_injective(),\n    ensures\n        m.values().finite(),\n{\n    injective_finite_map_implies_dom_len_is_equal_to_values_len(m);\n}",
+    "reason": "the lemma ensures len equality which implicitly requires values().finite() \u2014 if values could be infinite with a defined len, this would be a gap",
+    "entailed": false,
+    "verus_output": "atisfied\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-library__injective_finite_map_implies_dom_len_is_equal_to_values_len/phi_1_injective_map_values_finite.rs:49:9\n   |\n44 | proof fn phi_1_injective_map_values_finite(m: Map<int, int>)\n   |       ------------------------------------------------------ at the end of the function body\n...\n49 |         m.values().finite(),\n   |         ^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "empty_map_zero_values",
+    "type": "boundary",
+    "code": "proof fn phi_2_empty_map_zero_values()\n    ensures\n        Map::<int, int>::empty().values().len() == 0,\n{\n    injective_finite_map_implies_dom_len_is_equal_to_values_len(Map::<int, int>::empty());\n}",
+    "reason": "empty map is trivially injective \u2014 tests whether the spec correctly handles the base case without producing nonsensical len for empty values set",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "singleton_map_values_len_one",
+    "type": "boundary",
+    "code": "proof fn phi_3_singleton_map_values_len_one(k: int, v: int)\n    ensures\n        Map::<int, int>::empty().insert(k, v).values().len() == 1,\n{\n    let m = Map::<int, int>::empty().insert(k, v);\n    assert(m.dom().finite());\n    assert(m.is_injective());\n    injective_finite_map_implies_dom_len_is_equal_to_values_len(m);\n}",
+    "reason": "tests singleton boundary \u2014 if the recursive decomposition mishandles single-element maps, the values len could be wrong",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

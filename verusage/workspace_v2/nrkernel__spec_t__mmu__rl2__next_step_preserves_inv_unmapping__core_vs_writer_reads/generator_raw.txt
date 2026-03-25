@@ -1,0 +1,88 @@
+===PHI_START===
+NAME: write_seq_idle_allows_arbitrary_read_on_missing_key
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_write_seq_idle_allows_arbitrary_read_on_missing_key(mem: PTMem, addr: usize, writes: Seq<(usize, usize)>)
+    requires
+        !mem.mem.dom().contains(addr),
+        forall|i| 0 <= i < writes.len() ==> (#[trigger] writes[i]).0 != addr,
+    ensures
+        mem.write_seq(writes).read(addr) == mem.read(addr),
+{
+    mem.lemma_write_seq_idle(writes, addr);
+}
+```
+REASON: `lemma_write_seq_idle` guarantees untouched addresses read the same — but `read` on an address not in `mem.dom()` returns an arbitrary value from the total Map; the lemma preserves this arbitrary value faithfully, which is correct but tests the interaction
+===PHI_END===
+
+===PHI_START===
+NAME: flags_combine_chain_loses_writable
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_flags_combine_chain_loses_writable(f1: Flags, f2: Flags, f3: Flags)
+    requires
+        f1.is_writable,
+        !f2.is_writable,
+        f3.is_writable,
+    ensures
+        !f1.combine(f2).combine(f3).is_writable,
+{
+}
+```
+REASON: `combine` uses AND for `is_writable` — a single non-writable entry in the chain kills writability for all deeper levels; tests that the most restrictive flag propagation is correct
+===PHI_END===
+
+===PHI_START===
+NAME: memories_disjoint_strict_ordering
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_memories_disjoint_strict_ordering(c: Constants)
+    requires
+        c.memories_disjoint(),
+    ensures
+        c.range_mem.0 < c.range_ptmem.0,
+        c.range_ptmem.1 <= MAX_PHYADDR,
+        c.range_mem.1 < c.range_ptmem.0,
+{
+}
+```
+REASON: `memories_disjoint` uses strict ordering `range_mem.1 < range_ptmem.0` — tests that physical memory and page table memory regions are truly non-overlapping; if this were `<=` instead, zero-size gaps could allow aliasing
+===PHI_END===
+
+===PHI_START===
+NAME: valid_core_external_body_unconstrained
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_valid_core_external_body_unconstrained(c: Constants, core1: Core, core2: Core)
+    requires
+        c.valid_core(core1),
+        core1.node_id == core2.node_id,
+        core1.core_id == core2.core_id,
+    ensures
+        c.valid_core(core2),
+{
+}
+```
+REASON: `valid_core` is `external_body` — tests whether structurally equal cores are interchangeable; since Core has no invariants beyond its fields, this should hold but is unverified
+===PHI_END===
+
+===PHI_START===
+NAME: seq_tup_ext_contains_fst_witness
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_seq_tup_ext_contains_fst_witness(s: Seq<(usize, usize)>, addr: usize, val: usize)
+    requires
+        s.len() > 0,
+        s[0] == (addr, val),
+    ensures
+        s.contains_fst(addr),
+{
+}
+```
+REASON: `contains_fst` uses an existential with trigger `self[i] == (fst, self[i].1)` — tests that a concrete witness at index 0 can instantiate the existential; if the trigger is too restrictive, this simple case might not verify
+===PHI_END===

@@ -1,0 +1,52 @@
+[
+  {
+    "name": "aligned_zero_size_vacuous",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "reason": "If alignment with size 0 is vacuously true, any guard using `aligned(x, 0)` silently passes, admitting invalid states.",
+    "entailed": false,
+    "verified": 6,
+    "errors": 1,
+    "output_tail": " |\n472 | proof fn phi_1_aligned_zero_size_vacuous(addr: nat)\n    |       --------------------------------------------- at the end of the function body\n473 |     ensures\n474 |         aligned(addr, 0),\n    |         ^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "aligned_off_by_one",
+    "target_fn": "aligned",
+    "type": "behavioral",
+    "reason": "If incrementing an 8-aligned address by 1 preserves alignment, the alignment predicate is trivially true and all ptmem write guards are vacuous.",
+    "entailed": false,
+    "verified": 6,
+    "errors": 1,
+    "output_tail": "_by_one.rs:476:9\n    |\n472 | proof fn phi_2_aligned_off_by_one(addr: nat)\n    |       -------------------------------------- at the end of the function body\n...\n476 |         aligned(addr + 1, 8),\n    |         ^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "page_align_not_word_align",
+    "target_fn": "aligned",
+    "type": "logical",
+    "reason": "Page-alignment (4096) must imply 8-byte alignment since 4096 is a multiple of 8; if it doesn't, pml4 alignment invariants fail to guarantee write alignment.",
+    "entailed": false,
+    "verified": 6,
+    "errors": 1,
+    "output_tail": "rs:476:9\n    |\n472 | proof fn phi_3_page_align_not_word_align(addr: nat)\n    |       --------------------------------------------- at the end of the function body\n...\n476 |         !aligned(addr, 8),\n    |         ^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "aligned_cross_divisor",
+    "target_fn": "aligned",
+    "type": "logical",
+    "reason": "8-alignment should not entail 3-alignment (gcd(8,3)=1); if it does the modular semantics of `aligned` are broken and non-power-of-two checks become unsound.",
+    "entailed": false,
+    "verified": 6,
+    "errors": 1,
+    "output_tail": "s_divisor.rs:476:9\n    |\n472 | proof fn phi_4_aligned_cross_divisor(addr: nat)\n    |       ----------------------------------------- at the end of the function body\n...\n476 |         aligned(addr, 3),\n    |         ^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "aligned_below_size_wrong_value",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "reason": "The only nat below 4096 that is 4096-aligned is 0; if the solver derives addr==1, the modular-arithmetic definition of `aligned` is inconsistent.",
+    "entailed": false,
+    "verified": 6,
+    "errors": 1,
+    "output_tail": "value.rs:477:9\n    |\n472 | proof fn phi_5_aligned_below_size_wrong_value(addr: nat)\n    |       -------------------------------------------------- at the end of the function body\n...\n477 |         addr == 1,\n    |         ^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

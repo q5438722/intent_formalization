@@ -1,0 +1,85 @@
+===PHI_START===
+NAME: bitmask_l0_range
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_bitmask_l0_range(vaddr: usize)
+    ensures
+        l0_bits!(vaddr) < 512,
+{
+    assert(((vaddr & bitmask_inc!(39usize,47usize)) >> 39usize) < 512) by (bit_vector);
+}
+```
+REASON: l0_bits extracts bits 39-47 (9 bits) so the result must be < 512 — tests that the bitmask correctly bounds the index
+===PHI_END===
+
+===PHI_START===
+NAME: align_to_usize_idempotent
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_align_to_usize_idempotent(a: usize, b: usize)
+    requires
+        b > 0,
+        a % b == 0,
+    ensures
+        align_to_usize(a, b) == a,
+{
+}
+```
+REASON: Aligning an already-aligned address should be identity — tests that `sub(a, 0) == a`
+===PHI_END===
+
+===PHI_START===
+NAME: align_to_usize_rounds_down
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_align_to_usize_rounds_down(a: usize, b: usize)
+    requires
+        b > 0,
+        a >= b,
+    ensures
+        align_to_usize(a, b) <= a,
+{
+    assert(sub(a, a % b) <= a) by (bit_vector)
+        requires b > 0 && a >= b;
+}
+```
+REASON: `align_to_usize` should always round down — if it rounds up, aligned addresses could exceed the original
+===PHI_END===
+
+===PHI_START===
+NAME: l3_bits_zero_for_page_aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_l3_bits_zero_for_page_aligned(vaddr: usize)
+    requires
+        vaddr % L2_ENTRY_SIZE as usize == 0,
+    ensures
+        l3_bits!(vaddr) == 0,
+{
+    let l2_es = L2_ENTRY_SIZE;
+    assert(((vaddr & bitmask_inc!(12usize,20usize)) >> 12usize) == 0) by (bit_vector)
+        requires vaddr % l2_es == 0, l2_es == 512 * 4096;
+}
+```
+REASON: An L2-aligned address should have zero L3 bits — tests that L2 alignment implies the L3 index field is zero
+===PHI_END===
+
+===PHI_START===
+NAME: align_to_usize_underflow
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_align_to_usize_underflow(b: usize)
+    requires
+        b > 0,
+    ensures
+        align_to_usize(0, b) == 0,
+{
+}
+```
+REASON: Aligning zero should produce zero regardless of alignment size — tests that `sub(0, 0 % b) == 0` doesn't underflow
+===PHI_END===

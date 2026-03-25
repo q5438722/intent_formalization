@@ -1,0 +1,47 @@
+[
+  {
+    "name": "external_body_suffix_cancellation",
+    "type": "logical",
+    "code": "proof fn phi_1_external_body_suffix_cancellation(s1: Seq<int>, s2: Seq<int>, suffix: Seq<int>)\n    requires\n        s1 != s2,\n    ensures\n        s1 + suffix != s2 + suffix,\n{\n    seq_unequal_preserved_by_add(s1, s2, suffix);\n}",
+    "reason": "seq_unequal_preserved_by_add is external_body \u2014 unverified axiom asserting suffix append preserves inequality without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "concat_equal_implies_prefix_equal",
+    "type": "logical",
+    "code": "proof fn phi_2_concat_equal_implies_prefix_equal(s1: Seq<int>, s2: Seq<int>, suffix: Seq<int>)\n    requires\n        s1 + suffix == s2 + suffix,\n    ensures\n        s1 == s2,\n{\n    if s1 != s2 {\n        seq_unequal_preserved_by_add(s1, s2, suffix);\n    }\n}",
+    "reason": "contrapositive right cancellation law derived from the external_body axiom \u2014 if the axiom is inconsistent this would be unsound",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "empty_suffix_preserves_inequality",
+    "type": "boundary",
+    "code": "proof fn phi_3_empty_suffix_preserves_inequality(s1: Seq<int>, s2: Seq<int>)\n    requires\n        s1 != s2,\n    ensures\n        s1 + Seq::<int>::empty() != s2 + Seq::<int>::empty(),\n{\n    seq_unequal_preserved_by_add(s1, s2, Seq::<int>::empty());\n}",
+    "reason": "empty suffix boundary case \u2014 tests that the external_body axiom is consistent with s + empty == s",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "different_len_different_concat",
+    "type": "behavioral",
+    "code": "proof fn phi_4_different_len_different_concat(s1: Seq<int>, s2: Seq<int>, suffix: Seq<int>)\n    requires\n        s1.len() != s2.len(),\n    ensures\n        s1 + suffix != s2 + suffix,\n{\n    seq_unequal_preserved_by_add(s1, s2, suffix);\n}",
+    "reason": "different-length sequences are unequal so the axiom applies \u2014 tests the length branch is sound",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "auto_lemma_instantiation",
+    "type": "behavioral",
+    "code": "proof fn phi_5_auto_lemma_instantiation(a: int, b: int, suffix: Seq<int>)\n    requires\n        a != b,\n    ensures\n        seq![a] + suffix != seq![b] + suffix,\n{\n    seq_unequal_preserved_by_add_auto(suffix);\n}",
+    "reason": "tests that the auto wrapper correctly triggers on concrete singleton sequences differing at index 0",
+    "entailed": false,
+    "verus_output": "/intent_formalization/verusage/workspace_v2/anvil-library__seq_unequal_preserved_by_add_auto/phi_5_auto_lemma_instantiation.rs:28:9\n   |\n24 | proof fn phi_5_auto_lemma_instantiation(a: int, b: int, suffix: Seq<int>)\n   |       ------------------------------------------------------------------- at the end of the function body\n...\n28 |         seq![a] + suffix != seq![b] + suffix,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

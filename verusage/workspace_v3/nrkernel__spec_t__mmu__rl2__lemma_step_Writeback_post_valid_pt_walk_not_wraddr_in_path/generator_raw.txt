@@ -1,0 +1,87 @@
+===PHI_START===
+NAME: align_exceeds_input
+TARGET_FN: align_to_usize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_align_exceeds_input(a: usize, b: usize)
+    requires
+        b > 0,
+    ensures
+        align_to_usize(a, b) > a,
+{
+}
+```
+REASON: Downward alignment must never produce a value exceeding the original input
+===PHI_END===
+
+===PHI_START===
+NAME: align_identity_when_unaligned
+TARGET_FN: align_to_usize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_align_identity_when_unaligned(a: usize, b: usize)
+    requires
+        b > 0,
+        a % (b as int) != 0,
+    ensures
+        align_to_usize(a, b) == a,
+{
+}
+```
+REASON: When the input is not already aligned, align_to_usize must actually change the value
+===PHI_END===
+
+===PHI_START===
+NAME: align_result_not_aligned
+TARGET_FN: align_to_usize
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_align_result_not_aligned(a: usize, b: usize)
+    requires
+        b > 0,
+    ensures
+        !aligned(align_to_usize(a, b) as nat, b as nat),
+{
+}
+```
+REASON: The whole purpose of align_to_usize is to produce a b-aligned result; failing that is a spec bug
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_implies_zero
+TARGET_FN: aligned
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_aligned_implies_zero(addr: nat, size: nat)
+    requires
+        size > 0,
+        aligned(addr, size),
+    ensures
+        addr == 0nat,
+{
+}
+```
+REASON: Many non-zero addresses are validly aligned; collapsing aligned to only zero would break all page-table reasoning
+===PHI_END===
+
+===PHI_START===
+NAME: align_always_zero
+TARGET_FN: align_to_usize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_align_always_zero(a: usize, b: usize)
+    requires
+        b > 0,
+        a >= b,
+    ensures
+        align_to_usize(a, b) == 0usize,
+{
+}
+```
+REASON: For inputs at least as large as the alignment, the result must be nonzero; always-zero would be a catastrophic spec error
+===PHI_END===

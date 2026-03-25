@@ -1,0 +1,47 @@
+[
+  {
+    "name": "execution_equality_forces_fn_equality",
+    "type": "logical",
+    "code": "proof fn phi_1_execution_equality_forces_fn_equality(f: spec_fn(nat) -> int, g: spec_fn(nat) -> int)\n    requires\n        forall |i: nat| #[trigger] f(i) == g(i),\n    ensures\n        f == g,\n{\n    let ex1 = Execution { nat_to_state: f };\n    let ex2 = Execution { nat_to_state: g };\n    execution_equality::<int>(ex1, ex2);\n}",
+    "reason": "execution_equality is external_body forcing intensional equality of spec_fn from pointwise extensional equivalence \u2014 two structurally distinct closures are collapsed to equal",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "implies_apply_closure_bridge",
+    "type": "logical",
+    "code": "proof fn phi_2_implies_apply_closure_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.satisfied_by(ex),\n        (p.pred)(ex) ==> (q.pred)(ex),\n    ensures\n        q.satisfied_by(ex),\n{\n    implies_apply::<int>(ex, p, q);\n}",
+    "reason": "implies_apply is external_body bridging p.implies(q).satisfied_by(ex) through TempPred::new closure wrapping and direct implication \u2014 silently resolves closure identity mismatch",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "suffix_zero_equals_self",
+    "type": "logical",
+    "code": "proof fn phi_3_suffix_zero_equals_self(ex: Execution<int>)\n    ensures\n        ex.suffix(0) == ex,\n{\n    execution_equality::<int>(ex, ex.suffix(0));\n}",
+    "reason": "ex.suffix(0) creates closure |i| f(i+0) intensionally distinct from ex \u2014 execution_equality silently equates these without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "eliminate_always_reflexive",
+    "type": "boundary",
+    "code": "proof fn phi_4_eliminate_always_reflexive(p: TempPred<int>)\n    requires\n        always(p).entails(always(p)),\n    ensures\n        always(p).entails(p),\n{\n    eliminate_always::<int>(always(p), p);\n}",
+    "reason": "eliminate_always derives spec.entails(p) from spec.entails(always(p)) for any spec \u2014 combined with the trivial always(p).entails(always(p)), it strips temporal modality with only external_body axioms as justification",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "suffix_composition_equals_addition",
+    "type": "logical",
+    "code": "proof fn phi_5_suffix_composition_equals_addition(ex: Execution<int>, i: nat, j: nat)\n    ensures\n        ex.suffix(i).suffix(j) == ex.suffix(i + j),\n{\n    execution_equality::<int>(ex.suffix(i).suffix(j), ex.suffix(i + j));\n}",
+    "reason": "doubly-nested suffix creates a closure intensionally distinct from single-offset suffix \u2014 execution_equality collapses them without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

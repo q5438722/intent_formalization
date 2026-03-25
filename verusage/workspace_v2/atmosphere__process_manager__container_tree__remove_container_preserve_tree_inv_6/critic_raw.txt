@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: owned_threads_shared_across_containers
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: Neither `container_perms_wf` nor `container_tree_wf` constrains `owned_threads` disjointness. The Ghost field is completely unconstrained by the tree invariants, allowing two distinct containers to claim the same thread.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: no_child_imply_no_subtree_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: This is an `external_body` proof claiming empty children implies empty subtree_set. While likely true given the tree structure, `subtree_set_wf` only constrains the forward direction (subtree member → ancestor relationship) and `container_subtree_set_exclusive` links subtree to uppertree, but neither provides an inductive completeness argument that would formally justify this without trusted code.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: remove_container_no_resource_cleanup
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `remove_container_ensures` removes the container from the domain but has no postcondition about its `owned_threads`, `owned_endpoints`, or `owned_procs`. Resources owned by the removed container are silently lost with no spec-level transfer or cleanup accounting.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: root_container_parent_unconstrained
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `container_root_wf` sets depth==0 and requires non-root nodes to have `parent.is_Some()`, but never asserts `root.parent.is_None()`. The root can carry a spurious parent pointer, which could cause confusion in upward traversal logic.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: owned_endpoints_shared_across_containers
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: Same pattern as `owned_threads` — `owned_endpoints` is a `Ghost<Set<EndpointPtr>>` with no cross-container disjointness constraint. The source comments explicitly discuss scoped endpoint ownership within subtrees, yet the spec never enforces it.
+===VERDICT_END===
+
+===SUMMARY===
+All five candidates are true positives. Three share the root cause that Ghost resource-ownership fields (`owned_threads`, `owned_endpoints`, `owned_procs`) are completely unconstrained by `container_tree_wf` and `container_perms_wf` — no disjointness, and `remove_container_ensures` silently drops them without transfer. The `no_child_imply_no_subtree` external_body creates a trusted but unproved bridge between children emptiness and subtree emptiness. The root container's parent field is never constrained to be None despite depth==0.
+===END_SUMMARY===

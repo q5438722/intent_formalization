@@ -1,0 +1,47 @@
+[
+  {
+    "name": "pow2_negative_is_one",
+    "type": "boundary",
+    "code": "proof fn phi_1_pow2_negative_is_one(e: int)\n    requires\n        e < 0,\n    ensures\n        pow2(e) == 1,\n{\n}",
+    "reason": "`pow2` returns 1 for all negative exponents \u2014 mathematically 2^(-n) is a fraction, so callers passing negative exponents by mistake silently get 1",
+    "entailed": true,
+    "verus_output": "verification results:: 15 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "pow2_non_injective_at_zero",
+    "type": "boundary",
+    "code": "proof fn phi_2_pow2_non_injective_at_zero()\n    ensures\n        pow2(0) == pow2(-1) && pow2(-1) == pow2(-100),\n{\n}",
+    "reason": "All non-positive inputs collapse to 1, making `pow2` non-injective below 1 \u2014 could mask off-by-one errors near e=0 boundaries",
+    "entailed": true,
+    "verus_output": "verification results:: 15 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "div2_no_upper_bound_on_x",
+    "type": "boundary",
+    "code": "proof fn phi_3_div2_no_upper_bound_on_x(y: int)\n    requires\n        y > 0,\n    ensures\n        u64::MAX as int / (y * 2) == (u64::MAX as int / y) / 2,\n{\n    div2(u64::MAX, y);\n}",
+    "reason": "`div2` takes `x: u64` but `y: int` with no upper bound \u2014 `y * 2` can exceed u64 range, making the lemma applicable to divisions by values that don't fit in machine words",
+    "entailed": true,
+    "verus_output": "verification results:: 15 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "mul_assoc_smuggles_commutativity",
+    "type": "logical",
+    "code": "proof fn phi_4_mul_assoc_smuggles_commutativity(x: nat, y: nat)\n    ensures\n        x * y == y * x,\n{\n    mul_assoc(x, y, 1);\n}",
+    "reason": "`mul_assoc` ensures `(x*y)*z == y*(x*z)` which encodes commutativity \u2014 setting z=1 directly yields `x*y == y*x`, which may let proofs go through for unintended reasons",
+    "entailed": true,
+    "verus_output": "verification results:: 15 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "shift_is_div_zero_shift_identity",
+    "type": "behavioral",
+    "code": "proof fn phi_5_shift_is_div_zero_shift_identity(x: u64)\n    ensures\n        x >> 0u64 == x as nat,\n{\n    shift_is_div(x, 0);\n}",
+    "reason": "Right-shifting by 0 is identity \u2014 trivially true but if `shift_is_div` were unsound it would allow equating arbitrary bit-shift results with division, so this tests the base case soundness",
+    "entailed": false,
+    "verus_output": "ndition not satisfied\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__bin_sizes__mul_ordering/phi_5_shift_is_div_zero_shift_identity.rs:169:9\n    |\n167 | proof fn phi_5_shift_is_div_zero_shift_identity(x: u64)\n    |       ------------------------------------------------- at the end of the function body\n168 |     ensures\n169 |         x >> 0u64 == x as nat,\n    |         ^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

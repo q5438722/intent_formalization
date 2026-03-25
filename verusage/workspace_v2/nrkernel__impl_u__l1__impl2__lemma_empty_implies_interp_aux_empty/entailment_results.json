@@ -1,0 +1,47 @@
+[
+  {
+    "name": "inv_no_base_vaddr_alignment",
+    "type": "behavioral",
+    "code": "proof fn phi_1_inv_no_base_vaddr_alignment(d: Directory)\n    requires\n        d.inv(),\n        d.arch.inv(),\n        d.layer < d.arch.layers.len(),\n    ensures\n        // base_vaddr need not be aligned to entry_size * num_entries\n        exists|d2: Directory|\n            d2.inv() && d2.base_vaddr % (d2.entry_size() * d2.num_entries()) != 0,\n{\n}",
+    "reason": "`well_formed` has the alignment constraint on `base_vaddr` commented out \u2014 directories can have unaligned base addresses",
+    "entailed": false,
+    "verus_output": " pattern specified by one of the quantifier's triggers.)\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__impl_u__l1__impl2__lemma_empty_implies_interp_aux_empty/phi_1_inv_no_base_vaddr_alignment.rs:264:9\n    |\n264 | /         exists|d2: Directory|\n265 | |             d2.inv() && d2.base_vaddr % (d2.entry_size() * d2.num_entries()) != 0,\n    | |_________________________________________________________________________________^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_frame_base_unconstrained",
+    "type": "behavioral",
+    "code": "proof fn phi_2_page_frame_base_unconstrained(d: Directory, i: nat)\n    requires\n        d.inv(),\n        i < d.entries.len(),\n        d.entries[i as int] is Page,\n    ensures\n        // frame base can be anything \u2014 no alignment or range constraint\n        d.entries[i as int]->Page_0.frame.base == d.entries[i as int]->Page_0.frame.base,\n{\n}",
+    "reason": "`inv()` constrains page frame *size* but not frame *base* \u2014 frame base is completely unconstrained, no alignment or identity mapping requirement",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "interp_aux_right_overrides_left",
+    "type": "behavioral",
+    "code": "proof fn phi_3_interp_aux_right_overrides_left(d: Directory)\n    requires\n        d.inv(),\n        d.entries.len() >= 2,\n        d.entries[0] is Page,\n        d.entries[1] is Page,\n    ensures\n        // interp_aux uses union_prefer_right with i=0 entry on top\n        // entry 0's interp overrides entry 1's if keys collide\n        d.interp_aux(0) == d.interp_aux(1).union_prefer_right(d.interp_of_entry(0)),\n{\n}",
+    "reason": "`interp_aux` builds the map with earlier entries overriding later ones via `union_prefer_right` \u2014 key collisions silently shadow entries without the spec proving disjointness",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "subdirectory_base_not_aligned",
+    "type": "logical",
+    "code": "proof fn phi_4_subdirectory_base_not_aligned(d: Directory, i: nat)\n    requires\n        d.inv(),\n        i < d.entries.len(),\n        d.entries[i as int] is Directory,\n    ensures\n        // subdirectory base = parent base + i * entry_size, but parent base itself may be unaligned\n        d.entries[i as int]->Directory_0.base_vaddr == d.base_vaddr + i * d.entry_size(),\n{\n}",
+    "reason": "Subdirectory `base_vaddr` is computed from parent's `base_vaddr` which has no alignment constraint \u2014 misalignment propagates through the tree",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "empty_dir_nonempty_allowed",
+    "type": "behavioral",
+    "code": "proof fn phi_5_empty_dir_nonempty_allowed(d: Directory, i: nat)\n    requires\n        d.inv(),\n        i < d.entries.len(),\n        d.entries[i as int] is Directory,\n    ensures\n        // subdirectories can be empty \u2014 the commented-out `directories_are_nonempty` is not enforced\n        d.entries[i as int]->Directory_0.inv(),\n{\n    // inv() ensures directories_obey_invariant\n}",
+    "reason": "`inv()` has `directories_are_nonempty` commented out \u2014 empty subdirectories are allowed, wasting page table entries without the spec preventing it",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

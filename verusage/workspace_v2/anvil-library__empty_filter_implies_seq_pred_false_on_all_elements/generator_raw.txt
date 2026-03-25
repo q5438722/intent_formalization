@@ -1,0 +1,85 @@
+===PHI_START===
+NAME: filter_empty_of_empty_seq
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_filter_empty_of_empty_seq(pred: spec_fn(int) -> bool)
+    ensures
+        Seq::<int>::empty().filter(pred).len() == 0,
+{
+    reveal(Seq::filter);
+}
+```
+REASON: tests that filtering an empty sequence produces empty — if filter is misaxiomatized on empty sequences this could fail
+===PHI_END===
+
+===PHI_START===
+NAME: singleton_true_filter_nonempty
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_singleton_true_filter_nonempty(v: int, pred: spec_fn(int) -> bool)
+    requires
+        pred(v),
+    ensures
+        seq![v].filter(pred).len() > 0,
+{
+    reveal(Seq::filter);
+}
+```
+REASON: a singleton sequence with an element satisfying pred should have nonempty filter — tests contrapositive of the lemma on minimal input
+===PHI_END===
+
+===PHI_START===
+NAME: element_satisfying_pred_contradicts_empty_filter
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_element_satisfying_pred_contradicts_empty_filter(s: Seq<int>, pred: spec_fn(int) -> bool, e: int)
+    requires
+        s.filter(pred).len() == 0,
+        s.contains(e),
+    ensures
+        !pred(e),
+{
+    empty_filter_implies_seq_pred_false_on_all_elements(s, pred);
+}
+```
+REASON: directly tests the lemma's conclusion at a specific element — if the forall quantifier is mistriggered this specific instantiation could reveal a gap
+===PHI_END===
+
+===PHI_START===
+NAME: push_pred_true_makes_filter_nonempty
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_push_pred_true_makes_filter_nonempty(s: Seq<int>, pred: spec_fn(int) -> bool, v: int)
+    requires
+        pred(v),
+    ensures
+        s.push(v).filter(pred).len() > 0,
+{
+    reveal(Seq::filter);
+}
+```
+REASON: appending an element satisfying pred should always produce nonempty filter — tests that filter interacts correctly with push regardless of original sequence
+===PHI_END===
+
+===PHI_START===
+NAME: all_false_pred_implies_filter_len_zero
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_all_false_pred_implies_filter_len_zero(s: Seq<int>)
+    ensures
+        s.filter(|x: int| false).len() == 0,
+    decreases s.len(),
+{
+    reveal(Seq::filter);
+    if s.len() != 0 {
+        phi_5_all_false_pred_implies_filter_len_zero(s.drop_last());
+    }
+}
+```
+REASON: always-false predicate should yield empty filter on any sequence — tests the converse direction not proven by the lemma
+===PHI_END===

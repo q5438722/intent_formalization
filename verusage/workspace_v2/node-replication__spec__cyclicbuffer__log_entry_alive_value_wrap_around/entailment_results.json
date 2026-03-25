@@ -1,0 +1,47 @@
+[
+  {
+    "name": "alive_value_alternates_every_buffer_size",
+    "type": "behavioral",
+    "code": "proof fn phi_1_alive_value_alternates_every_buffer_size(i: LogicalLogIdx, buffer_size: nat)\n    requires\n        buffer_size > 0,\n    ensures\n        log_entry_alive_value(i, buffer_size) == log_entry_alive_value(i + 2 * (buffer_size as int), buffer_size),\n{\n    log_entry_alive_value_wrap_around(i, buffer_size);\n    log_entry_alive_value_wrap_around(i + (buffer_size as int), buffer_size);\n}",
+    "reason": "The alive value has period 2*buffer_size \u2014 advancing by two full buffer sizes returns to the same value, meaning the spec cannot distinguish entries that are 2*buffer_size apart",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "alive_value_at_zero_is_true",
+    "type": "boundary",
+    "code": "proof fn phi_2_alive_value_at_zero_is_true(buffer_size: nat)\n    requires\n        buffer_size > 0,\n    ensures\n        log_entry_alive_value(0, buffer_size) == true,\n{\n}",
+    "reason": "Index 0 always has alive_value true since `(0 / buffer_size) % 2 == 0` \u2014 initial entries are alive by convention, but this hardcodes a specific starting state",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "negative_index_alive_value",
+    "type": "boundary",
+    "code": "proof fn phi_3_negative_index_alive_value(buffer_size: nat)\n    requires\n        buffer_size > 0,\n    ensures\n        log_entry_alive_value(-1, buffer_size) == true,\n{\n}",
+    "reason": "Negative logical indices produce `(-1 / buffer_size) = -1` in Verus int division, and `(-1) % 2 == -1 != 0` \u2014 wait, actually this tests whether the spec handles negative indices correctly since `LogicalLogIdx = int`",
+    "entailed": false,
+    "verus_output": "tion/verusage/workspace_v2/node-replication__spec__cyclicbuffer__log_entry_alive_value_wrap_around/phi_3_negative_index_alive_value.rs:43:9\n   |\n39 | proof fn phi_3_negative_index_alive_value(buffer_size: nat)\n   |       ----------------------------------------------------- at the end of the function body\n...\n43 |         log_entry_alive_value(-1, buffer_size) == true,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "alive_value_same_within_buffer",
+    "type": "behavioral",
+    "code": "proof fn phi_4_alive_value_same_within_buffer(i: LogicalLogIdx, j: LogicalLogIdx, buffer_size: nat)\n    requires\n        buffer_size > 0,\n        0 <= i < buffer_size as int,\n        0 <= j < buffer_size as int,\n    ensures\n        log_entry_alive_value(i, buffer_size) == log_entry_alive_value(j, buffer_size),\n{\n}",
+    "reason": "All indices within the first buffer have the same alive value (all true) \u2014 the spec doesn't distinguish individual positions within a single wrap-around epoch",
+    "entailed": false,
+    "verus_output": "anyu/intent_formalization/verusage/workspace_v2/node-replication__spec__cyclicbuffer__log_entry_alive_value_wrap_around/phi_4_alive_value_same_within_buffer.rs:45:50\n   |\n13 |         buffer_size == LOG_SIZE,\n   |         ----------------------- recommendation not met\n...\n45 |         log_entry_alive_value(i, buffer_size) == log_entry_alive_value(j, buffer_size),\n   |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "log_size_specific_wrap",
+    "type": "boundary",
+    "code": "proof fn phi_5_log_size_specific_wrap(i: LogicalLogIdx)\n    ensures\n        log_entry_alive_value(i, LOG_SIZE as nat) != log_entry_alive_value(i + LOG_SIZE as int, LOG_SIZE as nat),\n{\n    log_entry_alive_value_wrap_around(i, LOG_SIZE as nat);\n}",
+    "reason": "The wrap-around property instantiated at `LOG_SIZE = 512*1024` \u2014 tests that the constant is hardcoded correctly and the wrap-around applies at the specific production buffer size",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

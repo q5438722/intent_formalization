@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: sorted_empty_is_valid
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Empty sequence vacuously satisfying `sorted` is correct and expected — it's the standard base case for any ordering predicate over pairs. No caller should assume sorted implies non-empty.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: cmp_spec_no_irreflexivity
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The property `a.cmp_spec(a).lt() || !a.cmp_spec(a).lt()` is a tautology (law of excluded middle) that holds for any expression. It reveals nothing about whether `cmp_spec` lacks irreflexivity axioms.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: sorted_no_transitivity
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures `a.cmp_spec(c).lt() || !a.cmp_spec(c).lt()` is again a tautology. It does not actually test whether transitivity holds — it would verify regardless of any axioms on `cmp_spec`.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: map_valid_ghost_unconstrained_outside_keys
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is a correct consequence of `map_valid` which asserts `m@.dom() == keys@.to_set()`. If `k` is not in the map domain, it cannot be in the keys set. This is a desirable and expected property of the validity invariant.
+===VERDICT_END===
+
+===SUMMARY===
+All four candidates are false positives. Two (cmp_spec_no_irreflexivity, sorted_no_transitivity) are tautologies of the form `P || !P` that verify trivially regardless of the spec. The empty-sorted property is the standard vacuous base case. The map-keys consistency property is a direct and correct consequence of the `map_valid` invariant linking the ghost map domain to the keys set.
+===END_SUMMARY===

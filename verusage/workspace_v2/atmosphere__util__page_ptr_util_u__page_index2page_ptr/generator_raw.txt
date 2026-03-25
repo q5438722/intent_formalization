@@ -1,0 +1,79 @@
+===PHI_START===
+NAME: lemma_usize_u64_enables_unsound_cast
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_lemma_usize_u64_enables_unsound_cast(x: u64)
+    requires
+        x as int > usize::MAX as int,
+    ensures
+        x as usize as u64 == x,
+{
+    lemma_usize_u64(x);
+}
+```
+REASON: `lemma_usize_u64` is external_body with no precondition — it asserts `x as usize as u64 == x` for ALL u64 values, but on a 32-bit platform where `usize` is 32 bits, values above `u32::MAX` would truncate and the roundtrip would fail
+===PHI_END===
+
+===PHI_START===
+NAME: page_index2ptr_no_overflow_check
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_page_index2ptr_no_overflow_check(i: usize)
+    requires
+        0 <= i < NUM_PAGES,
+    ensures
+        spec_page_index2page_ptr(i) as int == i as int * 4096,
+{
+}
+```
+REASON: The spec casts `i * 4096` to `usize` without verifying the product fits — with `NUM_PAGES = 2M`, the max product is `(2M-1)*4096 ≈ 8G` which exceeds 32-bit `usize::MAX` but the spec silently truncates via `as usize`
+===PHI_END===
+
+===PHI_START===
+NAME: max_usize_constant_incorrect
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_max_usize_constant_incorrect()
+    ensures
+        MAX_USIZE as int == 31 * 1024 * 1024 * 1024,
+        MAX_USIZE as int < u64::MAX as int,
+        MAX_USIZE as int > usize::MAX as int || MAX_USIZE as int <= usize::MAX as int,
+{
+}
+```
+REASON: `MAX_USIZE` is declared as `u64` with value 31GB but named as if it represents `usize::MAX` — on 64-bit platforms `usize::MAX` is ~18EB, and this constant is used in `lemma_usize_u64` proofs to justify arithmetic that may not actually hold
+===PHI_END===
+
+===PHI_START===
+NAME: page_ptr_zero_valid
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_page_ptr_zero_valid()
+    ensures
+        spec_page_index2page_ptr(0usize) == 0usize,
+{
+}
+```
+REASON: Page index 0 maps to page pointer 0 (null pointer) — if page pointers are used as memory addresses, a null page pointer being valid could mask null-dereference bugs or confuse null-check logic
+===PHI_END===
+
+===PHI_START===
+NAME: page_index_valid_not_linked_to_max_usize
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_page_index_valid_not_linked_to_max_usize(i: usize)
+    requires
+        page_index_valid(i),
+    ensures
+        spec_page_index2page_ptr(i) as int <= MAX_USIZE as int,
+{
+    lemma_usize_u64(MAX_USIZE);
+}
+```
+REASON: `page_index_valid` only checks `i < NUM_PAGES` but `MAX_USIZE` (31GB) is smaller than the maximum page pointer value `(NUM_PAGES-1)*4096 ≈ 8GB` — wait, 8GB < 31GB so this holds, but the relationship is never formally established in the spec, relying entirely on the unverified `lemma_usize_u64`
+===PHI_END===

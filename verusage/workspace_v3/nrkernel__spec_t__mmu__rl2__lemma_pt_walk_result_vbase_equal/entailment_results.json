@@ -1,0 +1,52 @@
+[
+  {
+    "name": "align_exceeds_input",
+    "target_fn": "align_to_usize",
+    "type": "behavioral",
+    "reason": "Alignment (round-down) must never produce a value larger than the original address",
+    "entailed": false,
+    "verified": 31,
+    "errors": 1,
+    "output_tail": "gn_exceeds_input(a: usize, b: usize)\n    |       ------------------------------------------------ at the end of the function body\n...\n522 |         align_to_usize(a, b) > a,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n"
+  },
+  {
+    "name": "aligned_input_changes",
+    "target_fn": "align_to_usize",
+    "type": "boundary",
+    "reason": "Aligning an already-aligned value must be a no-op; changing it would corrupt valid base addresses",
+    "entailed": false,
+    "verified": 31,
+    "errors": 1,
+    "output_tail": "nput_changes(a: usize, b: usize)\n    |       -------------------------------------------------- at the end of the function body\n...\n522 |         align_to_usize(a, b) != a,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n"
+  },
+  {
+    "name": "result_not_multiple",
+    "target_fn": "align_to_usize",
+    "type": "logical",
+    "reason": "The whole point of alignment is that the result is divisible by the alignment size; violating this breaks page-boundary invariants",
+    "entailed": false,
+    "verified": 31,
+    "errors": 1,
+    "output_tail": "ltiple(a: usize, b: usize)\n    |       ------------------------------------------------ at the end of the function body\n...\n521 |         align_to_usize(a, b) % b != 0,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n"
+  },
+  {
+    "name": "excessive_rounding",
+    "target_fn": "align_to_usize",
+    "type": "behavioral",
+    "reason": "Rounding down by b or more means skipping an entire alignment block, losing a valid mapping region",
+    "entailed": false,
+    "verified": 31,
+    "errors": 1,
+    "output_tail": "ounding(a: usize, b: usize)\n    |       ----------------------------------------------- at the end of the function body\n...\n522 |         a - align_to_usize(a, b) >= b,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n"
+  },
+  {
+    "name": "not_idempotent",
+    "target_fn": "align_to_usize",
+    "type": "logical",
+    "reason": "Alignment must be idempotent; a double-align changing the result would mean walk result vbase addresses are unstable",
+    "entailed": false,
+    "verified": 31,
+    "errors": 1,
+    "output_tail": "------------------- at the end of the function body\n...\n521 |         align_to_usize(align_to_usize(a, b), b) != align_to_usize(a, b),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n"
+  }
+]

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "ordering_lt_only_less",
+    "type": "behavioral",
+    "code": "proof fn phi_1_ordering_lt_only_less()\n    ensures\n        Ordering::Less.lt() == true,\n        Ordering::Equal.lt() == false,\n        Ordering::Greater.lt() == false,\n{\n}",
+    "reason": "`Ordering::lt` returns true only for `Less` \u2014 there is no `le`, `ge`, or `gt` helper, so any comparison-based spec using `Ordering` can only express strict less-than, silently preventing less-than-or-equal range queries in delegation map lookups",
+    "entailed": true,
+    "verus_output": "`->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__host_impl_v__impl2__real_next_impl/phi_1_ordering_lt_only_less.rs:1572:91\n     |\n1572 |       || (!self.k.is_None() && !other.k.is_None() && self.k.get_Some_0().cmp_spec(other.k.get_Some_0()).lt())\n     |                                                                                           ^^^^^^^^^^\n\nwarning: 6 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "between_excludes_lower_bound",
+    "type": "boundary",
+    "code": "proof fn phi_2_between_excludes_lower_bound<K: KeyTrait + VerusClone>(ki: KeyIterator<K>)\n    ensures\n        !KeyIterator::between(ki, ki, ki),\n{\n}",
+    "reason": "`between(lhs, ki, rhs)` requires `!ki.lt_spec(lhs) && ki.lt_spec(rhs)` \u2014 when all three are equal, `ki.lt_spec(rhs)` is false (not strictly less than itself), so a single-element range `[x, x)` is empty, meaning point lookups using `between` silently return nothing",
+    "entailed": true,
+    "verus_output": " `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__host_impl_v__impl2__real_next_impl/phi_2_between_excludes_lower_bound.rs:1572:91\n     |\n1572 |       || (!self.k.is_None() && !other.k.is_None() && self.k.get_Some_0().cmp_spec(other.k.get_Some_0()).lt())\n     |                                                                                           ^^^^^^^^^^\n\nwarning: 6 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "cmessage_delegate_no_abstractability_check_on_h",
+    "type": "behavioral",
+    "code": "proof fn phi_3_cmessage_delegate_no_abstractability_check_on_h(kr: KeyRange<CKey>, h: CKeyHashMap)\n    ensures\n        ({\n            let msg = CMessage::Delegate { range: kr, h: h };\n            msg.abstractable()\n        }),\n{\n}",
+    "reason": "`CMessage::abstractable` falls through to `_ => true` for `Delegate` without checking `h` \u2014 an arbitrary (potentially invalid) CKeyHashMap enters the abstract protocol model unchecked",
+    "entailed": true,
+    "verus_output": " https://verus-lang.github.io/verus/guide/datatypes_enum.html\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__host_impl_v__impl2__real_next_impl/phi_3_cmessage_delegate_no_abstractability_check_on_h.rs:1572:91\n     |\n1572 |       || (!self.k.is_None() && !other.k.is_None() && self.k.get_Some_0().cmp_spec(other.k.get_Some_0()).lt())\n     |                                                                                           ^^^^^^^^^^\n\nwarning: 6 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "vec_marshalable_empty_always_valid",
+    "type": "boundary",
+    "code": "proof fn phi_4_vec_marshalable_empty_always_valid()\n    ensures\n        ({\n            let v: Vec<u64> = Vec::new();\n            v.is_marshalable()\n        }),\n{\n}",
+    "reason": "An empty `Vec<T>` is always marshalable regardless of T's properties \u2014 `fold_left` on an empty sequence produces 0 for size and the `forall` over `contains` is vacuously true, so `is_marshalable` provides no guarantee about the element type's serializability for empty collections",
+    "entailed": false,
+    "verus_output": "                                                                                         ^^^^^^^^^^\n\nerror: cannot call function `alloc::vec::impl&%0::new` with mode exec\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__host_impl_v__impl2__real_next_impl/phi_4_vec_marshalable_empty_always_valid.rs:2120:31\n     |\n2120 |             let v: Vec<u64> = Vec::new();\n     |                               ^^^^^^^^^^\n\nerror: aborting due to 1 previous error; 6 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "tuple_serialize_ambiguous_concatenation",
+    "type": "logical",
+    "code": "proof fn phi_5_tuple_serialize_ambiguous_concatenation(a: Vec<u8>, b: Vec<u8>)\n    requires\n        a.is_marshalable(),\n        b.is_marshalable(),\n    ensures\n        (a, b).ghost_serialize() ==\n            a.ghost_serialize() + b.ghost_serialize(),\n{\n}",
+    "reason": "Tuple serialization is bare concatenation with no delimiter or length prefix between components \u2014 if `a.ghost_serialize()` has variable length, a deserializer cannot determine where the first element ends and the second begins without external framing, breaking injectivity of the serialization format",
+    "entailed": true,
+    "verus_output": "instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__host_impl_v__impl2__real_next_impl/phi_5_tuple_serialize_ambiguous_concatenation.rs:1572:91\n     |\n1572 |       || (!self.k.is_None() && !other.k.is_None() && self.k.get_Some_0().cmp_spec(other.k.get_Some_0()).lt())\n     |                                                                                           ^^^^^^^^^^\n\nwarning: 6 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

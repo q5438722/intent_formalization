@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "lemma_tentatively_append_external_body",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`lemma_tentatively_append` is `external_body` with `unimplemented!()` body. Its ensures clause asserts that writing bytes to the log area preserves `info_consistent_with_log_area` \u2014 a complex invariant involving circular buffer arithmetic, persistent memory state, and flush semantics. This entire proof is trusted without verification."
+  },
+  {
+    "phi": "no_outstanding_writes_from_external_body",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This property is derived from the same `external_body` lemma. The claim that the write target range has no outstanding writes follows from the invariant's guarantee about positions beyond `log_plus_pending_length`, but this reasoning is trusted, not verified. It's a distinct safety-critical sub-conclusion of the unverified lemma."
+  },
+  {
+    "phi": "unreachable_during_recovery_from_external_body",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Also derived from the same `external_body` lemma. The crash-safety property that write targets are unreachable during recovery is critical \u2014 if wrong, partial writes could corrupt recovered log state. This is trusted without proof."
+  },
+  {
+    "phi": "tentatively_append_pending_concat",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`tentatively_append` is defined as `Self { pending: self.pending + bytes, ..self }`. Chaining two appends gives `(self.pending + b1) + b2` which equals `self.pending + b1 + b2` by sequence concatenation associativity. Correct by construction."
+  }
+]

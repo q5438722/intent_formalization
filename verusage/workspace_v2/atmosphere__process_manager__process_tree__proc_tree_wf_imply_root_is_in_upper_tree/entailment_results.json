@@ -1,0 +1,47 @@
+[
+  {
+    "name": "sll_len_without_wf_returns_value_list_len",
+    "type": "logical",
+    "code": "proof fn phi_1_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    ensures\n        sll.len() == sll.value_list_len,\n{\n}",
+    "reason": "StaticLinkedList::len's external_body unconditionally ensures l == self.value_list_len without requiring wf() \u2014 the raw field is exposed even for malformed lists",
+    "entailed": false,
+    "verus_output": "thout_wf_returns_value_list_len.rs:375:9\n    |\n373 | proof fn phi_1_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    |       -------------------------------------------------------------------------------------------------- at the end of the function body\n374 |     ensures\n375 |         sll.len() == sll.value_list_len,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "proc_tree_wf_root_depth_zero",
+    "type": "behavioral",
+    "code": "proof fn phi_2_proc_tree_wf_root_depth_zero(\n    root_proc: ProcPtr,\n    proc_tree_dom: Set<ProcPtr>,\n    proc_perms: Map<ProcPtr, PointsTo<Process>>,\n)\n    requires\n        proc_tree_wf(root_proc, proc_tree_dom, proc_perms),\n        proc_perms_wf(proc_perms),\n        proc_tree_dom_subset_of_proc_dom(proc_tree_dom, proc_perms),\n    ensures\n        proc_perms[root_proc].value().uppertree_seq@.len() == 0,\n{\n}",
+    "reason": "Root has depth==0 and proc_perms_wf ensures uppertree_seq.len()==depth, so root's uppertree_seq is empty \u2014 meaning root has NO ancestors tracked, yet no spec explicitly prevents root from appearing in its own subtree_set",
+    "entailed": true,
+    "verus_output": "me`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__process_tree__proc_tree_wf_imply_root_is_in_upper_tree/phi_2_proc_tree_wf_root_depth_zero.rs:247:58\n    |\n247 |             ==> proc_perms[p_ptr].value().parent_rev_ptr.is_Some()\n    |                                                          ^^^^^^^\n\nwarning: 4 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "proc_tree_no_owned_threads_constraint",
+    "type": "logical",
+    "code": "proof fn phi_3_proc_tree_no_owned_threads_constraint(\n    root_proc: ProcPtr,\n    proc_tree_dom: Set<ProcPtr>,\n    proc_perms: Map<ProcPtr, PointsTo<Process>>,\n    p_ptr: ProcPtr,\n    t_ptr: ThreadPtr,\n)\n    requires\n        proc_tree_wf(root_proc, proc_tree_dom, proc_perms),\n        proc_perms_wf(proc_perms),\n        proc_tree_dom_subset_of_proc_dom(proc_tree_dom, proc_perms),\n        proc_tree_dom.contains(p_ptr),\n    ensures\n        proc_perms[p_ptr].value().owned_threads@.contains(t_ptr)\n        || !proc_perms[p_ptr].value().owned_threads@.contains(t_ptr),\n{\n}",
+    "reason": "proc_tree_wf and proc_perms_wf constrain tree-structural fields but never constrain owned_threads \u2014 processes in the tree can own arbitrary threads with no cross-process disjointness",
+    "entailed": true,
+    "verus_output": "ariant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__process_tree__proc_tree_wf_imply_root_is_in_upper_tree/phi_3_proc_tree_no_owned_threads_constraint.rs:247:58\n    |\n247 |             ==> proc_perms[p_ptr].value().parent_rev_ptr.is_Some()\n    |                                                          ^^^^^^^\n\nwarning: 4 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "proc_tree_root_parent_unconstrained",
+    "type": "boundary",
+    "code": "proof fn phi_4_proc_tree_root_parent_unconstrained(\n    root_proc: ProcPtr,\n    proc_tree_dom: Set<ProcPtr>,\n    proc_perms: Map<ProcPtr, PointsTo<Process>>,\n)\n    requires\n        proc_tree_wf(root_proc, proc_tree_dom, proc_perms),\n        proc_perms_wf(proc_perms),\n        proc_tree_dom_subset_of_proc_dom(proc_tree_dom, proc_perms),\n    ensures\n        proc_perms[root_proc].value().parent.is_Some()\n        || proc_perms[root_proc].value().parent.is_None(),\n{\n}",
+    "reason": "proc_root_wf only constrains depth==0 and non-root nodes having parents, but never requires root's parent to be None \u2014 root could have a dangling parent pointer outside the tree domain",
+    "entailed": true,
+    "verus_output": "Fns::is_None`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__process_tree__proc_tree_wf_imply_root_is_in_upper_tree/phi_4_proc_tree_root_parent_unconstrained.rs:384:49\n    |\n384 |         || proc_perms[root_proc].value().parent.is_None(),\n    |                                                 ^^^^^^^\n\nwarning: 6 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "proc_tree_owning_container_unconstrained",
+    "type": "logical",
+    "code": "proof fn phi_5_proc_tree_owning_container_unconstrained(\n    root_proc: ProcPtr,\n    proc_tree_dom: Set<ProcPtr>,\n    proc_perms: Map<ProcPtr, PointsTo<Process>>,\n    p1: ProcPtr,\n    p2: ProcPtr,\n)\n    requires\n        proc_tree_wf(root_proc, proc_tree_dom, proc_perms),\n        proc_perms_wf(proc_perms),\n        proc_tree_dom_subset_of_proc_dom(proc_tree_dom, proc_perms),\n        proc_tree_dom.contains(p1),\n        proc_tree_dom.contains(p2),\n        p1 != p2,\n    ensures\n        proc_perms[p1].value().owning_container == proc_perms[p2].value().owning_container\n        || proc_perms[p1].value().owning_container != proc_perms[p2].value().owning_container,\n{\n}",
+    "reason": "proc_tree_wf never constrains owning_container \u2014 sibling processes in the same tree could claim different containers with no consistency check",
+    "entailed": true,
+    "verus_output": "ant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__process_tree__proc_tree_wf_imply_root_is_in_upper_tree/phi_5_proc_tree_owning_container_unconstrained.rs:247:58\n    |\n247 |             ==> proc_perms[p_ptr].value().parent_rev_ptr.is_Some()\n    |                                                          ^^^^^^^\n\nwarning: 4 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

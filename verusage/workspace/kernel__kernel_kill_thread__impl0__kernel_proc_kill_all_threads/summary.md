@@ -1,118 +1,79 @@
-# Verus Specification Test Summary
+# Adversarial Test Summary: `kernel_proc_kill_all_threads`
 
-## File Under Test
+## Target Function
+`Kernel::kernel_proc_kill_all_threads(&mut self, proc_ptr: ProcPtr)` — iteratively kills all threads owned by a process by calling `kernel_kill_thread` in a loop.
 
-`kernel__kernel_kill_thread__impl0__kernel_proc_kill_all_threads.rs`
-
-This file defines the `Kernel` struct and two methods:
-
-1. **`kernel_kill_thread`** (`#[verifier::external_body]`): Kills a single thread. Trusted spec — removes the thread from `thread_dom`, decrements the owning process's `owned_threads` count, and preserves `wf`, `proc_dom`, `container_dom`, and tree structures.
-
-2. **`kernel_proc_kill_all_threads`** (verified body): Kills all threads belonging to a process by iterating and calling `kernel_kill_thread` for each. Ensures `owned_threads.len() == 0` afterwards while preserving `wf`, `proc_dom`, `container_dom`, and tree structures.
+### Specification Summary
+- **Requires**: `self.wf()`, `self.proc_dom().contains(proc_ptr)`
+- **Ensures**: `self.wf()`, `self.proc_dom().contains(proc_ptr)`, `owned_threads.len() == 0`, `proc_dom` unchanged, `container_dom` unchanged, `process_tree_unchanged`, `containers_tree_unchanged`
 
 ---
 
-## Correctness Results (correctness_tests.rs)
+## Results Overview
 
-**Verus output**: `58 verified, 0 errors` ✅
+| Test File | Tests | Failed (as expected) | Passed (unexpected) |
+|-----------|-------|---------------------|-------------------|
+| `boundary_tests.rs` | 10 | 10 | 0 |
+| `behavioral_mutation_tests.rs` | 10 | 10 | 0 |
+| `logical_tests.rs` | 10 | 10 | 0 |
+| **Total** | **30** | **30** | **0** |
 
-| # | Test Name | Description | Expected | Actual |
-|---|-----------|-------------|----------|--------|
-| 1 | `test_kill_thread_ensures_wf` | kill_thread preserves wf | PASS | ✅ PASS |
-| 2 | `test_kill_thread_removes_thread` | kill_thread removes thread from thread_dom | PASS | ✅ PASS |
-| 3 | `test_kill_thread_preserves_proc_dom` | kill_thread leaves proc_dom unchanged | PASS | ✅ PASS |
-| 4 | `test_kill_thread_preserves_container_dom` | kill_thread leaves container_dom unchanged | PASS | ✅ PASS |
-| 5 | `test_kill_thread_decrements_owned_threads_len` | kill_thread decrements owning proc's thread count by 1 | PASS | ✅ PASS |
-| 6 | `test_kill_thread_process_tree_unchanged` | kill_thread preserves process tree | PASS | ✅ PASS |
-| 7 | `test_kill_thread_containers_tree_unchanged` | kill_thread preserves container tree | PASS | ✅ PASS |
-| 8 | `test_kill_all_ensures_wf` | kill_all preserves wf | PASS | ✅ PASS |
-| 9 | `test_kill_all_proc_in_dom` | kill_all keeps proc in proc_dom | PASS | ✅ PASS |
-| 10 | `test_kill_all_empties_threads` | kill_all results in owned_threads.len() == 0 | PASS | ✅ PASS |
-| 11 | `test_kill_all_preserves_proc_dom` | kill_all leaves proc_dom unchanged | PASS | ✅ PASS |
-| 12 | `test_kill_all_preserves_container_dom` | kill_all leaves container_dom unchanged | PASS | ✅ PASS |
-| 13 | `test_kill_all_process_tree_unchanged` | kill_all preserves process tree | PASS | ✅ PASS |
-| 14 | `test_kill_all_containers_tree_unchanged` | kill_all preserves container tree | PASS | ✅ PASS |
-| 15 | `test_kill_all_combined` | All kill_all postconditions combined | PASS | ✅ PASS |
-| 16 | `test_kill_all_other_procs_preserved` | Other procs remain in domain after kill_all | PASS | ✅ PASS |
+**All 30 adversarial tests failed verification as expected.** No specification weaknesses were detected.
 
 ---
 
-## Completeness Results
+## Boundary Tests (10/10 FAILED ✓)
 
-### Round 1: Precondition Violations (completeness_round1.rs)
+| # | Test | Violated Precondition |
+|---|------|-----------------------|
+| 1 | `test_boundary_proc_not_in_dom` | `proc_ptr ∉ proc_dom` |
+| 2 | `test_boundary_no_wf` | `wf == false` |
+| 3 | `test_boundary_proc_ptr_zero_empty_dom` | Zero ptr in empty domain |
+| 4 | `test_boundary_proc_ptr_max` | `usize::MAX ∉ proc_dom` |
+| 5 | `test_boundary_get_head_on_empty_list` | `len == 0` for `get_head` |
+| 6 | `test_boundary_kill_thread_not_in_dom` | `thread_ptr ∉ thread_dom` |
+| 7 | `test_boundary_wf_but_thread_not_in_dom` | `wf` true but thread missing |
+| 8 | `test_boundary_loop_count_mismatch` | Loop bound ≠ actual length |
+| 9 | `test_boundary_get_proc_missing_fields_wf` | Missing `process_fields_wf` |
+| 10 | `test_boundary_proc_removed_during_loop` | Proc removed mid-loop |
 
-**Verus output**: `40 verified, 5 errors` ✅ (all test functions fail)
+## Behavioral Mutation Tests (10/10 FAILED ✓)
 
-| # | Test Name | What It Tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | `test_fail_kill_thread_no_wf` | Call kill_thread without wf precondition | FAIL | ✅ FAIL |
-| 2 | `test_fail_kill_thread_not_in_dom` | Call kill_thread on thread not in domain | FAIL | ✅ FAIL |
-| 3 | `test_fail_kill_all_no_wf` | Call kill_all without wf precondition | FAIL | ✅ FAIL |
-| 4 | `test_fail_kill_all_not_in_dom` | Call kill_all on proc not in domain | FAIL | ✅ FAIL |
-| 5 | `test_fail_kill_thread_no_preconditions` | Call kill_thread with no preconditions at all | FAIL | ✅ FAIL |
+| # | Test | Mutated Postcondition |
+|---|------|-----------------------|
+| 1 | `test_mutation_not_all_threads_killed` | `owned_threads.len() == 1` (not 0) |
+| 2 | `test_mutation_proc_removed` | `proc_dom` loses target proc |
+| 3 | `test_mutation_proc_not_in_dom_after` | `proc_ptr ∉ proc_dom` after |
+| 4 | `test_mutation_container_dom_cleared` | `container_dom` emptied |
+| 5 | `test_mutation_process_parent_changed` | Process parent set to `None` |
+| 6 | `test_mutation_process_depth_changed` | Process depth incremented |
+| 7 | `test_mutation_container_children_changed` | Container children shrunk |
+| 8 | `test_mutation_wf_false_after` | `wf == false` after operation |
+| 9 | `test_mutation_threads_decrease_by_two` | Threads decrease by 2/iter |
+| 10 | `test_mutation_container_subtree_set_grew` | Subtree set gained element |
 
-### Round 2: Overly Strong Postconditions (completeness_round2.rs)
+## Logical Tests (10/10 FAILED ✓)
 
-**Verus output**: `40 verified, 5 errors` ✅ (all test functions fail)
-
-| # | Test Name | What It Tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | `test_fail_kill_thread_dom_empty` | thread_dom becomes empty after killing one thread | FAIL | ✅ FAIL |
-| 2 | `test_fail_kill_all_removes_proc` | proc removed from domain after kill_all | FAIL | ✅ FAIL |
-| 3 | `test_fail_kill_all_proc_dom_shrinks` | proc_dom shrinks (loses target proc) after kill_all | FAIL | ✅ FAIL |
-| 4 | `test_fail_kill_all_container_dom_empty` | container_dom becomes empty after kill_all | FAIL | ✅ FAIL |
-| 5 | `test_fail_kill_all_threads_len_1` | owned_threads.len() == 1 after kill_all | FAIL | ✅ FAIL |
-
-### Round 3: Negated Postconditions (completeness_round3.rs)
-
-**Verus output**: `40 verified, 5 errors` ✅ (all test functions fail)
-
-| # | Test Name | What It Tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | `test_fail_kill_all_not_wf` | Assert !wf() after kill_all | FAIL | ✅ FAIL |
-| 2 | `test_fail_kill_all_proc_not_in_dom` | Assert proc NOT in domain after kill_all | FAIL | ✅ FAIL |
-| 3 | `test_fail_kill_all_threads_not_empty` | Assert owned_threads.len() != 0 after kill_all | FAIL | ✅ FAIL |
-| 4 | `test_fail_kill_all_process_tree_changed` | Assert process tree changed after kill_all | FAIL | ✅ FAIL |
-| 5 | `test_fail_kill_thread_not_wf` | Assert !wf() after kill_thread | FAIL | ✅ FAIL |
-
-### Round 4: Wrong Specific Values (completeness_round4.rs)
-
-**Verus output**: `40 verified, 5 errors` ✅ (all test functions fail)
-
-| # | Test Name | What It Tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | `test_fail_kill_all_len_42` | Assert owned_threads.len() == 42 after kill_all | FAIL | ✅ FAIL |
-| 2 | `test_fail_kill_all_len_max` | Assert owned_threads.len() == 128 after kill_all | FAIL | ✅ FAIL |
-| 3 | `test_fail_kill_thread_still_in_dom` | Assert killed thread still in domain | FAIL | ✅ FAIL |
-| 4 | `test_fail_kill_thread_dom_unchanged` | Assert thread_dom unchanged after kill_thread | FAIL | ✅ FAIL |
-| 5 | `test_fail_kill_thread_len_increases` | Assert owned_threads.len() increases after kill_thread | FAIL | ✅ FAIL |
-
-### Round 5: Cross-Function Misuse & Edge Cases (completeness_round5.rs)
-
-**Verus output**: `40 verified, 5 errors` ✅ (all test functions fail)
-
-| # | Test Name | What It Tests | Expected | Actual |
-|---|-----------|---------------|----------|--------|
-| 1 | `test_fail_kill_all_containers_tree_changed` | Assert container tree changed after kill_all | FAIL | ✅ FAIL |
-| 2 | `test_fail_kill_all_other_proc_removed` | Assert unrelated proc removed from domain | FAIL | ✅ FAIL |
-| 3 | `test_fail_kill_thread_changes_proc_dom` | Assert kill_thread removes proc from proc_dom | FAIL | ✅ FAIL |
-| 4 | `test_fail_kill_thread_changes_container_dom` | Assert kill_thread removes container from container_dom | FAIL | ✅ FAIL |
-| 5 | `test_fail_kill_all_contradictory` | Assert thread_dom unchanged when proc had threads and kill_all zeroed them | FAIL | ✅ FAIL |
+| # | Test | Unwarranted Property |
+|---|------|---------------------|
+| 1 | `test_logical_kill_all_threads_different_procs_same_dom` | Determinism across procs |
+| 2 | `test_logical_thread_dom_empty_after` | All threads globally gone |
+| 3 | `test_logical_process_has_no_children_after` | No child procs remain |
+| 4 | `test_logical_proc_dom_singleton_after` | `proc_dom` is singleton |
+| 5 | `test_logical_page_closure_empty_after` | Page closure emptied |
+| 6 | `test_logical_pcid_reset_after` | PCID resets to 0 |
+| 7 | `test_logical_owned_threads_unchanged_too_strong` | `owned_threads` preserved |
+| 8 | `test_logical_thread_count_bounded_small` | Thread count ≤ 10 |
+| 9 | `test_logical_container_dom_grows` | New containers appear |
+| 10 | `test_logical_threads_killed_in_order` | Threads killed by pointer order |
 
 ---
 
-## Overall Assessment
+## Conclusion
 
-### Correctness: ✅ PASS
-All 16 correctness tests verify successfully. The specs for both `kernel_kill_thread` and `kernel_proc_kill_all_threads` are correct — every postcondition is provable from the preconditions and function bodies.
+The specification for `kernel_proc_kill_all_threads` correctly rejects all 30 adversarial queries:
+- **Boundary**: Invalid inputs are properly guarded by preconditions.
+- **Behavioral**: Incorrect output mutations are rejected by postconditions.
+- **Logical**: Unwarranted stronger properties and cross-domain claims are not entailed.
 
-### Completeness: ✅ PASS
-All 25 completeness tests fail as expected. The specs reject:
-- **Precondition violations**: Both `wf()` and domain membership preconditions are necessary
-- **Overly strong claims**: The spec doesn't allow proving that domains shrink or empty, or that thread counts are non-zero
-- **Negated postconditions**: Every postcondition is tight — its negation is rejected
-- **Wrong values**: Specific incorrect values for thread counts are rejected
-- **Cross-function misuse**: The spec correctly isolates effects (kill_all doesn't affect other procs, kill_thread doesn't affect proc/container domains)
-
-### Spec Gaps Found: None
-The specifications are both correct and complete for the properties tested. No unexpected passes or failures were observed.
+The specification appears **consistent** with respect to the tested semantic boundary.

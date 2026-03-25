@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize2pa_mem_valid_unconditional",
+    "type": "logical",
+    "code": "proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body ensures MEM_valid(ret) for ALL inputs \u2014 trusts without proof that masking any arbitrary usize yields a valid physical address",
+    "entailed": false,
+    "verus_output": "lization/verusage/workspace_v2/atmosphere__kernel__syscall_send_pages__impl0__syscall_send_pages/phi_1_usize2pa_mem_valid_unconditional.rs:3328:9\n     |\n3326 | proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n     |       --------------------------------------------------- at the end of the function body\n3327 |     ensures\n3328 |         MEM_valid(usize2pa(v)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 29 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "sll_len_no_wf_guard",
+    "type": "behavioral",
+    "code": "proof fn phi_2_sll_len_no_wf_guard<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    ensures\n        sll.len() == sll.value_list_len,\n{\n}",
+    "reason": "StaticLinkedList::len unconditionally ensures l == self.value_list_len without requiring wf() \u2014 the raw field is exposed even when the data structure is in an inconsistent state",
+    "entailed": false,
+    "verus_output": "all_send_pages__impl0__syscall_send_pages/phi_2_sll_len_no_wf_guard.rs:3328:9\n     |\n3326 | proof fn phi_2_sll_len_no_wf_guard<T, const N: usize>(sll: StaticLinkedList<T, N>)\n     |       ---------------------------------------------------------------------------- at the end of the function body\n3327 |     ensures\n3328 |         sll.len() == sll.value_list_len,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 29 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "sll_len_wf_self_referential",
+    "type": "logical",
+    "code": "proof fn phi_3_sll_len_wf_self_referential<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    requires\n        sll.wf(),\n    ensures\n        sll.len() == sll@.len(),\n        sll.len() == sll.len(),\n{\n}",
+    "reason": "StaticLinkedList::len's ensures clause `self.wf() ==> l == self.len()` is self-referential \u2014 len() is defined in terms of spec_len which calls self@.len(), but the ensures also says `l == self.len()` creating a circular spec",
+    "entailed": false,
+    "verus_output": "l__syscall_send_pages__impl0__syscall_send_pages/phi_3_sll_len_wf_self_referential.rs:3330:9\n     |\n3326 | proof fn phi_3_sll_len_wf_self_referential<T, const N: usize>(sll: StaticLinkedList<T, N>)\n     |       ------------------------------------------------------------------------------------ at the end of the function body\n...\n3330 |         sll.len() == sll@.len(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 29 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "is_empty_l4_dom_unbounded",
+    "type": "boundary",
+    "code": "proof fn phi_4_is_empty_l4_dom_unbounded(pt: PageTable, p: PageMapPtr)\n    requires\n        pt.is_empty(),\n        pt.l4_table@.dom().contains(pt.cr3),\n        pt.l4_table@.dom().contains(p),\n        p != pt.cr3,\n    ensures\n        pt.page_closure().contains(p),\n{\n}",
+    "reason": "is_empty never constrains l4_table's domain \u2014 an \"empty\" page table can have arbitrarily many stale L4 entries in page_closure beyond cr3",
+    "entailed": true,
+    "verus_output": "ounded.rs:194:10\n    |\n194 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__kernel__syscall_send_pages__impl0__syscall_send_pages/phi_4_is_empty_l4_dom_unbounded.rs:203:10\n    |\n203 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: 29 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "get_head_no_value_constraint",
+    "type": "behavioral",
+    "code": "proof fn phi_5_get_head_no_value_constraint<T: Copy, const N: usize>(sll: StaticLinkedList<T, N>, v: T)\n    requires\n        sll.wf(),\n        sll.len() > 0,\n        sll@[0] == v,\n    ensures\n        sll.get_head() == v,\n{\n}",
+    "reason": "get_head is external_body \u2014 the guarantee that it returns exactly self@[0] is axiomatically trusted without verification that the implementation actually returns the first logical element",
+    "entailed": false,
+    "verus_output": "onstraint.rs:203:10\n    |\n203 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nerror: cannot call function `phi_5_get_head_no_value_constraint::StaticLinkedList::get_head` with mode exec\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__kernel__syscall_send_pages__impl0__syscall_send_pages/phi_5_get_head_no_value_constraint.rs:3332:9\n     |\n3332 |         sll.get_head() == v,\n     |         ^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error; 29 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

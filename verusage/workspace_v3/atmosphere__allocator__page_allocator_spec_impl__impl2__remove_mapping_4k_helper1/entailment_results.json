@@ -1,0 +1,52 @@
+[
+  {
+    "name": "target_remains_mapped_4k",
+    "target_fn": "remove_mapping_4k_helper1",
+    "type": "behavioral",
+    "reason": "After removing the sole mapping (ref_count==1) from an IO page, it should no longer appear in mapped_pages_4k; remaining mapped would violate state consistency",
+    "entailed": false,
+    "verified": 8,
+    "errors": 1,
+    "output_tail": "------------------------------------------------ at the end of the function body\n...\n1156 |         new_self.mapped_pages_4k().contains(target_ptr),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  },
+  {
+    "name": "allocated_4k_gains_target",
+    "target_fn": "remove_mapping_4k_helper1",
+    "type": "boundary",
+    "reason": "The page should transition to Unavailable4k not Allocated4k; appearing in allocated_pages_4k would mean the page is reusable without explicit reallocation",
+    "entailed": false,
+    "verified": 8,
+    "errors": 1,
+    "output_tail": "------------------------------------------ at the end of the function body\n...\n1156 |         new_self.allocated_pages_4k().contains(target_ptr),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  },
+  {
+    "name": "mapped_2m_gains_target",
+    "target_fn": "remove_mapping_4k_helper1",
+    "type": "logical",
+    "reason": "A 4k unmap operation should never cause the target to appear in the 2m mapped set; this would indicate a cross-granularity state corruption",
+    "entailed": false,
+    "verified": 8,
+    "errors": 1,
+    "output_tail": "------------------------------------------------ at the end of the function body\n...\n1156 |         new_self.mapped_pages_2m().contains(target_ptr),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  },
+  {
+    "name": "free_4k_list_grows",
+    "target_fn": "remove_mapping_4k_helper1",
+    "type": "behavioral",
+    "reason": "An IO page whose mapping is removed should become Unavailable not Free; recycling it into the free list would allow unsafe reallocation of IO-reserved memory",
+    "entailed": false,
+    "verified": 8,
+    "errors": 1,
+    "output_tail": "------------------------------------------------------ at the end of the function body\n...\n1156 |         new_self.free_pages_4k@.contains(target_ptr),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  },
+  {
+    "name": "container_loses_extra_pages",
+    "target_fn": "remove_mapping_4k_helper1",
+    "type": "logical",
+    "reason": "Removing target_ptr from a container's page set should not cause other pages owned by the same container to disappear; this would silently orphan allocated pages",
+    "entailed": false,
+    "verified": 8,
+    "errors": 1,
+    "output_tail": "llocator, target_ptr: PagePtr, pcid: Pcid, va: VAddr, other_ptr: PagePtr)\n     |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  }
+]

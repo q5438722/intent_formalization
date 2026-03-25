@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: owned_threads_shared_across_containers
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: Neither `container_perms_wf` nor `container_tree_wf` includes any disjointness constraint on `owned_threads` across containers. The `owned_threads` Ghost field is completely unconstrained by the tree invariants, allowing two distinct containers to claim the same thread — a real resource ownership gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: owned_endpoints_shared_across_containers
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: Same pattern — `owned_endpoints` is a `Ghost<Set<EndpointPtr>>` with no cross-container disjointness constraint in the tree or perms well-formedness predicates. The code comments explicitly discuss endpoint ownership scoping within subtrees, yet the spec never enforces it.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: no_child_no_subtree_but_owns_resources
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: This confirms that tree structural invariants and resource ownership are completely decoupled. A leaf container with empty children and empty subtree can still own threads, meaning `no_child_imply_no_subtree` provides no guarantee about resource cleanup. The spec lacks a predicate connecting tree structure to resource ownership.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: root_container_parent_unconstrained
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `container_root_wf` constrains `depth == 0` and requires non-root nodes to have `parent.is_Some()`, but never asserts `container_perms[root_container].value().parent.is_None()`. The root can carry a spurious parent pointer that could confuse upward-traversal algorithms or invariant reasoning.
+===VERDICT_END===
+
+===SUMMARY===
+All four candidates are true positives. Three share the same root cause: the container tree well-formedness predicates (`container_perms_wf`, `container_tree_wf`) focus exclusively on structural tree properties (parent-child, depth, subtree/uppertree sequences) but completely ignore the resource ownership fields (`owned_threads`, `owned_endpoints`, `owned_procs`). These Ghost fields have no cross-container disjointness constraints, and tree structure is fully decoupled from resource ownership — a leaf with empty subtree can still own arbitrary resources. The fourth finding identifies a minor but real gap: the root container's `parent` field is never constrained to be `None`, allowing a spurious parent pointer despite the root being identified by `depth == 0`.
+===END_SUMMARY===

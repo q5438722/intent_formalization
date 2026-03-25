@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: success_breaks_wf
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This property is vacuously true. Since φ2 (`always_returns_error`) proves the spec never returns `RetValueType::Else`, the precondition requiring `ret == NoSwitchNew(RetValueType::Else)` is unsatisfiable. No independent spec flaw is revealed; this is a trivial consequence of the dead success path.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: always_returns_error
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: A `syscall_send_pages` spec that forces `RetValueType::Error` for every well-formed input means pages can never be sent via IPC. This renders the syscall's success path dead code and indicates the spec is either incomplete or overly restrictive, preventing the system from performing its core page-transfer function.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: success_removes_sender_thread
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Like φ1, this is vacuously true because φ2 proves the success return value is unreachable. The precondition requiring `ret == NoSwitchNew(RetValueType::Else)` can never be simultaneously satisfied with `syscall_send_pages_spec`, so the ensures clause holds trivially without revealing an independent spec defect.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: success_increases_free_pages
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Again vacuously true due to the unreachable success path established by φ2. Since the spec never yields `RetValueType::Else`, the precondition is unsatisfiable and the ensures clause about free page counts holds trivially. No independent resource-accounting bug is demonstrated.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: error_changes_thread_dom
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: Unlike the success-path properties, this targets the error path which IS reachable (and per φ2, is the only path). The spec entailing that the thread domain changes on error means threads are being created or destroyed during a failed syscall. Error paths must be side-effect-free with respect to thread existence; this indicates a genuine spec flaw where the error handling corrupts thread-domain invariants.
+===VERDICT_END===
+
+===SUMMARY===
+Two genuine spec issues were identified in `syscall_send_pages`. The primary defect (φ2) is that the spec forces an error return for all valid inputs, making the page-send syscall completely non-functional — its success path is dead code. This causes three other candidate properties (φ1, φ3, φ4) to verify vacuously, as they all condition on the unreachable success return; these are false positives that do not indicate independent bugs. The second real defect (φ5) is that the error path — which is the only reachable path — mutates the thread domain, meaning a failed syscall can create or destroy threads, violating the expected invariant that error handling should not alter structural OS state. Fixing φ2 (enabling a legitimate success path) would likely also require revisiting φ5 to ensure error-path side-effect-freedom.
+===END_SUMMARY===

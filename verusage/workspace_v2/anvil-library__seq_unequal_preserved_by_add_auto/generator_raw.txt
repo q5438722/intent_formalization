@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: external_body_suffix_cancellation
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_external_body_suffix_cancellation(s1: Seq<int>, s2: Seq<int>, suffix: Seq<int>)
+    requires
+        s1 != s2,
+    ensures
+        s1 + suffix != s2 + suffix,
+{
+    seq_unequal_preserved_by_add(s1, s2, suffix);
+}
+```
+REASON: seq_unequal_preserved_by_add is external_body — unverified axiom asserting suffix append preserves inequality without proof
+===PHI_END===
+
+===PHI_START===
+NAME: concat_equal_implies_prefix_equal
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_concat_equal_implies_prefix_equal(s1: Seq<int>, s2: Seq<int>, suffix: Seq<int>)
+    requires
+        s1 + suffix == s2 + suffix,
+    ensures
+        s1 == s2,
+{
+    if s1 != s2 {
+        seq_unequal_preserved_by_add(s1, s2, suffix);
+    }
+}
+```
+REASON: contrapositive right cancellation law derived from the external_body axiom — if the axiom is inconsistent this would be unsound
+===PHI_END===
+
+===PHI_START===
+NAME: empty_suffix_preserves_inequality
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_empty_suffix_preserves_inequality(s1: Seq<int>, s2: Seq<int>)
+    requires
+        s1 != s2,
+    ensures
+        s1 + Seq::<int>::empty() != s2 + Seq::<int>::empty(),
+{
+    seq_unequal_preserved_by_add(s1, s2, Seq::<int>::empty());
+}
+```
+REASON: empty suffix boundary case — tests that the external_body axiom is consistent with s + empty == s
+===PHI_END===
+
+===PHI_START===
+NAME: different_len_different_concat
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_different_len_different_concat(s1: Seq<int>, s2: Seq<int>, suffix: Seq<int>)
+    requires
+        s1.len() != s2.len(),
+    ensures
+        s1 + suffix != s2 + suffix,
+{
+    seq_unequal_preserved_by_add(s1, s2, suffix);
+}
+```
+REASON: different-length sequences are unequal so the axiom applies — tests the length branch is sound
+===PHI_END===
+
+===PHI_START===
+NAME: auto_lemma_instantiation
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_auto_lemma_instantiation(a: int, b: int, suffix: Seq<int>)
+    requires
+        a != b,
+    ensures
+        seq![a] + suffix != seq![b] + suffix,
+{
+    seq_unequal_preserved_by_add_auto(suffix);
+}
+```
+REASON: tests that the auto wrapper correctly triggers on concrete singleton sequences differing at index 0
+===PHI_END===

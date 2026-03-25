@@ -1,0 +1,81 @@
+===PHI_START===
+NAME: ordering_lt_only_less
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_ordering_lt_only_less()
+    ensures
+        Ordering::Less.lt() == true,
+        Ordering::Equal.lt() == false,
+        Ordering::Greater.lt() == false,
+{
+}
+```
+REASON: `Ordering::lt` returns true only for `Less` — there is no `le`, `ge`, or `gt` helper, so any comparison-based spec using `Ordering` can only express strict less-than, silently preventing less-than-or-equal range queries in delegation map lookups
+===PHI_END===
+
+===PHI_START===
+NAME: between_excludes_lower_bound
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_between_excludes_lower_bound<K: KeyTrait + VerusClone>(ki: KeyIterator<K>)
+    ensures
+        !KeyIterator::between(ki, ki, ki),
+{
+}
+```
+REASON: `between(lhs, ki, rhs)` requires `!ki.lt_spec(lhs) && ki.lt_spec(rhs)` — when all three are equal, `ki.lt_spec(rhs)` is false (not strictly less than itself), so a single-element range `[x, x)` is empty, meaning point lookups using `between` silently return nothing
+===PHI_END===
+
+===PHI_START===
+NAME: cmessage_delegate_no_abstractability_check_on_h
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_cmessage_delegate_no_abstractability_check_on_h(kr: KeyRange<CKey>, h: CKeyHashMap)
+    ensures
+        ({
+            let msg = CMessage::Delegate { range: kr, h: h };
+            msg.abstractable()
+        }),
+{
+}
+```
+REASON: `CMessage::abstractable` falls through to `_ => true` for `Delegate` without checking `h` — an arbitrary (potentially invalid) CKeyHashMap enters the abstract protocol model unchecked
+===PHI_END===
+
+===PHI_START===
+NAME: vec_marshalable_empty_always_valid
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_vec_marshalable_empty_always_valid()
+    ensures
+        ({
+            let v: Vec<u64> = Vec::new();
+            v.is_marshalable()
+        }),
+{
+}
+```
+REASON: An empty `Vec<T>` is always marshalable regardless of T's properties — `fold_left` on an empty sequence produces 0 for size and the `forall` over `contains` is vacuously true, so `is_marshalable` provides no guarantee about the element type's serializability for empty collections
+===PHI_END===
+
+===PHI_START===
+NAME: tuple_serialize_ambiguous_concatenation
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_tuple_serialize_ambiguous_concatenation(a: Vec<u8>, b: Vec<u8>)
+    requires
+        a.is_marshalable(),
+        b.is_marshalable(),
+    ensures
+        (a, b).ghost_serialize() ==
+            a.ghost_serialize() + b.ghost_serialize(),
+{
+}
+```
+REASON: Tuple serialization is bare concatenation with no delimiter or length prefix between components — if `a.ghost_serialize()` has variable length, a deserializer cannot determine where the first element ends and the second begins without external framing, breaking injectivity of the serialization format
+===PHI_END===

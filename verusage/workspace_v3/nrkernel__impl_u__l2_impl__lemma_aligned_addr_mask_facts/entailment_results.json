@@ -1,0 +1,52 @@
+[
+  {
+    "name": "zero_size_aligned",
+    "target_fn": "aligned",
+    "type": "behavioral",
+    "reason": "Size-zero alignment is meaningless; if entailed, the spec has a division-by-zero gap allowing vacuous alignment",
+    "entailed": false,
+    "verified": 23,
+    "errors": 1,
+    "output_tail": "rs:182:9\n    |\n180 | proof fn phi_1_zero_size_aligned()\n    |       ---------------------------- at the end of the function body\n181 |     ensures\n182 |         aligned(1 as nat, 0 as nat),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "aligned_symmetry",
+    "target_fn": "aligned",
+    "type": "logical",
+    "reason": "Alignment is not symmetric; PAGE_SIZE is not a multiple of every page-aligned address (e.g. 4096 % 8192 != 0)",
+    "entailed": false,
+    "verified": 23,
+    "errors": 1,
+    "output_tail": "y.rs:185:9\n    |\n180 | proof fn phi_2_aligned_symmetry(a: nat)\n    |       --------------------------------- at the end of the function body\n...\n185 |         aligned(PAGE_SIZE as nat, a),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "nonzero_smaller_than_size",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "reason": "A positive value strictly less than its alignment size cannot be divisible by it; would break all alignment-size invariants",
+    "entailed": false,
+    "verified": 23,
+    "errors": 1,
+    "output_tail": ":185:9\n    |\n180 | proof fn phi_3_nonzero_smaller_than_size(a: nat, b: nat)\n    |       -------------------------------------------------- at the end of the function body\n...\n185 |         aligned(a, b),\n    |         ^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "mul_closure",
+    "target_fn": "aligned",
+    "type": "logical",
+    "reason": "Alignment to two sizes does not imply alignment to their product; e.g. aligned(12,4) && aligned(12,6) but not aligned(12,24)",
+    "entailed": false,
+    "verified": 23,
+    "errors": 1,
+    "output_tail": "e.rs:187:9\n    |\n180 | proof fn phi_4_mul_closure(a: nat, b: nat, c: nat)\n    |       -------------------------------------------- at the end of the function body\n...\n187 |         aligned(a, b * c),\n    |         ^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "page_implies_l1",
+    "target_fn": "aligned",
+    "type": "behavioral",
+    "reason": "4KB page alignment does not imply 1GB L1 alignment; would conflate all page-table levels and break the translation hierarchy",
+    "entailed": false,
+    "verified": 23,
+    "errors": 1,
+    "output_tail": "80 | proof fn phi_5_page_implies_l1(addr: nat)\n    |       ----------------------------------- at the end of the function body\n...\n184 |         aligned(addr, L1_ENTRY_SIZE as nat),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

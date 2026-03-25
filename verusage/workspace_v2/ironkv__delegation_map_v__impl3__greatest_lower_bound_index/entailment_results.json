@@ -1,0 +1,47 @@
+[
+  {
+    "name": "cmp_spec_irreflexive_false",
+    "type": "logical",
+    "code": "proof fn phi_1_cmp_spec_irreflexive_false<K: KeyTrait + VerusClone>(k: K)\n    ensures\n        !k.cmp_spec(k).lt(),\n{\n    K::cmp_properties();\n}",
+    "reason": "Verifies that cmp_spec is irreflexive via the axioms \u2014 if this fails, sorted sequences could contain self-less-than elements, breaking all ordering guarantees",
+    "entailed": true,
+    "verus_output": "d method `vstd::prelude::OptionAdditionalFns::get_Some_0`: get_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__delegation_map_v__impl3__greatest_lower_bound_index/phi_1_cmp_spec_irreflexive_false.rs:257:38\n    |\n257 |             self@.contains_key(glb.k.get_Some_0()) &&\n    |                                      ^^^^^^^^^^\n\nwarning: 13 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "zero_less_than_itself",
+    "type": "boundary",
+    "code": "proof fn phi_2_zero_less_than_itself<K: KeyTrait + VerusClone>()\n    ensures\n        !K::zero_spec().cmp_spec(K::zero_spec()).lt(),\n{\n    K::cmp_properties();\n}",
+    "reason": "zero_properties says forall k != zero ==> zero.cmp_spec(k).lt(), but if cmp_properties doesn't prevent zero < zero, the zero element could be less than itself",
+    "entailed": true,
+    "verus_output": "ecated method `vstd::prelude::OptionAdditionalFns::get_Some_0`: get_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__delegation_map_v__impl3__greatest_lower_bound_index/phi_2_zero_less_than_itself.rs:257:38\n    |\n257 |             self@.contains_key(glb.k.get_Some_0()) &&\n    |                                      ^^^^^^^^^^\n\nwarning: 13 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "lt_spec_not_transitive",
+    "type": "logical",
+    "code": "proof fn phi_3_lt_spec_not_transitive<K: KeyTrait + VerusClone>(a: KeyIterator<K>, b: KeyIterator<K>, c: KeyIterator<K>)\n    requires\n        a.lt_spec(b),\n        b.lt_spec(c),\n    ensures\n        a.lt_spec(c),\n{\n    K::cmp_properties();\n}",
+    "reason": "KeyIterator::lt_spec delegates to cmp_spec \u2014 transitivity must hold through the None (end) cases for gap reasoning to be sound; if it doesn't, StrictlyOrderedMap's gap-based proofs could be unsound",
+    "entailed": true,
+    "verus_output": "cated method `vstd::prelude::OptionAdditionalFns::get_Some_0`: get_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__delegation_map_v__impl3__greatest_lower_bound_index/phi_3_lt_spec_not_transitive.rs:257:38\n    |\n257 |             self@.contains_key(glb.k.get_Some_0()) &&\n    |                                      ^^^^^^^^^^\n\nwarning: 13 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "glb_gap_unbounded_hi",
+    "type": "behavioral",
+    "code": "proof fn phi_4_glb_gap_unbounded_hi<K: KeyTrait + VerusClone>(m: StrictlyOrderedMap<K>, iter: KeyIterator<K>, glb: KeyIterator<K>)\n    requires\n        m.valid(),\n        m@.contains_key(K::zero_spec()),\n        !iter.is_end_spec(),\n        m.greatest_lower_bound_spec(iter, glb),\n    ensures\n        glb.k.is_Some() && m@.contains_key(glb.k.get_Some_0()),\n{\n}",
+    "reason": "greatest_lower_bound_spec for non-end iter ensures glb.k.is_Some() and the key exists in the map \u2014 if this is entailed without proof it confirms the spec is correct; if Verus needs help, it would reveal a gap in the axiomatization",
+    "entailed": true,
+    "verus_output": "prelude::OptionAdditionalFns::get_Some_0`: get_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__delegation_map_v__impl3__greatest_lower_bound_index/phi_4_glb_gap_unbounded_hi.rs:368:50\n    |\n368 |         glb.k.is_Some() && m@.contains_key(glb.k.get_Some_0()),\n    |                                                  ^^^^^^^^^^\n\nwarning: 15 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "gap_vacuous_when_lo_is_end",
+    "type": "behavioral",
+    "code": "proof fn phi_5_gap_vacuous_when_lo_is_end<K: KeyTrait + VerusClone>(m: StrictlyOrderedMap<K>)\n    requires\n        m.valid(),\n    ensures\n        m.gap(KeyIterator::end_spec(), KeyIterator::end_spec()),\n{\n}",
+    "reason": "When lo is end (None), lt_spec(lo, ki) requires !lo.k.is_None() which is false \u2014 gap becomes vacuously true regardless of map contents, potentially masking real violations in greatest_lower_bound reasoning",
+    "entailed": true,
+    "verus_output": "d method `vstd::prelude::OptionAdditionalFns::get_Some_0`: get_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__delegation_map_v__impl3__greatest_lower_bound_index/phi_5_gap_vacuous_when_lo_is_end.rs:257:38\n    |\n257 |             self@.contains_key(glb.k.get_Some_0()) &&\n    |                                      ^^^^^^^^^^\n\nwarning: 13 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

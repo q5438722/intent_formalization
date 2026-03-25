@@ -1,0 +1,78 @@
+===PHI_START===
+NAME: mask_l1_pg_addr_low_30_bits_zero
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_mask_l1_pg_addr_low_30_bits_zero()
+    ensures
+        MASK_L1_PG_ADDR_SPEC & 0x3FFF_FFFF == 0,
+{
+    axiom_max_phyaddr_width_facts();
+    assert(forall|low: usize, high: usize| low <= high && high < 64 ==> bitmask_inc!(low, high) & (!0usize >> (64 - low)) == 0) by (bit_vector);
+}
+```
+REASON: `MASK_L1_PG_ADDR_SPEC = bitmask_inc!(30, MAX_PHYADDR_WIDTH-1)` should have bits 0-29 clear — if any low bits leak through, 1GB page physical address extraction would include sub-page offset bits
+===PHI_END===
+
+===PHI_START===
+NAME: mask_l1_pg_addr_bit_30_set
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_mask_l1_pg_addr_bit_30_set()
+    ensures
+        MASK_L1_PG_ADDR_SPEC & (1usize << 30) != 0,
+{
+    axiom_max_phyaddr_width_facts();
+}
+```
+REASON: Bit 30 should be the lowest set bit — if clear, the mask would miss the lowest valid address bit for 1GB pages, shifting physical addresses by 1GB
+===PHI_END===
+
+===PHI_START===
+NAME: mask_l1_pg_addr_subset_of_52bit_range
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_mask_l1_pg_addr_subset_of_52bit_range()
+    ensures
+        MASK_L1_PG_ADDR_SPEC & !((1usize << 52) - 1) == 0,
+{
+    axiom_max_phyaddr_width_facts();
+    assert(1usize << 52 == 0x10000000000000) by (compute);
+}
+```
+REASON: No bits at or above position 52 should be set — if the mask extends beyond the maximum physical address width, extracted addresses would include invalid high bits
+===PHI_END===
+
+===PHI_START===
+NAME: mask_l1_pg_addr_narrower_than_mask_addr
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_mask_l1_pg_addr_narrower_than_mask_addr()
+    ensures
+        MASK_L1_PG_ADDR_SPEC & bitmask_inc!(12usize, 29usize) == 0,
+{
+    axiom_max_phyaddr_width_facts();
+    assert(bitmask_inc!(12usize, 29usize) == 0x3FFFF000) by (compute);
+}
+```
+REASON: Bits 12-29 should be zero in L1 mask but set in MASK_ADDR — tests that the 1GB page mask correctly excludes the 18 bits that MASK_ADDR includes for 4KB-aligned directory addresses; if these bits leaked in, 1GB page addresses would be corrupted
+===PHI_END===
+
+===PHI_START===
+NAME: mask_l1_width_depends_on_phyaddr_width
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_mask_l1_width_depends_on_phyaddr_width()
+    ensures
+        MASK_L1_PG_ADDR_SPEC != 0,
+        MAX_PHYADDR_WIDTH >= 32 ==> MASK_L1_PG_ADDR_SPEC >= (1usize << 30),
+{
+    axiom_max_phyaddr_width_facts();
+}
+```
+REASON: For any valid MAX_PHYADDR_WIDTH ≥ 32, the mask must be nonzero and include at least bit 30 — a zero or too-small mask would make 1GB page translation impossible
+===PHI_END===

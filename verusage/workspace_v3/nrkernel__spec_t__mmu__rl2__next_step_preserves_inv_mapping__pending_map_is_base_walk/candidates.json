@@ -1,0 +1,37 @@
+[
+  {
+    "name": "align_exceeds_input",
+    "target_fn": "align_to_usize",
+    "type": "behavioral",
+    "code": "proof fn phi_1_align_exceeds_input(a: usize, b: usize)\n    requires\n        b > 0,\n    ensures\n        align_to_usize(a, b) > a,\n{\n}",
+    "reason": "Downward alignment must never produce a value greater than the original address"
+  },
+  {
+    "name": "align_zero_nonzero",
+    "target_fn": "align_to_usize",
+    "type": "boundary",
+    "code": "proof fn phi_2_align_zero_nonzero(b: usize)\n    requires\n        b > 0,\n    ensures\n        align_to_usize(0usize, b) != 0usize,\n{\n}",
+    "reason": "Aligning zero to any positive granularity must still yield zero"
+  },
+  {
+    "name": "aligned_not_fixpoint",
+    "target_fn": "align_to_usize",
+    "type": "logical",
+    "code": "proof fn phi_3_aligned_not_fixpoint(addr: usize, size: usize)\n    requires\n        size > 0,\n        aligned(addr as nat, size as nat),\n    ensures\n        align_to_usize(addr, size) != addr,\n{\n}",
+    "reason": "An already-aligned address must be a fixpoint of align_to_usize; disagreement indicates inconsistent specs"
+  },
+  {
+    "name": "align_result_not_aligned",
+    "target_fn": "aligned",
+    "type": "behavioral",
+    "code": "proof fn phi_4_align_result_not_aligned(a: usize, b: usize)\n    requires\n        b > 0,\n    ensures\n        !aligned(align_to_usize(a, b) as nat, b as nat),\n{\n}",
+    "reason": "The output of align_to_usize must itself satisfy the aligned predicate for the same granularity"
+  },
+  {
+    "name": "aligned_zero_divisor",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "code": "proof fn phi_5_aligned_zero_divisor(addr: nat)\n    requires\n        addr > 0,\n    ensures\n        aligned(addr, 0),\n{\n}",
+    "reason": "Alignment to size zero is undefined; a nonzero address should never be considered 0-aligned"
+  }
+]

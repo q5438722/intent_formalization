@@ -1,0 +1,17 @@
+===VERDICT_START===
+PHI: serialize_injective_derives_view_equal_from_empty
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Two empty `Vec<u8>` values are view-equal by definition (`self@ === other@` where both are empty sequences). The serialization injectivity axiom correctly derives this expected result. The property is mathematically correct and desirable.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: prefix_freedom_no_marshalable_guard
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `lemma_serialization_is_not_a_prefix_of` is `external_body` with no `is_marshalable` precondition, yet `ghost_serialize` only has a `recommends` (not `requires`) for `is_marshalable`. For non-marshalable values, `ghost_serialize` at the trait level is an uninterpreted `external_body` spec — the prefix-freedom guarantee is asserted without any basis for values outside the marshalable domain, potentially allowing unsound reasoning about arbitrary byte sequences.
+===VERDICT_END===
+
+===SUMMARY===
+One of two candidates is a true positive. The empty-vector serialization injectivity test is a false positive — it's a correct and expected consequence of the spec. The missing `is_marshalable` guard on `lemma_serialization_is_not_a_prefix_of` is a true positive: the external_body axiom grants prefix-freedom for all values regardless of marshalability, but `ghost_serialize` is only meaningfully specified for marshalable values, creating a potential soundness gap where the axiom could be applied to values with uninterpreted serializations.
+===END_SUMMARY===

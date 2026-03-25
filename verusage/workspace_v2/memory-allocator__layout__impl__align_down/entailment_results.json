@@ -1,0 +1,47 @@
+[
+  {
+    "name": "bitand_rounding_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_bitand_rounding_external_body(x: usize, y: usize)\n    requires\n        y != 0,\n        y & sub(y, 1) == 0,\n    ensures\n        x & !sub(y, 1) == (x / y) * y,\n{\n    bitand_with_mask_gives_rounding(x, y);\n}",
+    "reason": "`bitand_with_mask_gives_rounding` is `external_body` \u2014 the bitwise-arithmetic equivalence for power-of-two rounding is trusted without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 5 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "mul_mod_right_external_body",
+    "type": "logical",
+    "code": "proof fn phi_2_mul_mod_right_external_body(a: int, b: int)\n    requires\n        b != 0,\n    ensures\n        (a * b) % b == 0,\n{\n    mul_mod_right(a, b);\n}",
+    "reason": "`mul_mod_right` is `external_body` \u2014 the property `(a * b) % b == 0` is trusted without proof; for negative `b`, Verus Euclidean division semantics must be considered",
+    "entailed": true,
+    "verus_output": "verification results:: 5 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "align_down_non_power_of_two",
+    "type": "behavioral",
+    "code": "proof fn phi_3_align_down_non_power_of_two()\n    ensures\n        ({\n            let x: usize = 10;\n            let y: usize = 3;\n            let res = (x as int / y as int) * y;\n            res == 9 && res <= x && res % y == 0\n        }),\n{\n}",
+    "reason": "`align_down` works for non-power-of-two `y` via the division path \u2014 despite the function name suggesting alignment, it's really just floor-rounding to any multiple, which may be surprising to callers expecting power-of-two alignment only",
+    "entailed": false,
+    "verus_output": "non_power_of_two.rs:73:37\n   |\n73 |             res == 9 && res <= x && res % y == 0\n   |                                     ^^^^^^-\n   |                                           |\n   |                                           this argument influences the return type of `spec_euclidean_mod`\nnote: method defined here\n  --> /home/runner/work/verus/verus/source/builtin/src/lib.rs:1178:7\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0308`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "align_down_y_equals_1",
+    "type": "boundary",
+    "code": "proof fn phi_4_align_down_y_equals_1()\n    ensures\n        ({\n            let x: usize = 42;\n            let y: usize = 1;\n            let res = (x as int / y as int) * y;\n            res == x\n        }),\n{\n}",
+    "reason": "With `y == 1`, `align_down` always returns `x` unchanged \u2014 alignment to 1 is a no-op, and the power-of-two branch (`1 & 0 == 0`) uses `x & !0 == x`, which is correct but degenerate",
+    "entailed": true,
+    "verus_output": "verification results:: 5 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "mul_mod_right_negative_divisor",
+    "type": "boundary",
+    "code": "proof fn phi_5_mul_mod_right_negative_divisor(a: int)\n    requires\n        true,\n    ensures\n        (a * (-3)) % (-3) == 0,\n{\n    mul_mod_right(a, -3);\n}",
+    "reason": "`mul_mod_right` accepts negative `b` \u2014 the axiom is trusted for all non-zero divisors including negatives, where Euclidean vs truncation division semantics could differ; over-broad trust assumption",
+    "entailed": true,
+    "verus_output": "verification results:: 5 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,84 @@
+===PHI_START===
+NAME: clear_always_empty
+TARGET_FN: clear
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_clear_always_empty(pre: CommitMask, other: CommitMask, post: CommitMask)
+    requires
+        post@ == pre@.difference(other@),
+    ensures
+        post@ == Set::<int>::empty(),
+{
+}
+```
+REASON: Would mean clear erases everything regardless of other, making it a total wipe instead of a selective clear
+===PHI_END===
+
+===PHI_START===
+NAME: clear_is_noop
+TARGET_FN: clear
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_clear_is_noop(pre: CommitMask, other: CommitMask, post: CommitMask)
+    requires
+        post@ == pre@.difference(other@),
+    ensures
+        post@ == pre@,
+{
+}
+```
+REASON: Would mean clear never removes any bits, making the operation completely ineffective
+===PHI_END===
+
+===PHI_START===
+NAME: other_survives_clear
+TARGET_FN: clear
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_other_survives_clear(pre: CommitMask, other: CommitMask, post: CommitMask)
+    requires
+        post@ == pre@.difference(other@),
+    ensures
+        other@.subset_of(post@),
+{
+}
+```
+REASON: Would mean the bits we intended to clear are still present in the result, defeating the purpose of clear
+===PHI_END===
+
+===PHI_START===
+NAME: result_confined_to_other
+TARGET_FN: clear
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_result_confined_to_other(pre: CommitMask, other: CommitMask, post: CommitMask)
+    requires
+        post@ == pre@.difference(other@),
+    ensures
+        post@.subset_of(other@),
+{
+}
+```
+REASON: Would mean the result only contains bits from other, which is the exact opposite of what set difference should produce
+===PHI_END===
+
+===PHI_START===
+NAME: clear_symmetric
+TARGET_FN: clear
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_clear_symmetric(pre: CommitMask, other: CommitMask, post: CommitMask)
+    requires
+        post@ == pre@.difference(other@),
+    ensures
+        post@ == other@.difference(pre@),
+{
+}
+```
+REASON: Would mean set difference is symmetric (A\B == B\A), which is false in general and would indicate a fundamentally broken spec
+===PHI_END===

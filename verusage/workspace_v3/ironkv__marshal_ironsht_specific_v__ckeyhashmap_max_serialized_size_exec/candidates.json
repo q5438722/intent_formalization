@@ -1,0 +1,37 @@
+[
+  {
+    "name": "result_is_zero",
+    "target_fn": "ckeyhashmap_max_serialized_size_exec",
+    "type": "behavioral",
+    "code": "proof fn phi_1_result_is_zero(r: usize)\n    requires\n        r == ckeyhashmap_max_serialized_size(),\n    ensures\n        r == 0,\n{\n}",
+    "reason": "A max serialized size of zero would make serialization impossible, indicating a broken constant"
+  },
+  {
+    "name": "result_not_expected_constant",
+    "target_fn": "ckeyhashmap_max_serialized_size_exec",
+    "type": "logical",
+    "code": "proof fn phi_2_result_not_expected_constant(r: usize)\n    requires\n        r == ckeyhashmap_max_serialized_size(),\n    ensures\n        r != 0x100000usize,\n{\n}",
+    "reason": "If the spec entails the value differs from the intended 0x100000, the opaque definition and exec function disagree"
+  },
+  {
+    "name": "result_exceeds_i32_max",
+    "target_fn": "ckeyhashmap_max_serialized_size_exec",
+    "type": "boundary",
+    "code": "proof fn phi_3_result_exceeds_i32_max(r: usize)\n    requires\n        r == ckeyhashmap_max_serialized_size(),\n    ensures\n        r > 0x7FFFFFFFusize,\n{\n}",
+    "reason": "A max size exceeding i32::MAX risks overflow when cast to signed types in downstream serialization code"
+  },
+  {
+    "name": "result_too_small_for_any_entry",
+    "target_fn": "ckeyhashmap_max_serialized_size_exec",
+    "type": "boundary",
+    "code": "proof fn phi_4_result_too_small_for_any_entry(r: usize)\n    requires\n        r == ckeyhashmap_max_serialized_size(),\n    ensures\n        r < 256usize,\n{\n}",
+    "reason": "A max serialized size under 256 bytes is implausibly small for a hashmap, suggesting a misconfigured constant"
+  },
+  {
+    "name": "result_equals_usize_max",
+    "target_fn": "ckeyhashmap_max_serialized_size_exec",
+    "type": "logical",
+    "code": "proof fn phi_5_result_equals_usize_max(r: usize)\n    requires\n        r == ckeyhashmap_max_serialized_size(),\n    ensures\n        r == usize::MAX,\n{\n}",
+    "reason": "If the max size equals usize::MAX, any addition to it overflows, making all size-bound checks vacuously true"
+  }
+]

@@ -1,0 +1,85 @@
+===PHI_START===
+NAME: tso_empty_implies_all_sbufs_empty
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_tso_empty_implies_all_sbufs_empty(pre: State, c: Constants)
+    requires
+        pre.inv_sbuf_facts(c),
+        pre.writes.tso === set![],
+        c.valid_core(pre.writes.core),
+    ensures
+        pre.writer_sbuf() === seq![],
+{
+    lemma_writes_tso_empty_implies_sbuf_empty(pre, c, pre.writes.core);
+}
+```
+REASON: When TSO write set is empty, the writer's own sbuf should also be empty — tests that `writer_sbuf_subset_tso_writes` correctly constrains the writer core too
+===PHI_END===
+
+===PHI_START===
+NAME: contains_fst_empty_seq
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_contains_fst_empty_seq(addr: usize)
+    ensures
+        !seq![(usize, usize)].contains_fst(addr),
+{
+}
+```
+REASON: An empty sequence should not contain any first-element — tests that `contains_fst` handles the empty case correctly
+===PHI_END===
+
+===PHI_START===
+NAME: sbuf_unique_implies_no_duplicate_contains
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_sbuf_unique_implies_no_duplicate_contains(state: State, i: int, j: int)
+    requires
+        state.writer_sbuf_entries_are_unique(),
+        0 <= i < state.writer_sbuf().len(),
+        0 <= j < state.writer_sbuf().len(),
+        state.writer_sbuf()[i].0 == state.writer_sbuf()[j].0,
+    ensures
+        i == j,
+{
+}
+```
+REASON: Address uniqueness in the writer sbuf should mean each address appears exactly once — tests that the forall quantifier correctly captures injectivity
+===PHI_END===
+
+===PHI_START===
+NAME: valid_core_external_body_no_constraints
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_valid_core_external_body_no_constraints(c1: Constants, c2: Constants, core: Core)
+    requires
+        c1.valid_core(core),
+        c1.node_count == c2.node_count,
+        c1.core_count == c2.core_count,
+    ensures
+        c2.valid_core(core),
+{
+}
+```
+REASON: `valid_core` is `external_body` — it may depend on fields beyond `node_count`/`core_count` (like range_ptmem), but being opaque means Verus can't verify this relationship
+===PHI_END===
+
+===PHI_START===
+NAME: history_pending_maps_unmaps_independent
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_history_pending_maps_unmaps_independent(h: History, va: usize, pte: PTE)
+    requires
+        h.pending_maps.contains_key(va),
+    ensures
+        h.pending_maps.contains_key(va) || h.pending_unmaps.contains_key(va),
+{
+}
+```
+REASON: `pending_maps` and `pending_unmaps` are independent Map fields with no mutual exclusion constraint — a vaddr could be in both maps simultaneously, which would be inconsistent
+===PHI_END===

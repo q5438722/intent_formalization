@@ -1,0 +1,37 @@
+[
+  {
+    "name": "exec_disable_on_new_mapping",
+    "target_fn": "alloc_and_map",
+    "type": "behavioral",
+    "code": "proof fn phi_1_exec_disable_on_new_mapping(\n    ret: MapEntry,\n    old_addr_space: Map<VAddr, MapEntry>,\n    new_addr_space: Map<VAddr, MapEntry>,\n    target_va: VAddr,\n)\n    requires\n        va_4k_valid(target_va),\n        !old_addr_space.dom().contains(target_va),\n        new_addr_space =~= old_addr_space.insert(target_va, ret),\n    ensures\n        ret.execute_disable == true,\n{\n}",
+    "reason": "Newly allocated page should not have execution disabled; spec never explicitly constrains ret.execute_disable so this tests for accidental over-constraint"
+  },
+  {
+    "name": "write_perm_missing_on_new_mapping",
+    "target_fn": "alloc_and_map",
+    "type": "behavioral",
+    "code": "proof fn phi_2_write_perm_missing_on_new_mapping(\n    ret: MapEntry,\n    old_addr_space: Map<VAddr, MapEntry>,\n    new_addr_space: Map<VAddr, MapEntry>,\n    target_va: VAddr,\n)\n    requires\n        va_4k_valid(target_va),\n        !old_addr_space.dom().contains(target_va),\n        new_addr_space =~= old_addr_space.insert(target_va, ret),\n    ensures\n        ret.write == false,\n{\n}",
+    "reason": "Newly allocated page should be writable; spec never explicitly constrains ret.write so this checks whether the spec accidentally forces read-only pages"
+  },
+  {
+    "name": "old_mapping_destroyed",
+    "target_fn": "alloc_and_map",
+    "type": "logical",
+    "code": "proof fn phi_3_old_mapping_destroyed(\n    ret: MapEntry,\n    old_addr_space: Map<VAddr, MapEntry>,\n    new_addr_space: Map<VAddr, MapEntry>,\n    target_va: VAddr,\n    other_va: VAddr,\n    other_entry: MapEntry,\n)\n    requires\n        va_4k_valid(target_va),\n        !old_addr_space.dom().contains(target_va),\n        new_addr_space =~= old_addr_space.insert(target_va, ret),\n        old_addr_space.dom().contains(other_va),\n        old_addr_space[other_va] == other_entry,\n        other_va != target_va,\n    ensures\n        !new_addr_space.dom().contains(other_va),\n{\n}",
+    "reason": "Existing address space mappings for other VAs must be preserved; if provable, the insert-based ensures loses pre-existing entries"
+  },
+  {
+    "name": "page_shared_across_procs",
+    "target_fn": "alloc_and_map",
+    "type": "logical",
+    "code": "proof fn phi_4_page_shared_across_procs(\n    page_mapping_entry: Set<(ProcPtr, VAddr)>,\n    target_proc_ptr: ProcPtr,\n    target_va: VAddr,\n    other_proc_ptr: ProcPtr,\n    other_va: VAddr,\n)\n    requires\n        page_mapping_entry =~= Set::<(ProcPtr, VAddr)>::empty().insert((target_proc_ptr, target_va)),\n        other_proc_ptr != target_proc_ptr,\n    ensures\n        page_mapping_entry.contains((other_proc_ptr, other_va)),\n{\n}",
+    "reason": "A freshly allocated page must belong to exactly one process; if provable, the page_mapping singleton set leaks the page to another process"
+  },
+  {
+    "name": "free_pages_not_decreased",
+    "target_fn": "alloc_and_map",
+    "type": "boundary",
+    "code": "proof fn phi_5_free_pages_not_decreased(\n    old_num_free: int,\n    new_num_free: int,\n)\n    requires\n        old_num_free >= 1,\n        new_num_free == old_num_free - 1,\n    ensures\n        new_num_free >= old_num_free,\n{\n}",
+    "reason": "Allocation must consume a free page; if provable, the free page count is non-decreasing which means pages are created from nothing"
+  }
+]

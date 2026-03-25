@@ -1,0 +1,17 @@
+===VERDICT_START===
+PHI: always_p_is_stable_intensional_bridge
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `always_p_is_stable` is external_body deriving `valid(stable(always(p)))` which requires resolving `always(p) ==> always(always(p))` through nested `TempPred::new` closures — stable's closure, implies's closure, and always's closure all create intensional gaps resolved without proof.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: leads_to_stable_intensional_bridge
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `p_leads_to_q_is_stable` calls `always_p_is_stable(p.implies(eventually(q)))`, which yields `valid(stable(always(p.implies(eventually(q)))))`. The verified lemma relies on Verus equating `p.leads_to(q)` (defined as `always(p.implies(eventually(q)))`) with the `always(p.implies(eventually(q)))` inside the stable wrapper — this is an intensional closure identity that SMT resolves only because both sides reduce to the same `TempPred::new` construction, but `stable` wraps an additional implies/always layer creating fresh closure nesting beyond φ1.
+===VERDICT_END===
+
+===SUMMARY===
+Two true positives: `always_p_is_stable` is the root external_body axiom bridging `always(p) ==> always(always(p))` through nested closure gaps, and the leads_to stability lemma adds a secondary trust surface by relying on intensional identity between `p.leads_to(q)` and the `always(p.implies(eventually(q)))` substituted into the axiom's stable wrapper.
+===END_SUMMARY===

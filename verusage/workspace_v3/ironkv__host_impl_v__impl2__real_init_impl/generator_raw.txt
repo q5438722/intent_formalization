@@ -1,0 +1,80 @@
+===PHI_START===
+NAME: real_init_vacuous_none
+TARGET_FN: real_init_impl
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_real_init_vacuous_none(netc: &NetClient, args: Args)
+    requires
+        netc.valid(),
+    ensures
+        HostState::init_ensures(netc, args, None),
+{
+}
+```
+REASON: If init_ensures is trivially satisfied by None, the implementation can always skip initialization
+===PHI_END===
+
+===PHI_START===
+NAME: init_nonempty_h
+TARGET_FN: init
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_init_nonempty_h(pre: AbstractHostState, id: AbstractEndPoint, args: AbstractArgs)
+    requires
+        init(pre, id, args),
+    ensures
+        pre.h.dom().len() > 0,
+{
+}
+```
+REASON: A freshly initialized host should have an empty hash table; a non-empty one would imply phantom state
+===PHI_END===
+
+===PHI_START===
+NAME: init_zero_delegations
+TARGET_FN: init
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_init_zero_delegations(pre: AbstractHostState, id: AbstractEndPoint, args: AbstractArgs)
+    requires
+        init(pre, id, args),
+    ensures
+        pre.num_delegations == 0,
+{
+}
+```
+REASON: Init sets num_delegations to 1; allowing 0 would break delegation-count tracking invariants
+===PHI_END===
+
+===PHI_START===
+NAME: parse_args_always_none
+TARGET_FN: parse_args
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_parse_args_always_none(args: AbstractArgs)
+    ensures
+        parse_args(args) is None,
+{
+}
+```
+REASON: If parse_args never succeeds, no host can ever be initialized, making the entire system vacuously correct
+===PHI_END===
+
+===PHI_START===
+NAME: to_vec_always_empty
+TARGET_FN: to_vec
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_to_vec_always_empty(m: CKeyHashMap)
+    ensures
+        m.spec_to_vec().len() == 0,
+{
+}
+```
+REASON: An always-empty spec_to_vec means the hash map can never faithfully report its stored key-value pairs
+===PHI_END===

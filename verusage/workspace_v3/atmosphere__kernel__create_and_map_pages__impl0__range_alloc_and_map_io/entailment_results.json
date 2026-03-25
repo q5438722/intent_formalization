@@ -1,0 +1,52 @@
+[
+  {
+    "name": "pa_always_zero",
+    "target_fn": "range_alloc_and_map_io",
+    "type": "behavioral",
+    "reason": "If PA masking zeroes all addresses, range_alloc_and_map_io would map every IO page to physical address 0",
+    "entailed": false,
+    "verified": 42,
+    "errors": 1,
+    "output_tail": "_1_pa_always_zero(v: usize)\n     |       --------------------------------- at the end of the function body\n2817 |     ensures\n2818 |         spec_usize2pa(v) == 0usize,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 22 warnings emitted\n\n"
+  },
+  {
+    "name": "nonzero_produces_empty_entry",
+    "target_fn": "range_alloc_and_map_io",
+    "type": "logical",
+    "reason": "If non-zero usize values decode to empty page entries, IO page table entries created during mapping would all appear unmapped",
+    "entailed": false,
+    "verified": 42,
+    "errors": 1,
+    "output_tail": "(v: usize)\n     |       ----------------------------------------------- at the end of the function body\n...\n2820 |         spec_usize2page_entry(v).is_empty(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 22 warnings emitted\n\n"
+  },
+  {
+    "name": "present_implies_write",
+    "target_fn": "range_alloc_and_map_io",
+    "type": "boundary",
+    "reason": "If every present page entry is writable, read-only IO mappings are impossible and memory protection for device MMIO regions is broken",
+    "entailed": false,
+    "verified": 42,
+    "errors": 1,
+    "output_tail": "body\n2817 |     ensures\n2818 |         spec_usize2page_entry_perm(v).present ==> spec_usize2page_entry_perm(v).write,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 22 warnings emitted\n\n"
+  },
+  {
+    "name": "pa_preserves_all_bits",
+    "target_fn": "range_alloc_and_map_io",
+    "type": "behavioral",
+    "reason": "If PA masking is identity, permission and flag bits leak into physical addresses used for IO mappings, corrupting device memory targets",
+    "entailed": false,
+    "verified": 42,
+    "errors": 1,
+    "output_tail": "a_preserves_all_bits(v: usize)\n     |       ---------------------------------------- at the end of the function body\n2817 |     ensures\n2818 |         spec_usize2pa(v) == v,\n     |         ^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 22 warnings emitted\n\n"
+  },
+  {
+    "name": "present_implies_execute_disable",
+    "target_fn": "range_alloc_and_map_io",
+    "type": "logical",
+    "reason": "If all present entries have execute-disable set, executable device MMIO regions mapped by range_alloc_and_map_io become non-executable",
+    "entailed": false,
+    "verified": 42,
+    "errors": 1,
+    "output_tail": "res\n2818 |         spec_usize2page_entry_perm(v).present ==> spec_usize2page_entry_perm(v).execute_disable,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 22 warnings emitted\n\n"
+  }
+]

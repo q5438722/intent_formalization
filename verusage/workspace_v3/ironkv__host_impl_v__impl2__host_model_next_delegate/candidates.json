@@ -1,0 +1,37 @@
+[
+  {
+    "name": "delegate_output_nonempty",
+    "target_fn": "next_delegate",
+    "type": "behavioral",
+    "code": "proof fn phi_1_delegate_output_nonempty(pre: AbstractHostState, post: AbstractHostState, pkt: Packet, out: Set<Packet>)\n    requires\n        pkt.msg is Message,\n        pre.delegation_map.is_complete(),\n        next_delegate(pre, post, pkt, out),\n    ensures\n        !(out =~= Set::<Packet>::empty()),\n{\n}",
+    "reason": "next_delegate mandates out == empty; if non-empty output is entailed the spec is inconsistent"
+  },
+  {
+    "name": "authorized_no_increment",
+    "target_fn": "next_delegate",
+    "type": "boundary",
+    "code": "proof fn phi_2_authorized_no_increment(pre: AbstractHostState, post: AbstractHostState, pkt: Packet, out: Set<Packet>)\n    requires\n        pkt.msg is Message,\n        pre.delegation_map.is_complete(),\n        next_delegate(pre, post, pkt, out),\n        pre.constants.host_ids.contains(pkt.src),\n    ensures\n        post.num_delegations == pre.num_delegations,\n{\n}",
+    "reason": "When source is authorized the counter must increment by 1; staying the same means delegation bookkeeping is lost"
+  },
+  {
+    "name": "unauthorized_changes_hashtable",
+    "target_fn": "next_delegate",
+    "type": "logical",
+    "code": "proof fn phi_3_unauthorized_changes_hashtable(pre: AbstractHostState, post: AbstractHostState, pkt: Packet, out: Set<Packet>)\n    requires\n        pkt.msg is Message,\n        pre.delegation_map.is_complete(),\n        next_delegate(pre, post, pkt, out),\n        !pre.constants.host_ids.contains(pkt.src),\n    ensures\n        post.h !== pre.h,\n{\n}",
+    "reason": "An unauthorized source must not alter the hashtable; entailment here means the spec allows unauthenticated mutation"
+  },
+  {
+    "name": "none_value_invalid",
+    "target_fn": "valid_optional_value",
+    "type": "logical",
+    "code": "proof fn phi_4_none_value_invalid()\n    requires\n        true,\n    ensures\n        !valid_optional_value(Option::<AbstractValue>::None),\n{\n}",
+    "reason": "None should be a valid optional value; declaring it invalid would reject legitimate absent-value messages"
+  },
+  {
+    "name": "update_domain_drops_new_key",
+    "target_fn": "bulk_update_domain",
+    "type": "boundary",
+    "code": "proof fn phi_5_update_domain_drops_new_key(h: Hashtable, kr: KeyRange<AbstractKey>, u: Hashtable, k: AbstractKey)\n    requires\n        u.dom().contains(k),\n        kr.contains(k),\n    ensures\n        !bulk_update_domain(h, kr, u).contains(k),\n{\n}",
+    "reason": "A key present in the update map and inside the delegated range must appear in the result; exclusion means delegated data is silently lost"
+  }
+]

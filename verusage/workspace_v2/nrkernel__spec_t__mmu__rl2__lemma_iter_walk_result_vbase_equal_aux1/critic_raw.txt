@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: lemma_bits_align_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `lemma_bits_align_to_usize` is `external_body` with `unimplemented!()` — all 13 bit-alignment preservation postconditions are trusted without proof. These properties are critical for walk idempotency and could be incorrect if the bitmask/alignment interaction has edge cases. Note: in a separate file this same lemma was verified with `by (bit_vector)` proofs, but in this version it's external_body.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: iter_walk_path_idempotent_via_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `lemma_iter_walk_result_vbase_equal_aux1` is verified but depends entirely on the external_body `lemma_bits_align_to_usize`. The walk path idempotency guarantee is only as strong as the unverified bit-alignment lemma it relies on, making the entire proof chain a trust assumption.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: all_mb0_bits_are_zero_external_body
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This φ is a tautology (`P || !P`) that holds for any boolean expression regardless of whether `all_mb0_bits_are_zero` is external_body. It demonstrates nothing about the predicate's actual behavior or any spec gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: walk_result_path_len1_page_arbitrary
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `Walk::result` falls through to `arbitrary()` for path.len() == 1 with a Page entry. Since `arbitrary()` can return any value including `Valid` with garbage fields, this means a single-step L0 page walk has completely undefined results. While x86-64 doesn't support L0 huge pages, the spec doesn't prevent this case from being constructed.
+===VERDICT_END===
+
+===SUMMARY===
+Three true positives: the external_body `lemma_bits_align_to_usize` trusts 13 bit-alignment properties without proof, the walk path idempotency depends transitively on this unverified lemma, and `Walk::result` returns `arbitrary()` for path.len()==1 Page entries leaving L0 page walks undefined. One false positive: the `all_mb0_bits_are_zero` tautology proves nothing about the external_body predicate.
+===END_SUMMARY===

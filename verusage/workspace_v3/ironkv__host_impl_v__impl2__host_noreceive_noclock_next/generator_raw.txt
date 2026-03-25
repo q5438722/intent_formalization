@@ -1,0 +1,89 @@
+===PHI_START===
+NAME: lookup_always_none
+TARGET_FN: hashtable_lookup
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_lookup_always_none(h: Hashtable, k: AbstractKey)
+    requires
+        h.dom().contains(k),
+    ensures
+        hashtable_lookup(h, k) is None,
+{
+}
+```
+REASON: If a present key always maps to None, all get-request replies would incorrectly report missing values
+===PHI_END===
+
+===PHI_START===
+NAME: retransmit_sends_nothing
+TARGET_FN: spontaneously_retransmit
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_retransmit_sends_nothing(pre: AbstractHostState, post: AbstractHostState, out: Set<Packet>)
+    requires
+        pre.delegation_map.is_complete(),
+        spontaneously_retransmit(pre, post, out),
+    ensures
+        out == Set::<Packet>::empty(),
+{
+}
+```
+REASON: If retransmit never produces packets, unacknowledged messages are silently lost and reliability is broken
+===PHI_END===
+
+===PHI_START===
+NAME: set_request_no_h_change
+TARGET_FN: next_set_request
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_set_request_no_h_change(pre: AbstractHostState, post: AbstractHostState, pkt: Packet, out: Set<Packet>)
+    requires
+        pkt.msg is Message,
+        pre.delegation_map.is_complete(),
+        next_set_request(pre, post, pkt, out),
+    ensures
+        post.h == pre.h,
+{
+}
+```
+REASON: If set requests never modify the hashtable, the key-value store cannot be written to at all
+===PHI_END===
+
+===PHI_START===
+NAME: bulk_update_excludes_new_keys
+TARGET_FN: bulk_update_domain
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_bulk_update_excludes_new_keys(h: Hashtable, kr: KeyRange<AbstractKey>, u: Hashtable, k: AbstractKey)
+    requires
+        u.dom().contains(k),
+        kr.contains(k),
+        !h.dom().contains(k),
+    ensures
+        !bulk_update_domain(h, kr, u).contains(k),
+{
+}
+```
+REASON: If bulk_update_domain drops keys present in the update table within the range, delegate operations silently lose data
+===PHI_END===
+
+===PHI_START===
+NAME: send_always_suppressed
+TARGET_FN: send_single_message
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_send_always_suppressed(pre: SingleDelivery<Message>, post: SingleDelivery<Message>, m: Message, dst: AbstractEndPoint, sm: Option<SingleMessage<Message>>, params: AbstractParameters)
+    requires
+        SingleDelivery::<Message>::send_single_message(pre, post, m, dst, sm, params),
+    ensures
+        sm is None,
+{
+}
+```
+REASON: If send_single_message always returns None, no replies or delegates are ever transmitted, making the protocol non-functional
+===PHI_END===

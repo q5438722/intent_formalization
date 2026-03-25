@@ -1,0 +1,20 @@
+[
+  {
+    "phi": "pcid_ioid_wf_excludes_both_none",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is the intended design. The XOR constraint (`pcid.is_Some() != ioid.is_Some()`) correctly models that every active page table in the system belongs to either a process (PCID) or an IOMMU device (IOID), never both and never neither. Unassigned page tables would not satisfy `wf()` and are handled separately."
+  },
+  {
+    "phi": "page_closure_includes_cr3",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is correct and intentional. `page_closure()` tracks all physical pages used by the page table structure, and the L4 root page (cr3) is one of them. The `table_pages_wf()` spec explicitly enforces inter-level domain disjointness, and `create_entry_l3` requires `page_closure().contains(page_map_ptr) == false` to prevent reuse \u2014 cr3 being in the closure is necessary for this ownership tracking."
+  },
+  {
+    "phi": "l4_dom_singleton_but_closure_unbounded",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The property simply follows from `page_closure` being a set union \u2014 of course members of constituent sets are in the union. The concern about missing disjointness is unfounded: `table_pages_wf()` explicitly requires all six pairwise disjointness constraints between l4, l3, l2, and l1 table domains."
+  }
+]

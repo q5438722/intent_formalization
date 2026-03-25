@@ -1,0 +1,6 @@
+[
+  {
+    "name": "align_up",
+    "code": "#[inline]\npub fn align_up(x: usize, y: usize) -> (res: usize)\n    requires y != 0,\n        x + y - 1 <= usize::MAX,\n    ensures\n        res == ((x + y - 1) / y as int) * y,\n        x <= res <= x + y - 1,\n        res % y == 0,\n        (res / y * y) == res,\n{\n    let mask = y - 1;\n\n    proof {\n        if y & mask == 0 {\n            bitand_with_mask_gives_rounding((x + y - 1) as usize, y);\n            assert(((x + mask) as usize) & !mask == ((x + y - 1) / y as int) * y);\n        }\n\n        let z = x + mask;\n        assert(z / y as int * y + z % y as int == z) by(nonlinear_arith) requires y != 0;\n\n        let t = (x + y - 1) / y as int;\n        mul_mod_right(t, y as int);\n        assert(y != 0 ==> (t * y) / y as int * y == t * y) by(nonlinear_arith);\n    }\n\n    if ((y & mask) == 0) { // power of two?\n        (x + mask) & !mask\n    } else {\n        ((x + mask) / y) * y\n    }\n}"
+  }
+]

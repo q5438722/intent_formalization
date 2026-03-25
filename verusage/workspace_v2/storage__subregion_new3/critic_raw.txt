@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: subregion_view_length_matches
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `get_subregion_view` uses `subrange(start, start + len)` which produces a sequence of length `len` by the vstd subrange axiom. Correct by definition.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: subregion_view_byte_offset
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `subrange(start, start + len)[k] == region.state[start + k]` by the vstd subrange indexing axiom. Correct by definition.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: zero_length_subregion_view_empty
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `subrange(start, start + 0)` = `subrange(start, start)` produces an empty sequence of length 0. Correct by the subrange axiom.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: adjacent_subregions_cover_range
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Both sides reduce to `region.state[start + len1 + k]` via the subrange indexing axiom. The left side: `subrange(start+len1, start+len1+len2)[k] = region.state[start+len1+k]`. The right side: `subrange(start, start+len1+len2)[len1+k] = region.state[start+len1+k]`. Correct by definition.
+===VERDICT_END===
+
+===SUMMARY===
+All four candidates are false positives. They confirm correct properties of vstd's `subrange` axiom: length preservation, offset-based indexing, empty subranges for zero length, and consistent splitting of adjacent subregions. No spec gaps found.
+===END_SUMMARY===

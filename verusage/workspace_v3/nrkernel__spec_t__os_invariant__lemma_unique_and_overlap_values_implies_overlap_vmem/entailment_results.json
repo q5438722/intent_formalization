@@ -1,0 +1,52 @@
+[
+  {
+    "name": "aligned_zero_size",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "reason": "If aligned(addr, 0) is trivially true for all addr, zero-size alignment checks would silently pass, masking invalid frame sizes",
+    "entailed": false,
+    "verified": 12,
+    "errors": 1,
+    "output_tail": "796 | proof fn phi_1_aligned_zero_size(addr: nat)\n    |       ------------------------------------- at the end of the function body\n797 |     ensures\n798 |         aligned(addr, 0),\n    |         ^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n"
+  },
+  {
+    "name": "inv_allows_empty_arch",
+    "target_fn": "inv",
+    "type": "boundary",
+    "reason": "An architecture with zero layers is degenerate and should not satisfy the invariant, as it cannot describe any address translation",
+    "entailed": true,
+    "verified": 13,
+    "errors": 0,
+    "output_tail": "verlap_values_implies_overlap_vmem/phi_2_inv_allows_empty_arch.rs:518:42\n    |\n518 |                 if result is Ok { result.get_Ok_0().frame.size } else { 0 }\n    |                                          ^^^^^^^^\n    |\n    = note: `#[warn(deprecated)]` on by default\n\nwarning: 1 warning emitted\n\n"
+  },
+  {
+    "name": "upper_vaddr_leq_base",
+    "target_fn": "upper_vaddr",
+    "type": "behavioral",
+    "reason": "upper_vaddr should always exceed base for a valid layer, since the mapped region has positive size; equality or less implies an empty or wrapping address space",
+    "entailed": false,
+    "verified": 12,
+    "errors": 1,
+    "output_tail": "       ---------------------------------------------------------------- at the end of the function body\n...\n802 |         arch.upper_vaddr(layer, base) <= base,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n"
+  },
+  {
+    "name": "entry_base_zero_idx_neq_base",
+    "target_fn": "entry_base",
+    "type": "logical",
+    "reason": "entry_base at index 0 should equal the base itself (base + 0 * entry_size == base); if this proves, the arithmetic identity is broken",
+    "entailed": false,
+    "verified": 12,
+    "errors": 1,
+    "output_tail": "------------------------------------------------------------------- at the end of the function body\n...\n801 |         arch.entry_base(layer, base, 0) != base,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n"
+  },
+  {
+    "name": "entry_size_next_layer_equal",
+    "target_fn": "entry_size_is_next_layer_size",
+    "type": "logical",
+    "reason": "Consecutive layers having equal entry sizes would mean num_entries is 1, collapsing the page table hierarchy and defeating multi-level translation",
+    "entailed": false,
+    "verified": 12,
+    "errors": 1,
+    "output_tail": "--------------------------------------- at the end of the function body\n...\n801 |         arch.entry_size(i) == arch.entry_size((i + 1) as nat),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n"
+  }
+]

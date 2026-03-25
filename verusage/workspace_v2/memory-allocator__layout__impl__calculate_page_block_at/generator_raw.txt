@@ -1,0 +1,81 @@
+===PHI_START===
+NAME: const_facts_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_const_facts_external_body()
+    ensures
+        SLICE_SIZE == 65536,
+        SEGMENT_SIZE == 33554432,
+        SLICES_PER_SEGMENT == 512,
+        COMMIT_MASK_FIELD_COUNT == 8,
+{
+    const_facts();
+}
+```
+REASON: `const_facts` is `external_body` — all constant equalities are trusted without proof, though they could be verified by `compute`
+===PHI_END===
+
+===PHI_START===
+NAME: calculate_no_block_size_lower_bound
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_calculate_no_block_size_lower_bound(page_id: PageId)
+    ensures
+        block_start_at(page_id, 0, 5) == block_start_at(page_id, 0, 0),
+{
+}
+```
+REASON: `calculate_page_block_at` has no precondition requiring `block_size > 0` — with `block_size == 0`, all block indices map to the same address, and arithmetic `page_start + 0 * idx == page_start` allows this degenerate case
+===PHI_END===
+
+===PHI_START===
+NAME: page_idx_unbounded
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_page_idx_unbounded(page_id: PageId)
+    requires
+        page_id.idx == 1000,
+    ensures
+        page_start(page_id) == segment_start(page_id.segment_id) + 65536 * 1000,
+{
+}
+```
+REASON: `page_id.idx` has no upper bound — idx=1000 exceeds `SLICES_PER_SEGMENT=512`, placing the page start beyond the segment; `calculate_page_block_at` doesn't constrain this
+===PHI_END===
+
+===PHI_START===
+NAME: block_start_at_negative_idx
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_block_start_at_negative_idx(page_id: PageId)
+    ensures
+        block_start_at(page_id, 8, -1) == block_start_at(page_id, 8, 0) - 8,
+{
+}
+```
+REASON: `block_start_at` accepts negative `block_idx` — computing an address before the page start; `calculate_page_block_at` uses `usize` for idx preventing this at runtime, but the spec function allows it
+===PHI_END===
+
+===PHI_START===
+NAME: calculate_overflow_not_checked
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_calculate_overflow_not_checked(page_id: PageId, block_size: usize, idx: usize)
+    requires
+        block_start_at(page_id, block_size as int, 0) + idx as int * block_size as int
+            <= segment_start(page_id.segment_id) + SEGMENT_SIZE,
+        segment_start(page_id.segment_id) + SEGMENT_SIZE < usize::MAX,
+        block_start_at(page_id, block_size as int, 0) == page_start(page_id) + start_offset(block_size as int),
+    ensures
+        block_start_at(page_id, block_size as int, idx as int) <= segment_start(page_id.segment_id) + SEGMENT_SIZE,
+{
+    assert(idx as int * block_size as int == block_size as int * idx as int) by(nonlinear_arith);
+}
+```
+REASON: The result of `calculate_page_block_at` is bounded by `segment_start + SEGMENT_SIZE < usize::MAX` — but there's no check that `page_start + block_size * idx` doesn't overflow `usize` in the intermediate computation; the precondition ensures the mathematical result fits, relying on Verus's overflow checking
+===PHI_END===

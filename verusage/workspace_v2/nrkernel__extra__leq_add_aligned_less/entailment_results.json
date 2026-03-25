@@ -1,0 +1,47 @@
+[
+  {
+    "name": "aligned_zero_to_any",
+    "type": "boundary",
+    "code": "proof fn phi_1_aligned_zero_to_any(b: nat)\n    requires\n        b > 0,\n    ensures\n        aligned(0, b),\n{\n}",
+    "reason": "Zero is aligned to any nonzero size, meaning the lemma `leq_add_aligned_less` with a=0 forces b <= c for any aligned c, which may be unexpected when address 0 is not a valid memory address",
+    "entailed": true,
+    "verus_output": "verification results:: 5 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "leq_add_aligned_tight",
+    "type": "behavioral",
+    "code": "proof fn phi_2_leq_add_aligned_tight(b: nat)\n    requires\n        b > 0,\n    ensures\n        ({\n            let a: nat = 0;\n            let c: nat = b;\n            aligned(a, b) && aligned(c, b) && a < c && a + b <= c && a + b == c\n        }),\n{\n    leq_add_aligned_less(0, b, b);\n}",
+    "reason": "When two consecutive aligned addresses are exactly one step apart, the lemma gives a + b == c (tight bound) \u2014 this means there can be no aligned address strictly between a and a+b, which is correct but the lemma doesn't explicitly state this gap property",
+    "entailed": true,
+    "verus_output": "verification results:: 5 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "aligned_self_always",
+    "type": "boundary",
+    "code": "proof fn phi_3_aligned_self_always(b: nat)\n    requires\n        b > 0,\n    ensures\n        aligned(b, b),\n{\n}",
+    "reason": "Any nonzero value is aligned to itself \u2014 combined with `leq_add_aligned_less`, this means for a=b, c must satisfy c >= 2*b, which silently doubles the minimum gap when a equals the alignment size",
+    "entailed": true,
+    "verus_output": "verification results:: 5 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "leq_add_no_upper_bound",
+    "type": "logical",
+    "code": "proof fn phi_4_leq_add_no_upper_bound(a: nat, b: nat, c: nat, d: nat)\n    requires\n        b > 0,\n        a < c,\n        c < d,\n        aligned(a, b),\n        aligned(c, b),\n        aligned(d, b),\n    ensures\n        a + b <= c && c + b <= d,\n{\n    leq_add_aligned_less(a, b, c);\n    leq_add_aligned_less(c, b, d);\n}",
+    "reason": "The lemma can be chained to force minimum gaps between any sequence of aligned addresses \u2014 but it provides no upper bound, so it cannot detect when addresses would exceed physical memory limits",
+    "entailed": true,
+    "verus_output": "verification results:: 5 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "aligned_zero_size_vacuous",
+    "type": "boundary",
+    "code": "proof fn phi_5_aligned_zero_size_vacuous()\n    ensures\n        aligned(0nat, 0nat),\n{\n}",
+    "reason": "`aligned(0, 0)` evaluates `0 % 0` which Verus defines as 0 (not undefined), so `aligned(0, 0)` is true \u2014 but `leq_add_aligned_less` requires `b > 0`, so this edge case silently passes the alignment check while being excluded from the lemma, creating an inconsistency where \"aligned\" values can't use the core reasoning tool",
+    "entailed": false,
+    "verus_output": "tion results:: 4 verified, 1 errors\nerror: postcondition not satisfied\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__extra__leq_add_aligned_less/phi_5_aligned_zero_size_vacuous.rs:33:9\n   |\n31 | proof fn phi_5_aligned_zero_size_vacuous()\n   |       ------------------------------------ at the end of the function body\n32 |     ensures\n33 |         aligned(0nat, 0nat),\n   |         ^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

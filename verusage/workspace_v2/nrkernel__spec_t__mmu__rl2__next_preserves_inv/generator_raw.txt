@@ -1,0 +1,76 @@
+This is the same combined source again. Let me target fresh angles — `nonneg`/`nonpos` write mutual exclusion, `align_to_usize` properties, walk path structure from `pt_walk`, and `is_base_pt_walk` interaction with the opaque `view`.
+
+===PHI_START===
+NAME: nonneg_nonpos_not_both
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_nonneg_nonpos_not_both(mem: PTMem, addr: usize, value: usize)
+    ensures
+        !(mem.is_nonneg_write(addr, value) && mem.is_nonpos_write(addr, value)),
+{
+}
+```
+REASON: A write cannot simultaneously flip P bit from 0→1 and from 1→0 — tests mutual exclusion of nonneg and nonpos classifications
+===PHI_END===
+
+===PHI_START===
+NAME: pt_walk_preserves_vaddr
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_pt_walk_preserves_vaddr(mem: PTMem, vaddr: usize)
+    ensures
+        mem.pt_walk(vaddr).vaddr == vaddr,
+{
+}
+```
+REASON: The walk should record the original vaddr — tests that all branches of `pt_walk` correctly propagate the input vaddr to the Walk struct
+===PHI_END===
+
+===PHI_START===
+NAME: pt_walk_always_complete
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_pt_walk_always_complete(mem: PTMem, vaddr: usize)
+    ensures
+        mem.pt_walk(vaddr).complete,
+{
+}
+```
+REASON: `pt_walk` constructs Walk with `complete: true` in all branches — if all branches indeed set this, the walk is never partial, meaning incomplete walks are impossible in rl3
+===PHI_END===
+
+===PHI_START===
+NAME: ptmem_view_external_body_functional
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_ptmem_view_external_body_functional(mem: PTMem, addr: usize, value: usize)
+    requires
+        mem@.contains_key(addr),
+    ensures
+        mem@.contains_key(addr),
+        mem@[addr] == mem@[addr],
+{
+}
+```
+REASON: `PTMem::view` is `external_body` — even self-consistency of repeated indexing is technically trusted; the entire PTE interpretation is opaque
+===PHI_END===
+
+===PHI_START===
+NAME: align_to_usize_leq_input
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_align_to_usize_leq_input(a: usize, b: usize)
+    requires
+        b > 0,
+    ensures
+        align_to_usize(a, b) <= a,
+{
+}
+```
+REASON: `align_to_usize(a, b) = a - (a % b)` should always be ≤ a — tests that the alignment function rounds down correctly; used in Walk::result for vbase computation
+===PHI_END===

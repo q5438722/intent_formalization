@@ -1,0 +1,75 @@
+===PHI_START===
+NAME: seq_to_set_rec_contains_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_seq_to_set_rec_contains_external_body(seq: Seq<nat>)
+    ensures
+        forall|a| #[trigger] seq.contains(a) <==> seq_to_set_rec(seq).contains(a),
+{
+    seq_to_set_rec_contains(seq);
+}
+```
+REASON: `seq_to_set_rec_contains` is `external_body` — the biconditional between `seq.contains(a)` and `seq_to_set_rec(seq).contains(a)` is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: seq_to_set_equal_rec_via_external
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_seq_to_set_equal_rec_via_external(seq: Seq<nat>)
+    ensures
+        seq_to_set(seq) == seq_to_set_rec(seq),
+{
+    seq_to_set_equal_rec(seq);
+}
+```
+REASON: The equality `seq_to_set == seq_to_set_rec` depends on the unverified `seq_to_set_rec_contains` axiom — if that axiom is wrong, the two definitions could disagree
+===PHI_END===
+
+===PHI_START===
+NAME: seq_to_set_rec_empty
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_seq_to_set_rec_empty()
+    ensures
+        seq_to_set_rec(Seq::<nat>::empty()) == Set::<nat>::empty(),
+{
+}
+```
+REASON: Empty sequence produces empty set — tests the base case of the recursive definition
+===PHI_END===
+
+===PHI_START===
+NAME: seq_to_set_rec_singleton
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_seq_to_set_rec_singleton(x: nat)
+    ensures
+        seq_to_set_rec(seq![x]) == set!{x},
+{
+}
+```
+REASON: A singleton sequence produces a singleton set — tests the one-element recursive step
+===PHI_END===
+
+===PHI_START===
+NAME: seq_to_set_rec_superset_of_elements
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_seq_to_set_rec_superset_of_elements(seq: Seq<nat>, i: int)
+    requires
+        0 <= i < seq.len(),
+    ensures
+        seq_to_set_rec(seq).contains(seq[i]),
+{
+    seq_to_set_rec_contains(seq);
+    assert(seq.contains(seq[i]));
+}
+```
+REASON: Every element at a valid index is in the resulting set — depends on the unverified `seq_to_set_rec_contains` external_body axiom
+===PHI_END===

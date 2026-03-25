@@ -1,0 +1,93 @@
+===PHI_START===
+NAME: filter_empty_implies_no_elements_false_direction
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_filter_empty_implies_no_elements_false_direction(s: Seq<int>, pred: spec_fn(int) -> bool)
+    requires
+        s.filter(pred).len() == 0,
+        s.len() > 0,
+    ensures
+        forall |e: int| #[trigger] s.contains(e) ==> !pred(e),
+{
+    seq_pred_false_on_all_elements_is_equivalent_to_empty_filter(s, pred);
+}
+```
+REASON: the external_body lemma asserts a biconditional between empty filter and universal non-satisfaction — if unsound, it could let you prove no elements satisfy a predicate just because filter length is 0, even if the filter implementation has bugs
+===PHI_END===
+
+===PHI_START===
+NAME: set_to_seq_roundtrip_inflates
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_set_to_seq_roundtrip_inflates(s: Set<int>)
+    requires
+        s.finite(),
+        s.len() > 0,
+    ensures
+        s.to_seq().len() == s.len(),
+{
+    finite_set_to_seq_contains_all_set_elements(s);
+    finite_set_to_seq_has_no_duplicates(s);
+}
+```
+REASON: combining the external_body contains-biconditional with no_duplicates implicitly forces to_seq().len() == s.len() — if the two trusted axioms are inconsistent with the actual to_seq implementation this could be unsound
+===PHI_END===
+
+===PHI_START===
+NAME: filter_contains_then_original_and_pred
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_filter_contains_then_original_and_pred(s: Seq<int>, pred: spec_fn(int) -> bool, x: int)
+    requires
+        s.contains(x),
+        pred(x),
+    ensures
+        s.filter(pred).contains(x),
+{
+    seq_pred_false_on_all_elements_is_equivalent_to_empty_filter(s, pred);
+}
+```
+REASON: the external_body equivalence lemma only relates empty filter to universal non-satisfaction — deriving that a specific satisfying element must appear in the filter output relies on the trusted axiom being strong enough, which could mask a missing completeness axiom
+===PHI_END===
+
+===PHI_START===
+NAME: marshal_preserves_integrity_trusted
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_marshal_preserves_integrity_trusted(obj: DynamicObjectView)
+    requires
+        obj.kind == PodView::kind(),
+        PodView::unmarshal(obj) is Ok,
+    ensures
+        PodView::unmarshal(obj)->Ok_0.marshal() == obj,
+{
+    PodView::marshal_preserves_integrity();
+    let pod = PodView::unmarshal(obj)->Ok_0;
+    assert(PodView::unmarshal(pod.marshal()) is Ok);
+    assert(pod == PodView::unmarshal(pod.marshal())->Ok_0);
+}
+```
+REASON: marshal_preserves_integrity is external_body and only guarantees unmarshal(marshal(o)) == o — the reverse direction (marshal(unmarshal(obj)) == obj) is NOT axiomatized, so if entailed it reveals the uninterpreted functions accidentally give a stronger-than-intended bijection
+===PHI_END===
+
+===PHI_START===
+NAME: finite_filter_on_infinite_set
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_finite_filter_on_infinite_set(f: spec_fn(int) -> bool)
+    requires
+        exists |x: int| f(x),
+        exists |x: int| !f(x),
+    ensures
+        Set::full().filter(f).finite(),
+{
+    finite_set_to_finite_filtered_set(Set::full(), f);
+}
+```
+REASON: finite_set_to_finite_filtered_set requires s.finite() but Set::full() is infinite — if Verus accepts this call it would mean the precondition check is bypassed via the external_body trust, allowing infinite sets to be treated as finite
+===PHI_END===

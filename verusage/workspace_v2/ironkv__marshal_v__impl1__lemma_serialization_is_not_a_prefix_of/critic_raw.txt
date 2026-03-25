@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: u64_prefix_freedom_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `u64::lemma_serialization_is_not_a_prefix_of` is `external_body` despite being provable — since all u64 serializations are 8 bytes, prefix-freedom reduces to injectivity of `spec_u64_to_le_bytes`, which is a provable fact. This is an unnecessary trusted assumption.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: view_equal_no_symmetry_enforced
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: For u64, `view_equal` is defined as `self@ === other@` which is symmetric by definition of `===`. The trait not requiring symmetry is a theoretical concern, but for the concrete u64 implementation this is a correct, expected property.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: u64_fixed_length_trivializes_prefix_freedom
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: All u64 serializations being 8 bytes is a correct and expected consequence of `spec_u64_to_le_bytes` producing fixed-length little-endian encodings. This is a desirable property of the serialization format, not a spec gap.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: `u64::lemma_serialization_is_not_a_prefix_of` is unnecessarily `external_body` when prefix-freedom for fixed-length 8-byte serializations is provable from injectivity of LE encoding. The other two candidates are false positives — u64's `view_equal` symmetry follows directly from `===` semantics, and fixed-length serialization is the intended design.
+===END_SUMMARY===

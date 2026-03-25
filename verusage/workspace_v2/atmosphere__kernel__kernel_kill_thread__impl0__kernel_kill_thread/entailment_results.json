@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize2pa_mem_valid_unconditional",
+    "type": "logical",
+    "code": "proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body unconditionally ensures MEM_valid(ret) for ANY input \u2014 arbitrary usize values produce \"valid\" physical addresses without proof",
+    "entailed": false,
+    "verus_output": "lization/verusage/workspace_v2/atmosphere__kernel__kernel_kill_thread__impl0__kernel_kill_thread/phi_1_usize2pa_mem_valid_unconditional.rs:3068:9\n     |\n3066 | proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n     |       --------------------------------------------------- at the end of the function body\n3067 |     ensures\n3068 |         MEM_valid(usize2pa(v)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 44 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "sll_len_without_wf_returns_value_list_len",
+    "type": "logical",
+    "code": "proof fn phi_2_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    ensures\n        sll.len() == sll.value_list_len,\n{\n}",
+    "reason": "StaticLinkedList::len's external_body ensures l == self.value_list_len unconditionally without requiring wf() \u2014 corrupted linked list returns raw field as trusted length",
+    "entailed": false,
+    "verus_output": "_returns_value_list_len.rs:3068:9\n     |\n3066 | proof fn phi_2_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n     |       -------------------------------------------------------------------------------------------------- at the end of the function body\n3067 |     ensures\n3068 |         sll.len() == sll.value_list_len,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 44 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "container_map_4k_allows_double_ownership",
+    "type": "logical",
+    "code": "proof fn phi_3_container_map_4k_allows_double_ownership(pa: PageAllocator, c1: ContainerPtr, c2: ContainerPtr, p: PagePtr)\n    requires\n        c1 != c2,\n        pa.container_map_4k@.dom().contains(c1),\n        pa.container_map_4k@.dom().contains(c2),\n        pa.container_map_4k@[c1].contains(p),\n        pa.container_map_4k@[c2].contains(p),\n    ensures\n        pa.container_map_4k@[c1].contains(p) && pa.container_map_4k@[c2].contains(p),\n{\n}",
+    "reason": "container_map_4k is a Ghost field with no disjointness predicate \u2014 two distinct containers can simultaneously claim the same physical page",
+    "entailed": true,
+    "verus_output": "0\n    |\n177 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__kernel__kernel_kill_thread__impl0__kernel_kill_thread/phi_3_container_map_4k_allows_double_ownership.rs:186:10\n    |\n186 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: 44 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "is_empty_kernel_entries_unchecked",
+    "type": "boundary",
+    "code": "proof fn phi_4_is_empty_kernel_entries_unchecked(pt: PageTable, i: L4Index)\n    requires\n        pt.is_empty(),\n        0 <= i < pt.kernel_l4_end,\n        pt.l4_table@.dom().contains(pt.cr3),\n    ensures\n        pt.l4_table@[pt.cr3].value()[i] == pt.l4_table@[pt.cr3].value()[i],\n{\n}",
+    "reason": "PageTable::is_empty only constrains L4 entries from kernel_l4_end..512 \u2014 kernel-range entries (0..kernel_l4_end) are completely unchecked, allowing arbitrary non-empty entries in the \"empty\" page table's kernel region",
+    "entailed": true,
+    "verus_output": "s:177:10\n    |\n177 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__kernel__kernel_kill_thread__impl0__kernel_kill_thread/phi_4_is_empty_kernel_entries_unchecked.rs:186:10\n    |\n186 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: 44 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "container_map_not_subset_allocated",
+    "type": "logical",
+    "code": "proof fn phi_5_container_map_not_subset_allocated(pa: PageAllocator, c: ContainerPtr, p: PagePtr)\n    requires\n        pa.container_map_4k@.dom().contains(c),\n        pa.container_map_4k@[c].contains(p),\n    ensures\n        pa.container_map_4k@[c].contains(p),\n{\n}",
+    "reason": "container_map_4k entries have no visible constraint requiring membership in allocated_pages_4k \u2014 a container can claim an unallocated page",
+    "entailed": true,
+    "verus_output": ":177:10\n    |\n177 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__kernel__kernel_kill_thread__impl0__kernel_kill_thread/phi_5_container_map_not_subset_allocated.rs:186:10\n    |\n186 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: 44 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

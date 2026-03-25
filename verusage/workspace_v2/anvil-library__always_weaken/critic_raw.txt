@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: execution_equality_forces_fn_equality
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This file does not contain `execution_equality` as an external_body axiom. Without it, the SMT solver cannot derive `ex1 == ex2` from pointwise equality of closures — Verus maintains the intensional/extensional distinction. This φ almost certainly does not verify against this source file.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: implies_apply_closure_bridge
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `implies_apply` is external_body bridging `p.implies(q).satisfied_by(ex)` — which evaluates a fresh closure from `TempPred::new` — to the direct modus ponens conclusion. This is an unverified trust assumption resolving the intensional closure gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: entails_preserved_by_always_intensional_bridge
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `entails_preserved_by_always` is an independent external_body axiom lifting entailment through `always`, bridging `p.entails(q)` into the forall-over-suffix closure inside `always`. This is a separate unverified trust assumption from `implies_apply`.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: always_weaken_vacuous_spec
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: A false antecedent entailing anything is standard logic (ex falso quodlibet). This is not a spec gap — it's a fundamental property of implication that holds in every entailment framework.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: always_weaken_strengthens_to_valid
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is literally the statement of `always_weaken` itself — a semantically correct and desirable theorem that `always` is monotone under pointwise implication. No new trust surface beyond the already-identified axioms.
+===VERDICT_END===
+
+===SUMMARY===
+Two true positives: `implies_apply` and `entails_preserved_by_always` are independent external_body axioms each bridging distinct intensional closure gaps — modus ponens through TempPred::new wrapping, and lifting entailment through always's forall-over-suffix closure, respectively. The remaining three are false positives: φ1 likely doesn't verify without `execution_equality` in this file, φ4 is standard ex falso, and φ5 restates the verified lemma itself.
+===END_SUMMARY===

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "sll_len_without_wf_returns_value_list_len",
+    "type": "logical",
+    "code": "proof fn phi_1_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    ensures\n        sll.len() == sll.value_list_len,\n{\n}",
+    "reason": "StaticLinkedList::len's external_body unconditionally ensures l == self.value_list_len without requiring wf() \u2014 the raw field is exposed even for malformed lists",
+    "entailed": false,
+    "verus_output": "thout_wf_returns_value_list_len.rs:406:9\n    |\n404 | proof fn phi_1_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    |       -------------------------------------------------------------------------------------------------- at the end of the function body\n405 |     ensures\n406 |         sll.len() == sll.value_list_len,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "init_free_list_loses_all_nodes",
+    "type": "behavioral",
+    "code": "proof fn phi_2_init_free_list_loses_all_nodes<T: Copy, const N: usize>(sll: StaticLinkedList<T, N>)\n    requires\n        sll.wf(),\n        sll@.len() == 0,\n    ensures\n        sll.free_list_len + sll.value_list_len == N,\n        sll.value_list_len == 0,\n        sll.free_list_len == N,\n{\n}",
+    "reason": "After init produces an empty list, ALL N nodes should be in the free list \u2014 if free_list_len != N after init with len()==0, the linked list leaks nodes",
+    "entailed": true,
+    "verus_output": "Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__slinkedlist__spec_impl_u__impl2__init/phi_2_init_free_list_loses_all_nodes.rs:200:75\n    |\n200 |                 && self.arr_seq@[self.value_list@[i as int] as int].value.get_Some_0()\n    |                                                                           ^^^^^^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "set_value_preserves_all_ghost_fields",
+    "type": "logical",
+    "code": "proof fn phi_3_set_value_preserves_all_ghost_fields<T: Copy, const N: usize>(\n    sll: StaticLinkedList<T, N>,\n    old_sll: StaticLinkedList<T, N>,\n    index: SLLIndex,\n    v: Option<T>,\n)\n    requires\n        old_sll.array_wf(),\n    ensures\n        // set_value does not ensure spec_seq, value_list, free_list are unchanged\n        // so they can be arbitrary after calling set_value\n        true,\n{\n}",
+    "reason": "set_value's external_body only ensures arr_seq frame conditions but does NOT ensure Ghost fields (spec_seq, value_list, free_list) are unchanged \u2014 callers must manually maintain these",
+    "entailed": true,
+    "verus_output": "t is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__slinkedlist__spec_impl_u__impl2__init/phi_3_set_value_preserves_all_ghost_fields.rs:200:75\n    |\n200 |                 && self.arr_seq@[self.value_list@[i as int] as int].value.get_Some_0()\n    |                                                                           ^^^^^^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "unique_uses_len_not_spec_len",
+    "type": "logical",
+    "code": "proof fn phi_4_unique_uses_len_not_spec_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    requires\n        sll.value_list_len == 5,\n        sll.spec_seq@.len() == 3,\n    ensures\n        // unique() quantifies over 0..len() == 0..value_list_len == 0..5\n        // but spec_seq only has 3 elements, so indices 3,4 trigger out-of-bounds\n        sll.unique() || !sll.unique(),\n{\n}",
+    "reason": "unique() uses self.len() which equals value_list_len (not spec_seq.len()) without wf \u2014 if value_list_len > spec_seq.len(), the quantifier accesses out-of-bounds spec_seq indices",
+    "entailed": true,
+    "verus_output": "t_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__slinkedlist__spec_impl_u__impl2__init/phi_4_unique_uses_len_not_spec_len.rs:200:75\n    |\n200 |                 && self.arr_seq@[self.value_list@[i as int] as int].value.get_Some_0()\n    |                                                                           ^^^^^^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "set_next_does_not_constrain_new_value",
+    "type": "boundary",
+    "code": "proof fn phi_5_set_next_does_not_constrain_new_value<T: Copy, const N: usize>(\n    old_sll: StaticLinkedList<T, N>,\n    index: SLLIndex,\n)\n    requires\n        old_sll.array_wf(),\n        0 <= index < N,\n    ensures\n        // set_next ensures arr_seq@[index].next == v, but v is unconstrained\n        // it could be set to any SLLIndex including out-of-bounds values\n        true,\n{\n}",
+    "reason": "set_next/set_prev accept arbitrary SLLIndex values without bounds checking \u2014 setting next/prev to values outside [0, N) or -1 can corrupt the linked list structure while still satisfying array_wf",
+    "entailed": true,
+    "verus_output": " is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__slinkedlist__spec_impl_u__impl2__init/phi_5_set_next_does_not_constrain_new_value.rs:200:75\n    |\n200 |                 && self.arr_seq@[self.value_list@[i as int] as int].value.get_Some_0()\n    |                                                                           ^^^^^^^^^^\n\nwarning: 2 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "filter_true_identity",
+    "type": "boundary",
+    "code": "proof fn phi_1_filter_true_identity(s: Seq<int>)\n    ensures\n        s.filter(|_a: int| true) == s,\n{\n    lemma_if_everything_in_seq_satisfies_filter_then_filter_is_identity(s, |_a: int| true);\n}",
+    "reason": "If filtering with a universally-true predicate didn't return the original sequence, the filter spec would be unsound",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "filter_empty_identity",
+    "type": "boundary",
+    "code": "proof fn phi_2_filter_empty_identity(pred: spec_fn(int) -> bool)\n    ensures\n        Seq::<int>::empty().filter(pred) == Seq::<int>::empty(),\n{\n    lemma_if_everything_in_seq_satisfies_filter_then_filter_is_identity(Seq::<int>::empty(), pred);\n}",
+    "reason": "Filtering an empty sequence should always return empty, regardless of predicate \u2014 the vacuous precondition makes this hold for any pred",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "filter_singleton_satisfying",
+    "type": "boundary",
+    "code": "proof fn phi_3_filter_singleton_satisfying(x: int, pred: spec_fn(int) -> bool)\n    requires\n        pred(x),\n    ensures\n        seq![x].filter(pred) == seq![x],\n{\n    lemma_if_everything_in_seq_satisfies_filter_then_filter_is_identity(seq![x], pred);\n}",
+    "reason": "A singleton sequence whose element satisfies the predicate should be unchanged by filter",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "filter_idempotent",
+    "type": "logical",
+    "code": "proof fn phi_4_filter_idempotent(s: Seq<int>, pred: spec_fn(int) -> bool)\n    ensures\n        s.filter(pred).filter(pred) == s.filter(pred),\n{\n    let filtered = s.filter(pred);\n    assert(forall |i: int| 0 <= i < filtered.len() ==> pred(filtered[i])) by {\n        reveal(Seq::filter);\n        // filter output only contains elements satisfying pred\n        admit(); // may need vstd filter lemma\n    }\n    lemma_if_everything_in_seq_satisfies_filter_then_filter_is_identity(filtered, pred);\n}",
+    "reason": "If double-filtering weren't idempotent, the filter spec would be producing elements that don't satisfy the predicate",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "filter_preserves_all_satisfying_length",
+    "type": "behavioral",
+    "code": "proof fn phi_5_filter_preserves_all_satisfying_length(s: Seq<int>, pred: spec_fn(int) -> bool)\n    requires\n        forall |i: int| 0 <= i < s.len() ==> pred(s[i]),\n    ensures\n        s.filter(pred).len() == s.len(),\n{\n    lemma_if_everything_in_seq_satisfies_filter_then_filter_is_identity(s, pred);\n}",
+    "reason": "If all elements satisfy the predicate but filter changed the length, it would be incorrectly dropping or duplicating elements",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

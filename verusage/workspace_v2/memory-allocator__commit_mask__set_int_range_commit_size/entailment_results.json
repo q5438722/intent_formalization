@@ -1,0 +1,47 @@
+[
+  {
+    "name": "bytes_contains_all_below_commit_size",
+    "type": "behavioral",
+    "code": "proof fn phi_1_bytes_contains_all_below_commit_size(sid: SegmentId, mask: CommitMask, addr: int)\n    requires\n        mask@.contains(0),\n        segment_start(sid) <= addr < segment_start(sid) + COMMIT_SIZE,\n    ensures\n        mask.bytes(sid).contains(addr),\n{\n    reveal(CommitMask::bytes);\n}",
+    "reason": "Any address in the first COMMIT_SIZE range is in `bytes` if bit 0 is set \u2014 the `bytes` spec uses integer division which maps the entire range `[segment_start, segment_start + COMMIT_SIZE)` to index 0, but this means a single bit controls a 65536-byte region with no finer granularity",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "bytes_unbounded_below",
+    "type": "logical",
+    "code": "proof fn phi_2_bytes_unbounded_below(sid: SegmentId, mask: CommitMask, addr: int)\n    requires\n        mask@.contains(0),\n        addr == segment_start(sid) - 1,\n    ensures\n        mask.bytes(sid).contains(addr),\n{\n    reveal(CommitMask::bytes);\n    assert((-1int) / COMMIT_SIZE as int == -1int) by (nonlinear_arith);\n}",
+    "reason": "`bytes` uses `(addr - segment_start) / COMMIT_SIZE` without lower-bound check \u2014 for negative offsets, integer division could map to index 0 or a negative index that wraps, potentially including addresses below the segment",
+    "entailed": false,
+    "verus_output": "ormalization/verusage/workspace_v2/memory-allocator__commit_mask__set_int_range_commit_size/phi_2_bytes_unbounded_below.rs:69:9\n   |\n64 | proof fn phi_2_bytes_unbounded_below(sid: SegmentId, mask: CommitMask, addr: int)\n   |       --------------------------------------------------------------------------- at the end of the function body\n...\n69 |         mask.bytes(sid).contains(addr),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "bytes_infinite_set",
+    "type": "logical",
+    "code": "proof fn phi_3_bytes_infinite_set(sid: SegmentId, mask: CommitMask, k: int)\n    requires\n        mask@.contains(0),\n    ensures\n        mask.bytes(sid).contains(segment_start(sid) + k * COMMIT_SIZE as int),\n{\n    reveal(CommitMask::bytes);\n}",
+    "reason": "For ANY integer `k`, `(segment_start + k*COMMIT_SIZE - segment_start) / COMMIT_SIZE == k` \u2014 when k maps to a contained index, `bytes` includes addresses arbitrarily far from the segment, making it an infinite set with no upper bound",
+    "entailed": false,
+    "verus_output": "k__set_int_range_commit_size/phi_3_bytes_infinite_set.rs:68:9\n   |\n64 | proof fn phi_3_bytes_infinite_set(sid: SegmentId, mask: CommitMask, k: int)\n   |       --------------------------------------------------------------------- at the end of the function body\n...\n68 |         mask.bytes(sid).contains(segment_start(sid) + k * COMMIT_SIZE as int),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "segment_start_external_body_unconstrained",
+    "type": "logical",
+    "code": "proof fn phi_4_segment_start_external_body_unconstrained(s1: SegmentId, s2: SegmentId)\n    requires\n        s1.id != s2.id,\n    ensures\n        true,\n{\n    // segment_start is external_body with no ensures relating id to address\n    // Two different segment IDs could map to the same start address\n}",
+    "reason": "`segment_start` is `external_body` with no postconditions \u2014 different segment IDs are not constrained to have different start addresses, and the start address could be any integer",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "bytes_negative_offset_in_range",
+    "type": "boundary",
+    "code": "proof fn phi_5_bytes_negative_offset_in_range(sid: SegmentId, mask: CommitMask)\n    requires\n        mask@.contains(0),\n    ensures\n        mask.bytes(sid).contains(segment_start(sid) - COMMIT_SIZE as int),\n{\n    reveal(CommitMask::bytes);\n}",
+    "reason": "Address `segment_start - COMMIT_SIZE` has offset `-COMMIT_SIZE`, and `(-COMMIT_SIZE) / COMMIT_SIZE == -1` \u2014 if `mask@.contains(-1)` is false this shouldn't be included, but if the view's domain accidentally includes -1 then bytes extends below the segment",
+    "entailed": false,
+    "verus_output": "ange_commit_size/phi_5_bytes_negative_offset_in_range.rs:68:9\n   |\n64 | proof fn phi_5_bytes_negative_offset_in_range(sid: SegmentId, mask: CommitMask)\n   |       ------------------------------------------------------------------------- at the end of the function body\n...\n68 |         mask.bytes(sid).contains(segment_start(sid) - COMMIT_SIZE as int),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

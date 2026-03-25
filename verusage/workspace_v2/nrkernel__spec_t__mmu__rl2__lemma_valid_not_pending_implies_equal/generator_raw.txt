@@ -1,0 +1,91 @@
+New content: `lemma_view_addr_aligned` (external_body) and `lemma_bit_indices_less_512` (external_body). These are fresh targets.
+
+===PHI_START===
+NAME: lemma_view_addr_aligned_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_lemma_view_addr_aligned_external_body(pde: PDE)
+    requires
+        pde.layer@ < 4,
+        pde@ is Directory,
+    ensures
+        aligned(pde@->Directory_addr as nat, 4096),
+        pde@->Directory_addr < usize::MAX - 4096,
+{
+    pde.lemma_view_addr_aligned();
+}
+```
+REASON: `lemma_view_addr_aligned` is `external_body` — directory address alignment and overflow bounds are trusted without proof from the PDE bit-extraction logic
+===PHI_END===
+
+===PHI_START===
+NAME: lemma_bit_indices_less_512_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_lemma_bit_indices_less_512_external_body(va: usize)
+    ensures
+        l0_bits!(va) < 512,
+        l1_bits!(va) < 512,
+        l2_bits!(va) < 512,
+        l3_bits!(va) < 512,
+{
+    lemma_bit_indices_less_512(va);
+}
+```
+REASON: `lemma_bit_indices_less_512` is `external_body` — the 9-bit extraction bound (<512) for each page table level index is trusted without bitvector proof
+===PHI_END===
+
+===PHI_START===
+NAME: pt_walk_l0_addr_in_pml4_range
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_pt_walk_l0_addr_in_pml4_range(mem: PTMem, vaddr: usize)
+    ensures
+        mem.pt_walk(vaddr).path[0].0 == add(mem.pml4, mul(l0_bits!(vaddr), WORD_SIZE)),
+{
+}
+```
+REASON: The first path entry address should be pml4 + l0_index * 8 — tests that pt_walk correctly computes the L0 address from pml4 base
+===PHI_END===
+
+===PHI_START===
+NAME: write_seq_idle_plus_write_seq
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_write_seq_idle_plus_write_seq(mem: PTMem, writes: Seq<(usize, usize)>, addr: usize)
+    requires
+        forall|i| 0 <= i < writes.len() ==> (#[trigger] writes[i]).0 != addr,
+        mem.mem.contains_key(addr),
+    ensures
+        mem.write_seq(writes).mem.contains_key(addr),
+        mem.write_seq(writes).read(addr) == mem.read(addr),
+{
+    mem.lemma_write_seq(writes);
+    mem.lemma_write_seq_idle(writes, addr);
+}
+```
+REASON: Both `lemma_write_seq` and `lemma_write_seq_idle` are `external_body` — domain preservation and read frame together chain two unverified assumptions
+===PHI_END===
+
+===PHI_START===
+NAME: page_addr_aligned_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_page_addr_aligned_external_body(pde: PDE)
+    requires
+        pde.layer@ < 4,
+        pde@ is Page,
+    ensures
+        aligned(pde@->Page_addr as nat, 4096),
+        pde@->Page_addr < usize::MAX - 4096,
+{
+    pde.lemma_view_addr_aligned();
+}
+```
+REASON: `lemma_view_addr_aligned` trusts page frame address alignment and overflow bounds — the bitmask extraction producing a 4KB-aligned address is unverified
+===PHI_END===

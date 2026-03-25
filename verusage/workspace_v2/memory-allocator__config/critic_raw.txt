@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: slice_shift_mismatch
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `SLICE_SHIFT = 16` and `1 << 16 = 65536 = SLICE_SIZE`. The values are consistent. The hardcoded value matching the computed shift is a correct and expected property, not a spec gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: segment_size_alignment_equal
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `SEGMENT_ALIGN` is literally defined as `SEGMENT_SIZE` — this is a deliberate design choice from mimalloc where segments are aligned to their own size. This is standard practice for power-of-two sized memory regions.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: huge_block_exceeds_segment
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Huge blocks are expected to exceed segment size — that's what makes them "huge." The mimalloc allocator handles huge allocations specially, spanning multiple segments. This size relationship is by design.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: medium_obj_wsize_max_truncation
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `MEDIUM_OBJ_SIZE_MAX = 131072 = 16384 * 8`, so the division is exact with no truncation. The roundtrip property holding is the expected and correct behavior, confirming the constants are consistently defined.
+===VERDICT_END===
+
+===SUMMARY===
+All four candidates are false positives. The constants file defines a consistent set of allocator parameters from mimalloc, where all values are correctly computed from their defining expressions. The shift/size consistency, alignment-equals-size design, huge-exceeds-segment relationship, and exact word-size division are all intentional design properties, not spec gaps.
+===END_SUMMARY===

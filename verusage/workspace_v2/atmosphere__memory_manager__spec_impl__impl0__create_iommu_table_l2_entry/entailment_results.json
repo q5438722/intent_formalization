@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize2pa_mem_valid_unconditional",
+    "type": "logical",
+    "code": "proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body ensures MEM_valid(ret) for ALL inputs \u2014 trusts without proof that masking any arbitrary usize yields a valid physical address",
+    "entailed": false,
+    "verus_output": "/verusage/workspace_v2/atmosphere__memory_manager__spec_impl__impl0__create_iommu_table_l2_entry/phi_1_usize2pa_mem_valid_unconditional.rs:1179:9\n     |\n1177 | proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n     |       --------------------------------------------------- at the end of the function body\n1178 |     ensures\n1179 |         MEM_valid(usize2pa(v)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 40 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pagemap_wf_zero_entry_is_empty",
+    "type": "behavioral",
+    "code": "proof fn phi_2_pagemap_wf_zero_entry_is_empty(pm: PageMap, i: int)\n    requires\n        pm.wf(),\n        0 <= i < 512,\n        pm.ar@[i] == 0,\n    ensures\n        pm.spec_seq@[i].is_empty(),\n{\n}",
+    "reason": "PageMap::wf plus usize2page_entry's external_body v==0 postcondition together entail that any zero raw entry becomes an empty PageEntry \u2014 this relies entirely on the unverified external_body guarantee",
+    "entailed": false,
+    "verus_output": "/workspace_v2/atmosphere__memory_manager__spec_impl__impl0__create_iommu_table_l2_entry/phi_2_pagemap_wf_zero_entry_is_empty.rs:1183:9\n     |\n1177 | proof fn phi_2_pagemap_wf_zero_entry_is_empty(pm: PageMap, i: int)\n     |       ------------------------------------------------------------ at the end of the function body\n...\n1183 |         pm.spec_seq@[i].is_empty(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 40 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "resolve_l4_kernel_always_some",
+    "type": "boundary",
+    "code": "proof fn phi_3_resolve_l4_kernel_always_some(pt: PageTable, l4i: L4Index)\n    requires\n        0 <= l4i < pt.kernel_l4_end,\n    ensures\n        pt.spec_resolve_mapping_l4(l4i).is_Some(),\n{\n}",
+    "reason": "spec_resolve_mapping_l4 returns Some for ANY index below kernel_l4_end regardless of the present bit \u2014 kernel entries are unconditionally treated as present, which could mask corrupted/zeroed kernel page table entries",
+    "entailed": true,
+    "verus_output": "ome.rs:67:10\n   |\n67 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__memory_manager__spec_impl__impl0__create_iommu_table_l2_entry/phi_3_resolve_l4_kernel_always_some.rs:76:10\n   |\n76 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 41 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "is_empty_no_l4_dom_constraint",
+    "type": "logical",
+    "code": "proof fn phi_4_is_empty_no_l4_dom_constraint(pt: PageTable, p: PageMapPtr)\n    requires\n        pt.is_empty(),\n        pt.l4_table@.dom().contains(p),\n        p != pt.cr3,\n    ensures\n        true,\n{\n}",
+    "reason": "is_empty places no constraint on l4_table's domain beyond cr3 \u2014 an \"empty\" page table can have arbitrary extra L4 page map pointers in its l4_table tracked map, inflating page_closure with phantom entries",
+    "entailed": true,
+    "verus_output": "int.rs:67:10\n   |\n67 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__memory_manager__spec_impl__impl0__create_iommu_table_l2_entry/phi_4_is_empty_no_l4_dom_constraint.rs:76:10\n   |\n76 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 40 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "resolve_1g_l3_ps_not_checked_in_l3",
+    "type": "boundary",
+    "code": "proof fn phi_5_resolve_1g_l3_ps_not_checked_in_l3(pt: PageTable, l4i: L4Index, l3i: L3Index)\n    requires\n        pt.kernel_l4_end <= l4i < 512,\n        0 <= l3i < 512,\n        pt.spec_resolve_mapping_l4(l4i).is_Some(),\n        pt.l3_tables@.dom().contains(pt.spec_resolve_mapping_l4(l4i).unwrap().addr),\n        pt.l3_tables@[pt.spec_resolve_mapping_l4(l4i).unwrap().addr].value()[l3i].perm.present,\n        pt.l3_tables@[pt.spec_resolve_mapping_l4(l4i).unwrap().addr].value()[l3i].perm.ps == false,\n        pt.spec_resolve_mapping_1g_l3(l4i, l3i).is_Some(),\n    ensures\n        pt.spec_resolve_mapping_l3(l4i, l3i).is_Some(),\n{\n}",
+    "reason": "When an L3 entry is present but NOT a 1G page (ps==false), both spec_resolve_mapping_1g_l3 and spec_resolve_mapping_l3 return Some \u2014 the 1G resolver does not filter out non-ps entries, so a 4K/2M entry could be misinterpreted as a 1G mapping candidate",
+    "entailed": true,
+    "verus_output": "s:67:10\n   |\n67 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__memory_manager__spec_impl__impl0__create_iommu_table_l2_entry/phi_5_resolve_1g_l3_ps_not_checked_in_l3.rs:76:10\n   |\n76 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 43 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

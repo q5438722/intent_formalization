@@ -1,0 +1,52 @@
+[
+  {
+    "name": "empty_vec_empty_serialization",
+    "target_fn": "serialize (Vec<u8>)",
+    "type": "behavioral",
+    "reason": "Empty vec should still produce a length-prefix in its serialization, so zero-length output would mean the prefix is missing",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "empty_vec_empty_serialization(v: Vec<u8>)\n    |       -------------------------------------------------- at the end of the function body\n...\n162 |         v.ghost_serialize().len() == 0,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "serialize_len_equals_raw_len",
+    "target_fn": "serialize (Vec<u8>)",
+    "type": "boundary",
+    "reason": "Serialized form must be strictly longer than raw data due to the usize length prefix; equality would indicate a missing prefix",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "n_equals_raw_len(v: Vec<u8>)\n    |       ------------------------------------------------- at the end of the function body\n...\n162 |         v.ghost_serialize().len() == v@.len(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "different_len_vecs_same_serialization",
+    "target_fn": "serialize (Vec<u8>)",
+    "type": "logical",
+    "reason": "Serialization should be injective on length; two vecs of different lengths mapping to the same bytes would break deserialization",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "  ------------------------------------------------------------------------ at the end of the function body\n...\n163 |         v1.ghost_serialize() =~= v2.ghost_serialize(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "prefix_is_raw_bytes_not_length",
+    "target_fn": "serialize (Vec<u8>)",
+    "type": "behavioral",
+    "reason": "The serialization format is length-prefix then raw bytes; if the first v@.len() bytes were the raw data, the length prefix would be misplaced or absent",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "   --------------------------------------------------- at the end of the function body\n...\n162 |         v.ghost_serialize().subrange(0, v@.len() as int) =~= v@,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "single_byte_vec_serializes_to_one_byte",
+    "target_fn": "serialize (Vec<u8>)",
+    "type": "boundary",
+    "reason": "A 1-element vec should serialize to 8 bytes (u64 LE length prefix) + 1 byte = 9 bytes; length 1 would mean the prefix is entirely absent",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "rializes_to_one_byte(v: Vec<u8>)\n    |       ----------------------------------------------------------- at the end of the function body\n...\n162 |         v.ghost_serialize().len() == 1,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

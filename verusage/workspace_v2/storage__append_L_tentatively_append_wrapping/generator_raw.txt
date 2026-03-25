@@ -1,0 +1,163 @@
+===PHI_START===
+NAME: lemma_tentatively_append_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_lemma_tentatively_append_external_body(
+    pm_region_view: PersistentMemoryRegionView,
+    bytes_to_append: Seq<u8>,
+    prev_info: LogInfo,
+    prev_state: AbstractLogState,
+)
+    requires
+        pm_region_view.len() == prev_info.log_area_len,
+        info_consistent_with_log_area(pm_region_view, prev_info, prev_state),
+        ({
+            let log_area_len = prev_info.log_area_len;
+            let num_bytes = bytes_to_append.len();
+            let max_len_without_wrapping = log_area_len -
+                relative_log_pos_to_log_area_offset(prev_info.log_plus_pending_length as int,
+                                                    prev_info.head_log_area_offset as int, log_area_len as int);
+            &&& 0 < num_bytes <= max_len_without_wrapping
+            &&& prev_info.log_plus_pending_length + num_bytes <= log_area_len
+            &&& prev_info.head + prev_info.log_plus_pending_length + num_bytes <= u128::MAX
+        }),
+    ensures
+        ({
+            let log_area_len = prev_info.log_area_len;
+            let num_bytes = bytes_to_append.len();
+            let new_info = prev_info.tentatively_append(num_bytes as u64);
+            let new_state = prev_state.tentatively_append(bytes_to_append);
+            let write_addr = relative_log_pos_to_log_area_offset(
+                prev_info.log_plus_pending_length as int,
+                prev_info.head_log_area_offset as int,
+                log_area_len as int,
+            );
+            let pm_region_view2 = pm_region_view.write(write_addr, bytes_to_append);
+            info_consistent_with_log_area(pm_region_view2, new_info, new_state)
+        }),
+{
+    lemma_tentatively_append(pm_region_view, bytes_to_append, prev_info, prev_state);
+}
+```
+REASON: `lemma_tentatively_append` is `external_body` with `unimplemented!()` — the non-wrapping append correctness proof is entirely trusted; if the write address calculation or invariant preservation is wrong, log corruption would go undetected
+===PHI_END===
+
+===PHI_START===
+NAME: no_outstanding_writes_from_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_no_outstanding_writes_from_external_body(
+    pm_region_view: PersistentMemoryRegionView,
+    bytes_to_append: Seq<u8>,
+    prev_info: LogInfo,
+    prev_state: AbstractLogState,
+)
+    requires
+        pm_region_view.len() == prev_info.log_area_len,
+        info_consistent_with_log_area(pm_region_view, prev_info, prev_state),
+        ({
+            let log_area_len = prev_info.log_area_len;
+            let num_bytes = bytes_to_append.len();
+            let max_len_without_wrapping = log_area_len -
+                relative_log_pos_to_log_area_offset(prev_info.log_plus_pending_length as int,
+                                                    prev_info.head_log_area_offset as int, log_area_len as int);
+            &&& 0 < num_bytes <= max_len_without_wrapping
+            &&& prev_info.log_plus_pending_length + num_bytes <= log_area_len
+            &&& prev_info.head + prev_info.log_plus_pending_length + num_bytes <= u128::MAX
+        }),
+    ensures
+        ({
+            let write_addr = relative_log_pos_to_log_area_offset(
+                prev_info.log_plus_pending_length as int,
+                prev_info.head_log_area_offset as int,
+                prev_info.log_area_len as int,
+            );
+            pm_region_view.no_outstanding_writes_in_range(write_addr, write_addr + bytes_to_append.len())
+        }),
+{
+    lemma_tentatively_append(pm_region_view, bytes_to_append, prev_info, prev_state);
+}
+```
+REASON: The external_body lemma asserts no outstanding writes in the target range — this crash-safety precondition is trusted without proof; if the invariant doesn't actually guarantee this, writes could overwrite in-flight data
+===PHI_END===
+
+===PHI_START===
+NAME: unreachable_during_recovery_from_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_unreachable_during_recovery_from_external_body(
+    pm_region_view: PersistentMemoryRegionView,
+    bytes_to_append: Seq<u8>,
+    prev_info: LogInfo,
+    prev_state: AbstractLogState,
+    log_area_offset: int,
+)
+    requires
+        pm_region_view.len() == prev_info.log_area_len,
+        info_consistent_with_log_area(pm_region_view, prev_info, prev_state),
+        ({
+            let log_area_len = prev_info.log_area_len;
+            let num_bytes = bytes_to_append.len();
+            let max_len_without_wrapping = log_area_len -
+                relative_log_pos_to_log_area_offset(prev_info.log_plus_pending_length as int,
+                                                    prev_info.head_log_area_offset as int, log_area_len as int);
+            &&& 0 < num_bytes <= max_len_without_wrapping
+            &&& prev_info.log_plus_pending_length + num_bytes <= log_area_len
+            &&& prev_info.head + prev_info.log_plus_pending_length + num_bytes <= u128::MAX
+        }),
+        ({
+            let write_addr = relative_log_pos_to_log_area_offset(
+                prev_info.log_plus_pending_length as int,
+                prev_info.head_log_area_offset as int,
+                prev_info.log_area_len as int,
+            );
+            write_addr <= log_area_offset < write_addr + bytes_to_append.len()
+        }),
+    ensures
+        log_area_offset_unreachable_during_recovery(
+            prev_info.head_log_area_offset as int,
+            prev_info.log_area_len as int,
+            prev_info.log_length as int,
+            log_area_offset,
+        ),
+{
+    lemma_tentatively_append(pm_region_view, bytes_to_append, prev_info, prev_state);
+}
+```
+REASON: The external_body lemma asserts write targets are unreachable during recovery — this crash-safety property is trusted; if recovery could reach these offsets, a crash mid-write would expose partially written data
+===PHI_END===
+
+===PHI_START===
+NAME: tentatively_append_pending_concat
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_tentatively_append_pending_concat(state: AbstractLogState, b1: Seq<u8>, b2: Seq<u8>)
+    ensures
+        state.tentatively_append(b1).tentatively_append(b2).pending
+            == state.pending + b1 + b2,
+{
+}
+```
+REASON: Sequential tentative appends should concatenate pending bytes in order — if the associativity of sequence concatenation broke this, two successive appends would not equal a single combined append
+===PHI_END===
+
+===PHI_START===
+NAME: loginfo_tentatively_append_overflow
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_loginfo_tentatively_append_overflow(info: LogInfo, num_bytes: u64)
+    requires
+        info.log_plus_pending_length as int + num_bytes as int > u64::MAX,
+    ensures
+        info.tentatively_append(num_bytes).log_plus_pending_length as int
+            == (info.log_plus_pending_length as int + num_bytes as int) % (u64::MAX as int + 1),
+{
+}
+```
+REASON: `LogInfo::tentatively_append` casts to u64 — if `log_plus_pending_length + num_bytes` overflows u64, the field silently wraps around, making the log metadata inconsistent with the actual pending data length
+===PHI_END===

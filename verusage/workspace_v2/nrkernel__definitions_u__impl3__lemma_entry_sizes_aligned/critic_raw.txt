@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: aligned_transitive_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `aligned_transitive` is `external_body` with `unimplemented!()` body — transitivity of divisibility is a correct mathematical fact but trusted without proof. The `lemma_entry_sizes_aligned` proof depends on this axiom for its inductive step.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: entry_sizes_aligned_uses_external
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is a direct call to the verified `lemma_entry_sizes_aligned`. The trust gap is in the underlying `aligned_transitive` axiom already captured by φ1; this wrapper adds no new information.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: aligned_transitive_chain
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is just two applications of the same external_body axiom already flagged by φ1. The composability of transitivity is a correct mathematical property and the trust gap is already identified.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: self_aligned_from_lemma
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Self-alignment (`x % x == 0` for `x > 0`) is trivially correct. The base case in `lemma_entry_sizes_aligned` proves this via `nonlinear_arith` without using the external_body.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: adjacent_alignment_from_inv
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Adjacent layer divisibility follows directly from `entry_size(i) == entry_size(i+1) * num_entries(i+1)` in the invariant. For the `i+1` case, the lemma doesn't actually need `aligned_transitive` — the base case and one step suffice.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: `aligned_transitive` is an `external_body` axiom trusting divisibility transitivity without proof, which the `lemma_entry_sizes_aligned` inductive step depends on. The other four candidates are false positives — they are either redundant instantiations of the same axiom, trivially correct properties (self-alignment), or properties derivable without the external_body (adjacent divisibility).
+===END_SUMMARY===

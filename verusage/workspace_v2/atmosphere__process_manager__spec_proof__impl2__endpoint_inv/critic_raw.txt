@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: get_proc_leaks_container_dom_without_full_wf
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The requires clause includes `pm.wf()`, which already implies `processes_container_wf()` containing the exact guarantee that every process's owning_container is in container_dom. The get_proc external_body's `self.wf() ==>` guard is satisfied by the precondition, so this is a correct and expected consequence.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: owned_threads_shared_across_containers
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures clause `P || !P` is a tautology. While the observation about missing disjointness on owned_threads is valid, this PHI proves nothing — `threads_container_wf` already constrains each thread's owning_container bidirectionally, effectively preventing shared ownership.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: memory_disjoint_container_not_proc
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is a correct and desirable consequence of `memory_disjoint()`. The spec intentionally enforces that pointer domains for containers, processes, threads, and endpoints are pairwise disjoint — this is a fundamental safety property ensuring no pointer aliasing across subsystem types.
+===VERDICT_END===
+
+===SUMMARY===
+All three candidates are false positives. `get_proc_leaks_container_dom_without_full_wf` is trivially satisfied because the requires already includes `pm.wf()`. `owned_threads_shared_across_containers` has a tautological ensures clause. `memory_disjoint_container_not_proc` is an intentional and desirable safety property of the spec.
+===END_SUMMARY===

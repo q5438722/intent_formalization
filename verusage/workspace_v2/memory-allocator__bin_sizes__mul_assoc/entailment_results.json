@@ -1,0 +1,47 @@
+[
+  {
+    "name": "pow2_negative_is_one",
+    "type": "boundary",
+    "code": "proof fn phi_1_pow2_negative_is_one(e: int)\n    requires\n        e < 0,\n    ensures\n        pow2(e) == 1,\n{\n}",
+    "reason": "`pow2` returns 1 for all negative exponents, whereas mathematically 2^(-n) should be a fraction \u2014 callers passing negative exponents by mistake get silently wrong results",
+    "entailed": true,
+    "verus_output": "verification results:: 15 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "pow2_zero_equals_pow2_minus1",
+    "type": "boundary",
+    "code": "proof fn phi_2_pow2_zero_equals_pow2_minus1()\n    ensures\n        pow2(0) == pow2(-1),\n{\n}",
+    "reason": "pow2(0) == pow2(-1) == 1 means the function is non-injective in the non-positive range, so distinct exponents produce the same value \u2014 could mask off-by-one errors in callers",
+    "entailed": true,
+    "verus_output": "verification results:: 15 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "shift_zero_by_63",
+    "type": "boundary",
+    "code": "proof fn phi_3_shift_zero_by_63(shift: u64)\n    requires\n        0 <= shift < 64,\n    ensures\n        0u64 >> shift == 0,\n{\n    shift_is_div(0u64, shift);\n    pow2_positive(shift as int);\n}",
+    "reason": "Right-shifting zero always yields zero regardless of shift amount \u2014 if `shift_is_div` allowed a nonzero result for zero input, the shift-division equivalence would be unsound",
+    "entailed": true,
+    "verus_output": "verification results:: 15 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "mul_assoc_commutativity_hidden",
+    "type": "logical",
+    "code": "proof fn phi_4_mul_assoc_commutativity_hidden(x: nat, y: nat, z: nat)\n    ensures\n        (x * y) * z == (z * y) * x,\n{\n    mul_assoc(x, y, z);\n    mul_assoc(z, y, x);\n}",
+    "reason": "`mul_assoc` actually proves `(x*y)*z == y*(x*z)` which smuggles in commutativity \u2014 if this is unintentional, it could allow proofs to go through for wrong reasons",
+    "entailed": true,
+    "verus_output": "verification results:: 15 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "div2_loses_remainder",
+    "type": "behavioral",
+    "code": "proof fn phi_5_div2_loses_remainder(x: u64)\n    requires\n        x as int % 2 == 1,\n    ensures\n        x as int / 2 * 2 != x as int,\n{\n}",
+    "reason": "Integer division truncates \u2014 `div2` lemma enables chained divisions that silently discard remainders at each step, potentially accumulating rounding errors in shift_is_div's inductive proof",
+    "entailed": true,
+    "verus_output": "verification results:: 15 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

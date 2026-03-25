@@ -1,0 +1,95 @@
+===PHI_START===
+NAME: interp_of_entry_implies_interp_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_interp_of_entry_implies_interp_external_body(d: Directory, j: nat, va: nat, pte: PTE)
+    requires
+        d.inv(),
+        j < d.entries.len(),
+        d.interp_of_entry(j).contains_pair(va, pte),
+    ensures
+        d.interp().contains_pair(va, pte),
+{
+    d.lemma_interp_of_entry_contains_mapping_implies_interp_contains_mapping(j);
+}
+```
+REASON: `lemma_interp_of_entry_contains_mapping_implies_interp_contains_mapping` is `external_body` — the containment from entry interpretation to full interpretation is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: interp_of_entry_key_implies_interp_key_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_interp_of_entry_key_implies_interp_key_external_body(d: Directory, j: nat, va: nat)
+    requires
+        d.inv(),
+        j < d.entries.len(),
+        d.interp_of_entry(j).contains_key(va),
+    ensures
+        d.interp().contains_key(va),
+{
+    d.lemma_interp_of_entry_contains_mapping_implies_interp_contains_mapping(j);
+}
+```
+REASON: The key-containment ensures clause of the same external_body — if wrong, `union_prefer_right` could drop keys from earlier entries
+===PHI_END===
+
+===PHI_START===
+NAME: inv_allows_empty_directories
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_inv_allows_empty_directories(d: Directory, i: nat)
+    requires
+        d.inv(),
+        i < d.entries.len(),
+        d.entries[i as int] is Directory,
+    ensures
+        d.entries[i as int]->Directory_0.inv(),
+{
+}
+```
+REASON: `inv()` does not include `no_empty_directories` — the commented-out `self.directories_are_nonempty()` means empty subdirectories satisfy `inv()`, potentially allowing vacuous directory trees
+===PHI_END===
+
+===PHI_START===
+NAME: no_empty_directories_not_in_inv
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_no_empty_directories_not_in_inv(arch: Arch, entries: Seq<NodeEntry>, layer: nat, sub_entries: Seq<NodeEntry>)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+        layer + 1 < arch.layers.len(),
+        entries.len() == arch.num_entries(layer),
+        sub_entries.len() == arch.num_entries((layer + 1) as nat),
+        forall|i: nat| i < sub_entries.len() ==> sub_entries[i as int] is Invalid,
+        entries[0] == NodeEntry::Directory(Directory { entries: sub_entries, layer: layer + 1, base_vaddr: 0, arch }),
+        forall|i: nat| 0 < i < entries.len() ==> entries[i as int] is Invalid,
+    ensures
+        (Directory { entries, layer, base_vaddr: 0, arch }).inv(),
+{
+}
+```
+REASON: A directory with an all-Invalid subdirectory (empty directory) satisfies `inv()` — the `no_empty_directories` predicate is defined but not enforced in `inv()`
+===PHI_END===
+
+===PHI_START===
+NAME: contains_entry_size_at_index_atleast_any_layer
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_contains_entry_size_at_index_atleast_any_layer(arch: Arch, layer: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+    ensures
+        arch.contains_entry_size_at_index_atleast(arch.entry_size(layer), layer),
+{
+}
+```
+REASON: `contains_entry_size_at_index_atleast` is trivially satisfied by witnessing `i == layer` — tests whether this existential provides any meaningful constraint beyond tautology
+===PHI_END===

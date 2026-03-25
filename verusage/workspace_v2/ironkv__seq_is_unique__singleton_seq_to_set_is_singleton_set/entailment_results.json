@@ -1,0 +1,47 @@
+[
+  {
+    "name": "singleton_seq_to_set_len",
+    "type": "boundary",
+    "code": "proof fn phi_1_singleton_seq_to_set_len<T>(x: T)\n    ensures\n        seq![x].to_set().len() == 1,\n{\n    singleton_seq_to_set_is_singleton_set(x);\n    assert(seq![x].to_set() == set![x]);\n    assert(set![x].len() == 1);\n}",
+    "reason": "If `set![x].len()` were not 1 (e.g., if the set macro or finite-set axioms were inconsistent), this would indicate a soundness gap in vstd's set axiomatization",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "singleton_seq_to_set_contains_only_element",
+    "type": "behavioral",
+    "code": "proof fn phi_2_singleton_seq_to_set_contains_only_element<T>(x: T, y: T)\n    requires\n        seq![x].to_set().contains(y),\n    ensures\n        x == y,\n{\n    singleton_seq_to_set_is_singleton_set(x);\n    assert(set![x].contains(y));\n}",
+    "reason": "If a singleton set contained elements other than its sole member, the set abstraction would be unsound \u2014 `to_set` or `set!` would be over-approximating membership",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "empty_seq_to_set_is_empty",
+    "type": "boundary",
+    "code": "proof fn phi_3_empty_seq_to_set_is_empty()\n    ensures\n        Seq::<int>::empty().to_set() == Set::<int>::empty(),\n{\n    assert_sets_equal!(Seq::<int>::empty().to_set(), Set::<int>::empty());\n}",
+    "reason": "If `Seq::empty().to_set()` produced a non-empty set, the `to_set` definition would be inconsistent with the base case of sequence-to-set conversion",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "duplicate_seq_to_set_equals_singleton",
+    "type": "logical",
+    "code": "proof fn phi_4_duplicate_seq_to_set_equals_singleton(x: int)\n    ensures\n        seq![x, x].to_set() == set![x],\n{\n    let s = seq![x, x];\n    let ts = s.to_set();\n    assert(s[0] == x);\n    assert(s[1] == x);\n    assert forall |y| ts.contains(y) <==> set![x].contains(y) by {\n        if ts.contains(y) {\n            assert(exists|i: int| 0 <= i < s.len() && s[i] == y);\n        }\n    }\n    assert_sets_equal!(ts, set![x]);\n}",
+    "reason": "If a sequence with duplicate elements produced a set larger than the set of distinct elements, `to_set` would violate the mathematical definition of sets as collections of distinct elements",
+    "entailed": true,
+    "verus_output": "rs are used by the underlying SMT theorem prover to instantiate quantifiers;\n      the theorem prover instantiates a quantifier whenever some expression matches the\n      pattern specified by one of the quantifier's triggers.)\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__seq_is_unique__singleton_seq_to_set_is_singleton_set/phi_4_duplicate_seq_to_set_equals_singleton.rs:35:5\n   |\n35 |     assert forall |y| ts.contains(y) <==> set![x].contains(y) by {\n   |     ^^^^^^\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "seq_to_set_subset_of_push",
+    "type": "logical",
+    "code": "proof fn phi_5_seq_to_set_subset_of_push(s: Seq<int>, x: int)\n    ensures\n        s.to_set().subset_of(s.push(x).to_set()),\n{\n    let s2 = s.push(x);\n    assert forall |y| s.to_set().contains(y) implies s2.to_set().contains(y) by {\n        let i = choose|i: int| 0 <= i < s.len() && s[i] == y;\n        assert(s2[i] == y);\n    }\n}",
+    "reason": "If pushing an element onto a sequence caused existing elements to disappear from `to_set`, the `to_set` conversion would be non-monotonic \u2014 violating a fundamental set-theoretic property",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

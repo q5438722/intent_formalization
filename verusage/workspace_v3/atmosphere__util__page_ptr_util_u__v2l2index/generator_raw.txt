@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: l2index_always_zero_4k
+TARGET_FN: v2l2index
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_l2index_always_zero_4k(va: usize)
+    requires
+        spec_va_4k_valid(va),
+    ensures
+        spec_v2l2index(va) == 0,
+{
+}
+```
+REASON: If every 4K-valid address maps to L2 index 0, the function cannot distinguish any L2 page-table entries for 4K pages
+===PHI_END===
+
+===PHI_START===
+NAME: l2index_never_reaches_max
+TARGET_FN: v2l2index
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_l2index_never_reaches_max(va: usize)
+    requires
+        spec_va_4k_valid(va) || spec_va_2m_valid(va) || spec_va_1g_valid(va),
+    ensures
+        spec_v2l2index(va) < 0x1ff,
+{
+}
+```
+REASON: The ensures clause promises ret <= 0x1ff; if 0x1ff is unreachable, the upper bound is too loose and the full 9-bit index space is not usable
+===PHI_END===
+
+===PHI_START===
+NAME: l2index_determines_2m_addr
+TARGET_FN: v2l2index
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_l2index_determines_2m_addr(va1: usize, va2: usize)
+    requires
+        spec_va_2m_valid(va1),
+        spec_va_2m_valid(va2),
+        spec_v2l2index(va1) == spec_v2l2index(va2),
+    ensures
+        va1 == va2,
+{
+}
+```
+REASON: Two 2M-valid addresses can share an L2 index yet differ in higher bits (L3/L4); if entailed, the spec conflates distinct address ranges
+===PHI_END===
+
+===PHI_START===
+NAME: l2index_always_zero_2m
+TARGET_FN: v2l2index
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_l2index_always_zero_2m(va: usize)
+    requires
+        spec_va_2m_valid(va),
+    ensures
+        spec_v2l2index(va) == 0,
+{
+}
+```
+REASON: 2M alignment zeros bits 0–20 but bits 21–29 are free; if the index were always 0, the L2 table could only map one 2M region per L3 entry
+===PHI_END===
+
+===PHI_START===
+NAME: l2index_upper_half_unreachable
+TARGET_FN: v2l2index
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_l2index_upper_half_unreachable(va: usize)
+    requires
+        spec_va_4k_valid(va) || spec_va_2m_valid(va),
+    ensures
+        spec_v2l2index(va) < 256,
+{
+}
+```
+REASON: If the top bit of the 9-bit index is never set, only 256 of 512 L2 entries are addressable, halving usable virtual address space per L3 slot
+===PHI_END===

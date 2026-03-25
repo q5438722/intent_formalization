@@ -1,0 +1,147 @@
+===PHI_START===
+NAME: new_l3_entry_not_present
+TARGET_FN: create_entry_l3
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_new_l3_entry_not_present(
+    pt_new: PageTable,
+    target_l4i: L4Index,
+    target_l3i: L3Index,
+    page_map_ptr: PageMapPtr,
+)
+    requires
+        pt_new.wf(),
+        pt_new.kernel_l4_end <= target_l4i < 512,
+        0 <= target_l3i < 512,
+        pt_new.spec_resolve_mapping_l3(target_l4i, target_l3i).is_Some(),
+        pt_new.spec_resolve_mapping_l3(target_l4i, target_l3i).get_Some_0().addr == page_map_ptr,
+    ensures
+        pt_new.spec_resolve_mapping_l3(target_l4i, target_l3i).get_Some_0().perm.present == false,
+{
+}
+```
+REASON: A newly created L3 entry with present==false would be invisible to hardware address translation
+===PHI_END===
+
+===PHI_START===
+NAME: new_l3_entry_not_user
+TARGET_FN: create_entry_l3
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_new_l3_entry_not_user(
+    pt_new: PageTable,
+    target_l4i: L4Index,
+    target_l3i: L3Index,
+    page_map_ptr: PageMapPtr,
+)
+    requires
+        pt_new.wf(),
+        pt_new.kernel_l4_end <= target_l4i < 512,
+        0 <= target_l3i < 512,
+        pt_new.spec_resolve_mapping_l3(target_l4i, target_l3i).is_Some(),
+        pt_new.spec_resolve_mapping_l3(target_l4i, target_l3i).get_Some_0().addr == page_map_ptr,
+    ensures
+        pt_new.spec_resolve_mapping_l3(target_l4i, target_l3i).get_Some_0().perm.user == false,
+{
+}
+```
+REASON: An L3 entry in user space without the user bit set would violate user/kernel isolation
+===PHI_END===
+
+===PHI_START===
+NAME: other_l3_mapping_disappears
+TARGET_FN: create_entry_l3
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_other_l3_mapping_disappears(
+    pt_old: PageTable,
+    pt_new: PageTable,
+    target_l4i: L4Index,
+    target_l3i: L3Index,
+    other_l3i: L3Index,
+    page_map_ptr: PageMapPtr,
+)
+    requires
+        pt_old.wf(),
+        pt_new.wf(),
+        pt_old.kernel_l4_end <= target_l4i < 512,
+        0 <= target_l3i < 512,
+        0 <= other_l3i < 512,
+        other_l3i != target_l3i,
+        pt_new.kernel_l4_end == pt_old.kernel_l4_end,
+        pt_new.mapping_4k() =~= pt_old.mapping_4k(),
+        pt_new.mapping_2m() =~= pt_old.mapping_2m(),
+        pt_new.mapping_1g() =~= pt_old.mapping_1g(),
+        pt_new.spec_resolve_mapping_l4(target_l4i) == pt_old.spec_resolve_mapping_l4(target_l4i),
+        pt_old.spec_resolve_mapping_l4(target_l4i).is_Some(),
+        pt_old.spec_resolve_mapping_l3(target_l4i, other_l3i).is_Some(),
+    ensures
+        pt_new.spec_resolve_mapping_l3(target_l4i, other_l3i).is_None(),
+{
+}
+```
+REASON: Creating an L3 entry at one index must not destroy a sibling L3 entry at a different index
+===PHI_END===
+
+===PHI_START===
+NAME: table_page_becomes_data_mapped
+TARGET_FN: create_entry_l3
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_table_page_becomes_data_mapped(
+    pt_old: PageTable,
+    pt_new: PageTable,
+    page_map_ptr: PageMapPtr,
+)
+    requires
+        pt_old.wf(),
+        pt_new.wf(),
+        pt_new.page_closure() =~= pt_old.page_closure().insert(page_map_ptr),
+        !pt_old.page_closure().contains(page_map_ptr),
+        pt_old.page_not_mapped(page_map_ptr),
+        pt_new.mapping_4k() =~= pt_old.mapping_4k(),
+        pt_new.mapping_2m() =~= pt_old.mapping_2m(),
+        pt_new.mapping_1g() =~= pt_old.mapping_1g(),
+    ensures
+        !pt_new.page_not_mapped(page_map_ptr),
+{
+}
+```
+REASON: A page used as a table structure appearing in data mappings would break memory safety invariants
+===PHI_END===
+
+===PHI_START===
+NAME: unrelated_l4_entry_changes
+TARGET_FN: create_entry_l3
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_unrelated_l4_entry_changes(
+    pt_old: PageTable,
+    pt_new: PageTable,
+    target_l4i: L4Index,
+    other_l4i: L4Index,
+)
+    requires
+        pt_old.wf(),
+        pt_new.wf(),
+        pt_new.kernel_l4_end == pt_old.kernel_l4_end,
+        pt_old.kernel_l4_end <= target_l4i < 512,
+        pt_old.kernel_l4_end <= other_l4i < 512,
+        other_l4i != target_l4i,
+        pt_new.spec_resolve_mapping_l4(target_l4i) == pt_old.spec_resolve_mapping_l4(target_l4i),
+        pt_new.mapping_4k() =~= pt_old.mapping_4k(),
+        pt_new.mapping_2m() =~= pt_old.mapping_2m(),
+        pt_new.mapping_1g() =~= pt_old.mapping_1g(),
+        pt_old.spec_resolve_mapping_l4(other_l4i).is_Some(),
+    ensures
+        pt_new.spec_resolve_mapping_l4(other_l4i).is_None(),
+{
+}
+```
+REASON: Modifying an L3 slot under one L4 index must not corrupt the L4 resolution at a different index
+===PHI_END===

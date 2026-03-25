@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "owned_threads_shared_across_containers",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "Neither `container_perms_wf` nor `container_tree_wf` includes any disjointness constraint on `owned_threads` across containers. The `owned_threads` Ghost field is completely unconstrained by the tree invariants, allowing two distinct containers to claim the same thread \u2014 a real resource ownership gap."
+  },
+  {
+    "phi": "owned_endpoints_shared_across_containers",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "Same pattern \u2014 `owned_endpoints` is a `Ghost<Set<EndpointPtr>>` with no cross-container disjointness constraint in the tree or perms well-formedness predicates. The code comments explicitly discuss endpoint ownership scoping within subtrees, yet the spec never enforces it."
+  },
+  {
+    "phi": "no_child_no_subtree_but_owns_resources",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "This confirms that tree structural invariants and resource ownership are completely decoupled. A leaf container with empty children and empty subtree can still own threads, meaning `no_child_imply_no_subtree` provides no guarantee about resource cleanup. The spec lacks a predicate connecting tree structure to resource ownership."
+  },
+  {
+    "phi": "root_container_parent_unconstrained",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`container_root_wf` constrains `depth == 0` and requires non-root nodes to have `parent.is_Some()`, but never asserts `container_perms[root_container].value().parent.is_None()`. The root can carry a spurious parent pointer that could confuse upward-traversal algorithms or invariant reasoning."
+  }
+]

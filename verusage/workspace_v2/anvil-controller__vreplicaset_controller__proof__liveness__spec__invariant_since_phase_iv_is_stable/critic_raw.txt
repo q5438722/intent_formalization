@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: gc_invariant_allows_non_delete_mutations
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The invariant is specifically about the garbage collector's delete behavior, as its name states. Update requests from the builtin controller are constrained by other invariants elsewhere in the codebase (e.g., no_pending_interfering_update_request from phase III). The ensures clause is literally `true`, making this a tautology that demonstrates nothing about the spec.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: controller_owner_ref_ignores_namespace
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This faithfully models real Kubernetes OwnerReference semantics — owner references contain kind, name, and uid but not namespace, because ownership is always within the same namespace. UID provides global uniqueness across the cluster, so two objects with the same uid are the same object regardless of namespace.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: owner_references_contains_ignores_none
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Returning false for None owner_references is correct — an object with no owner references list does not contain any owner reference. This is standard Option handling. The GC invariant's protection correctly excludes such objects since they are genuinely unowned.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: always_p_is_stable_external_body_unsound
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The `#[verifier::external_body]` annotation means the lemma's postcondition `valid(stable(always(p)))` is assumed for any `p` without proof. While mathematically correct (always(p) is indeed stable for any p — if always(p) holds at some point, it holds at all future points), the external_body means this correctness is trusted, not verified. Any bug in this reasoning would silently compromise all temporal stability proofs built on it.
+===VERDICT_END===
+
+===SUMMARY===
+Three of the four candidates are false positives. The GC invariant allowing non-delete mutations (φ1) is a tautology with `ensures true` that doesn't reveal a real gap — other invariants handle update constraints. The controller_owner_ref namespace omission (φ3) and owner_references_contains None behavior (φ4) both faithfully model real Kubernetes semantics. The only true positive is the external_body soundness concern (φ5): `always_p_is_stable` is mathematically correct but unverified by Verus, creating a trusted assumption at the foundation of all temporal stability proofs in the system.
+===END_SUMMARY===

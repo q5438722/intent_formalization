@@ -1,0 +1,10 @@
+[
+  {
+    "name": "init",
+    "code": "pub fn init(&mut self)\n        requires\n            old(self).ar.wf(),\n            old(self).spec_seq@.len() == 512,\n        ensures\n            self.wf(),\n            forall|i: int| #![trigger self@[i].is_empty()] 0 <= i < 512 ==> self@[i].is_empty(),\n    {\n        for i in 0..512\n            invariant\n                0 <= i <= 512,\n                self.ar.wf(),\n                self.spec_seq@.len() == 512,\n                forall|j: int|\n                    #![trigger usize2page_entry(self.ar@[j])]\n                    0 <= j < i ==> (usize2page_entry(self.ar@[j]) =~= self.spec_seq@[j]),\n                forall|j: int|\n                    #![trigger self.ar@[j]]\n                    0 <= j < i ==> (usize2page_entry(self.ar@[j]).is_empty() <==> self.ar@[j] == 0),\n                forall|j: int|\n                    #![trigger self.ar@[j]]\n                    0 <= j < i ==> usize2page_entry(self.ar@[j]).is_empty(),\n                forall|j: int| #![trigger self@[j].is_empty()] 0 <= j < i ==> self@[j].is_empty(),\n        {\n            let ghost_view = Ghost(self@);\n            self.ar.set(i, 0usize);\n            assert(self@ == ghost_view);\n            proof {\n                zero_leads_is_empty_page_entry();\n                assert(usize2page_entry(0usize).is_empty());\n                self.spec_seq@ = self.spec_seq@.update(i as int, usize2page_entry(0usize));\n            }\n        }\n    }"
+  },
+  {
+    "name": "set",
+    "code": "#[verifier(external_body)]\n    pub fn set(&mut self, i: usize, out: A)\n        requires\n            0 <= i < N,\n            old(self).wf(),\n        ensures\n            self.seq@ =~= old(self).seq@.update(i as int, out),\n            self.wf(),\n\t{\n\t\tunimplemented!()\n\t}"
+  }
+]

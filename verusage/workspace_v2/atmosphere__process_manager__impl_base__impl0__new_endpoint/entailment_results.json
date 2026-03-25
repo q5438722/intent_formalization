@@ -1,0 +1,47 @@
+[
+  {
+    "name": "sll_len_without_wf_returns_value_list_len",
+    "type": "logical",
+    "code": "proof fn phi_1_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    ensures\n        sll.len() == sll.value_list_len,\n{\n}",
+    "reason": "StaticLinkedList::len's external_body ensures l == self.value_list_len unconditionally without requiring wf() \u2014 a corrupted linked list returns its raw field as trusted length",
+    "entailed": false,
+    "verus_output": "_returns_value_list_len.rs:1753:9\n     |\n1751 | proof fn phi_1_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n     |       -------------------------------------------------------------------------------------------------- at the end of the function body\n1752 |     ensures\n1753 |         sll.len() == sll.value_list_len,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 23 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "get_proc_ensures_owned_threads_wf_without_full_wf",
+    "type": "logical",
+    "code": "proof fn phi_2_get_proc_ensures_owned_threads_wf_without_full_wf(\n    pm: ProcessManager,\n    p_ptr: ProcPtr,\n)\n    requires\n        pm.proc_perms_wf(),\n        pm.process_fields_wf(),\n        pm.proc_dom().contains(p_ptr),\n    ensures\n        pm.get_proc(p_ptr).owned_threads.wf(),\n{\n}",
+    "reason": "get_proc's external_body unconditionally ensures ret.owned_threads.wf() with only proc_perms_wf + process_fields_wf \u2014 leaks structural invariant without requiring full wf() or threads_process_wf()",
+    "entailed": true,
+    "verus_output": "->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__impl_base__impl0__new_endpoint/phi_2_get_proc_ensures_owned_threads_wf_without_full_wf.rs:1613:75\n     |\n1613 |                     && self.thread_perms@[t_ptr].value().endpoint_rev_ptr.is_Some()\n     |                                                                           ^^^^^^^\n\nwarning: 23 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "get_thread_leaks_container_scheduler_wf",
+    "type": "logical",
+    "code": "proof fn phi_3_get_thread_leaks_container_scheduler_wf(\n    pm: ProcessManager,\n    t_ptr: ThreadPtr,\n)\n    requires\n        pm.wf(),\n        pm.thread_dom().contains(t_ptr),\n    ensures\n        pm.get_container(pm.get_thread(t_ptr).owning_container).scheduler.wf(),\n        pm.get_container(pm.get_thread(t_ptr).owning_container).owned_procs.wf(),\n        pm.get_container(pm.get_thread(t_ptr).owning_container).children.wf(),\n{\n}",
+    "reason": "get_thread's external_body ensures wf() of the owning container's scheduler, owned_procs, and children \u2014 exposing container-internal invariants through thread accessor without explicit container_fields_wf requirement",
+    "entailed": false,
+    "verus_output": "uler_wf.rs:1760:9\n     |\n1751 |   proof fn phi_3_get_thread_leaks_container_scheduler_wf(\n     |  _______-\n1752 | |     pm: ProcessManager,\n1753 | |     t_ptr: ThreadPtr,\n1754 | | )\n     | |_- at the end of the function body\n...\n1760 |           pm.get_container(pm.get_thread(t_ptr).owning_container).owned_procs.wf(),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 2 previous errors; 23 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "inactive_cpu_has_arbitrary_owning_container",
+    "type": "behavioral",
+    "code": "proof fn phi_4_inactive_cpu_has_arbitrary_owning_container(\n    pm: ProcessManager,\n    cpu_i: CpuId,\n)\n    requires\n        pm.wf(),\n        0 <= cpu_i < NUM_CPUS,\n        pm.cpu_list@[cpu_i as int].active == false,\n    ensures\n        pm.container_dom().contains(pm.cpu_list@[cpu_i as int].owning_container),\n{\n}",
+    "reason": "cpus_wf only constrains inactive CPUs to have current_thread == None but container_cpu_wf still requires owning_container to be valid \u2014 an inactive CPU is bound to an arbitrary valid container with no relationship to any running thread",
+    "entailed": false,
+    "verus_output": "se__impl0__new_endpoint/phi_4_inactive_cpu_has_arbitrary_owning_container.rs:1760:37\n     |\n1760 |         pm.container_dom().contains(pm.cpu_list@[cpu_i as int].owning_container),\n     |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^\n     |\n    ::: /home/chentianyu/intent_formalization/verus/vstd/seq.rs:62:13\n     |\n  62 |             0 <= i < self.len(),\n     |             ------------------- recommendation not met\n\nerror: aborting due to 1 previous error; 23 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "process_trees_wf_no_root_implies_empty_procs",
+    "type": "boundary",
+    "code": "proof fn phi_5_process_trees_wf_no_root_implies_empty_procs(\n    pm: ProcessManager,\n    c_ptr: ContainerPtr,\n)\n    requires\n        pm.wf(),\n        pm.container_dom().contains(c_ptr),\n        pm.get_container(c_ptr).root_process.is_None(),\n    ensures\n        pm.get_container(c_ptr).owned_procs@.len() == 0,\n{\n    pm.reveal_process_manager_wf();\n}",
+    "reason": "process_trees_wf forces containers with no root_process to have empty owned_procs \u2014 but this constraint only applies to the SLL sequence length, not the actual process domain; orphan processes could exist in proc_dom but not in any container's owned_procs list",
+    "entailed": true,
+    "verus_output": "ptionAdditionalFns::is_None`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__impl_base__impl0__new_endpoint/phi_5_process_trees_wf_no_root_implies_empty_procs.rs:1758:46\n     |\n1758 |         pm.get_container(c_ptr).root_process.is_None(),\n     |                                              ^^^^^^^\n\nwarning: 24 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,91 @@
+===PHI_START===
+NAME: const_facts_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_const_facts_external_body()
+    ensures
+        SLICE_SIZE == 65536,
+        SEGMENT_SIZE == 33554432,
+        SLICES_PER_SEGMENT == 512,
+        COMMIT_MASK_FIELD_COUNT == 8,
+{
+    const_facts();
+}
+```
+REASON: `const_facts` is `external_body` — all constant equalities are trusted without proof, so if any constant definition were wrong, the axiom would hide the inconsistency
+===PHI_END===
+
+===PHI_START===
+NAME: block_ptr_in_single_slice
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_block_ptr_in_single_slice(p: *mut u8, block_id: BlockId)
+    requires
+        is_block_ptr(p, block_id),
+    ensures
+        segment_start(block_id.page_id.segment_id) + (block_id.slice_idx * SLICE_SIZE)
+            <= p as int
+            < segment_start(block_id.page_id.segment_id) + (block_id.slice_idx * SLICE_SIZE) + SLICE_SIZE,
+{
+    reveal(is_block_ptr1);
+}
+```
+REASON: `is_block_ptr1` constrains blocks to fit within a single SLICE_SIZE region — but blocks near the end of a slice with `block_size > 1` could extend past the slice boundary, and the spec only checks the start address
+===PHI_END===
+
+===PHI_START===
+NAME: mod_mul_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_mod_mul_external_body(a: int, b: int, c: int)
+    requires
+        b % c == 0,
+        c != 0,
+    ensures
+        (a * b) % c == 0,
+{
+    mod_mul(a, b, c);
+}
+```
+REASON: `mod_mul` is `external_body` — the modular arithmetic property `b % c == 0 ==> (a*b) % c == 0` is trusted without proof, and `block_ptr_aligned_to_word` depends on it for alignment correctness
+===PHI_END===
+
+===PHI_START===
+NAME: block_start_no_overflow_check
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_block_start_no_overflow_check(block_id: BlockId)
+    requires
+        block_id.page_id.segment_id.id == 0,
+        block_id.page_id.idx == 0,
+        block_id.block_size == 8,
+        block_id.idx == 0,
+        block_id.slice_idx == 0,
+    ensures
+        block_start(block_id) == start_offset(8),
+{
+    reveal(is_block_ptr1);
+}
+```
+REASON: `block_start` computes `page_start + start_offset + block_idx * block_size` with no overflow guard — for large `block_idx` or `block_size`, the sum could exceed the segment boundary without being caught by the spec
+===PHI_END===
+
+===PHI_START===
+NAME: size_of_node_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_size_of_node_external_body()
+    ensures
+        size_of::<Node>() == 8,
+        align_of::<Node>() == 8,
+{
+    size_of_node();
+}
+```
+REASON: `size_of_node` is `external_body` — the size and alignment of `Node` (a struct containing `*mut Node`) are trusted assertions; if the struct layout changes (e.g., adding fields), these would silently become wrong
+===PHI_END===

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "map_done_failure_still_has_pte_size",
+    "type": "behavioral",
+    "code": "proof fn phi_1_map_done_failure_still_has_pte_size(pt: Map<nat, PTE>, ult_id: nat, vaddr: nat, pte: PTE)\n    ensures\n        os::CoreState::MapDone { ult_id, vaddr, pte, result: Err(()) }.pte_size(pt) == pte.frame.size,\n{\n}",
+    "reason": "A failed MapDone still reports the original pte's frame size \u2014 the inflight region persists even after the map operation failed, blocking other operations from using that virtual address range until the core returns to Idle",
+    "entailed": false,
+    "verus_output": "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror[E0432]: unresolved import `crate::defs`\n --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__os_invariant__lemma_unique_and_overlap_values_implies_overlap_vmem/phi_1_map_done_failure_still_has_pte_size.rs:2:12\n  |\n2 | use crate::defs::*;\n  |            ^^^^ could not find `defs` in the crate root\n\nerror: aborting due to 2 previous errors\n\nFor more information about this error, try `rustc --explain E0432`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "is_map_includes_waiting_but_not_crit",
+    "type": "behavioral",
+    "code": "proof fn phi_2_is_map_includes_waiting_but_not_crit(ult_id: nat, vaddr: nat, pte: PTE)\n    ensures\n        os::CoreState::MapWaiting { ult_id, vaddr, pte }.is_map(),\n        !os::CoreState::MapWaiting { ult_id, vaddr, pte }.is_in_crit_sect(),\n{\n}",
+    "reason": "MapWaiting is classified as `is_map` but not `is_in_crit_sect` \u2014 if code checks `is_map` expecting critical section protection, it would incorrectly assume mutual exclusion for waiting operations",
+    "entailed": false,
+    "verus_output": "    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror[E0432]: unresolved import `crate::defs`\n --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__os_invariant__lemma_unique_and_overlap_values_implies_overlap_vmem/phi_2_is_map_includes_waiting_but_not_crit.rs:2:12\n  |\n2 | use crate::defs::*;\n  |            ^^^^ could not find `defs` in the crate root\n\nerror: aborting due to 2 previous errors\n\nFor more information about this error, try `rustc --explain E0432`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "rl2_interp_loses_sbuf_for_non_writer",
+    "type": "logical",
+    "code": "proof fn phi_3_rl2_interp_loses_sbuf_for_non_writer(s: crate::rl2::State, core: Core)\n    requires\n        core != s.writes.core,\n    ensures\n        s.interp().pt_mem === s.pt_mem.write_seq(s.sbuf[s.writes.core]),\n        // non-writer core's sbuf is invisible in the rl1 interpretation\n{\n}",
+    "reason": "The rl2\u2192rl1 refinement flattens pt_mem to the writer's view only \u2014 all non-writer cores' store buffers are invisible at rl1, meaning rl1 cannot distinguish states that differ only in non-writer sbufs",
+    "entailed": true,
+    "verus_output": "stead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__os_invariant__lemma_unique_and_overlap_values_implies_overlap_vmem/phi_3_rl2_interp_loses_sbuf_for_non_writer.rs:518:42\n    |\n518 |                 if result is Ok { result.get_Ok_0().frame.size } else { 0 }\n    |                                          ^^^^^^^^\n    |\n    = note: `#[warn(deprecated)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "candidate_mapping_in_bounds_ignores_base_alignment",
+    "type": "boundary",
+    "code": "proof fn phi_4_candidate_mapping_in_bounds_ignores_base_alignment(pte: PTE)\n    requires\n        pte.frame.size > 0,\n        pte.frame.size < x86_arch_spec.upper_vaddr(0, 0),\n    ensures\n        candidate_mapping_in_bounds(1, pte),\n{\n}",
+    "reason": "`candidate_mapping_in_bounds` only checks `base + size < upper_vaddr` without requiring alignment \u2014 a mapping at base=1 (unaligned) passes the bounds check, potentially allowing misaligned virtual mappings",
+    "entailed": false,
+    "verus_output": "and_overlap_values_implies_overlap_vmem/phi_4_candidate_mapping_in_bounds_ignores_base_alignment.rs:801:9\n    |\n796 | proof fn phi_4_candidate_mapping_in_bounds_ignores_base_alignment(pte: PTE)\n    |       --------------------------------------------------------------------- at the end of the function body\n...\n801 |         candidate_mapping_in_bounds(1, pte),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "valid_core_delegates_to_common",
+    "type": "logical",
+    "code": "proof fn phi_5_valid_core_delegates_to_common(c1: os::Constants, c2: os::Constants, core: Core)\n    requires\n        c1.common === c2.common,\n    ensures\n        c1.valid_core(core) == c2.valid_core(core),\n{\n}",
+    "reason": "`os::Constants::valid_core` delegates entirely to `common.valid_core` \u2014 os-level fields like `ult2core` and `ult_no` don't affect core validity, meaning two os::Constants with different thread configurations but same common constants agree on valid cores",
+    "entailed": true,
+    "verus_output": "es` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__os_invariant__lemma_unique_and_overlap_values_implies_overlap_vmem/phi_5_valid_core_delegates_to_common.rs:518:42\n    |\n518 |                 if result is Ok { result.get_Ok_0().frame.size } else { 0 }\n    |                                          ^^^^^^^^\n    |\n    = note: `#[warn(deprecated)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

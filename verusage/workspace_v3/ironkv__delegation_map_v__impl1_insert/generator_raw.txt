@@ -1,0 +1,125 @@
+===PHI_START===
+NAME: element_not_at_index
+TARGET_FN: insert
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_element_not_at_index<K: KeyTrait + VerusClone>(
+    old_seq: Seq<K>, new_seq: Seq<K>, k: K, i: int
+)
+    requires
+        sorted(old_seq),
+        old_seq.no_duplicates(),
+        !old_seq.contains(k),
+        new_seq.len() == old_seq.len() + 1,
+        0 <= i < new_seq.len(),
+        new_seq == old_seq.insert(i, k),
+        new_seq.to_set() == old_seq.to_set().insert(k),
+    ensures
+        new_seq[i] != k,
+{
+}
+```
+REASON: If the element at the returned insertion index is not k, the spec fails to place k correctly
+===PHI_END===
+
+===PHI_START===
+NAME: always_appended_at_end
+TARGET_FN: insert
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_always_appended_at_end<K: KeyTrait + VerusClone>(
+    old_seq: Seq<K>, new_seq: Seq<K>, k: K, i: int
+)
+    requires
+        sorted(old_seq),
+        old_seq.no_duplicates(),
+        !old_seq.contains(k),
+        old_seq.len() > 0,
+        new_seq.len() == old_seq.len() + 1,
+        0 <= i < new_seq.len(),
+        new_seq == old_seq.insert(i, k),
+    ensures
+        i == old_seq.len(),
+{
+}
+```
+REASON: If the insertion index is always the last position, sorting is not actually constraining placement
+===PHI_END===
+
+===PHI_START===
+NAME: old_element_lost
+TARGET_FN: insert
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_old_element_lost<K: KeyTrait + VerusClone>(
+    old_seq: Seq<K>, new_seq: Seq<K>, k: K, i: int
+)
+    requires
+        sorted(old_seq),
+        old_seq.no_duplicates(),
+        !old_seq.contains(k),
+        old_seq.len() > 0,
+        new_seq.len() == old_seq.len() + 1,
+        0 <= i < new_seq.len(),
+        new_seq == old_seq.insert(i, k),
+        new_seq.to_set() == old_seq.to_set().insert(k),
+    ensures
+        !new_seq.contains(old_seq[0]),
+{
+}
+```
+REASON: If a pre-existing element disappears after insert, the spec fails to preserve old contents
+===PHI_END===
+
+===PHI_START===
+NAME: set_unchanged_after_insert
+TARGET_FN: insert
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_set_unchanged_after_insert<K: KeyTrait + VerusClone>(
+    old_seq: Seq<K>, new_seq: Seq<K>, k: K, i: int
+)
+    requires
+        sorted(old_seq),
+        old_seq.no_duplicates(),
+        !old_seq.contains(k),
+        new_seq.len() == old_seq.len() + 1,
+        0 <= i < new_seq.len(),
+        new_seq == old_seq.insert(i, k),
+        new_seq.to_set() == old_seq.to_set().insert(k),
+    ensures
+        new_seq.to_set() =~= old_seq.to_set(),
+{
+}
+```
+REASON: If the set view is unchanged, k was never actually added — the spec's set postcondition is vacuous
+===PHI_END===
+
+===PHI_START===
+NAME: first_element_always_changes
+TARGET_FN: insert
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_first_element_always_changes<K: KeyTrait + VerusClone>(
+    old_seq: Seq<K>, new_seq: Seq<K>, k: K, i: int
+)
+    requires
+        sorted(old_seq),
+        old_seq.no_duplicates(),
+        !old_seq.contains(k),
+        old_seq.len() >= 1,
+        new_seq.len() == old_seq.len() + 1,
+        0 <= i < new_seq.len(),
+        new_seq == old_seq.insert(i, k),
+    ensures
+        new_seq[0] != old_seq[0],
+{
+}
+```
+REASON: If the first element always changes, insertion incorrectly disrupts prefix stability when k is not minimal
+===PHI_END===

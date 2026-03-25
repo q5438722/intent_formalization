@@ -1,0 +1,102 @@
+===PHI_START===
+NAME: singleton_unique_symmetric
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_singleton_unique_symmetric(s: Set<nat>, a: nat, b: nat)
+    requires
+        s.finite(),
+        s.len() == 1,
+        s.contains(a),
+        s.contains(b),
+    ensures
+        b == a,
+{
+    singleton_set_unique_elt(s, a, b);
+}
+```
+REASON: Symmetry of the uniqueness result — trivially follows from `a == b`, testing the basic consequence
+===PHI_END===
+
+===PHI_START===
+NAME: singleton_element_is_choose
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_singleton_element_is_choose(s: Set<nat>, a: nat)
+    requires
+        s.finite(),
+        s.len() == 1,
+        s.contains(a),
+    ensures
+        s.choose() == a,
+{
+    assert(s.contains(s.choose()));
+    singleton_set_unique_elt(s, a, s.choose());
+}
+```
+REASON: Any element in a singleton equals `choose()` — a correct consequence but shows the lemma determines `choose()` for singletons
+===PHI_END===
+
+===PHI_START===
+NAME: singleton_insert_same
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_singleton_insert_same(a: nat)
+    ensures ({
+        let s = Set::<nat>::empty().insert(a);
+        forall |b: nat| s.contains(b) ==> a == b
+    }),
+{
+    let s = Set::<nat>::empty().insert(a);
+    assert forall |b: nat| s.contains(b) implies a == b by {
+        singleton_set_unique_elt(s, a, b);
+    }
+}
+```
+REASON: A concrete singleton `{a}` contains only `a` — correct but tests the lemma on a constructed singleton
+===PHI_END===
+
+===PHI_START===
+NAME: remove_from_singleton_empty
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_remove_from_singleton_empty(s: Set<nat>, a: nat)
+    requires
+        s.finite(),
+        s.len() == 1,
+        s.contains(a),
+    ensures
+        s.remove(a) =~= Set::<nat>::empty(),
+{
+    let r = s.remove(a);
+    assert(r.len() == 0);
+    assert forall |x: nat| !r.contains(x) by {}
+}
+```
+REASON: Removing the sole element from a singleton yields empty — tests the boundary interaction between `remove` and `len`
+===PHI_END===
+
+===PHI_START===
+NAME: singleton_no_second_element
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_singleton_no_second_element(s: Set<nat>, a: nat, c: nat)
+    requires
+        s.finite(),
+        s.len() == 1,
+        s.contains(a),
+        c != a,
+    ensures
+        !s.contains(c),
+{
+    if s.contains(c) {
+        singleton_set_unique_elt(s, a, c);
+    }
+}
+```
+REASON: A singleton set cannot contain a distinct element — correct contrapositive of uniqueness, but confirms the lemma's full power
+===PHI_END===

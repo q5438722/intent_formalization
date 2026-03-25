@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: lemma_bits_align_external_body_l3
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `lemma_bits_align_to_usize` is `external_body` with `unimplemented!()` — all bit-alignment preservation properties including L3 (4KB) alignment are trusted without proof. This is a recurring unverified trust assumption in the MMU spec.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: indexing_bits_match_walk_result
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `lemma_pt_walk_result_vaddr_indexing_bits_match` depends on the external_body `lemma_bits_align_to_usize` via `broadcast use`. The indexing bits match property for walk results inherits this unverified trust assumption.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: all_mb0_bits_are_zero_external_body
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This φ is `P || !Q || true`, which is trivially true regardless of the values of P and Q. It demonstrates nothing about the external_body predicate — the `|| true` makes the entire ensures clause a tautology.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: pt_walk_l3_page_size_equals_page_size
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: A 4-entry walk with a Page last entry directly matches the `path.len() == 4` branch in `Walk::result`, which uses `L3_ENTRY_SIZE` for the size. This is correct by construction — L3 is the leaf level with 4KB pages on x86-64.
+===VERDICT_END===
+
+===SUMMARY===
+Two true positives: the external_body `lemma_bits_align_to_usize` trusts bit-alignment preservation without proof, and the `indexing_bits_match` walk result property depends transitively on this unverified lemma. Two false positives: the `all_mb0_bits_are_zero` φ is a trivial tautology (`|| true`), and L3 page size equaling 4KB is correct by construction.
+===END_SUMMARY===

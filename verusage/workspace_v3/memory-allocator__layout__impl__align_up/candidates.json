@@ -1,0 +1,37 @@
+[
+  {
+    "name": "always_strictly_greater",
+    "target_fn": "align_up",
+    "type": "behavioral",
+    "code": "proof fn phi_1_always_strictly_greater(x: usize, y: usize, res: usize)\n    requires\n        y != 0,\n        x + y - 1 <= usize::MAX,\n        res == ((x + y - 1) / y as int) * y,\n        x <= res <= x + y - 1,\n        res % y == 0,\n        (res / y * y) == res,\n    ensures\n        res > x,\n{\n}",
+    "reason": "Undesirable because align_up should return x unchanged when x is already a multiple of y (e.g., x=4, y=2 \u2192 res=4)"
+  },
+  {
+    "name": "zero_input_nonzero_result",
+    "target_fn": "align_up",
+    "type": "boundary",
+    "code": "proof fn phi_2_zero_input_nonzero_result(x: usize, y: usize, res: usize)\n    requires\n        y != 0,\n        x == 0usize,\n        x + y - 1 <= usize::MAX,\n        res == ((x + y - 1) / y as int) * y,\n        x <= res <= x + y - 1,\n        res % y == 0,\n        (res / y * y) == res,\n    ensures\n        res > 0usize,\n{\n}",
+    "reason": "Undesirable because 0 is a multiple of every nonzero y, so align_up(0, y) must be 0"
+  },
+  {
+    "name": "double_alignment",
+    "target_fn": "align_up",
+    "type": "logical",
+    "code": "proof fn phi_3_double_alignment(x: usize, y: usize, res: usize)\n    requires\n        y != 0,\n        x + y - 1 <= usize::MAX,\n        res == ((x + y - 1) / y as int) * y,\n        x <= res <= x + y - 1,\n        res % y == 0,\n        (res / y * y) == res,\n    ensures\n        (res as int) % (2 * (y as int)) == 0,\n{\n}",
+    "reason": "Undesirable because the result should be aligned to y, not necessarily to 2*y (e.g., x=1, y=2 \u2192 res=2, but 2 % 4 \u2260 0)"
+  },
+  {
+    "name": "unit_alignment_changes_value",
+    "target_fn": "align_up",
+    "type": "behavioral",
+    "code": "proof fn phi_4_unit_alignment_changes_value(x: usize, y: usize, res: usize)\n    requires\n        y != 0,\n        y == 1usize,\n        x + y - 1 <= usize::MAX,\n        res == ((x + y - 1) / y as int) * y,\n        x <= res <= x + y - 1,\n        res % y == 0,\n        (res / y * y) == res,\n    ensures\n        res != x,\n{\n}",
+    "reason": "Undesirable because aligning to 1 is a no-op\u2014every integer is a multiple of 1, so res must equal x"
+  },
+  {
+    "name": "minimum_result_is_y",
+    "target_fn": "align_up",
+    "type": "boundary",
+    "code": "proof fn phi_5_minimum_result_is_y(x: usize, y: usize, res: usize)\n    requires\n        y != 0,\n        x + y - 1 <= usize::MAX,\n        res == ((x + y - 1) / y as int) * y,\n        x <= res <= x + y - 1,\n        res % y == 0,\n        (res / y * y) == res,\n    ensures\n        res >= y,\n{\n}",
+    "reason": "Undesirable because it would exclude the valid result res=0 when x=0, since 0 is the correct alignment of 0 to any y"
+  }
+]

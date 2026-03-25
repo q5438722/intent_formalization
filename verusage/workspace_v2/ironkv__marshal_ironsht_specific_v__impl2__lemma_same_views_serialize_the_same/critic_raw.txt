@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: view_equal_not_reflexive_trait
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: CKeyKV's `view_equal` is derived by the macro as `self.k.view_equal(&other.k) && self.v.view_equal(&other.v)`. For SHTKey, `view_equal` compares `self.ukey@ === other.ukey@`, and for `Vec<u8>`, it compares `self@ === other@`. Both are trivially reflexive by definition. This is an expected, desirable property.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: lemma_to_vec_view_self_tautology
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures clause `h@ == h@` and `h.spec_to_vec()@ == h.spec_to_vec()@` are trivially true by equality reflexivity — Verus proves these without invoking any external_body lemma. This doesn't test the biconditional at all; it's just a tautology.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: view_equal_implies_serialize_equal_no_marshalable
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The trait-level `lemma_same_views_serialize_the_same` is external_body and ensures `self.ghost_serialize() == other.ghost_serialize()` with only `view_equal` as precondition — no `is_marshalable` required. Since `ghost_serialize` at the trait level only has `recommends self.is_marshalable()` (not `requires`), the lemma produces equality claims about serializations of non-marshalable values where the serialization output is effectively unconstrained. This is a spec gap: the lemma should require marshalability or the guarantee is vacuously about under-specified values.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: to_vec_view_biconditional_forces_injective_view
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: medium
+REASONING: The `lemma_to_vec_view` axiom is intentionally asserting that `CKeyHashMap`'s abstract view (`Map<AbstractKey, Seq<u8>>`) and its `spec_to_vec` representation are in bijective correspondence — this is a design-level assumption about the external_body wrapper faithfully representing the underlying `HashMap`. The backward direction (equal to_vec views imply equal map views) is the expected contract for a well-implemented wrapper type, not a spec gap.
+===VERDICT_END===
+
+===SUMMARY===
+Three of the four candidates are false positives: reflexivity of `view_equal` for CKeyKV follows directly from its open spec definition; the self-tautology test is trivially true without exercising any external_body lemma; and the `lemma_to_vec_view` biconditional is an intentional design axiom for the CKeyHashMap wrapper. The one true positive is `view_equal_implies_serialize_equal_no_marshalable`: the trait-level `lemma_same_views_serialize_the_same` claims serialization equality without requiring `is_marshalable`, which means it produces claims about under-specified `ghost_serialize` outputs for non-marshalable values — a missing precondition in the trusted axiom.
+===END_SUMMARY===

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "temp_pred_equality_collapses_extensional",
+    "type": "logical",
+    "code": "proof fn phi_1_temp_pred_equality_collapses_extensional(p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.entails(q),\n        q.entails(p),\n    ensures\n        p.pred == q.pred,\n{\n    temp_pred_equality::<int>(p, q);\n}",
+    "reason": "temp_pred_equality is external_body and forces intensional equality of spec_fn from mere extensional equivalence \u2014 conflating logical equivalence with structural identity",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "always_unfold_suffix_equivalence",
+    "type": "logical",
+    "code": "proof fn phi_2_always_unfold_suffix_equivalence(ex: Execution<int>, p: TempPred<int>, i: nat)\n    requires\n        always(p).satisfied_by(ex),\n    ensures\n        p.satisfied_by(ex.suffix(i)),\n{\n    always_unfold::<int>(ex, p);\n}",
+    "reason": "always_unfold is external_body bridging the gap between two equivalent-but-intensionally-distinct formulations of suffix quantification \u2014 if the SMT solver ever distinguishes the closure in always from the direct forall, this axiom papers over a real intensional mismatch",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "always_and_commutativity_propagates",
+    "type": "logical",
+    "code": "proof fn phi_3_always_and_commutativity_propagates()\n    ensures\n        forall |p: TempPred<int>, q: TempPred<int>| always(p.and(q)) == always(q.and(p)),\n{\n    assert forall |p: TempPred<int>, q: TempPred<int>| always(p.and(q)) == always(q.and(p)) by {\n        always_and_equality::<int>(p, q);\n        always_and_equality::<int>(q, p);\n        temp_pred_equality::<int>(always(p).and(always(q)), always(q).and(always(p)));\n    }\n}",
+    "reason": "chaining always_and_equality with temp_pred_equality yields equality of always(p\u2227q) and always(q\u2227p) as TempPred objects \u2014 the external_body axioms compose to equate structurally distinct closures, amplifying the trust surface",
+    "entailed": true,
+    "verus_output": "used by the underlying SMT theorem prover to instantiate quantifiers;\n      the theorem prover instantiates a quantifier whenever some expression matches the\n      pattern specified by one of the quantifier's triggers.)\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-library__always_and_equality/phi_3_always_and_commutativity_propagates.rs:107:5\n    |\n107 |     assert forall |p: TempPred<int>, q: TempPred<int>| always(p.and(q)) == always(q.and(p)) by {\n    |     ^^^^^^\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "always_idempotent_via_external_body",
+    "type": "logical",
+    "code": "proof fn phi_4_always_idempotent_via_external_body(p: TempPred<int>)\n    requires\n        valid(always(p)),\n    ensures\n        always(p) == always(always(p)),\n{\n    assert forall |ex: Execution<int>| always(always(p)).satisfied_by(ex) implies always(p).satisfied_by(ex) by {\n    };\n    assert forall |ex: Execution<int>| always(p).satisfied_by(ex) implies always(always(p)).satisfied_by(ex) by {\n        always_unfold::<int>(ex, p);\n        assert forall |i: nat| #[trigger] always(p).satisfied_by(ex.suffix(i)) by {\n            assert forall |j: nat| #[trigger] p.satisfied_by(ex.suffix(i).suffix(j)) by {\n                always_unfold::<int>(ex, p);\n            }\n        }\n    };\n    temp_pred_equality::<int>(always(p), always(always(p)));\n}",
+    "reason": "always_unfold and temp_pred_equality combine to prove always(p) == always(always(p)) as object equality \u2014 the idempotency should hold semantically but object-level equality relies entirely on unverified external_body axioms",
+    "entailed": false,
+    "verus_output": "uantifiers;\n      the theorem prover instantiates a quantifier whenever some expression matches the\n      pattern specified by one of the quantifier's triggers.)\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-library__always_and_equality/phi_4_always_idempotent_via_external_body.rs:111:5\n    |\n111 |     assert forall |ex: Execution<int>| always(p).satisfied_by(ex) implies always(always(p)).satisfied_by(ex) by {\n    |     ^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "valid_false_from_external_body_chain",
+    "type": "boundary",
+    "code": "proof fn phi_5_valid_false_from_external_body_chain(p: TempPred<int>, q: TempPred<int>)\n    requires\n        valid(p),\n        p.entails(q),\n        q.entails(p),\n        p != q,\n    ensures\n        false,\n{\n    temp_pred_equality::<int>(p, q);\n}",
+    "reason": "if any two mutually-entailing TempPreds are structurally distinct (p != q), temp_pred_equality forces p == q creating a contradiction \u2014 this means the axiom implicitly asserts no two distinct closures can be extensionally equivalent, which is false in general",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

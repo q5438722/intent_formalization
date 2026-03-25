@@ -1,0 +1,47 @@
+[
+  {
+    "name": "u64_prefix_freedom_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_u64_prefix_freedom_external_body(a: u64, b: u64)\n    requires\n        !a.view_equal(&b),\n        a.ghost_serialize().len() <= b.ghost_serialize().len(),\n    ensures\n        a.ghost_serialize() != b.ghost_serialize().subrange(0, a.ghost_serialize().len() as int),\n{\n    a.lemma_serialization_is_not_a_prefix_of(&b);\n}",
+    "reason": "`u64::lemma_serialization_is_not_a_prefix_of` is `external_body` despite being provable \u2014 all u64 serializations are 8 bytes so prefix-freedom reduces to injectivity of `spec_u64_to_le_bytes`",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "usize_serialize_injective_external_body",
+    "type": "logical",
+    "code": "proof fn phi_2_usize_serialize_injective_external_body(a: usize, b: usize)\n    requires\n        a.is_marshalable(),\n        b.is_marshalable(),\n        a.ghost_serialize() == b.ghost_serialize(),\n    ensures\n        a == b,\n{\n    a.lemma_serialize_injective(&b);\n}",
+    "reason": "`usize::lemma_serialize_injective` is `external_body` despite being provable from u64 injectivity \u2014 full equality of usize values rests on an unverified axiom",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "vec_u8_prefix_freedom_external_body",
+    "type": "logical",
+    "code": "proof fn phi_3_vec_u8_prefix_freedom_external_body(a: Vec<u8>, b: Vec<u8>)\n    requires\n        !a.view_equal(&b),\n        a.is_marshalable(),\n        b.is_marshalable(),\n        a.ghost_serialize().len() <= b.ghost_serialize().len(),\n    ensures\n        a.ghost_serialize() != b.ghost_serialize().subrange(0, a.ghost_serialize().len() as int),\n{\n    a.lemma_serialization_is_not_a_prefix_of(&b);\n}",
+    "reason": "`Vec<u8>::lemma_serialization_is_not_a_prefix_of` is `external_body` \u2014 prefix-freedom for length-prefixed byte vectors is provable from usize serialization properties but left entirely trusted",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "vec_t_injectivity_depends_on_prefix_freedom",
+    "type": "logical",
+    "code": "proof fn phi_4_vec_t_injectivity_depends_on_prefix_freedom(a: Vec<u64>, b: Vec<u64>)\n    requires\n        a.is_marshalable(),\n        b.is_marshalable(),\n        a.ghost_serialize() == b.ghost_serialize(),\n    ensures\n        a.view_equal(&b),\n{\n    a.lemma_serialize_injective(&b);\n}",
+    "reason": "`Vec<T>::lemma_serialize_injective` is verified but its proof calls `lemma_serialization_is_not_a_prefix_of` which is `external_body` for `Vec<T>` \u2014 injectivity of generic Vec serialization chains through an unverified prefix-freedom axiom",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "vec_u8_serialize_injective_external_body",
+    "type": "logical",
+    "code": "proof fn phi_5_vec_u8_serialize_injective_external_body(a: Vec<u8>, b: Vec<u8>)\n    requires\n        a.is_marshalable(),\n        b.is_marshalable(),\n        a.ghost_serialize() == b.ghost_serialize(),\n    ensures\n        a@ == b@,\n{\n    a.lemma_serialize_injective(&b);\n}",
+    "reason": "`Vec<u8>::lemma_serialize_injective` is `external_body` \u2014 injectivity of length-prefixed byte vector serialization is entirely trusted despite being provable from the length-prefix structure",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

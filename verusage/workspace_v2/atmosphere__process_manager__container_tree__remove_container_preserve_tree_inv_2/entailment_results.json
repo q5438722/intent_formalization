@@ -1,0 +1,47 @@
+[
+  {
+    "name": "remove_container_preserves_owned_threads_overlap",
+    "type": "logical",
+    "code": "proof fn phi_1_remove_container_preserves_owned_threads_overlap(\n    root_container: ContainerPtr,\n    old_container_perms: Map<ContainerPtr, PointsTo<Container>>,\n    new_container_perms: Map<ContainerPtr, PointsTo<Container>>,\n    container_ptr: ContainerPtr,\n    c1: ContainerPtr,\n    c2: ContainerPtr,\n    t: ThreadPtr,\n)\n    requires\n        remove_container_ensures(root_container, old_container_perms, new_container_perms, container_ptr),\n        new_container_perms.dom().contains(c1),\n        new_container_perms.dom().contains(c2),\n        c1 != c2,\n        new_container_perms[c1].value().owned_threads@.contains(t),\n        new_container_perms[c2].value().owned_threads@.contains(t),\n    ensures\n        true,\n{\n}",
+    "reason": "remove_container_ensures does not constrain owned_threads disjointness in new_container_perms \u2014 after removal, two containers can still claim the same thread",
+    "entailed": true,
+    "verus_output": "rus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__container_tree__remove_container_preserve_tree_inv_2/phi_1_remove_container_preserves_owned_threads_overlap.rs:439:96\n    |\n439 |         new_container_perms.dom().contains(c_ptr) && new_container_perms[c_ptr].value().parent.is_Some()\n    |                                                                                                ^^^^^^^\n\nwarning: 6 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "remove_container_no_resource_cleanup",
+    "type": "logical",
+    "code": "proof fn phi_2_remove_container_no_resource_cleanup(\n    root_container: ContainerPtr,\n    old_container_perms: Map<ContainerPtr, PointsTo<Container>>,\n    new_container_perms: Map<ContainerPtr, PointsTo<Container>>,\n    container_ptr: ContainerPtr,\n    t: ThreadPtr,\n)\n    requires\n        remove_container_ensures(root_container, old_container_perms, new_container_perms, container_ptr),\n        old_container_perms[container_ptr].value().owned_threads@.contains(t),\n    ensures\n        !new_container_perms.dom().contains(container_ptr),\n{\n}",
+    "reason": "The removed container's owned_threads are silently dropped \u2014 remove_container_ensures removes the container from dom but never transfers or validates that owned resources (threads, endpoints, procs) are handled",
+    "entailed": true,
+    "verus_output": "github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__container_tree__remove_container_preserve_tree_inv_2/phi_2_remove_container_no_resource_cleanup.rs:439:96\n    |\n439 |         new_container_perms.dom().contains(c_ptr) && new_container_perms[c_ptr].value().parent.is_Some()\n    |                                                                                                ^^^^^^^\n\nwarning: 6 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "sll_len_without_wf_returns_value_list_len",
+    "type": "logical",
+    "code": "proof fn phi_3_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    ensures\n        sll.len() == sll.value_list_len,\n{\n}",
+    "reason": "StaticLinkedList::len's external_body unconditionally ensures l == self.value_list_len without requiring wf() \u2014 the raw field is exposed for malformed lists",
+    "entailed": false,
+    "verus_output": "thout_wf_returns_value_list_len.rs:495:9\n    |\n493 | proof fn phi_3_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    |       -------------------------------------------------------------------------------------------------- at the end of the function body\n494 |     ensures\n495 |         sll.len() == sll.value_list_len,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 6 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "unique_implys_no_duplicates_external_body",
+    "type": "logical",
+    "code": "proof fn phi_4_unique_implys_no_duplicates_external_body<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    requires\n        sll.unique(),\n        sll.wf(),\n    ensures\n        sll@.no_duplicates(),\n{\n    sll.unique_implys_no_duplicates();\n}",
+    "reason": "unique_implys_no_duplicates is external_body \u2014 it asserts that unique() (defined over spec_seq and value_list_len) implies Seq::no_duplicates() without proof, creating a trusted bridge between two different representations",
+    "entailed": true,
+    "verus_output": "b.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__container_tree__remove_container_preserve_tree_inv_2/phi_4_unique_implys_no_duplicates_external_body.rs:439:96\n    |\n439 |         new_container_perms.dom().contains(c_ptr) && new_container_perms[c_ptr].value().parent.is_Some()\n    |                                                                                                ^^^^^^^\n\nwarning: 6 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "root_container_parent_unconstrained",
+    "type": "boundary",
+    "code": "proof fn phi_5_root_container_parent_unconstrained(\n    root_container: ContainerPtr,\n    container_perms: Map<ContainerPtr, PointsTo<Container>>,\n)\n    requires\n        container_perms_wf(container_perms),\n        container_tree_wf(root_container, container_perms),\n        container_perms.dom().contains(root_container),\n        container_perms[root_container].value().parent.is_Some(),\n    ensures\n        true,\n{\n}",
+    "reason": "container_root_wf constrains depth==0 and non-root must have parent.is_Some(), but never asserts root's parent.is_None() \u2014 root can have a spurious parent pointer",
+    "entailed": true,
+    "verus_output": "`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__container_tree__remove_container_preserve_tree_inv_2/phi_5_root_container_parent_unconstrained.rs:501:56\n    |\n501 |         container_perms[root_container].value().parent.is_Some(),\n    |                                                        ^^^^^^^\n\nwarning: 7 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

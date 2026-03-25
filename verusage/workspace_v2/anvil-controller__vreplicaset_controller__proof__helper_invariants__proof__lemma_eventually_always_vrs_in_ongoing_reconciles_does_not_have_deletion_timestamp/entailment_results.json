@@ -1,0 +1,47 @@
+[
+  {
+    "name": "unmarshal_roundtrip_identity",
+    "type": "logical",
+    "code": "proof fn phi_1_unmarshal_roundtrip_identity<T: ResourceView>(o: T)\n    requires\n        true,\n    ensures\n        T::unmarshal(o.marshal()) is Ok,\n        T::unmarshal(o.marshal())->Ok_0 == o,\n{\n}",
+    "reason": "no marshal_preserves_integrity axiom exists in this version \u2014 marshal_spec/unmarshal_spec are uninterpreted with zero roundtrip guarantees, so unmarshal\u2218marshal = id should be completely unprovable",
+    "entailed": false,
+    "verus_output": "ally_always_vrs_in_ongoing_reconciles_does_not_have_deletion_timestamp/phi_1_unmarshal_roundtrip_identity.rs:4207:9\n     |\n4202 | proof fn phi_1_unmarshal_roundtrip_identity<T: ResourceView>(o: T)\n     |       ------------------------------------------------------------ at the end of the function body\n...\n4207 |         T::unmarshal(o.marshal())->Ok_0 == o,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 2 previous errors; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "unmarshal_spec_always_succeeds",
+    "type": "boundary",
+    "code": "proof fn phi_2_unmarshal_spec_always_succeeds<T: ResourceView>(v: Value)\n    requires\n        true,\n    ensures\n        T::unmarshal_spec(v) is Ok,\n{\n}",
+    "reason": "unmarshal_spec is uninterpreted with no axioms \u2014 totality should not be entailed since arbitrary Values may not represent valid specs",
+    "entailed": false,
+    "verus_output": "_eventually_always_vrs_in_ongoing_reconciles_does_not_have_deletion_timestamp/phi_2_unmarshal_spec_always_succeeds.rs:4206:9\n     |\n4202 | proof fn phi_2_unmarshal_spec_always_succeeds<T: ResourceView>(v: Value)\n     |       ------------------------------------------------------------------ at the end of the function body\n...\n4206 |         T::unmarshal_spec(v) is Ok,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "allocate_triple_equals_plus_two",
+    "type": "boundary",
+    "code": "proof fn phi_3_allocate_triple_equals_plus_two(a: ReconcileIdAllocator)\n    requires\n        true,\n    ensures\n        a.allocate().0.allocate().0.reconcile_id_counter == a.reconcile_id_counter + 2,\n        a.allocate().0.allocate().0.allocate().1 == a.reconcile_id_counter + 2,\n        a.allocate().0.allocate().1 == a.allocate().1,\n{\n}",
+    "reason": "the third ensures claims the second allocation returns the same ID as the first \u2014 but allocate increments the counter so consecutive IDs must differ",
+    "entailed": false,
+    "verus_output": "onciles_does_not_have_deletion_timestamp/phi_3_allocate_triple_equals_plus_two.rs:4208:9\n     |\n4202 | proof fn phi_3_allocate_triple_equals_plus_two(a: ReconcileIdAllocator)\n     |       ----------------------------------------------------------------- at the end of the function body\n...\n4208 |         a.allocate().0.allocate().1 == a.allocate().1,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "update_status_key_equals_get_then_delete_key",
+    "type": "logical",
+    "code": "proof fn phi_4_update_status_key_equals_get_then_delete_key(usr: UpdateStatusRequest, gdr: GetThenDeleteRequest)\n    requires\n        gdr.key.kind == usr.obj.kind,\n        gdr.key.namespace == usr.namespace,\n    ensures\n        gdr.key() == usr.key(),\n{\n}",
+    "reason": "GetThenDeleteRequest::key returns self.key which has its own name field, while UpdateStatusRequest::key uses self.name \u2014 matching kind and namespace does NOT imply the name fields agree",
+    "entailed": false,
+    "verus_output": "date_status_key_equals_get_then_delete_key.rs:4207:9\n     |\n4202 | proof fn phi_4_update_status_key_equals_get_then_delete_key(usr: UpdateStatusRequest, gdr: GetThenDeleteRequest)\n     |       ---------------------------------------------------------------------------------------------------------- at the end of the function body\n...\n4207 |         gdr.key() == usr.key(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "marshal_spec_unmarshal_status_cross",
+    "type": "logical",
+    "code": "proof fn phi_5_marshal_spec_unmarshal_status_cross<T: ResourceView>(s: T::Spec)\n    requires\n        true,\n    ensures\n        T::unmarshal_status(T::marshal_spec(s)) is Ok,\n{\n}",
+    "reason": "marshal_spec and unmarshal_status are independent uninterpreted functions over different semantic domains \u2014 a serialized spec Value should not be guaranteed to deserialize as a valid status",
+    "entailed": false,
+    "verus_output": "e_deletion_timestamp/phi_5_marshal_spec_unmarshal_status_cross.rs:4206:9\n     |\n4202 | proof fn phi_5_marshal_spec_unmarshal_status_cross<T: ResourceView>(s: T::Spec)\n     |       ------------------------------------------------------------------------- at the end of the function body\n...\n4206 |         T::unmarshal_status(T::marshal_spec(s)) is Ok,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

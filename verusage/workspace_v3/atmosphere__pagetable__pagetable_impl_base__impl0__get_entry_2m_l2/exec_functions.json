@@ -1,0 +1,6 @@
+[
+  {
+    "name": "get_entry_2m_l2",
+    "code": "pub fn get_entry_2m_l2(\n        &self,\n        target_l4i: L4Index,\n        target_l3i: L3Index,\n        target_l2i: L2Index,\n        l3_entry: &PageEntry,\n    ) -> (ret: Option<PageEntry>)\n        requires\n            self.wf(),\n            self.kernel_l4_end <= target_l4i < 512,\n            0 <= target_l3i < 512,\n            0 <= target_l2i < 512,\n            self.spec_resolve_mapping_l3(target_l4i, target_l3i) =~= Some(*l3_entry),\n        ensures\n            self.spec_resolve_mapping_2m_l2(target_l4i, target_l3i, target_l2i) =~= ret,\n    {\n        broadcast use PageTable::reveal_page_table_wf;\n        broadcast use PageTable::reveal_page_table_levels_wf;\n        broadcast use PageTable::reveal_page_table_disjoint_wf;\n        broadcast use PageTable::reveal_page_table_mappings_wf;\n        broadcast use PageTable::reveal_page_table_addtional_wf;\n\n        let tracked l2_perm = self.l2_tables.borrow().tracked_borrow(l3_entry.addr);\n        let l2_tbl: &PageMap = PPtr::<PageMap>::from_usize(l3_entry.addr).borrow(Tracked(l2_perm));\n        let l2_entry = l2_tbl.get(target_l2i);\n        if l2_entry.perm.present && l2_entry.perm.ps {\n            Some(l2_entry)\n        } else {\n            None\n        }\n    }"
+  }
+]

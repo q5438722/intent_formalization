@@ -1,0 +1,91 @@
+===PHI_START===
+NAME: arch_inv_zero_layers
+TARGET_FN: inv (Arch)
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_arch_inv_zero_layers()
+    ensures
+        (Arch { layers: seq![] }).inv(),
+{
+}
+```
+REASON: An empty architecture with no layers satisfies inv(), yet it cannot describe any valid address translation
+===PHI_END===
+
+===PHI_START===
+NAME: arch_inv_nonstandard_entry_size
+TARGET_FN: entry_size_is_next_layer_size
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_arch_inv_nonstandard_entry_size()
+    ensures
+    {
+        let arch = Arch { layers: seq![ArchLayer { entry_size: 7, num_entries: 3 }] };
+        arch.inv()
+    },
+{
+}
+```
+REASON: A single-layer arch with non-power-of-2 entry_size (7) and arbitrary num_entries (3) satisfies inv() since entry_size_is_next_layer_size is vacuously true for the last layer
+===PHI_END===
+
+===PHI_START===
+NAME: well_formed_unaligned_base
+TARGET_FN: well_formed
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_well_formed_unaligned_base(arch: Arch, entries: Seq<NodeEntry>)
+    requires
+        arch.inv(),
+        arch.layers.len() > 0,
+        entries.len() == arch.num_entries(0),
+        forall|i: nat| i < entries.len() ==> entries[i as int] is Invalid,
+    ensures
+    {
+        let dir = Directory { entries: entries, layer: 0, base_vaddr: 1, arch: arch };
+        dir.well_formed()
+    },
+{
+}
+```
+REASON: A directory with base_vaddr=1 (misaligned to any realistic entry_size) satisfies well_formed because the alignment check is commented out
+===PHI_END===
+
+===PHI_START===
+NAME: dir_inv_all_invalid
+TARGET_FN: directories_obey_invariant
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_dir_inv_all_invalid(dir: Directory)
+    requires
+        dir.well_formed(),
+        forall|i: nat| i < dir.entries.len() ==> dir.entries[i as int] is Invalid,
+    ensures
+        dir.inv(),
+{
+}
+```
+REASON: A directory with every entry Invalid satisfies inv() vacuously, meaning an entirely empty page table at any layer is considered valid
+===PHI_END===
+
+===PHI_START===
+NAME: pages_match_vacuous_no_pages
+TARGET_FN: pages_match_entry_size
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_pages_match_vacuous_no_pages(dir: Directory)
+    requires
+        dir.well_formed(),
+        forall|i: nat| i < dir.entries.len() ==> !(dir.entries[i as int] is Page),
+    ensures
+        dir.pages_match_entry_size(),
+{
+}
+```
+REASON: pages_match_entry_size is vacuously true when no entry is a Page, so a directory of only Directory/Invalid entries trivially satisfies it without any frame size guarantee
+===PHI_END===

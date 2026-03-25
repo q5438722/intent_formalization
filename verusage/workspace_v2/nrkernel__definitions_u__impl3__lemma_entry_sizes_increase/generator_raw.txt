@@ -1,0 +1,89 @@
+===PHI_START===
+NAME: entry_size_decreases_with_depth
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_entry_size_decreases_with_depth(arch: Arch, i: nat, j: nat)
+    requires
+        arch.inv(),
+        i < j,
+        j < arch.layers.len(),
+    ensures
+        arch.entry_size(i) >= arch.entry_size(j),
+{
+    arch.lemma_entry_sizes_increase(i, j);
+}
+```
+REASON: Higher layers have larger-or-equal entry sizes — direct consequence of the verified lemma, tests that the invariant enforces monotonicity
+===PHI_END===
+
+===PHI_START===
+NAME: adjacent_entry_size_geq
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_adjacent_entry_size_geq(arch: Arch, i: nat)
+    requires
+        arch.inv(),
+        i + 1 < arch.layers.len(),
+    ensures
+        arch.entry_size(i) >= arch.entry_size(i + 1),
+{
+    arch.lemma_entry_sizes_increase(i, i + 1);
+}
+```
+REASON: Adjacent layers satisfy monotonicity — the base case of the induction
+===PHI_END===
+
+===PHI_START===
+NAME: entry_size_equal_when_num_entries_one
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_entry_size_equal_when_num_entries_one(arch: Arch, i: nat)
+    requires
+        arch.inv(),
+        i + 1 < arch.layers.len(),
+        arch.num_entries(i + 1) == 1,
+    ensures
+        arch.entry_size(i) == arch.entry_size(i + 1),
+{
+}
+```
+REASON: When a layer has exactly 1 entry, parent and child entry sizes are equal — the invariant allows `num_entries == 1` which means a layer maps the same size as its child, creating a redundant nesting level
+===PHI_END===
+
+===PHI_START===
+NAME: inv_allows_non_power_of_two_entries
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_inv_allows_non_power_of_two_entries()
+    ensures ({
+        let layer0 = ArchLayer { entry_size: 6, num_entries: 3 };
+        let layer1 = ArchLayer { entry_size: 2, num_entries: 2 };
+        let arch = Arch { layers: seq![layer0, layer1] };
+        arch.inv()
+    }),
+{
+}
+```
+REASON: The invariant permits non-power-of-two entry sizes and num_entries — x86 page tables always use powers of two, but `inv()` allows arbitrary factorizations like 6 = 2 * 3
+===PHI_END===
+
+===PHI_START===
+NAME: inv_single_layer_any_entry_size
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_inv_single_layer_any_entry_size()
+    ensures ({
+        let layer = ArchLayer { entry_size: 7, num_entries: 3 };
+        let arch = Arch { layers: seq![layer] };
+        arch.inv()
+    }),
+{
+}
+```
+REASON: A single-layer architecture with arbitrary entry_size satisfies `inv()` — `entry_size_is_next_layer_size` is vacuously true for the only layer, so the sole constraint is `0 < entry_size <= X86_MAX_ENTRY_SIZE`
+===PHI_END===

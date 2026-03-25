@@ -1,0 +1,47 @@
+[
+  {
+    "name": "resp_matches_req_is_symmetric",
+    "type": "logical",
+    "code": "proof fn phi_1_resp_matches_req_is_symmetric(m1: Message, m2: Message)\n    requires\n        resp_msg_matches_req_msg(m1, m2),\n    ensures\n        m1.dst == m2.src && m1.src == m2.dst && m1.rpc_id == m2.rpc_id,\n{\n}",
+    "reason": "resp_msg_matches_req_msg swaps src/dst and preserves rpc_id but does not enforce that req and resp are on different hosts \u2014 a controller could match its own request as a response if content variants align",
+    "entailed": true,
+    "verus_output": ".github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__spec__invariant_since_phase_ii_is_stable/phi_1_resp_matches_req_is_symmetric.rs:164:1\n    |\n164 | / #[is_variant]\n165 | | pub enum APIRequest {\n166 | |     GetRequest(GetRequest),\n167 | |     ListRequest(ListRequest),\n...   |\n173 | |     GetThenUpdateRequest(GetThenUpdateRequest),\n174 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "scheduled_deletion_timestamp_redundant",
+    "type": "logical",
+    "code": "proof fn phi_2_scheduled_deletion_timestamp_redundant(vrs: VReplicaSetView, controller_id: int, s: ClusterState)\n    requires\n        s.scheduled_reconciles(controller_id).contains_key(vrs.object_ref()),\n        vrs_in_schedule_does_not_have_deletion_timestamp(vrs, controller_id)(s),\n    ensures\n        ({\n            let obj = s.scheduled_reconciles(controller_id)[vrs.object_ref()];\n            obj.metadata.deletion_timestamp is None\n            && VReplicaSetView::unmarshal(obj).unwrap().metadata().deletion_timestamp is None\n            && (VReplicaSetView::unmarshal(obj) is Ok ==> VReplicaSetView::unmarshal(obj)->Ok_0.metadata().deletion_timestamp == obj.metadata.deletion_timestamp)\n        }),\n{\n}",
+    "reason": "the predicate checks deletion_timestamp on both the raw DynamicObjectView and the unmarshalled VReplicaSetView, but unmarshal copies metadata verbatim \u2014 these are always equal, so the second check is redundant and masks the fact that no deeper validation occurs",
+    "entailed": true,
+    "verus_output": "o/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__spec__invariant_since_phase_ii_is_stable/phi_2_scheduled_deletion_timestamp_redundant.rs:164:1\n    |\n164 | / #[is_variant]\n165 | | pub enum APIRequest {\n166 | |     GetRequest(GetRequest),\n167 | |     ListRequest(ListRequest),\n...   |\n173 | |     GetThenUpdateRequest(GetThenUpdateRequest),\n174 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pending_req_xor_allows_both_absent",
+    "type": "behavioral",
+    "code": "proof fn phi_3_pending_req_xor_allows_both_absent(controller_id: int, key: ObjectRef, s: ClusterState)\n    requires\n        s.ongoing_reconciles(controller_id).contains_key(key),\n        s.ongoing_reconciles(controller_id)[key].pending_req_msg is None,\n    ensures\n        Cluster::pending_req_in_flight_xor_resp_in_flight_if_has_pending_req_msg(controller_id, key)(s),\n{\n}",
+    "reason": "the \"xor\" invariant is vacuously true when pending_req_msg is None \u2014 it provides no constraint on reconciles with no pending request, so a controller in a broken state with no pending message silently satisfies the invariant",
+    "entailed": true,
+    "verus_output": "ub.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__spec__invariant_since_phase_ii_is_stable/phi_3_pending_req_xor_allows_both_absent.rs:164:1\n    |\n164 | / #[is_variant]\n165 | | pub enum APIRequest {\n166 | |     GetRequest(GetRequest),\n167 | |     ListRequest(ListRequest),\n...   |\n173 | |     GetThenUpdateRequest(GetThenUpdateRequest),\n174 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "reconcile_spec_uid_no_status_check",
+    "type": "behavioral",
+    "code": "proof fn phi_4_reconcile_spec_uid_no_status_check(controller_id: int, vrs: VReplicaSetView, s: ClusterState)\n    requires\n        s.ongoing_reconciles(controller_id).contains_key(vrs.object_ref()),\n        Cluster::the_object_in_reconcile_has_spec_and_uid_as(controller_id, vrs)(s),\n    ensures\n        ({\n            let cr = s.ongoing_reconciles(controller_id)[vrs.object_ref()].triggering_cr;\n            cr.metadata.uid == vrs.metadata().uid\n            && VReplicaSetView::unmarshal(cr)->Ok_0.spec() == vrs.spec()\n        }),\n{\n}",
+    "reason": "the_object_in_reconcile_has_spec_and_uid_as checks spec and uid match but completely ignores status \u2014 a reconciliation could operate on an object whose status has diverged arbitrarily from the expected CR",
+    "entailed": true,
+    "verus_output": "ub.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__spec__invariant_since_phase_ii_is_stable/phi_4_reconcile_spec_uid_no_status_check.rs:164:1\n    |\n164 | / #[is_variant]\n165 | | pub enum APIRequest {\n166 | |     GetRequest(GetRequest),\n167 | |     ListRequest(ListRequest),\n...   |\n173 | |     GetThenUpdateRequest(GetThenUpdateRequest),\n174 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "object_ref_ignores_uid",
+    "type": "logical",
+    "code": "proof fn phi_5_object_ref_ignores_uid(v1: VReplicaSetView, v2: VReplicaSetView)\n    requires\n        v1.metadata().name is Some,\n        v1.metadata().namespace is Some,\n        v1.metadata().name == v2.metadata().name,\n        v1.metadata().namespace == v2.metadata().namespace,\n        v1.metadata().uid != v2.metadata().uid,\n    ensures\n        v1.object_ref() == v2.object_ref(),\n{\n}",
+    "reason": "object_ref is (kind, name, namespace) and ignores uid \u2014 two different incarnations of a resource after delete-recreate share the same ObjectRef, so maps keyed by ObjectRef conflate distinct resource instances",
+    "entailed": true,
+    "verus_output": "us-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__spec__invariant_since_phase_ii_is_stable/phi_5_object_ref_ignores_uid.rs:164:1\n    |\n164 | / #[is_variant]\n165 | | pub enum APIRequest {\n166 | |     GetRequest(GetRequest),\n167 | |     ListRequest(ListRequest),\n...   |\n173 | |     GetThenUpdateRequest(GetThenUpdateRequest),\n174 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

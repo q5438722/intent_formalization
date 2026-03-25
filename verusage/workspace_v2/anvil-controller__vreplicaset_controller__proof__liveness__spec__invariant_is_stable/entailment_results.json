@@ -1,0 +1,47 @@
+[
+  {
+    "name": "create_key_namespace_diverges",
+    "type": "behavioral",
+    "code": "proof fn phi_1_create_key_namespace_diverges(req: CreateRequest)\n    requires\n        req.obj.metadata.namespace is Some,\n        req.namespace != req.obj.metadata.namespace->0,\n    ensures\n        req.key().namespace != req.obj.metadata.namespace->0,\n{\n}",
+    "reason": "CreateRequest::key uses self.namespace instead of self.obj.metadata.namespace, so the key can silently disagree with the object's own namespace metadata",
+    "entailed": true,
+    "verus_output": "erified, 0 errors\nwarning: `#[is_variant]` is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__spec__invariant_is_stable/phi_1_create_key_namespace_diverges.rs:327:1\n    |\n327 | / #[is_variant]\n328 | | pub enum BuiltinControllersStep {\n329 | |     RunGarbageCollector,\n330 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "update_key_ignores_obj_namespace",
+    "type": "behavioral",
+    "code": "proof fn phi_2_update_key_ignores_obj_namespace(req: UpdateRequest)\n    requires\n        req.obj.metadata.namespace is Some,\n        req.namespace != req.obj.metadata.namespace->0,\n    ensures\n        req.key().namespace != req.obj.metadata.namespace->0,\n{\n}",
+    "reason": "UpdateRequest::key uses self.namespace and self.name rather than the object's own metadata, allowing the key to reference a different resource than what the object describes",
+    "entailed": true,
+    "verus_output": "fied, 0 errors\nwarning: `#[is_variant]` is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__spec__invariant_is_stable/phi_2_update_key_ignores_obj_namespace.rs:327:1\n    |\n327 | / #[is_variant]\n328 | | pub enum BuiltinControllersStep {\n329 | |     RunGarbageCollector,\n330 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "update_key_ignores_obj_name",
+    "type": "behavioral",
+    "code": "proof fn phi_3_update_key_ignores_obj_name(req: UpdateRequest)\n    requires\n        req.obj.metadata.name is Some,\n        req.name != req.obj.metadata.name->0,\n    ensures\n        req.key().name != req.obj.metadata.name->0,\n{\n}",
+    "reason": "UpdateRequest::key uses self.name not self.obj.metadata.name, so an update request can target a different name than the object payload carries \u2014 the object could overwrite a resource it doesn't represent",
+    "entailed": true,
+    "verus_output": " verified, 0 errors\nwarning: `#[is_variant]` is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__spec__invariant_is_stable/phi_3_update_key_ignores_obj_name.rs:327:1\n    |\n327 | / #[is_variant]\n328 | | pub enum BuiltinControllersStep {\n329 | |     RunGarbageCollector,\n330 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "marshal_unmarshal_no_roundtrip",
+    "type": "logical",
+    "code": "proof fn phi_4_marshal_unmarshal_no_roundtrip(v: VReplicaSetView)\n    requires\n        v.metadata.name is Some,\n        v.metadata.namespace is Some,\n    ensures\n        VReplicaSetView::unmarshal(v.marshal()) is Ok ==>\n            VReplicaSetView::unmarshal(v.marshal())->Ok_0.spec() == v.spec()\n            && VReplicaSetView::unmarshal(v.marshal())->Ok_0.metadata() == v.metadata(),\n{\n}",
+    "reason": "marshal_spec/unmarshal_spec are uninterpreted with no roundtrip axiom \u2014 the solver can satisfy this vacuously by making unmarshal always fail, meaning no actual roundtrip guarantee exists",
+    "entailed": false,
+    "verus_output": "---------------------------- at the end of the function body\n...\n4330 | /         VReplicaSetView::unmarshal(v.marshal()) is Ok ==>\n4331 | |             VReplicaSetView::unmarshal(v.marshal())->Ok_0.spec() == v.spec()\n4332 | |             && VReplicaSetView::unmarshal(v.marshal())->Ok_0.metadata() == v.metadata(),\n     | |_______________________________________________________________________________________^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "reconcile_id_allocator_no_uniqueness",
+    "type": "boundary",
+    "code": "proof fn phi_5_reconcile_id_allocator_no_uniqueness(a1: ReconcileIdAllocator, a2: ReconcileIdAllocator)\n    requires\n        a1.reconcile_id_counter == a2.reconcile_id_counter,\n    ensures\n        a1.allocate().1 == a2.allocate().1,\n{\n}",
+    "reason": "two independent ReconcileIdAllocators with the same counter produce identical reconcile IDs \u2014 there is no global uniqueness mechanism, so concurrent controllers can allocate colliding IDs",
+    "entailed": true,
+    "verus_output": ", 0 errors\nwarning: `#[is_variant]` is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__spec__invariant_is_stable/phi_5_reconcile_id_allocator_no_uniqueness.rs:327:1\n    |\n327 | / #[is_variant]\n328 | | pub enum BuiltinControllersStep {\n329 | |     RunGarbageCollector,\n330 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

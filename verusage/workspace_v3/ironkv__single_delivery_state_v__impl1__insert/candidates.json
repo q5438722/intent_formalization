@@ -1,0 +1,37 @@
+[
+  {
+    "name": "insert_removes_unrelated_key",
+    "target_fn": "insert",
+    "type": "behavioral",
+    "code": "proof fn phi_1_insert_removes_unrelated_key(\n    pre: TombstoneTable, post: TombstoneTable,\n    src: AbstractEndPoint, last_seqno: u64,\n    other: AbstractEndPoint,\n)\n    requires\n        forall |k: AbstractEndPoint| #[trigger] pre.contains_key(k) ==> k.valid_physical_address(),\n        src.valid_physical_address(),\n        post =~= pre.insert(src, last_seqno as nat),\n        pre.contains_key(other),\n        other != src,\n    ensures\n        !post.contains_key(other),\n{\n}",
+    "reason": "Insert should preserve all pre-existing keys unrelated to src; losing them would silently drop tombstone entries"
+  },
+  {
+    "name": "insert_max_seqno_wraps_to_zero",
+    "target_fn": "insert",
+    "type": "boundary",
+    "code": "proof fn phi_2_insert_max_seqno_wraps_to_zero(\n    pre: TombstoneTable, post: TombstoneTable,\n    src: AbstractEndPoint,\n)\n    requires\n        forall |k: AbstractEndPoint| #[trigger] pre.contains_key(k) ==> k.valid_physical_address(),\n        src.valid_physical_address(),\n        post =~= pre.insert(src, 0xFFFF_FFFF_FFFF_FFFFu64 as nat),\n    ensures\n        post[src] == 0nat,\n{\n}",
+    "reason": "If u64::MAX as nat wraps to zero the tombstone table would record a wrong sequence number, enabling replayed messages"
+  },
+  {
+    "name": "insert_key_missing_after_insert",
+    "target_fn": "insert",
+    "type": "logical",
+    "code": "proof fn phi_3_insert_key_missing_after_insert(\n    pre: TombstoneTable, post: TombstoneTable,\n    src: AbstractEndPoint, last_seqno: u64,\n)\n    requires\n        forall |k: AbstractEndPoint| #[trigger] pre.contains_key(k) ==> k.valid_physical_address(),\n        src.valid_physical_address(),\n        post =~= pre.insert(src, last_seqno as nat),\n    ensures\n        !post.contains_key(src),\n{\n}",
+    "reason": "The inserted key must be present afterward; its absence means the tombstone was silently discarded"
+  },
+  {
+    "name": "insert_corrupts_other_value",
+    "target_fn": "insert",
+    "type": "behavioral",
+    "code": "proof fn phi_4_insert_corrupts_other_value(\n    pre: TombstoneTable, post: TombstoneTable,\n    src: AbstractEndPoint, last_seqno: u64,\n    other: AbstractEndPoint,\n)\n    requires\n        forall |k: AbstractEndPoint| #[trigger] pre.contains_key(k) ==> k.valid_physical_address(),\n        src.valid_physical_address(),\n        post =~= pre.insert(src, last_seqno as nat),\n        pre.contains_key(other),\n        other != src,\n    ensures\n        post[other] != pre[other],\n{\n}",
+    "reason": "Inserting one key must not mutate another key's sequence number, or unrelated tombstone records become corrupted"
+  },
+  {
+    "name": "insert_value_independent_of_arg",
+    "target_fn": "insert",
+    "type": "logical",
+    "code": "proof fn phi_5_insert_value_independent_of_arg(\n    pre: TombstoneTable, post: TombstoneTable,\n    src: AbstractEndPoint, v1: u64, v2: u64,\n)\n    requires\n        forall |k: AbstractEndPoint| #[trigger] pre.contains_key(k) ==> k.valid_physical_address(),\n        src.valid_physical_address(),\n        post =~= pre.insert(src, v1 as nat),\n        v1 != v2,\n    ensures\n        post[src] == v2 as nat,\n{\n}",
+    "reason": "The stored value must equal the provided last_seqno; if any other value satisfies the spec, sequence-number tracking is broken"
+  }
+]

@@ -1,0 +1,83 @@
+===PHI_START===
+NAME: parse_empty_is_none
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_parse_empty_is_none()
+    ensures
+        UnsignedLEB128.spec_parse(seq![]).is_none(),
+{
+}
+```
+REASON: Parsing an empty sequence should fail — if it succeeded, the parser would produce values from no input
+===PHI_END===
+
+===PHI_START===
+NAME: parse_single_byte_value_range
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_parse_single_byte_value_range(b: u8)
+    requires
+        b < 0x80,
+    ensures
+        UnsignedLEB128.spec_parse(seq![b]) == Some((1int, (b & 0x7f) as UInt)),
+{
+}
+```
+REASON: A single byte below 0x80 should parse to its low 7 bits — if the base case produced a different value, all multi-byte encodings would be wrong
+===PHI_END===
+
+===PHI_START===
+NAME: parse_single_continuation_byte_fails
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_parse_single_continuation_byte_fails(b: u8)
+    requires
+        b >= 0x80,
+    ensures
+        UnsignedLEB128.spec_parse(seq![b]).is_none(),
+{
+}
+```
+REASON: A single continuation byte (high bit set) with no following data should fail to parse — if it succeeded, truncated encodings would silently produce incorrect values
+===PHI_END===
+
+===PHI_START===
+NAME: parse_rejects_non_canonical_zero_continuation
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_parse_rejects_non_canonical_zero_continuation()
+    ensures
+        UnsignedLEB128.spec_parse(seq![0x80u8, 0x00u8]).is_none(),
+{
+}
+```
+REASON: The encoding 0x80 0x00 is a non-canonical representation of 0 (v2 == 0 fails the `0 < v2` check) — if accepted, the same value would have multiple encodings, breaking injectivity
+===PHI_END===
+
+===PHI_START===
+NAME: parse_consumed_at_most_input_length
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_parse_consumed_at_most_input_length(s: Seq<u8>, n: int, v: UInt)
+    requires
+        s.len() > 0,
+        UnsignedLEB128.spec_parse(s) == Some((n, v)),
+    ensures
+        1 <= n <= s.len(),
+    decreases s.len(),
+{
+    let s0 = s[0];
+    if is_high_8_bit_set!(s0) {
+        if let Some((n2, v2)) = UnsignedLEB128.spec_parse(s.drop_first()) {
+            phi_5_parse_consumed_at_most_input_length(s.drop_first(), n2, v2);
+        }
+    }
+}
+```
+REASON: The number of bytes consumed should never exceed input length — if it did, the parser would claim to read past the end of the buffer
+===PHI_END===

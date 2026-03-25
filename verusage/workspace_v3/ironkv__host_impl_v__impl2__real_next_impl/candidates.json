@@ -1,0 +1,37 @@
+[
+  {
+    "name": "lookup_present_key_returns_none",
+    "target_fn": "hashtable_lookup",
+    "type": "behavioral",
+    "code": "proof fn phi_1_lookup_present_key_returns_none(h: Hashtable, k: AbstractKey)\n    requires\n        h.dom().contains(k),\n    ensures\n        hashtable_lookup(h, k) is None,\n{\n}",
+    "reason": "A key present in the hashtable should return Some, not None; this would break all GET request lookups."
+  },
+  {
+    "name": "bulk_update_loses_original_keys",
+    "target_fn": "bulk_update_domain",
+    "type": "logical",
+    "code": "proof fn phi_2_bulk_update_loses_original_keys(h: Hashtable, kr: KeyRange<AbstractKey>, u: Hashtable, k: AbstractKey)\n    requires\n        h.dom().contains(k),\n        !kr.contains(k),\n        !u.dom().contains(k),\n    ensures\n        !bulk_update_domain(h, kr, u).contains(k),\n{\n}",
+    "reason": "Keys in the original hashtable outside the updated range must be preserved; losing them would silently drop data during delegation."
+  },
+  {
+    "name": "none_value_is_invalid",
+    "target_fn": "valid_optional_value",
+    "type": "boundary",
+    "code": "proof fn phi_3_none_value_is_invalid(ov: Option<AbstractValue>)\n    requires\n        ov is None,\n    ensures\n        !valid_optional_value(ov),\n{\n}",
+    "reason": "None represents a key deletion and must be valid; rejecting it would prevent any SetRequest from removing keys."
+  },
+  {
+    "name": "retransmit_modifies_hashtable",
+    "target_fn": "spontaneously_retransmit",
+    "type": "behavioral",
+    "code": "proof fn phi_4_retransmit_modifies_hashtable(pre: AbstractHostState, post: AbstractHostState, out: Set<Packet>)\n    requires\n        spontaneously_retransmit(pre, post, out),\n    ensures\n        post.h !== pre.h,\n{\n}",
+    "reason": "Retransmission only resends un-acked packets; it must never mutate the hashtable or it would corrupt data."
+  },
+  {
+    "name": "no_invalid_sends_allows_invalid",
+    "target_fn": "no_invalid_sends",
+    "type": "logical",
+    "code": "proof fn phi_5_no_invalid_sends_allows_invalid(ios: AbstractIos, i: int)\n    requires\n        no_invalid_sends(ios),\n        0 <= i < ios.len(),\n        ios[i] is Send,\n    ensures\n        ios[i].arrow_Send_s().msg is InvalidMessage,\n{\n}",
+    "reason": "The no_invalid_sends guard must actually prevent InvalidMessage sends; if it doesn't, the trusted marshalling invariant is violated."
+  }
+]

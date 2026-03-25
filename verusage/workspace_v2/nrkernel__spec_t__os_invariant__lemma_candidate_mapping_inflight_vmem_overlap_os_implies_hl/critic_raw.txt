@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: rl2_interp_pt_mem_is_writer_mem
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `rl2::State::interp()` sets `pt_mem: self.writer_mem()` where `writer_mem` is `#[verifier(inline)]` expanding to `self.core_mem(self.writes.core)` = `self.pt_mem.write_seq(self.sbuf[self.writes.core])`. The ensures is a direct unfolding of the open spec definitions.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: candidate_mapping_overlaps_empty_map
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `Map::empty()` has no keys, so `mappings.contains_key(b)` is false for all `b`. The existential cannot be satisfied. Correct by Map axioms.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: arch_inv_holds_for_x86
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `x86_arch_spec` is a concrete 4-layer constant with entry sizes `[L0, L1, L2, L3]` and `num_entries: 512` at each layer. The inv checks `layers.len() <= 4`, positive sizes/entries bounded by constants, and `entry_size_is_next_layer_size` — all hold by construction since `L0 = 512*L1`, `L1 = 512*L2`, `L2 = 512*L3`.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: between_exclusive_upper
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `between(b, a, b)` = `a <= b && b < b`. Since `b < b` is false, the result is false. Correct by definition — the upper bound is exclusive.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: overlap_adjacent_no_overlap
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: With `r1 = {base, size}` and `r2 = {base+size, size}`, since `base <= base+size`, we check `base == base+size` (false since `size > 0`) or `base+size < base+size` (false). Non-overlap is correct — adjacent regions don't overlap.
+===VERDICT_END===
+
+===SUMMARY===
+All five candidates are false positives. The rl2 interp pt_mem unfolding, empty map non-overlap, x86 arch invariant, between exclusive upper bound, and adjacent region non-overlap are all correct properties following directly from the open spec definitions, Map axioms, concrete constant construction, and arithmetic.
+===END_SUMMARY===

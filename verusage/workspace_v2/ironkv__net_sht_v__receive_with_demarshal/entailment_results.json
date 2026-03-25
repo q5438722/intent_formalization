@@ -1,0 +1,47 @@
+[
+  {
+    "name": "sht_demarshal_data_arbitrary_without_exists",
+    "type": "logical",
+    "code": "proof fn phi_1_sht_demarshal_data_arbitrary_without_exists(data: Seq<u8>)\n    requires\n        !(exists |v: CSingleMessage| v.is_marshalable() && v.ghost_serialize() == data),\n    ensures\n        sht_demarshal_data(data).is_marshalable(),\n{\n}",
+    "reason": "`sht_demarshal_data` uses `choose` with only `recommends` \u2014 when no valid CSingleMessage deserializes to the data, the result is arbitrary, yet callers might assume it is always marshalable",
+    "entailed": false,
+    "verus_output": "ge/workspace_v2/ironkv__net_sht_v__receive_with_demarshal/phi_1_sht_demarshal_data_arbitrary_without_exists.rs:875:9\n    |\n871 | proof fn phi_1_sht_demarshal_data_arbitrary_without_exists(data: Seq<u8>)\n    |       ------------------------------------------------------------------- at the end of the function body\n...\n875 |         sht_demarshal_data(data).is_marshalable(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "option_none_serialize_collides_with_some_empty",
+    "type": "behavioral",
+    "code": "proof fn phi_2_option_none_serialize_collides_with_some_empty()\n    ensures\n        Option::<Vec<u8>>::None.ghost_serialize() != (Option::<Vec<u8>>::Some(Vec::<u8>::new())).ghost_serialize(),\n{\n}",
+    "reason": "None serializes as `seq![0]` and Some(empty_vec) serializes as `seq![1] + usize_serialize(0)` \u2014 these should differ, but if they collided it would break deserialization uniqueness",
+    "entailed": false,
+    "verus_output": " call function `alloc::vec::impl&%0::new` with mode exec\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__net_sht_v__receive_with_demarshal/phi_2_option_none_serialize_collides_with_some_empty.rs:873:79\n    |\n873 |         Option::<Vec<u8>>::None.ghost_serialize() != (Option::<Vec<u8>>::Some(Vec::<u8>::new())).ghost_serialize(),\n    |                                                                               ^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "cmessage_tag_collision_get_set",
+    "type": "behavioral",
+    "code": "proof fn phi_3_cmessage_tag_collision_get_set(k: CKey, v: Option<Vec<u8>>)\n    requires\n        CMessage::GetRequest { k }.is_marshalable(),\n        (CMessage::SetRequest { k, v }).is_marshalable(),\n    ensures\n        CMessage::GetRequest { k }.ghost_serialize() != (CMessage::SetRequest { k, v }).ghost_serialize(),\n{\n}",
+    "reason": "If the `derive_marshalable_for_enum` macro assigns overlapping tags to GetRequest and SetRequest variants, their serializations could collide despite being distinct messages",
+    "entailed": false,
+    "verus_output": "ern`, `use`, `static`, `const`, `unsafe`, `mod`, `type`, `struct`, `enum`, `union`, `trait`, `auto`, `impl`, `default`, `global`, `broadcast`, `macro`, identifier, `self`, `super`, `crate`, `::`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__net_sht_v__receive_with_demarshal/phi_3_cmessage_tag_collision_get_set.rs:873:35\n    |\n873 |         CMessage::GetRequest { k }.is_marshalable(),\n    |                                   ^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "sht_demarshal_data_not_deterministic",
+    "type": "logical",
+    "code": "proof fn phi_4_sht_demarshal_data_not_deterministic(data: Seq<u8>, v1: CSingleMessage, v2: CSingleMessage)\n    requires\n        v1.is_marshalable(),\n        v2.is_marshalable(),\n        v1.ghost_serialize() == data,\n        v2.ghost_serialize() == data,\n    ensures\n        sht_demarshal_data(data)@ == v1@ || sht_demarshal_data(data)@ == v2@,\n{\n}",
+    "reason": "`sht_demarshal_data` uses `choose` which picks an arbitrary witness \u2014 if serialization is not injective (all `ghost_serialize` impls are external_body at trait level), two distinct CSingleMessages could serialize to the same bytes and `choose` picks one nondeterministically",
+    "entailed": false,
+    "verus_output": " |\n871 | proof fn phi_4_sht_demarshal_data_not_deterministic(data: Seq<u8>, v1: CSingleMessage, v2: CSingleMessage)\n    |       ---------------------------------------------------------------------------------------------------- at the end of the function body\n...\n878 |         sht_demarshal_data(data)@ == v1@ || sht_demarshal_data(data)@ == v2@,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "cpacket_abstractable_no_msg_marshalable_check",
+    "type": "behavioral",
+    "code": "proof fn phi_5_cpacket_abstractable_no_msg_marshalable_check(p: CPacket)\n    requires\n        p.abstractable(),\n        !p.msg.is_marshalable(),\n    ensures\n        p.abstractable(),\n{\n}",
+    "reason": "`CPacket::abstractable` checks `dst/src.abstractable()` and `msg.abstractable()` but never checks `msg.is_marshalable()` \u2014 an abstractable packet can contain a non-marshalable message, creating a gap between what's abstractable and what can be serialized/deserialized",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

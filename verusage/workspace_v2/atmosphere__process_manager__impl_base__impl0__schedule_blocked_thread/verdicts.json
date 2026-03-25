@@ -1,0 +1,20 @@
+[
+  {
+    "phi": "get_proc_ensures_owned_threads_wf_without_full_wf",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "The `get_proc` external_body unconditionally ensures `ret.owned_threads.wf()` regardless of whether full `wf()` holds \u2014 only `proc_perms_wf()` and `process_fields_wf()` are required. This leaks a structural invariant that callers can exploit without establishing the complete well-formedness chain, potentially allowing reasoning about owned_threads in states where other cross-cutting invariants (threads_process_wf, threads_container_wf) don't hold."
+  },
+  {
+    "phi": "unique_implies_no_duplicates_external_body",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`unique_implys_no_duplicates` is `external_body` \u2014 the bridge from the custom `unique()` predicate (element distinctness over `spec_seq@` indices bounded by `self.len()`) to vstd's `Seq::no_duplicates()` is unverified. While semantically they should be equivalent when `wf()` holds (ensuring `spec_seq@.len() == value_list_len`), the proof is trusted, and any mismatch between `self.len()` in `unique()` (which uses `value_list_len` unconditionally) and the actual sequence length would be unsound."
+  },
+  {
+    "phi": "get_proc_container_dom_only_under_full_wf",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This PHI's ensures clause is literally `true`, which is trivially provable regardless of the preconditions. It doesn't demonstrate any actual spec gap \u2014 it merely comments on what `get_proc` does NOT ensure under weaker preconditions, which is expected defensive design (guarding the container_dom guarantee behind `self.wf()`)."
+  }
+]

@@ -1,0 +1,94 @@
+===PHI_START===
+NAME: interp_of_entry_between_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_interp_of_entry_between_external_body(d: Directory, i: nat, va: nat, pte: PTE)
+    requires
+        d.inv(),
+        i < d.entries.len(),
+        d.interp_of_entry(i).contains_pair(va, pte),
+    ensures
+        d.entry_base(i) <= va,
+        va < d.next_entry_base(i),
+{
+    d.lemma_interp_of_entry_between(i, va, pte);
+}
+```
+REASON: `lemma_interp_of_entry_between` is `external_body` — VA and frame size bounds for entry interpretations are trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: interp_of_entry_frame_bound_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_interp_of_entry_frame_bound_external_body(d: Directory, i: nat, va: nat, pte: PTE)
+    requires
+        d.inv(),
+        i < d.entries.len(),
+        d.interp_of_entry(i).contains_pair(va, pte),
+    ensures
+        d.entry_base(i) < va + pte.frame.size,
+        va + pte.frame.size <= d.next_entry_base(i),
+{
+    d.lemma_interp_of_entry_between(i, va, pte);
+}
+```
+REASON: The frame size upper bound `va + frame.size <= next_entry_base` is also external_body — if wrong, frames could extend past entry boundaries
+===PHI_END===
+
+===PHI_START===
+NAME: lemma_entry_base_strict_monotone_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_lemma_entry_base_strict_monotone_external_body(base: nat, i: nat, j: nat, entry_size: nat)
+    requires
+        0 < entry_size,
+        i < j,
+    ensures
+        entry_base_from_index(base, i, entry_size) < entry_base_from_index(base, j, entry_size),
+{
+    lemma_entry_base_from_index(base, i, entry_size);
+}
+```
+REASON: `lemma_entry_base_from_index` is `external_body` — strict monotonicity of entry base addresses is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: next_entry_leq_next_base_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_next_entry_leq_next_base_external_body(base: nat, i: nat, j: nat, entry_size: nat)
+    requires
+        0 < entry_size,
+        i < j,
+    ensures
+        next_entry_base_from_index(base, i, entry_size) <= entry_base_from_index(base, j, entry_size),
+{
+    lemma_entry_base_from_index(base, i, entry_size);
+}
+```
+REASON: The gap-free property `next_entry_base(i) <= entry_base(j)` for `i < j` is external_body — if wrong, entry ranges could overlap
+===PHI_END===
+
+===PHI_START===
+NAME: interp_aux_va_upper_bounded
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_interp_aux_va_upper_bounded(d: Directory, va: nat, pte: PTE)
+    requires
+        d.inv(),
+        d.interp_aux(0).contains_pair(va, pte),
+    ensures
+        va < d.upper_vaddr(),
+        va + d.interp_aux(0)[va].frame.size <= d.upper_vaddr(),
+{
+    d.lemma_interp_aux_between(0, va, pte);
+}
+```
+REASON: The verified `lemma_interp_aux_between` bounds all VA keys below `upper_vaddr` — depends on both external_body axioms for correctness
+===PHI_END===

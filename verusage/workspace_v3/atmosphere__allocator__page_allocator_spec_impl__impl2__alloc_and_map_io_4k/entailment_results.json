@@ -1,0 +1,52 @@
+[
+  {
+    "name": "ret_in_allocated_4k",
+    "target_fn": "alloc_and_map_io_4k",
+    "type": "behavioral",
+    "reason": "If ret ends up in allocated_pages_4k rather than only in mapped_pages_4k, the page bypassed the mapping step or was double-tracked",
+    "entailed": false,
+    "verified": 8,
+    "errors": 1,
+    "output_tail": "-------------------------------------------------------- at the end of the function body\n...\n1258 |         new_self.allocated_pages_4k().contains(ret),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  },
+  {
+    "name": "ret_still_free_at_boundary",
+    "target_fn": "alloc_and_map_io_4k",
+    "type": "boundary",
+    "reason": "When the free list has exactly one page, the returned page must not remain in the free set after allocation",
+    "entailed": false,
+    "verified": 8,
+    "errors": 1,
+    "output_tail": "------------------------------------------------------------------ at the end of the function body\n...\n1257 |         new_self.free_pages_4k().contains(ret),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  },
+  {
+    "name": "ret_has_pcid_mappings",
+    "target_fn": "alloc_and_map_io_4k",
+    "type": "logical",
+    "reason": "An IO-mapped page should have empty regular (Pcid) mappings; non-empty regular mappings would indicate cross-contamination of mapping types",
+    "entailed": false,
+    "verified": 8,
+    "errors": 1,
+    "output_tail": "-------------------------------------------------------------------- at the end of the function body\n...\n1255 |         new_self.page_mappings(ret).len() > 0,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  },
+  {
+    "name": "io_mapping_leaks_to_other",
+    "target_fn": "alloc_and_map_io_4k",
+    "type": "behavioral",
+    "reason": "The new IO mapping (ioid, va) must not leak to any other already-mapped page; this would violate IO isolation between pages",
+    "entailed": false,
+    "verified": 8,
+    "errors": 1,
+    "output_tail": "-------------------------------------------- at the end of the function body\n...\n1261 |         new_self.page_io_mappings(p).contains((ioid, va)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  },
+  {
+    "name": "ret_not_from_free_list",
+    "target_fn": "alloc_and_map_io_4k",
+    "type": "logical",
+    "reason": "The returned page must have originated from the free list; if it did not, the allocator handed out an untracked or already-in-use page",
+    "entailed": false,
+    "verified": 8,
+    "errors": 1,
+    "output_tail": "---------------------------------------------------------------- at the end of the function body\n...\n1259 |         !old_self.free_pages_4k().contains(ret),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  }
+]

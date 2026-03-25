@@ -1,0 +1,100 @@
+===PHI_START===
+NAME: temp_pred_equality_collapses_extensional
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_temp_pred_equality_collapses_extensional(p: TempPred<int>, q: TempPred<int>)
+    requires
+        p.entails(q),
+        q.entails(p),
+    ensures
+        p.pred == q.pred,
+{
+    temp_pred_equality::<int>(p, q);
+}
+```
+REASON: temp_pred_equality is external_body and forces intensional equality of spec_fn from mere extensional equivalence — conflating logical equivalence with structural identity
+===PHI_END===
+
+===PHI_START===
+NAME: always_unfold_suffix_equivalence
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_always_unfold_suffix_equivalence(ex: Execution<int>, p: TempPred<int>, i: nat)
+    requires
+        always(p).satisfied_by(ex),
+    ensures
+        p.satisfied_by(ex.suffix(i)),
+{
+    always_unfold::<int>(ex, p);
+}
+```
+REASON: always_unfold is external_body bridging the gap between two equivalent-but-intensionally-distinct formulations of suffix quantification — if the SMT solver ever distinguishes the closure in always from the direct forall, this axiom papers over a real intensional mismatch
+===PHI_END===
+
+===PHI_START===
+NAME: always_and_commutativity_propagates
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_always_and_commutativity_propagates()
+    ensures
+        forall |p: TempPred<int>, q: TempPred<int>| always(p.and(q)) == always(q.and(p)),
+{
+    assert forall |p: TempPred<int>, q: TempPred<int>| always(p.and(q)) == always(q.and(p)) by {
+        always_and_equality::<int>(p, q);
+        always_and_equality::<int>(q, p);
+        temp_pred_equality::<int>(always(p).and(always(q)), always(q).and(always(p)));
+    }
+}
+```
+REASON: chaining always_and_equality with temp_pred_equality yields equality of always(p∧q) and always(q∧p) as TempPred objects — the external_body axioms compose to equate structurally distinct closures, amplifying the trust surface
+===PHI_END===
+
+===PHI_START===
+NAME: always_idempotent_via_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_always_idempotent_via_external_body(p: TempPred<int>)
+    requires
+        valid(always(p)),
+    ensures
+        always(p) == always(always(p)),
+{
+    assert forall |ex: Execution<int>| always(always(p)).satisfied_by(ex) implies always(p).satisfied_by(ex) by {
+    };
+    assert forall |ex: Execution<int>| always(p).satisfied_by(ex) implies always(always(p)).satisfied_by(ex) by {
+        always_unfold::<int>(ex, p);
+        assert forall |i: nat| #[trigger] always(p).satisfied_by(ex.suffix(i)) by {
+            assert forall |j: nat| #[trigger] p.satisfied_by(ex.suffix(i).suffix(j)) by {
+                always_unfold::<int>(ex, p);
+            }
+        }
+    };
+    temp_pred_equality::<int>(always(p), always(always(p)));
+}
+```
+REASON: always_unfold and temp_pred_equality combine to prove always(p) == always(always(p)) as object equality — the idempotency should hold semantically but object-level equality relies entirely on unverified external_body axioms
+===PHI_END===
+
+===PHI_START===
+NAME: valid_false_from_external_body_chain
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_valid_false_from_external_body_chain(p: TempPred<int>, q: TempPred<int>)
+    requires
+        valid(p),
+        p.entails(q),
+        q.entails(p),
+        p != q,
+    ensures
+        false,
+{
+    temp_pred_equality::<int>(p, q);
+}
+```
+REASON: if any two mutually-entailing TempPreds are structurally distinct (p != q), temp_pred_equality forces p == q creating a contradiction — this means the axiom implicitly asserts no two distinct closures can be extensionally equivalent, which is false in general
+===PHI_END===

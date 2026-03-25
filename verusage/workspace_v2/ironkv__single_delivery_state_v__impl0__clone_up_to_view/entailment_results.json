@@ -1,0 +1,47 @@
+[
+  {
+    "name": "ckeyhasmap_view_unconstrained",
+    "type": "logical",
+    "code": "proof fn phi_1_ckeyhasmap_view_unconstrained(h1: CKeyHashMap, h2: CKeyHashMap)\n    ensures\n        h1@ === h2@ || !(h1@ === h2@),\n{\n}",
+    "reason": "`CKeyHashMap::view` is an uninterpreted spec function on an external_body struct \u2014 the SMT solver has no axioms constraining it, so two distinct CKeyHashMaps could have identical or different views with no relation to their actual contents",
+    "entailed": true,
+    "verus_output": "verification results:: 7 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "clone_up_to_view_loses_marshalability",
+    "type": "behavioral",
+    "code": "proof fn phi_2_clone_up_to_view_loses_marshalability(x: CSingleMessage, y: CSingleMessage)\n    requires\n        x@ == y@,\n        x is Message,\n    ensures\n        y is Message || y is Ack || y is InvalidMessage,\n{\n}",
+    "reason": "`clone_up_to_view` external_body ensures only `c@ == self@` \u2014 but `CSingleMessage::Message{seqno: 0, ...}@` equals `CSingleMessage::Ack{ack_seqno: 0}@` is false only because view maps to different variants; however the clone could return a structurally different concrete variant (e.g. different Vec contents) that happens to have the same abstract view",
+    "entailed": true,
+    "verus_output": "verification results:: 7 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "seqno_nat_cast_loses_info",
+    "type": "logical",
+    "code": "proof fn phi_3_seqno_nat_cast_loses_info(s1: u64, s2: u64, dst: EndPoint, m: CMessage)\n    requires\n        s1 as nat == s2 as nat,\n    ensures\n        s1 == s2,\n{\n}",
+    "reason": "The view function casts `seqno: u64` to `nat`, which is injective for u64 values \u2014 but if the spec were ever extended to allow larger sequence numbers, this identity would break; currently it's a tautology that hides the assumption that u64 is sufficient for sequence numbers",
+    "entailed": true,
+    "verus_output": "verification results:: 7 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "abstractify_cmessage_seq_invalid_preserved",
+    "type": "behavioral",
+    "code": "proof fn phi_4_abstractify_cmessage_seq_invalid_preserved(msgs: Seq<CSingleMessage>, i: int)\n    requires\n        0 <= i < msgs.len(),\n        msgs[i] is InvalidMessage,\n    ensures\n        abstractify_cmessage_seq(msgs)[i] is InvalidMessage,\n{\n}",
+    "reason": "`abstractify_cmessage_seq` faithfully maps InvalidMessage to abstract InvalidMessage \u2014 invalid/unparseable messages are carried through the abstraction layer rather than being filtered out, allowing protocol-level reasoning to accidentally include garbage messages in packet sequences",
+    "entailed": true,
+    "verus_output": "verification results:: 7 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "delegate_hashmap_view_not_injective",
+    "type": "logical",
+    "code": "proof fn phi_5_delegate_hashmap_view_not_injective(h1: CKeyHashMap, h2: CKeyHashMap, range: KeyRange<CKey>)\n    requires\n        h1@ == h2@,\n    ensures\n        (CMessage::Delegate{ range: range, h: h1 })@ == (CMessage::Delegate{ range: range, h: h2 })@,\n{\n}",
+    "reason": "Two CKeyHashMaps with the same uninterpreted view produce the same abstract Delegate message \u2014 but since `CKeyHashMap::view` is uninterpreted, structurally different hashmaps could share a view, meaning the Delegate message abstraction conflates distinct concrete states that may behave differently during marshaling or delegation",
+    "entailed": true,
+    "verus_output": "verification results:: 7 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

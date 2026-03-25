@@ -1,0 +1,127 @@
+===PHI_START===
+NAME: log_range_empty_queue_end
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_log_range_empty_queue_end<DT: Dispatch>(
+    queue: Seq<ReqId>,
+    log: Map<LogIdx, LogEntry<DT>>,
+    nodeId: NodeId,
+    updates: Map<ReqId, UpdateState<DT>>,
+    idx: LogIdx,
+)
+    requires
+        LogContainsEntriesUpToHere(log, idx),
+        LogRangeMatchesQueue(queue, log, 0, idx, idx, nodeId, updates),
+    ensures
+        queue.len() == 0,
+{
+}
+```
+REASON: When the log range is empty (`lower == upper`), the queue must also be exhausted — tests whether an empty log range at a non-zero queue index is rejected
+===PHI_END===
+
+===PHI_START===
+NAME: log_range_local_entry_consumes_queue
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_log_range_local_entry_consumes_queue<DT: Dispatch>(
+    queue: Seq<ReqId>,
+    log: Map<LogIdx, LogEntry<DT>>,
+    nodeId: NodeId,
+    updates: Map<ReqId, UpdateState<DT>>,
+    logIdx: LogIdx,
+)
+    requires
+        LogContainsEntriesUpToHere(log, logIdx + 1),
+        log[logIdx].node_id == nodeId,
+        LogRangeMatchesQueue(queue, log, 0, logIdx, logIdx + 1, nodeId, updates),
+    ensures
+        queue.len() == 1,
+        updates.contains_key(queue[0]),
+        updates[queue[0]] is Placed,
+        updates[queue[0]].arrow_Placed_idx() == logIdx,
+{
+}
+```
+REASON: A single local log entry must consume exactly one queue element in `Placed` state — tests the one-entry local case
+===PHI_END===
+
+===PHI_START===
+NAME: log_range_remote_entry_no_queue
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_log_range_remote_entry_no_queue<DT: Dispatch>(
+    queue: Seq<ReqId>,
+    log: Map<LogIdx, LogEntry<DT>>,
+    nodeId: NodeId,
+    updates: Map<ReqId, UpdateState<DT>>,
+    logIdx: LogIdx,
+    remoteId: NodeId,
+)
+    requires
+        LogContainsEntriesUpToHere(log, logIdx + 1),
+        log[logIdx].node_id == remoteId,
+        remoteId != nodeId,
+        LogRangeMatchesQueue(queue, log, 0, logIdx, logIdx + 1, nodeId, updates),
+    ensures
+        queue.len() == 0,
+{
+}
+```
+REASON: A single remote log entry should not consume any queue element — tests that remote entries are skipped entirely
+===PHI_END===
+
+===PHI_START===
+NAME: append_preserves_existing_entries
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_append_preserves_existing_entries<DT: Dispatch>(
+    queue: Seq<ReqId>,
+    log: Map<LogIdx, LogEntry<DT>>,
+    nodeId: NodeId,
+    updates: Map<ReqId, UpdateState<DT>>,
+    new_updates: Map<ReqId, UpdateState<DT>>,
+    new_rid: ReqId,
+    log_entry: LogEntry<DT>,
+    logUpper: LogIdx,
+)
+    requires
+        0 <= logUpper,
+        LogContainsEntriesUpToHere(log, logUpper),
+        log_entry.node_id == nodeId,
+        new_updates.contains_key(new_rid),
+        new_updates[new_rid] === (UpdateState::Placed { op: log_entry.op, idx: logUpper }),
+        !queue.contains(new_rid),
+        forall |rid| #[trigger] updates.contains_key(rid) && rid != new_rid ==> new_updates.contains_key(rid) && new_updates[rid] === updates[rid],
+        LogRangeMatchesQueue(queue, log, 0, 0, logUpper, nodeId, updates),
+    ensures ({
+        let new_log = log.insert(logUpper, log_entry);
+        let new_queue = queue.push(new_rid);
+        LogRangeMatchesQueue(new_queue, new_log, 0, 0, logUpper + 1, nodeId, new_updates)
+    }),
+{
+    LogRangeMatchesQueue_append(queue, log, log.insert(logUpper, log_entry), 0, 0, logUpper, nodeId, updates, new_updates, new_rid, log_entry);
+}
+```
+REASON: Full instantiation of append lemma from index 0 — tests that the verified lemma correctly extends the log range by 1 with a new local entry and queue element
+===PHI_END===
+
+===PHI_START===
+NAME: dispatch_trait_trusted
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_dispatch_trait_trusted<DT: Dispatch>(op: DT::WriteOperation, node_id: NodeId)
+    ensures ({
+        let entry = LogEntry::<DT> { op, node_id };
+        entry.node_id == node_id && entry.op === op
+    }),
+{
+}
+```
+REASON: `Dispatch` trait is `#[verus::trusted]` — all associated types (`WriteOperation`, `Response`, `View`) are trusted without verification, and any implementation could introduce unsoundness
+===PHI_END===

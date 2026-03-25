@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: always_unfold_intensional_bridge
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `always_unfold` is external_body bridging `always(p).satisfied_by(ex)` — which evaluates a `TempPred::new` closure containing a forall — to a bare forall over `p.satisfied_by(ex.suffix(i))`. Unverified trust assumption resolving the intensional closure gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: not_eventually_from_always_not
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `always(¬p) ⟹ ¬eventually(p)` is a standard temporal logic tautology (∀i.¬p(i) ⟹ ¬∃i.p(i)). This is a correct consequence of `always_unfold` — no new trust surface beyond φ1.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: always_not_blocks_any_witness
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Extracting `¬p` at a specific index from `always(¬p)` is a direct instantiation of φ1 — standard universal elimination. No new trust surface.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: double_not_eventually_collapse
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `always(¬(¬p)) ⟹ ¬eventually(¬p)` is a correct instantiation of φ2 with `not(p)` substituted for `p`. Standard temporal logic, no new trust surface.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: always_not_self_contradicts_eventually
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `always(¬p) ∧ eventually(p) ⟹ false` is a standard temporal logic tautology — these premises are genuinely contradictory. This is expected behavior, not a spec gap.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: `always_unfold` is the sole external_body axiom bridging the intensional closure gap between `always`'s `TempPred::new`-wrapped forall and a bare forall. The remaining four are false positives — all are semantically correct temporal logic consequences (forall-not implies not-exists, universal instantiation, substitution, and contradiction from inconsistent premises) with no new trust surface beyond the root axiom.
+===END_SUMMARY===

@@ -1,0 +1,52 @@
+[
+  {
+    "name": "range_always_valid",
+    "target_fn": "va_4k_range_valid",
+    "type": "behavioral",
+    "reason": "If provable, the range check is trivially always true regardless of length, making the validation meaningless",
+    "entailed": false,
+    "verified": 4,
+    "errors": 1,
+    "output_tail": "_range_always_valid(va: usize, len: usize)\n   |       -------------------------------------------------- at the end of the function body\n...\n77 |         spec_va_4k_range_valid(va, len),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "empty_range_invalid",
+    "target_fn": "va_4k_range_valid",
+    "type": "boundary",
+    "reason": "If provable, empty ranges are rejected even though the universal quantifier should be vacuously true for len=0",
+    "entailed": false,
+    "verified": 4,
+    "errors": 1,
+    "output_tail": "fn phi_2_empty_range_invalid(va: usize)\n   |       --------------------------------------- at the end of the function body\n...\n77 |         spec_va_4k_range_valid(va, 0) == false,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "range_not_monotonic",
+    "target_fn": "va_4k_range_valid",
+    "type": "logical",
+    "reason": "If provable, a valid range of size n implies a smaller sub-range is invalid, violating monotonicity of the forall",
+    "entailed": false,
+    "verified": 4,
+    "errors": 1,
+    "output_tail": "n: usize)\n   |       --------------------------------------------------- at the end of the function body\n...\n79 |         !spec_va_4k_range_valid(va, (len - 1) as usize),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "no_nonempty_valid_range",
+    "target_fn": "va_4k_range_valid",
+    "type": "behavioral",
+    "reason": "If provable, no non-empty range is ever valid even when the base address is valid, making page mapping impossible",
+    "entailed": false,
+    "verified": 4,
+    "errors": 1,
+    "output_tail": " usize, len: usize)\n   |       ------------------------------------------------------- at the end of the function body\n...\n78 |         spec_va_4k_range_valid(va, len) == false,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "next_page_always_invalid",
+    "target_fn": "va_4k_range_valid",
+    "type": "logical",
+    "reason": "If provable, no valid address ever has a valid successor page, meaning contiguous multi-page ranges can never exist",
+    "entailed": false,
+    "verified": 4,
+    "errors": 1,
+    "output_tail": "lways_invalid(va: usize)\n   |       -------------------------------------------- at the end of the function body\n...\n77 |         !spec_va_4k_valid(spec_va_add_range(va, 1)),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

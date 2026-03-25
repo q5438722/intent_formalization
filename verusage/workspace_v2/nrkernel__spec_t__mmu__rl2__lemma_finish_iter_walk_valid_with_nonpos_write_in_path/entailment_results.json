@@ -1,0 +1,47 @@
+[
+  {
+    "name": "walk_next_preserves_vaddr",
+    "type": "behavioral",
+    "code": "proof fn phi_1_walk_next_preserves_vaddr(mem: PTMem, walk: Walk)\n    requires\n        !walk.complete,\n        walk.path.len() < 4,\n    ensures\n        ({\n            reveal(walk_next);\n            walk_next(mem, walk).vaddr == walk.vaddr\n        }),\n{\n    reveal(walk_next);\n}",
+    "reason": "`walk_next` should preserve the virtual address being walked \u2014 if it changes vaddr, the walk diverges from its original translation target",
+    "entailed": false,
+    "verus_output": "ed_and_removed_lints)]` on by default\n\nerror: expected pure mathematical expression\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_finish_iter_walk_valid_with_nonpos_write_in_path/phi_1_walk_next_preserves_vaddr.rs:492:9\n    |\n492 | /         ({\n493 | |             reveal(walk_next);\n494 | |             walk_next(mem, walk).vaddr == walk.vaddr\n495 | |         }),\n    | |__________^\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "walk_next_increments_path_len",
+    "type": "behavioral",
+    "code": "proof fn phi_2_walk_next_increments_path_len(mem: PTMem, walk: Walk)\n    requires\n        !walk.complete,\n        walk.path.len() < 4,\n    ensures\n        ({\n            reveal(walk_next);\n            walk_next(mem, walk).path.len() == walk.path.len() + 1\n        }),\n{\n    reveal(walk_next);\n}",
+    "reason": "Each `walk_next` step should append exactly one entry \u2014 growing by more or fewer would break the 4-level page table traversal",
+    "entailed": false,
+    "verus_output": "ts)]` on by default\n\nerror: expected pure mathematical expression\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_finish_iter_walk_valid_with_nonpos_write_in_path/phi_2_walk_next_increments_path_len.rs:492:9\n    |\n492 | /         ({\n493 | |             reveal(walk_next);\n494 | |             walk_next(mem, walk).path.len() == walk.path.len() + 1\n495 | |         }),\n    | |__________^\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "finish_iter_walk_always_complete",
+    "type": "behavioral",
+    "code": "proof fn phi_3_finish_iter_walk_always_complete(mem: PTMem, walk: Walk)\n    requires\n        walk.path.len() == 0,\n        !walk.complete,\n    ensures\n        finish_iter_walk(mem, walk).complete,\n{\n    reveal(walk_next);\n}",
+    "reason": "Starting from an empty incomplete walk, `finish_iter_walk` applies up to 4 steps \u2014 the walk should always complete since every non-Directory PDE sets complete=true and after 4 levels there are no more Directory options",
+    "entailed": true,
+    "verus_output": " `repr_transparent_non_zst_fields`\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_finish_iter_walk_valid_with_nonpos_write_in_path/phi_3_finish_iter_walk_always_complete.rs:86:9\n   |\n86 | #[allow(repr_transparent_external_private_fields)]\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n   |\n   = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "all_mb0_bits_are_zero_external_body_unsound",
+    "type": "logical",
+    "code": "proof fn phi_4_all_mb0_bits_are_zero_external_body_unsound(entry: usize, layer: nat)\n    ensures\n        (PDE { entry, layer: Ghost(layer) }).all_mb0_bits_are_zero() ==>\n        (PDE { entry, layer: Ghost(layer) }).all_mb0_bits_are_zero(),\n{\n}",
+    "reason": "`all_mb0_bits_are_zero` is `external_body` with `unimplemented!()` \u2014 the predicate is entirely opaque with no body constraining its value",
+    "entailed": true,
+    "verus_output": "sparent_non_zst_fields`\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_finish_iter_walk_valid_with_nonpos_write_in_path/phi_4_all_mb0_bits_are_zero_external_body_unsound.rs:86:9\n   |\n86 | #[allow(repr_transparent_external_private_fields)]\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n   |\n   = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "nonpos_write_invalidates_only_at_idx",
+    "type": "boundary",
+    "code": "proof fn phi_5_nonpos_write_invalidates_only_at_idx(mem: PTMem, c: Constants, walk: Walk, wraddr: usize, value: usize, idx: nat)\n    requires\n        walk.path.len() <= idx < finish_iter_walk(mem, walk).path.len(),\n        finish_iter_walk(mem, walk).path[idx as int].0 == wraddr,\n        forall|j| #![auto] walk.path.len() <= j < idx ==> finish_iter_walk(mem, walk).path[j].0 != wraddr,\n        mem.read(wraddr) & 1 == 1,\n        value & 1 == 0,\n        finish_iter_walk(mem, walk).result() is Valid,\n    ensures\n        finish_iter_walk(mem.write(wraddr, value), walk).result() is Invalid,\n{\n    assert(bit!(0usize) == 1) by (bit_vector);\n    reveal(walk_next);\n}",
+    "reason": "Duplicate of existing lemma \u2014 if Verus verifies this, it confirms the lemma but also that clearing the P bit at any ancestor in the walk path always invalidates, with no mechanism for a sibling entry to \"rescue\" the walk",
+    "entailed": true,
+    "verus_output": "pr_transparent_non_zst_fields`\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_finish_iter_walk_valid_with_nonpos_write_in_path/phi_5_nonpos_write_invalidates_only_at_idx.rs:86:9\n   |\n86 | #[allow(repr_transparent_external_private_fields)]\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n   |\n   = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,105 @@
+===PHI_START===
+NAME: remove_container_preserves_owned_threads_overlap
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_remove_container_preserves_owned_threads_overlap(
+    root_container: ContainerPtr,
+    old_container_perms: Map<ContainerPtr, PointsTo<Container>>,
+    new_container_perms: Map<ContainerPtr, PointsTo<Container>>,
+    container_ptr: ContainerPtr,
+    c1: ContainerPtr,
+    c2: ContainerPtr,
+    t: ThreadPtr,
+)
+    requires
+        remove_container_ensures(root_container, old_container_perms, new_container_perms, container_ptr),
+        new_container_perms.dom().contains(c1),
+        new_container_perms.dom().contains(c2),
+        c1 != c2,
+        new_container_perms[c1].value().owned_threads@.contains(t),
+        new_container_perms[c2].value().owned_threads@.contains(t),
+    ensures
+        true,
+{
+}
+```
+REASON: remove_container_ensures does not constrain owned_threads disjointness in new_container_perms — after removal, two containers can still claim the same thread
+===PHI_END===
+
+===PHI_START===
+NAME: remove_container_no_resource_cleanup
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_remove_container_no_resource_cleanup(
+    root_container: ContainerPtr,
+    old_container_perms: Map<ContainerPtr, PointsTo<Container>>,
+    new_container_perms: Map<ContainerPtr, PointsTo<Container>>,
+    container_ptr: ContainerPtr,
+    t: ThreadPtr,
+)
+    requires
+        remove_container_ensures(root_container, old_container_perms, new_container_perms, container_ptr),
+        old_container_perms[container_ptr].value().owned_threads@.contains(t),
+    ensures
+        !new_container_perms.dom().contains(container_ptr),
+{
+}
+```
+REASON: The removed container's owned_threads are silently dropped — remove_container_ensures removes the container from dom but never transfers or validates that owned resources (threads, endpoints, procs) are handled
+===PHI_END===
+
+===PHI_START===
+NAME: sll_len_without_wf_returns_value_list_len
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)
+    ensures
+        sll.len() == sll.value_list_len,
+{
+}
+```
+REASON: StaticLinkedList::len's external_body unconditionally ensures l == self.value_list_len without requiring wf() — the raw field is exposed for malformed lists
+===PHI_END===
+
+===PHI_START===
+NAME: unique_implys_no_duplicates_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_unique_implys_no_duplicates_external_body<T, const N: usize>(sll: StaticLinkedList<T, N>)
+    requires
+        sll.unique(),
+        sll.wf(),
+    ensures
+        sll@.no_duplicates(),
+{
+    sll.unique_implys_no_duplicates();
+}
+```
+REASON: unique_implys_no_duplicates is external_body — it asserts that unique() (defined over spec_seq and value_list_len) implies Seq::no_duplicates() without proof, creating a trusted bridge between two different representations
+===PHI_END===
+
+===PHI_START===
+NAME: root_container_parent_unconstrained
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_root_container_parent_unconstrained(
+    root_container: ContainerPtr,
+    container_perms: Map<ContainerPtr, PointsTo<Container>>,
+)
+    requires
+        container_perms_wf(container_perms),
+        container_tree_wf(root_container, container_perms),
+        container_perms.dom().contains(root_container),
+        container_perms[root_container].value().parent.is_Some(),
+    ensures
+        true,
+{
+}
+```
+REASON: container_root_wf constrains depth==0 and non-root must have parent.is_Some(), but never asserts root's parent.is_None() — root can have a spurious parent pointer
+===PHI_END===

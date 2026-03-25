@@ -1,0 +1,78 @@
+===PHI_START===
+NAME: size_of_sbin_closed_spec_opaque
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_size_of_sbin_closed_spec_opaque(i: int, j: int)
+    requires
+        valid_sbin_idx(i),
+        valid_sbin_idx(j),
+        i < j,
+    ensures
+        size_of_sbin(i) <= size_of_sbin(j) || size_of_sbin(i) > size_of_sbin(j),
+{
+}
+```
+REASON: `size_of_sbin` is `closed spec` — callers cannot reason about its definition, so monotonicity (larger bin index → larger size) cannot be established outside this module, potentially breaking bin-fitting correctness proofs
+===PHI_END===
+
+===PHI_START===
+NAME: sbin8_discontinuity
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_sbin8_discontinuity()
+    ensures
+        smallest_sbin_fitting_size(8) == 8,
+        smallest_sbin_fitting_size(9) != 9,
+{
+}
+```
+REASON: The transition at `i=9` switches from identity (`i <= 8` branch returns `i`) to the bit-manipulation formula, which may produce a different value than 9 — a discontinuity in the sbin mapping could skip bin indices or assign incorrect bins
+===PHI_END===
+
+===PHI_START===
+NAME: smallest_sbin_negative_input
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_smallest_sbin_negative_input()
+    ensures
+        smallest_sbin_fitting_size(-5) == -5,
+{
+}
+```
+REASON: For negative inputs, `smallest_sbin_fitting_size` returns the input directly (since `-5 <= 8`), producing a negative sbin index that violates `valid_sbin_idx` — callers passing invalid slice counts get silently invalid indices
+===PHI_END===
+
+===PHI_START===
+NAME: property_sbin_vacuous_for_large
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_property_sbin_vacuous_for_large(slice_count: int)
+    requires
+        slice_count > 1000000,
+    ensures
+        !valid_sbin_idx(smallest_sbin_fitting_size(slice_count)) || property_sbin(slice_count),
+{
+}
+```
+REASON: For very large slice counts, `smallest_sbin_fitting_size` may produce an index exceeding `SEGMENT_BIN_MAX=31`, making `property_sbin` fail — there is no BIN_HUGE equivalent to catch oversized inputs like the regular bin allocator has
+===PHI_END===
+
+===PHI_START===
+NAME: pow2_negative_is_one
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_pow2_negative_is_one(e: int)
+    requires
+        e < 0,
+    ensures
+        pow2(e) == 1,
+{
+}
+```
+REASON: `pow2` returns 1 for all negative exponents — mathematically 2^(-n) is a fraction, so if `size_of_sbin` ever computes a negative `group + 1`, the size silently collapses to `(inner + 5) * 1` instead of producing an error
+===PHI_END===

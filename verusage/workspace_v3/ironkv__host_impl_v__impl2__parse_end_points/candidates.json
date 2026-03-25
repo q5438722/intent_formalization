@@ -1,0 +1,37 @@
+[
+  {
+    "name": "empty_args_returns_none",
+    "target_fn": "parse_end_points",
+    "type": "behavioral",
+    "code": "proof fn phi_1_empty_args_returns_none(args: AbstractArgs)\n    requires\n        args.len() == 0,\n    ensures\n        parse_args(args) is None,\n{\n}",
+    "reason": "Empty args should satisfy the vacuous forall and return Some, not None"
+  },
+  {
+    "name": "output_length_mismatch",
+    "target_fn": "parse_end_points",
+    "type": "boundary",
+    "code": "proof fn phi_2_output_length_mismatch(args: AbstractArgs)\n    requires\n        parse_args(args) is Some,\n    ensures\n        parse_args(args).unwrap().len() != args.len(),\n{\n}",
+    "reason": "parse_args maps 1-to-1 over args so output length must equal input length"
+  },
+  {
+    "name": "some_contains_invalid_address",
+    "target_fn": "parse_end_points",
+    "type": "logical",
+    "code": "proof fn phi_3_some_contains_invalid(args: AbstractArgs, i: int)\n    requires\n        parse_args(args) is Some,\n        0 <= i < args.len(),\n    ensures\n        !parse_args(args).unwrap()[i].valid_physical_address(),\n{\n}",
+    "reason": "When parse_args returns Some, all endpoints must have valid addresses by construction"
+  },
+  {
+    "name": "parse_loses_identity",
+    "target_fn": "parse_args",
+    "type": "behavioral",
+    "code": "proof fn phi_4_parse_loses_identity(args: AbstractArgs, i: int)\n    requires\n        parse_args(args) is Some,\n        0 <= i < args.len(),\n    ensures\n        parse_args(args).unwrap()[i].id != args[i],\n{\n}",
+    "reason": "Each endpoint's id should equal its corresponding arg since parse_arg_as_end_point wraps the arg directly"
+  },
+  {
+    "name": "all_valid_but_none",
+    "target_fn": "parse_args",
+    "type": "logical",
+    "code": "proof fn phi_5_all_valid_but_none(args: AbstractArgs)\n    requires\n        args.len() > 0,\n        forall |i: int| 0 <= i < args.len() ==> (#[trigger] args[i]).len() < 0x100000,\n    ensures\n        parse_args(args) is None,\n{\n}",
+    "reason": "When every arg has length under the threshold all endpoints are valid so parse_args must return Some"
+  }
+]

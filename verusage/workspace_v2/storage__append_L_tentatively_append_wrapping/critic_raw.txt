@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: lemma_tentatively_append_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `lemma_tentatively_append` is `external_body` with `unimplemented!()` body. Its ensures clause asserts that writing bytes to the log area preserves `info_consistent_with_log_area` — a complex invariant involving circular buffer arithmetic, persistent memory state, and flush semantics. This entire proof is trusted without verification.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: no_outstanding_writes_from_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: This property is derived from the same `external_body` lemma. The claim that the write target range has no outstanding writes follows from the invariant's guarantee about positions beyond `log_plus_pending_length`, but this reasoning is trusted, not verified. It's a distinct safety-critical sub-conclusion of the unverified lemma.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: unreachable_during_recovery_from_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: Also derived from the same `external_body` lemma. The crash-safety property that write targets are unreachable during recovery is critical — if wrong, partial writes could corrupt recovered log state. This is trusted without proof.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: tentatively_append_pending_concat
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `tentatively_append` is defined as `Self { pending: self.pending + bytes, ..self }`. Chaining two appends gives `(self.pending + b1) + b2` which equals `self.pending + b1 + b2` by sequence concatenation associativity. Correct by construction.
+===VERDICT_END===
+
+===SUMMARY===
+Three true positives all stem from `lemma_tentatively_append` being `external_body`: the invariant preservation after writing, the no-outstanding-writes precondition, and the recovery-unreachability guarantee are all trusted without proof. These represent significant unverified trust assumptions in the crash-safe log implementation. One false positive: sequential append pending concatenation is correct by definition and sequence associativity.
+===END_SUMMARY===

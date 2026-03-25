@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize2pa_mem_valid_unconditional",
+    "type": "logical",
+    "code": "proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body unconditionally ensures MEM_valid(ret) for ANY input \u2014 this is trusted without proof, meaning any arbitrary usize is treated as having a valid physical address after masking",
+    "entailed": false,
+    "verus_output": "alization/verusage/workspace_v2/atmosphere__kernel__create_and_share_pages__impl0__share_mapping/phi_1_usize2pa_mem_valid_unconditional.rs:2913:9\n     |\n2911 | proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n     |       --------------------------------------------------- at the end of the function body\n2912 |     ensures\n2913 |         MEM_valid(usize2pa(v)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 34 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "sll_len_without_wf_returns_value_list_len",
+    "type": "logical",
+    "code": "proof fn phi_2_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    ensures\n        sll.len() == sll.value_list_len,\n{\n}",
+    "reason": "StaticLinkedList::len's external_body ensures l == self.value_list_len unconditionally without requiring wf() \u2014 a corrupted linked list returns its raw field as trusted length",
+    "entailed": false,
+    "verus_output": "_returns_value_list_len.rs:2913:9\n     |\n2911 | proof fn phi_2_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n     |       -------------------------------------------------------------------------------------------------- at the end of the function body\n2912 |     ensures\n2913 |         sll.len() == sll.value_list_len,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 34 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pagetable_is_empty_ignores_kernel_l4_entries",
+    "type": "boundary",
+    "code": "proof fn phi_3_pagetable_is_empty_ignores_kernel_l4_entries(pt: PageTable)\n    requires\n        pt.is_empty(),\n        pt.kernel_l4_end > 0,\n    ensures\n        pt.l4_table@.dom().contains(pt.cr3),\n        pt.page_closure().contains(pt.cr3),\n{\n}",
+    "reason": "is_empty only checks L4 entries from kernel_l4_end..512 \u2014 kernel-range L4 entries (0..kernel_l4_end) can have arbitrary present entries while the page table is considered \"empty\", and page_closure always includes l4_table dom",
+    "entailed": false,
+    "verus_output": "te_and_share_pages__impl0__share_mapping/phi_3_pagetable_is_empty_ignores_kernel_l4_entries.rs:2917:9\n     |\n2911 | proof fn phi_3_pagetable_is_empty_ignores_kernel_l4_entries(pt: PageTable)\n     |       -------------------------------------------------------------------- at the end of the function body\n...\n2917 |         pt.page_closure().contains(pt.cr3),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 2 previous errors; 34 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "resolve_l4_returns_non_present_for_kernel_range",
+    "type": "behavioral",
+    "code": "proof fn phi_4_resolve_l4_returns_non_present_for_kernel_range(pt: PageTable, l4i: L4Index)\n    requires\n        pt.kernel_l4_end > 0,\n        0 <= l4i < pt.kernel_l4_end,\n        pt.l4_table@.dom().contains(pt.cr3),\n        pt.l4_table@[pt.cr3].is_init(),\n    ensures\n        pt.spec_resolve_mapping_l4(l4i).is_Some(),\n{\n}",
+    "reason": "spec_resolve_mapping_l4 returns Some for ANY l4i < kernel_l4_end regardless of whether the entry is present \u2014 kernel-range entries are always \"resolved\" even if they contain garbage data",
+    "entailed": true,
+    "verus_output": "|\n176 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__kernel__create_and_share_pages__impl0__share_mapping/phi_4_resolve_l4_returns_non_present_for_kernel_range.rs:185:10\n    |\n185 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: 35 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "resolve_l3_skips_ps_check",
+    "type": "behavioral",
+    "code": "proof fn phi_5_resolve_l3_skips_ps_check(pt: PageTable, l4i: L4Index, l3i: L3Index)\n    requires\n        pt.kernel_l4_end <= l4i < 512,\n        0 <= l3i < 512,\n        pt.spec_resolve_mapping_l4(l4i).is_Some(),\n        pt.l3_tables@.dom().contains(pt.spec_resolve_mapping_l4(l4i).unwrap().addr),\n        pt.l3_tables@[pt.spec_resolve_mapping_l4(l4i).unwrap().addr].is_init(),\n        pt.l3_tables@[pt.spec_resolve_mapping_l4(l4i).unwrap().addr].value()[l3i].perm.present,\n        pt.l3_tables@[pt.spec_resolve_mapping_l4(l4i).unwrap().addr].value()[l3i].perm.ps,\n    ensures\n        pt.spec_resolve_mapping_l3(l4i, l3i).is_Some(),\n{\n}",
+    "reason": "spec_resolve_mapping_l3 returns Some even when the L3 entry has ps=true (indicating a 1G huge page) \u2014 the resolution continues to L3 level without checking whether the entry is a leaf, allowing the same entry to be interpreted as both a 1G mapping and a pointer to an L2 table",
+    "entailed": false,
+    "verus_output": "pl0__share_mapping/phi_5_resolve_l3_skips_ps_check.rs:2921:9\n     |\n2911 | proof fn phi_5_resolve_l3_skips_ps_check(pt: PageTable, l4i: L4Index, l3i: L3Index)\n     |       ----------------------------------------------------------------------------- at the end of the function body\n...\n2921 |         pt.spec_resolve_mapping_l3(l4i, l3i).is_Some(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 36 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

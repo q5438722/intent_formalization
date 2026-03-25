@@ -1,0 +1,79 @@
+===PHI_START===
+NAME: view_equal_symmetric_usize_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_view_equal_symmetric_usize_external_body(a: usize, b: usize)
+    ensures
+        a.view_equal(&b) == b.view_equal(&a),
+{
+    a.lemma_view_equal_symmetric(&b);
+}
+```
+REASON: `usize::lemma_view_equal_symmetric` is `external_body` despite being trivially provable from `===` symmetry — unnecessarily trusted assumption
+===PHI_END===
+
+===PHI_START===
+NAME: view_equal_symmetric_vec_u8_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_view_equal_symmetric_vec_u8_external_body(a: Vec<u8>, b: Vec<u8>)
+    ensures
+        a.view_equal(&b) == b.view_equal(&a),
+{
+    a.lemma_view_equal_symmetric(&b);
+}
+```
+REASON: `Vec<u8>::lemma_view_equal_symmetric` is `external_body` despite being trivially provable from `===` symmetry — unnecessarily trusted assumption
+===PHI_END===
+
+===PHI_START===
+NAME: view_equal_implies_equal_usize
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_view_equal_implies_equal_usize(a: usize, b: usize)
+    requires
+        a.view_equal(&b),
+    ensures
+        a == b,
+{
+}
+```
+REASON: For usize, `view_equal` (defined as `self@ === other@`) collapses to full equality — the abstraction barrier provides no separation from `==` for primitive types
+===PHI_END===
+
+===PHI_START===
+NAME: trait_symmetry_no_preconditions
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_trait_symmetry_no_preconditions(a: usize, b: usize)
+    requires
+        !a.view_equal(&b),
+    ensures
+        !b.view_equal(&a),
+{
+    a.lemma_view_equal_symmetric(&b);
+}
+```
+REASON: The trait-level `lemma_view_equal_symmetric` has no preconditions at all — any implementation's `external_body` version is trusted to maintain symmetry with zero verification obligation, even for complex types where symmetry might genuinely fail
+===PHI_END===
+
+===PHI_START===
+NAME: vec_t_view_equal_not_transitive
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_vec_t_view_equal_not_transitive(a: Vec<usize>, b: Vec<usize>, c: Vec<usize>)
+    requires
+        a.view_equal(&b),
+        b.view_equal(&c),
+    ensures
+        a.view_equal(&c),
+{
+}
+```
+REASON: `view_equal` for `Vec<T>` is defined via element-wise `view_equal` — transitivity holds by accident for usize (where view_equal is `===`) but the trait never requires or proves transitivity, so implementations could provide a non-transitive `view_equal` without violating any trait-level specification
+===PHI_END===

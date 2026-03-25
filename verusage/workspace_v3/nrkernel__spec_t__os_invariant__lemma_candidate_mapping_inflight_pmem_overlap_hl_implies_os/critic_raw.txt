@@ -1,0 +1,10 @@
+===VERDICT_START===
+PHI: inv_allows_empty_arch
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `Arch::inv()` only constrains layers via a universal quantifier over `i < self.layers.len()`, which is vacuously true when `layers.len() == 0`. The only other conjunct is `self.layers.len() <= X86_NUM_LAYERS`, which also holds. This means an empty architecture satisfies `inv()` yet has no layers, making `upper_vaddr`, `entry_size`, and all translation logic degenerate. Any proof relying on `arch.inv()` to guarantee meaningful page table structure is unsound for the empty case. The fix would be to add `self.layers.len() > 0` (or `== X86_NUM_LAYERS`) to `inv()`.
+===VERDICT_END===
+
+===SUMMARY===
+The single candidate φ (`inv_allows_empty_arch`) is a true positive. It exposes a real gap in `Arch::inv()`: the invariant is satisfiable by a zero-layer architecture because all its conjuncts are either vacuously true or trivially satisfied when `layers.len() == 0`. Since the entire MMU specification—address translation, entry sizes, upper virtual address bounds—depends on `Arch` having at least one layer, any proof that assumes `arch.inv()` implies meaningful translation structure is working on an under-constrained invariant. In practice this is mitigated because `x86_arch_spec` is hardcoded with 4 layers, but any generic lemma quantifying over arbitrary `Arch` values satisfying `inv()` could be silently vacuous. Adding a `self.layers.len() > 0` conjunct to `inv()` would close the gap.
+===END_SUMMARY===

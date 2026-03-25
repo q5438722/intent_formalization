@@ -1,0 +1,47 @@
+[
+  {
+    "name": "create_key_namespace_disagrees_with_obj",
+    "type": "behavioral",
+    "code": "proof fn phi_1_create_key_namespace_disagrees_with_obj(req: CreateRequest)\n    requires\n        req.obj.metadata.namespace is Some,\n        req.namespace != req.obj.metadata.namespace->0,\n    ensures\n        req.key().namespace != req.obj.metadata.namespace->0,\n{\n}",
+    "reason": "CreateRequest::key uses self.namespace while the obj carries its own metadata.namespace \u2014 if these can differ, the key does not faithfully represent the object's actual namespace",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "interference_check_ignores_uid",
+    "type": "logical",
+    "code": "proof fn phi_2_interference_check_ignores_uid(\n    req: GetThenDeleteRequest, vrs1: VReplicaSetView, vrs2: VReplicaSetView\n)\n    requires\n        vrs1.metadata.name == vrs2.metadata.name,\n        vrs1.metadata.namespace == vrs2.metadata.namespace,\n        vrs1.metadata.uid != vrs2.metadata.uid,\n        vrs_reconcile_get_then_delete_request_only_interferes_with_itself(req, vrs1)(arbitrary()),\n    ensures\n        vrs_reconcile_get_then_delete_request_only_interferes_with_itself(req, vrs2)(arbitrary()),\n{\n}",
+    "reason": "the interference predicate checks owner_ref.name and kind but not uid \u2014 two distinct VReplicaSets with the same name/namespace would satisfy each other's interference check, breaking isolation",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "create_interference_ignores_uid",
+    "type": "logical",
+    "code": "proof fn phi_3_create_interference_ignores_uid(\n    req: CreateRequest, vrs1: VReplicaSetView, vrs2: VReplicaSetView, s: ClusterState\n)\n    requires\n        vrs1.metadata.name == vrs2.metadata.name,\n        vrs1.metadata.namespace == vrs2.metadata.namespace,\n        vrs1.metadata.uid != vrs2.metadata.uid,\n        vrs_reconcile_create_request_only_interferes_with_itself(req, vrs1)(s),\n    ensures\n        vrs_reconcile_create_request_only_interferes_with_itself(req, vrs2)(s),\n{\n}",
+    "reason": "like the delete case, create interference checks owner_ref.name but not uid \u2014 a recreated VRS with the same name but different uid would pass the check, allowing cross-instance interference",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "lifted_action_trivially_holds_on_stuttering",
+    "type": "boundary",
+    "code": "proof fn phi_4_lifted_action_trivially_holds_on_stuttering(controller_id: int, s: ClusterState)\n    requires\n        forall |vrs: VReplicaSetView| vrs_reconcile_request_only_interferes_with_itself(controller_id, vrs)(s),\n    ensures\n        lifted_vrs_reconcile_request_only_interferes_with_itself_action(controller_id).satisfied_by(\n            Execution { nat_to_state: |i: nat| s }\n        ),\n{\n}",
+    "reason": "lifted_vrs checks the state predicate on both s and s_prime independently \u2014 on a stuttering execution this is trivially satisfied, meaning the action formulation adds no transition-specific constraint beyond the state invariant",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "object_ref_name_eq_ignores_uid",
+    "type": "logical",
+    "code": "proof fn phi_5_object_ref_name_eq_ignores_uid(vrs1: VReplicaSetView, vrs2: VReplicaSetView)\n    requires\n        vrs1.metadata.name == vrs2.metadata.name,\n        vrs1.metadata.namespace == vrs2.metadata.namespace,\n        vrs1.metadata.uid != vrs2.metadata.uid,\n    ensures\n        vrs1.object_ref() == vrs2.object_ref(),\n{\n}",
+    "reason": "object_ref is determined solely by kind/name/namespace and ignores uid \u2014 two distinct resources (different uid) with the same name produce identical ObjectRefs, which can conflate identities throughout the spec",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

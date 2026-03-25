@@ -1,0 +1,47 @@
+[
+  {
+    "name": "lemma_insert_preserves_shrinking_region_overlap",
+    "type": "logical",
+    "code": "proof fn phi_1_lemma_insert_preserves_shrinking_region_overlap(\n    c: os::Constants,\n    core_states: Map<Core, os::CoreState>,\n    pt: Map<nat, PTE>,\n    core: Core,\n    new_cs: os::CoreState,\n    other_core: Core,\n)\n    requires\n        new_cs.is_in_crit_sect(),\n        forall|cr| #![auto] core_states.dom().contains(cr) && core_states[cr].is_in_crit_sect() ==> cr == core,\n        core_states.dom().contains(core),\n        core_states.dom().contains(other_core),\n        other_core != core,\n        unique_CoreStates(core_states),\n        no_overlap_vmem_values(core_states, pt),\n        !core_states[core].is_idle(),\n        !new_cs.is_idle(),\n        core_states[core].vaddr() == new_cs.vaddr(),\n        core_states[core].pte_size(pt) >= new_cs.pte_size(pt),\n        core_states[core] != new_cs,\n        !core_states[other_core].is_idle(),\n    ensures\n        false,\n{\n}",
+    "reason": "The precondition requires only one core is in critical section (`forall|cr| ... is_in_crit_sect() ==> cr == core`), but also requires `other_core` is non-Idle and different from `core` \u2014 if non-Idle non-crit-sect states (MapWaiting, UnmapWaiting) can exist, this is satisfiable; if not, it's vacuous",
+    "entailed": false,
+    "verus_output": "rlap/phi_1_lemma_insert_preserves_shrinking_region_overlap.rs:266:9\n    |\n243 |   proof fn phi_1_lemma_insert_preserves_shrinking_region_overlap(\n    |  _______-\n244 | |     c: os::Constants,\n245 | |     core_states: Map<Core, os::CoreState>,\n246 | |     pt: Map<nat, PTE>,\n...   |\n249 | |     other_core: Core,\n250 | | )\n    | |_- at the end of the function body\n...\n266 |           false,\n    |           ^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "crit_sect_implies_not_idle",
+    "type": "behavioral",
+    "code": "proof fn phi_2_crit_sect_implies_not_idle(cs: os::CoreState)\n    requires\n        cs.is_in_crit_sect(),\n    ensures\n        !cs.is_idle(),\n{\n}",
+    "reason": "`is_in_crit_sect` excludes Idle, MapWaiting, UnmapWaiting \u2014 tests that the critical section predicate correctly implies non-Idle; if a critical-section state were also Idle, the lemma's preconditions would be contradictory",
+    "entailed": true,
+    "verus_output": "ed - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__os_invariant__lemma_insert_preserves_no_overlap/phi_2_crit_sect_implies_not_idle.rs:114:42\n    |\n114 |                 if result is Ok { result.get_Ok_0().frame.size } else { 0 }\n    |                                          ^^^^^^^^\n    |\n    = note: `#[warn(deprecated)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "map_waiting_not_in_crit_but_not_idle",
+    "type": "behavioral",
+    "code": "proof fn phi_3_map_waiting_not_in_crit_but_not_idle(ult_id: nat, vaddr: nat, pte: PTE)\n    ensures\n        !os::CoreState::MapWaiting { ult_id, vaddr, pte }.is_in_crit_sect(),\n        !os::CoreState::MapWaiting { ult_id, vaddr, pte }.is_idle(),\n{\n}",
+    "reason": "MapWaiting is neither in critical section nor Idle \u2014 this creates a gap where cores with pending map requests exist but aren't protected by the single-crit-sect precondition, potentially allowing the lemma to be applied while another core has a waiting operation",
+    "entailed": false,
+    "verus_output": "sect(),\n    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror[E0432]: unresolved import `crate::defs`\n --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__os_invariant__lemma_insert_preserves_no_overlap/phi_3_map_waiting_not_in_crit_but_not_idle.rs:2:12\n  |\n2 | use crate::defs::*;\n  |            ^^^^ could not find `defs` in the crate root\n\nerror: aborting due to 2 previous errors\n\nFor more information about this error, try `rustc --explain E0432`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "pte_size_shrink_allows_zero",
+    "type": "boundary",
+    "code": "proof fn phi_4_pte_size_shrink_allows_zero(pt: Map<nat, PTE>, ult_id: nat, vaddr: nat)\n    requires\n        !pt.contains_key(vaddr),\n    ensures\n        os::CoreState::UnmapExecuting { ult_id, vaddr, result: None }.pte_size(pt) == 0,\n{\n}",
+    "reason": "When the vaddr isn't in pt, UnmapExecuting with no result has pte_size 0 \u2014 the `pte_size >= new_cs.pte_size` precondition is trivially satisfied for any new_cs with size 0, allowing the lemma to be applied even when the original operation had no real region to protect",
+    "entailed": false,
+    "verus_output": "= 0,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror[E0432]: unresolved import `crate::defs`\n --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__os_invariant__lemma_insert_preserves_no_overlap/phi_4_pte_size_shrink_allows_zero.rs:2:12\n  |\n2 | use crate::defs::*;\n  |            ^^^^ could not find `defs` in the crate root\n\nerror: aborting due to 2 previous errors\n\nFor more information about this error, try `rustc --explain E0432`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "unique_corestates_allows_equal_idle",
+    "type": "logical",
+    "code": "proof fn phi_5_unique_corestates_allows_equal_idle(core1: Core, core2: Core)\n    requires\n        core1 != core2,\n    ensures\n        unique_CoreStates(\n            map![core1 => os::CoreState::Idle, core2 => os::CoreState::Idle]\n        ),\n{\n}",
+    "reason": "`unique_CoreStates` allows multiple cores to have identical Idle states \u2014 the `!map[core].is_idle()` guard means Idle is exempt from uniqueness, so duplicate Idle values don't violate the invariant",
+    "entailed": true,
+    "verus_output": "`->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__os_invariant__lemma_insert_preserves_no_overlap/phi_5_unique_corestates_allows_equal_idle.rs:114:42\n    |\n114 |                 if result is Ok { result.get_Ok_0().frame.size } else { 0 }\n    |                                          ^^^^^^^^\n    |\n    = note: `#[warn(deprecated)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

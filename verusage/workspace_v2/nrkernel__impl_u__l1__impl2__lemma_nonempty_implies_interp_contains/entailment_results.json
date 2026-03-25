@@ -1,0 +1,47 @@
+[
+  {
+    "name": "interp_of_entry_implies_interp_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_interp_of_entry_implies_interp_external_body(d: Directory, j: nat, va: nat, pte: PTE)\n    requires\n        d.inv(),\n        j < d.entries.len(),\n        d.interp_of_entry(j).contains_pair(va, pte),\n    ensures\n        d.interp().contains_pair(va, pte),\n{\n    d.lemma_interp_of_entry_contains_mapping_implies_interp_contains_mapping(j);\n}",
+    "reason": "`lemma_interp_of_entry_contains_mapping_implies_interp_contains_mapping` is `external_body` \u2014 the containment from entry interpretation to full interpretation is trusted without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 12 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "interp_of_entry_key_implies_interp_key_external_body",
+    "type": "logical",
+    "code": "proof fn phi_2_interp_of_entry_key_implies_interp_key_external_body(d: Directory, j: nat, va: nat)\n    requires\n        d.inv(),\n        j < d.entries.len(),\n        d.interp_of_entry(j).contains_key(va),\n    ensures\n        d.interp().contains_key(va),\n{\n    d.lemma_interp_of_entry_contains_mapping_implies_interp_contains_mapping(j);\n}",
+    "reason": "The key-containment ensures clause of the same external_body \u2014 if wrong, `union_prefer_right` could drop keys from earlier entries",
+    "entailed": true,
+    "verus_output": "verification results:: 12 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "inv_allows_empty_directories",
+    "type": "behavioral",
+    "code": "proof fn phi_3_inv_allows_empty_directories(d: Directory, i: nat)\n    requires\n        d.inv(),\n        i < d.entries.len(),\n        d.entries[i as int] is Directory,\n    ensures\n        d.entries[i as int]->Directory_0.inv(),\n{\n}",
+    "reason": "`inv()` does not include `no_empty_directories` \u2014 the commented-out `self.directories_are_nonempty()` means empty subdirectories satisfy `inv()`, potentially allowing vacuous directory trees",
+    "entailed": true,
+    "verus_output": "verification results:: 12 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "no_empty_directories_not_in_inv",
+    "type": "boundary",
+    "code": "proof fn phi_4_no_empty_directories_not_in_inv(arch: Arch, entries: Seq<NodeEntry>, layer: nat, sub_entries: Seq<NodeEntry>)\n    requires\n        arch.inv(),\n        layer < arch.layers.len(),\n        layer + 1 < arch.layers.len(),\n        entries.len() == arch.num_entries(layer),\n        sub_entries.len() == arch.num_entries((layer + 1) as nat),\n        forall|i: nat| i < sub_entries.len() ==> sub_entries[i as int] is Invalid,\n        entries[0] == NodeEntry::Directory(Directory { entries: sub_entries, layer: layer + 1, base_vaddr: 0, arch }),\n        forall|i: nat| 0 < i < entries.len() ==> entries[i as int] is Invalid,\n    ensures\n        (Directory { entries, layer, base_vaddr: 0, arch }).inv(),\n{\n}",
+    "reason": "A directory with an all-Invalid subdirectory (empty directory) satisfies `inv()` \u2014 the `no_empty_directories` predicate is defined but not enforced in `inv()`",
+    "entailed": false,
+    "verus_output": " fn phi_4_no_empty_directories_not_in_inv(arch: Arch, entries: Seq<NodeEntry>, layer: nat, sub_entries: Seq<NodeEntry>)\n    |       ---------------------------------------------------------------------------------------------------------------------- at the end of the function body\n...\n313 |         (Directory { entries, layer, base_vaddr: 0, arch }).inv(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "contains_entry_size_at_index_atleast_any_layer",
+    "type": "boundary",
+    "code": "proof fn phi_5_contains_entry_size_at_index_atleast_any_layer(arch: Arch, layer: nat)\n    requires\n        arch.inv(),\n        layer < arch.layers.len(),\n    ensures\n        arch.contains_entry_size_at_index_atleast(arch.entry_size(layer), layer),\n{\n}",
+    "reason": "`contains_entry_size_at_index_atleast` is trivially satisfied by witnessing `i == layer` \u2014 tests whether this existential provides any meaningful constraint beyond tautology",
+    "entailed": true,
+    "verus_output": "verification results:: 12 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

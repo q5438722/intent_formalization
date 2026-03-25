@@ -1,0 +1,52 @@
+[
+  {
+    "name": "aligned_zero_size",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "reason": "Alignment to size 0 is meaningless; if entailed, any address is trivially \"aligned\" to nothing, breaking alignment guarantees downstream.",
+    "entailed": false,
+    "verified": 12,
+    "errors": 1,
+    "output_tail": "ize.rs:879:9\n    |\n877 | proof fn phi_1_aligned_zero_size(addr: nat)\n    |       ------------------------------------- at the end of the function body\n878 |     ensures\n879 |         aligned(addr, 0),\n    |         ^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "inv_empty_arch",
+    "target_fn": "inv",
+    "type": "boundary",
+    "reason": "A degenerate architecture with zero layers should not satisfy the invariant, as it cannot describe any valid address translation.",
+    "entailed": true,
+    "verified": 13,
+    "errors": 0,
+    "output_tail": "verification results:: 13 verified, 0 errors\n\n"
+  },
+  {
+    "name": "upper_vaddr_equals_base",
+    "target_fn": "upper_vaddr",
+    "type": "behavioral",
+    "reason": "If the upper virtual address equals the base for a valid architecture layer, the mapped region has zero size, meaning no addresses can be translated.",
+    "entailed": false,
+    "verified": 12,
+    "errors": 1,
+    "output_tail": "base: nat)\n    |       ------------------------------------------------------------------- at the end of the function body\n...\n883 |         arch.upper_vaddr(layer, base) == base,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "entry_base_non_monotone",
+    "target_fn": "entry_base",
+    "type": "logical",
+    "reason": "Entry base addresses must be strictly increasing with index; if a later index maps to a lower-or-equal address, entries overlap or go backwards.",
+    "entailed": false,
+    "verified": 12,
+    "errors": 1,
+    "output_tail": "-------------------------------- at the end of the function body\n...\n884 |         arch.entry_base(layer, base, j) <= arch.entry_base(layer, base, i),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "entry_size_is_next_layer_unconstrained",
+    "target_fn": "entry_size_is_next_layer_size",
+    "type": "logical",
+    "reason": "A single-layer valid architecture having entry_size of 1 byte would be far too small for any real page size, suggesting the invariant fails to lower-bound leaf entry sizes.",
+    "entailed": false,
+    "verified": 12,
+    "errors": 1,
+    "output_tail": "y_size_is_next_layer_unconstrained(arch: Arch)\n    |       ----------------------------------------------------------- at the end of the function body\n...\n882 |         arch.entry_size(0) == 1,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "mult_leq_mono_both_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_mult_leq_mono_both_external_body(a: nat, b: nat, c: nat, d: nat)\n    requires\n        a <= c,\n        b <= d,\n    ensures\n        a * b <= c * d,\n{\n    mult_leq_mono_both(a, b, c, d);\n}",
+    "reason": "`mult_leq_mono_both` is `external_body` \u2014 monotonicity of multiplication over naturals is trusted without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 6 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "entry_size_external_body",
+    "type": "logical",
+    "code": "proof fn phi_2_entry_size_external_body(arch: ArchExec, layer: usize)\n    requires\n        layer < arch@.layers.len(),\n    ensures\n        arch.entry_size(layer) == arch@.entry_size(layer as nat),\n{\n}",
+    "reason": "`ArchExec::entry_size` is `external_body` \u2014 the exec accessor's correspondence with the spec is trusted without implementation",
+    "entailed": false,
+    "verus_output": "error: cannot call function `phi_2_entry_size_external_body::ArchExec::entry_size` with mode exec\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__definitions_u__impl2__entry_base/phi_2_entry_size_external_body.rs:167:9\n    |\n167 |         arch.entry_size(layer) == arch@.entry_size(layer as nat),\n    |         ^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "entry_base_idx_equals_num_entries",
+    "type": "boundary",
+    "code": "proof fn phi_3_entry_base_idx_equals_num_entries(arch: ArchExec, layer: usize, base: usize)\n    requires\n        arch@.inv(),\n        layer < arch@.layers.len(),\n        base <= MAX_BASE,\n    ensures\n        arch@.entry_base(layer as nat, base as nat, X86_NUM_ENTRIES as nat) <= MAX_BASE + X86_MAX_ENTRY_SIZE * X86_NUM_ENTRIES as nat,\n{\n    mult_leq_mono_both(X86_NUM_ENTRIES as nat, arch@.entry_size(layer as nat), X86_NUM_ENTRIES as nat, X86_MAX_ENTRY_SIZE);\n}",
+    "reason": "`idx` can equal `X86_NUM_ENTRIES` (512), not just be less than it \u2014 the precondition allows one-past-the-end index, producing an address potentially beyond the mapped region",
+    "entailed": true,
+    "verus_output": "verification results:: 6 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "inv_no_layer_count_lower_bound",
+    "type": "behavioral",
+    "code": "proof fn phi_4_inv_no_layer_count_lower_bound()\n    ensures ({\n        let arch = Arch { layers: Seq::empty() };\n        arch.inv()\n    }),\n{\n}",
+    "reason": "An `Arch` with zero layers satisfies `inv()` \u2014 the invariant only bounds layers from above (`<= X86_NUM_LAYERS`) but has no minimum, so an empty architecture is considered valid",
+    "entailed": true,
+    "verus_output": "verification results:: 6 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "entry_size_is_next_vacuous_at_last",
+    "type": "logical",
+    "code": "proof fn phi_5_entry_size_is_next_vacuous_at_last(arch: Arch)\n    requires\n        arch.inv(),\n        arch.layers.len() > 0,\n    ensures\n        arch.entry_size_is_next_layer_size((arch.layers.len() - 1) as nat),\n{\n}",
+    "reason": "`entry_size_is_next_layer_size` is vacuously true for the last layer since `i + 1 >= layers.len()` \u2014 the leaf layer's entry_size is unconstrained relative to any sub-structure",
+    "entailed": true,
+    "verus_output": "verification results:: 6 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

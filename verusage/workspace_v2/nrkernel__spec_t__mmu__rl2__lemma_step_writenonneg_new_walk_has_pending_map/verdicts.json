@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "view_domain_only_base_walks",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`PTMem::view` is defined as `Map::new(|va| self.is_base_pt_walk(va), ...)`. After `reveal`, `contains_key(va)` directly implies the domain predicate `is_base_pt_walk(va)`. This is correct by construction \u2014 the view map's domain is exactly the base walk set."
+  },
+  {
+    "phi": "view_value_equals_walk_pte",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`PTMem::view` is `Map::new(|va| self.is_base_pt_walk(va), |va| self.pt_walk(va).result()->pte)`. After `reveal`, indexing into the map at a key satisfying the domain predicate returns the value function applied to that key. This is correct by `Map::new` axioms."
+  },
+  {
+    "phi": "walk_result_path_len1_arbitrary",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "When `path.len() == 1` and the last entry is Page, none of the `if path.len() == 2/3/4` branches match, so `Walk::result` falls through to the `else { arbitrary() }` case. The result is unconstrained \u2014 it could be `Valid` or anything else. This is a real spec gap since a length-1 Page path has no defined semantics."
+  },
+  {
+    "phi": "is_base_pt_walk_requires_max_base",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`is_base_pt_walk` explicitly requires `vaddr < MAX_BASE` as its first conjunct. When `va >= MAX_BASE`, this conjunct is false, so the whole predicate is false. This is correct and intentional \u2014 the view is bounded by the virtual address space limit."
+  },
+  {
+    "phi": "all_mb0_bits_external_body_unconstrained",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`P || !P` is a tautology that holds for any boolean expression regardless of whether it's `external_body` or not. This proves nothing about the external_body gap \u2014 it would verify even with a fully specified implementation."
+  }
+]

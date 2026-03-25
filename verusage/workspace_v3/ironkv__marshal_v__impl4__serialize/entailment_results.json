@@ -1,0 +1,52 @@
+[
+  {
+    "name": "empty_vec_serializes_empty",
+    "target_fn": "serialize",
+    "type": "behavioral",
+    "reason": "Empty vec should still emit a length prefix, so zero-length output would mean the header is missing",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "i_1_empty_vec_serializes_empty(v: Vec<u64>)\n    |       ------------------------------------------------ at the end of the function body\n...\n192 |         v.ghost_serialize().len() == 0,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "single_elem_no_length_prefix",
+    "target_fn": "serialize",
+    "type": "boundary",
+    "reason": "Serialized length equalling just the element size would mean the length prefix is absent from the encoding",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "------------------------------------------------ at the end of the function body\n...\n192 |         v.ghost_serialize().len() == v@[0].ghost_serialize().len(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "different_length_vecs_same_size",
+    "target_fn": "serialize",
+    "type": "logical",
+    "reason": "An empty vec and a one-element vec having identical serialization length would mean elements contribute no bytes",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "---------------------------------------------------- at the end of the function body\n...\n194 |         v1.ghost_serialize().len() == v2.ghost_serialize().len(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "prefix_not_length_encoding",
+    "target_fn": "serialize",
+    "type": "behavioral",
+    "reason": "The serialization format must start with the encoded length; if the prefix differs the framing is broken",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "ion body\n...\n192 | /         v.ghost_serialize().subrange(0, (v@.len() as usize).ghost_serialize().len() as int)\n193 | |           != (v@.len() as usize).ghost_serialize(),\n    | |__________________________________________________^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "two_elem_fits_in_header_only",
+    "target_fn": "serialize",
+    "type": "boundary",
+    "reason": "A two-element vec's serialization fitting within just the length prefix would mean element data is lost",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "-------------------- at the end of the function body\n...\n192 |         v.ghost_serialize().len() <= (v@.len() as usize).ghost_serialize().len(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

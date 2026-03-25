@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: page_aligned_implies_mask_identity_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `lemma_page_aligned_implies_mask_dir_addr_is_identity` is `external_body` with `unimplemented!()` body — the bitwise property that page-aligned addresses within MAX_PHYADDR are unchanged by masking with MASK_DIR_ADDR is trusted without proof. This is the root axiom for all the mask identity proofs in the file.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: aligned_transitive_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `aligned_transitive` is `external_body` with `unimplemented!()` body — alignment transitivity (`a % b == 0 ∧ b % c == 0 → a % c == 0`) is a correct arithmetic fact but trusted without proof. Used by `lemma_aligned_addr_mask_facts` to chain L1/L2/L3 alignment down to PAGE_SIZE alignment.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: mask_l3_pg_addr_equals_mask_addr
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `MASK_L3_PG_ADDR` and `MASK_ADDR` are both defined as `bitmask_inc!(12, MAX_PHYADDR_WIDTH - 1)`, so they are definitionally equal. The equality `addr & MASK_L3_PG_ADDR == addr & MASK_ADDR` is a tautology — correct and expected behavior by design.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: max_phyaddr_width_external_body_const
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `MAX_PHYADDR_WIDTH` is declared `external_body` with value 52, but the axiom only constrains it to `32..=52`. The verifier treats it as an opaque value satisfying the axiom rather than the concrete 52, creating a gap where proofs depending on the exact value of 52 would fail while the implementation assumes 52.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: l1_aligned_mask_addr_identity
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is a verified consequence of `lemma_aligned_addr_mask_facts`, which has a complete proof body. The trust gaps are already captured by φ1 and φ2; this adds no new unverified assumption.
+===VERDICT_END===
+
+===SUMMARY===
+Three true positives: `lemma_page_aligned_implies_mask_dir_addr_is_identity` and `aligned_transitive` are both `external_body` axioms trusting correct but unproven bitwise/arithmetic properties, and `MAX_PHYADDR_WIDTH` as `external_body` with a weaker axiom than its implementation value creates a specification gap. Two false positives: the L3 mask equality is tautological by definition, and the L1 mask identity is a verified downstream consequence.
+===END_SUMMARY===

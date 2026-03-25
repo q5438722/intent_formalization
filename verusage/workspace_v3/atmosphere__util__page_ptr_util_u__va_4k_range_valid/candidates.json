@@ -1,0 +1,37 @@
+[
+  {
+    "name": "range_always_valid",
+    "target_fn": "va_4k_range_valid",
+    "type": "behavioral",
+    "code": "proof fn phi_1_range_always_valid(va: usize, len: usize)\n    requires\n        va_4k_valid(va),\n    ensures\n        spec_va_4k_range_valid(va, len),\n{\n}",
+    "reason": "If provable, the range check is trivially always true regardless of length, making the validation meaningless"
+  },
+  {
+    "name": "empty_range_invalid",
+    "target_fn": "va_4k_range_valid",
+    "type": "boundary",
+    "code": "proof fn phi_2_empty_range_invalid(va: usize)\n    requires\n        va_4k_valid(va),\n    ensures\n        spec_va_4k_range_valid(va, 0) == false,\n{\n}",
+    "reason": "If provable, empty ranges are rejected even though the universal quantifier should be vacuously true for len=0"
+  },
+  {
+    "name": "range_not_monotonic",
+    "target_fn": "va_4k_range_valid",
+    "type": "logical",
+    "code": "proof fn phi_3_range_not_monotonic(va: usize, len: usize)\n    requires\n        va_4k_valid(va),\n        spec_va_4k_range_valid(va, len),\n        len > 0,\n    ensures\n        !spec_va_4k_range_valid(va, (len - 1) as usize),\n{\n}",
+    "reason": "If provable, a valid range of size n implies a smaller sub-range is invalid, violating monotonicity of the forall"
+  },
+  {
+    "name": "no_nonempty_valid_range",
+    "target_fn": "va_4k_range_valid",
+    "type": "behavioral",
+    "code": "proof fn phi_4_no_nonempty_valid_range(va: usize, len: usize)\n    requires\n        va_4k_valid(va),\n        len > 0,\n    ensures\n        spec_va_4k_range_valid(va, len) == false,\n{\n}",
+    "reason": "If provable, no non-empty range is ever valid even when the base address is valid, making page mapping impossible"
+  },
+  {
+    "name": "next_page_always_invalid",
+    "target_fn": "va_4k_range_valid",
+    "type": "logical",
+    "code": "proof fn phi_5_next_page_always_invalid(va: usize)\n    requires\n        va_4k_valid(va),\n    ensures\n        !spec_va_4k_valid(spec_va_add_range(va, 1)),\n{\n}",
+    "reason": "If provable, no valid address ever has a valid successor page, meaning contiguous multi-page ranges can never exist"
+  }
+]

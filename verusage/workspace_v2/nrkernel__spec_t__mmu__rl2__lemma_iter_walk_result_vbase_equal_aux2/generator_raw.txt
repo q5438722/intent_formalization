@@ -1,0 +1,88 @@
+===PHI_START===
+NAME: lemma_bits_align_external_body_l2
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_lemma_bits_align_external_body_l2(vaddr: usize)
+    ensures
+        l0_bits!(align_to_usize(vaddr, L2_ENTRY_SIZE)) == l0_bits!(vaddr),
+        l1_bits!(align_to_usize(vaddr, L2_ENTRY_SIZE)) == l1_bits!(vaddr),
+        l2_bits!(align_to_usize(vaddr, L2_ENTRY_SIZE)) == l2_bits!(vaddr),
+{
+    lemma_bits_align_to_usize(vaddr);
+}
+```
+REASON: `lemma_bits_align_to_usize` is `external_body` — L2 alignment preserving l0/l1/l2 bits is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: iter_walk_vaddr_idempotent_via_external
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_iter_walk_vaddr_idempotent_via_external(mem: PTMem, vaddr: usize)
+    ensures
+        iter_walk(mem, iter_walk(mem, vaddr).result().vaddr()).result().vaddr() == iter_walk(mem, vaddr).result().vaddr(),
+{
+    lemma_iter_walk_result_vbase_equal_aux2(mem, vaddr);
+}
+```
+REASON: Walk vaddr idempotency depends on unverified `lemma_bits_align_to_usize` — if alignment doesn't preserve indexing bits, re-walking from the result vaddr could diverge
+===PHI_END===
+
+===PHI_START===
+NAME: walk_next_entry_from_arbitrary_mem
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_walk_next_entry_from_arbitrary_mem(mem: PTMem, vaddr: usize)
+    requires
+        !mem.mem.contains_key(add(mem.pml4, mul(l0_bits!(vaddr), WORD_SIZE))),
+    ensures
+        ({
+            reveal(walk_next);
+            let w = walk_next(mem, Walk { vaddr, path: seq![], complete: false });
+            w.path.len() == 1
+        }),
+{
+    reveal(walk_next);
+}
+```
+REASON: When the L0 address is not in `mem.mem`'s domain, `PTMem::read` returns an arbitrary value via `Map::index` on a missing key — the walk proceeds with an unspecified PDE entry
+===PHI_END===
+
+===PHI_START===
+NAME: walk_result_directory_last_arbitrary
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_walk_result_directory_last_arbitrary(walk: Walk, addr: usize)
+    requires
+        walk.path.len() == 4,
+        walk.path.last().1 is Directory,
+        walk.complete,
+    ensures
+        !(walk.result() is Valid),
+        !(walk.result() is Invalid),
+{
+}
+```
+REASON: A 4-entry walk ending in Directory (complete but not Page or Invalid) falls through both `if` branches to `arbitrary()` — the result is completely undefined
+===PHI_END===
+
+===PHI_START===
+NAME: all_mb0_bits_are_zero_external_body_opaque
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_all_mb0_bits_are_zero_external_body_opaque(e1: usize, e2: usize, layer: nat)
+    requires
+        e1 == e2,
+    ensures
+        (PDE { entry: e1, layer: Ghost(layer) }).all_mb0_bits_are_zero()
+        == (PDE { entry: e2, layer: Ghost(layer) }).all_mb0_bits_are_zero(),
+{
+}
+```
+REASON: `all_mb0_bits_are_zero` is `external_body` — PDE validity is governed by an opaque predicate with no specification
+===PHI_END===

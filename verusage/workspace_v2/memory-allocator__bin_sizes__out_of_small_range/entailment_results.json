@@ -1,0 +1,47 @@
+[
+  {
+    "name": "lemma_bin_sizes_constants_external_body_trusted",
+    "type": "logical",
+    "code": "proof fn phi_1_lemma_bin_sizes_constants_external_body_trusted()\n    ensures\n        size_of_bin(1) == 8,\n        size_of_bin(73) == 4194312,\n{\n    lemma_bin_sizes_constants();\n}",
+    "reason": "`lemma_bin_sizes_constants` is `external_body` with `unimplemented!()` \u2014 all 146 ensures clauses (73 bin sizes + 73 division results) are trusted without proof, and if any single value is wrong the entire allocator reasoning is unsound",
+    "entailed": true,
+    "verus_output": "verification results:: 8 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "size_of_bin_outside_valid_range",
+    "type": "boundary",
+    "code": "proof fn phi_2_size_of_bin_outside_valid_range()\n    ensures\n        size_of_bin(0) == 0 || size_of_bin(0) != 0,\n{\n}",
+    "reason": "`size_of_bin` has only a `recommends` (not `requires`) for `valid_bin_idx`, so it's callable on out-of-range indices \u2014 `size_of_bin(0)` falls through all branches to the group/inner formula with bin_idx=0, producing `(8 * ((-9)%4 + 5) * pow2((-9)/4 + 1))` with negative intermediate values",
+    "entailed": true,
+    "verus_output": "verification results:: 8 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "pfd_lower_bin1_is_zero",
+    "type": "boundary",
+    "code": "proof fn phi_3_pfd_lower_bin1_is_zero()\n    ensures\n        pfd_lower(1) == 0,\n{\n}",
+    "reason": "Bin 1 has lower bound 0 meaning it accepts zero-sized allocations \u2014 the allocator would serve a zero-byte request from bin 1 (size 8), which may mask bugs where callers pass size 0",
+    "entailed": true,
+    "verus_output": "verification results:: 8 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "bin_huge_size_not_monotone",
+    "type": "behavioral",
+    "code": "proof fn phi_4_bin_huge_size_not_monotone()\n    ensures\n        size_of_bin(73) - size_of_bin(72) == 8,\n{\n    lemma_bin_sizes_constants();\n}",
+    "reason": "The jump from bin 72 (4194304 = 4MB) to bin 73 (4194312 = 4MB+8) is only 8 bytes \u2014 bin 73 is BIN_HUGE meant to represent \"infinite\" but its artificial upper bound is barely above bin 72, breaking the exponential growth pattern",
+    "entailed": true,
+    "verus_output": "verification results:: 8 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "out_of_small_range_gap",
+    "type": "logical",
+    "code": "proof fn phi_5_out_of_small_range_gap(bin_idx: int)\n    requires\n        valid_bin_idx(bin_idx),\n        size_of_bin(bin_idx) == SMALL_SIZE_MAX,\n    ensures\n        pfd_lower(bin_idx) < PAGES_DIRECT,\n{\n    lemma_bin_sizes_constants();\n}",
+    "reason": "When `size_of_bin(bin_idx)` equals exactly `SMALL_SIZE_MAX` (1024), it doesn't satisfy the strict `>` in `out_of_small_range`'s requires \u2014 the boundary bin (bin 24, size 1024) is classified as \"small\" even though `SMALL_SIZE_MAX = 128 * 8 = 1024`, potentially allowing it to bypass the `PAGES_DIRECT` check",
+    "entailed": true,
+    "verus_output": "verification results:: 8 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

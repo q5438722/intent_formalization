@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "two_mul_with_bit0_external_body",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`two_mul_with_bit0` is `external_body` trusting `(2*x)/(2*y) == x/y` without proof. While mathematically correct for Euclidean division (scaling numerator and denominator by the same positive factor preserves the quotient, and for negative factor the signs cancel), this is an unverified trust gap that the main theorem depends on."
+  },
+  {
+    "phi": "two_mul_with_bit1_external_body",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`two_mul_with_bit1` is `external_body` trusting `(2*x+1)/(2*y) == x/y` without proof. This is the more subtle of the two lemmas \u2014 the odd remainder `+1` is absorbed because `2*y` divides evenly, but this is unverified and any error would propagate to the main theorem."
+  },
+  {
+    "phi": "power_of_two_rounddown",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is the intended main theorem \u2014 bitwise AND with a power-of-two mask equals arithmetic round-down. The proof is mostly verified with bit_vector assertions; only the two external_body helper lemmas are trusted. The property itself is correct and desirable."
+  },
+  {
+    "phi": "two_mul_bit1_negative_y",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "The external_body lemma only requires `y1 != 0` but is instantiated with `y1 = -1`. For Verus Euclidean division, `(2*x+1)/(-2)` vs `x/(-1)` \u2014 this is a concrete negative case where the trusted axiom applies without restriction, and the Euclidean division semantics for negative divisors are non-trivial."
+  },
+  {
+    "phi": "two_mul_bit0_negative_both",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "The external_body axiom applies to all `y1 < 0, x1 < 0` without restriction. While `(2*x)/(2*y) == x/y` does hold for Euclidean division when scaling by a common factor, this negative-argument regime is never used by the main theorem (which operates on `usize` values) and represents an over-broad trust assumption."
+  }
+]

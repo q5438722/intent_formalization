@@ -1,0 +1,91 @@
+===PHI_START===
+NAME: init_invariant_rec_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_init_invariant_rec_intensional_bridge(ex: Execution<int>, init: StatePred<int>, next: ActionPred<int>, inv: StatePred<int>, i: nat)
+    requires
+        init(ex.head()),
+        forall |idx: nat| next(#[trigger] ex.suffix(idx).head(), ex.suffix(idx).head_next()),
+        forall |s: int| #[trigger] init(s) ==> inv(s),
+        forall |s: int, s_prime: int| inv(s) && #[trigger] next(s, s_prime) ==> inv(s_prime),
+    ensures
+        inv(ex.suffix(i).head()),
+{
+    init_invariant_rec::<int>(ex, init, next, inv, i);
+}
+```
+REASON: init_invariant_rec is external_body performing induction over suffix positions — it bridges the intensional gap between suffix-indexed state predicates and the inductive hypothesis without verified decreases reasoning
+===PHI_END===
+
+===PHI_START===
+NAME: always_unfold_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_always_unfold_intensional_bridge(ex: Execution<int>, p: TempPred<int>, i: nat)
+    requires
+        always(p).satisfied_by(ex),
+    ensures
+        p.satisfied_by(ex.suffix(i)),
+{
+    always_unfold::<int>(ex, p);
+}
+```
+REASON: always_unfold is external_body bridging the forall inside always's TempPred::new closure to a bare forall in the ensures — intensionally distinct formulations equated without proof
+===PHI_END===
+
+===PHI_START===
+NAME: implies_apply_closure_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_implies_apply_closure_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>)
+    requires
+        p.satisfied_by(ex),
+        (p.pred)(ex) ==> (q.pred)(ex),
+    ensures
+        q.satisfied_by(ex),
+{
+    implies_apply::<int>(ex, p, q);
+}
+```
+REASON: implies_apply is external_body bridging p.implies(q).satisfied_by(ex) through TempPred::new closure wrapping and direct implication — silently resolves closure identity mismatch
+===PHI_END===
+
+===PHI_START===
+NAME: invariant_from_false_init
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_invariant_from_false_init(spec: TempPred<int>, next: ActionPred<int>, inv: StatePred<int>)
+    requires
+        spec.entails(lift_state(|s: int| false)),
+        spec.entails(always(lift_action(next))),
+    ensures
+        spec.entails(always(lift_state(inv))),
+{
+    init_invariant::<int>(spec, |s: int| false, next, inv);
+}
+```
+REASON: an unsatisfiable init predicate makes init_invariant prove any invariant for any spec — the vacuously-true premises propagate through without checking satisfiability of init
+===PHI_END===
+
+===PHI_START===
+NAME: invariant_ignores_next_action
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_invariant_ignores_next_action(spec: TempPred<int>, init: StatePred<int>, next: ActionPred<int>)
+    requires
+        forall |s: int| #[trigger] init(s) ==> false,
+        spec.entails(lift_state(init)),
+        spec.entails(always(lift_action(next))),
+    ensures
+        spec.entails(always(lift_state(|s: int| false))),
+{
+    init_invariant::<int>(spec, init, next, |s: int| false);
+}
+```
+REASON: if init implies false (no valid initial state), then init_invariant derives always(false) for any spec claiming to start from init — the spec is vacuously inconsistent but this is never flagged
+===PHI_END===

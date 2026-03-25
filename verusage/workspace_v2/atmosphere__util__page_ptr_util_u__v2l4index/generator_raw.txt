@@ -1,0 +1,81 @@
+===PHI_START===
+NAME: va_1g_valid_resolves_to_spec_va_2m_valid
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_va_1g_valid_resolves_to_spec_va_2m_valid(va: usize)
+    ensures
+        va_1g_valid(va) == spec_va_2m_valid(va),
+{
+}
+```
+REASON: `va_1g_valid` has `when_used_as_spec(spec_va_2m_valid)` instead of `spec_va_1g_valid` — a copy-paste bug that makes 1GB validation silently use the 2MB check in spec context
+===PHI_END===
+
+===PHI_START===
+NAME: va_1g_accepts_2m_aligned_not_1g
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_va_1g_accepts_2m_aligned_not_1g(va: usize)
+    requires
+        spec_va_2m_valid(va),
+        !spec_va_1g_valid(va),
+    ensures
+        va_1g_valid(va),
+{
+}
+```
+REASON: Due to the wrong `when_used_as_spec`, a 2MB-aligned but non-1GB-aligned address passes `va_1g_valid`, allowing misaligned addresses into 1GB page table operations
+===PHI_END===
+
+===PHI_START===
+NAME: v2l4index_precond_weakened_by_1g_bug
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_v2l4index_precond_weakened_by_1g_bug(va: usize)
+    requires
+        spec_va_2m_valid(va),
+        !spec_va_1g_valid(va),
+        !spec_va_4k_valid(va),
+    ensures
+        va_4k_valid(va) || va_2m_valid(va) || va_1g_valid(va),
+{
+}
+```
+REASON: `v2l4index`'s precondition is weaker than intended — any 2MB-valid address satisfies the disjunction via the broken `va_1g_valid` path even when it's not truly 1GB-aligned
+===PHI_END===
+
+===PHI_START===
+NAME: v2l4index_lower_bound_is_one
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_v2l4index_lower_bound_is_one(va: usize)
+    requires
+        va_4k_valid(va) || va_2m_valid(va) || va_1g_valid(va),
+    ensures
+        spec_v2l4index(va) >= 1,
+{
+}
+```
+REASON: `KERNEL_MEM_END_L4INDEX = 1` means L4 index 0 is excluded — the entire first 512GB of virtual address space is blocked, but index 1 (starting at 512GB) may still be within user-space range on some OS configurations
+===PHI_END===
+
+===PHI_START===
+NAME: spec_va_1g_valid_implies_2m_valid
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_spec_va_1g_valid_implies_2m_valid(va: usize)
+    requires
+        spec_va_1g_valid(va),
+    ensures
+        spec_va_2m_valid(va),
+{
+    assert(forall|x: u64| (x & !0x0000_fffc_0000_0000u64 == 0) ==> (x & !0x0000_ffff_ffe0_0000u64 == 0)) by (bit_vector);
+}
+```
+REASON: 1GB alignment implies 2MB alignment since the 1GB mask is stricter — this means the `va_1g_valid` copy-paste bug makes the 1GB and 2MB spec paths fully equivalent, completely hiding the missing 1GB check
+===PHI_END===

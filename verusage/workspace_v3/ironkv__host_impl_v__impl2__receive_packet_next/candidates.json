@@ -1,0 +1,37 @@
+[
+  {
+    "name": "hashtable_lookup_returns_none_when_present",
+    "target_fn": "hashtable_lookup",
+    "type": "behavioral",
+    "code": "proof fn phi_1_hashtable_lookup_returns_none_when_present(h: Hashtable, k: AbstractKey)\n    requires\n        h.dom().contains(k),\n    ensures\n        hashtable_lookup(h, k) is None,\n{\n}",
+    "reason": "If a key is in the domain, lookup must return Some; returning None would mean the hashtable silently loses data."
+  },
+  {
+    "name": "receive_packet_never_buffers_new_message",
+    "target_fn": "receive_packet",
+    "type": "behavioral",
+    "code": "proof fn phi_2_receive_packet_never_buffers_new_message(pre: AbstractHostState, post: AbstractHostState, pkt: Packet, out: Set<Packet>, ack: Packet)\n    requires\n        pre.received_packet is None,\n        SingleDelivery::new_single_message(pre.sd, pkt),\n        receive_packet(pre, post, pkt, out, ack),\n    ensures\n        post.received_packet is None,\n{\n}",
+    "reason": "When no packet is buffered and a new message arrives, the spec should enqueue it; if post.received_packet stays None, incoming messages are silently dropped."
+  },
+  {
+    "name": "get_request_redirects_own_key",
+    "target_fn": "next_get_request_reply",
+    "type": "logical",
+    "code": "proof fn phi_3_get_request_redirects_own_key(pre: AbstractHostState, post: AbstractHostState, src: AbstractEndPoint, seqno: nat, k: AbstractKey, sm: SingleMessage<Message>, m: Message, out: Set<Packet>, should_send: bool)\n    requires\n        pre.delegation_map.is_complete(),\n        pre.delegation_map[k] == pre.constants.me,\n        should_send,\n        valid_key(k),\n        next_get_request_reply(pre, post, src, seqno, k, sm, m, out, should_send),\n    ensures\n        m is Redirect,\n{\n}",
+    "reason": "When the host owns the key it must reply with the value, not redirect; proving Redirect here would mean the host never serves its own data."
+  },
+  {
+    "name": "retransmit_output_always_empty",
+    "target_fn": "spontaneously_retransmit",
+    "type": "boundary",
+    "code": "proof fn phi_4_retransmit_output_always_empty(pre: AbstractHostState, post: AbstractHostState, out: Set<Packet>)\n    requires\n        spontaneously_retransmit(pre, post, out),\n    ensures\n        out == Set::<Packet>::empty(),\n{\n}",
+    "reason": "Retransmit exists to resend un-acked packets; if output is always empty, the reliability mechanism is vacuous and messages can be permanently lost."
+  },
+  {
+    "name": "set_request_never_modifies_hashtable",
+    "target_fn": "next_set_request_complete",
+    "type": "behavioral",
+    "code": "proof fn phi_5_set_request_never_modifies_hashtable(pre: AbstractHostState, post: AbstractHostState, src: AbstractEndPoint, seqno: nat, reqm: Message, sm: SingleMessage<Message>, replym: Message, out: Set<Packet>, should_send: bool)\n    requires\n        pre.delegation_map.is_complete(),\n        reqm is SetRequest,\n        pre.delegation_map[reqm.arrow_SetRequest_key()] == pre.constants.me,\n        should_send,\n        valid_key(reqm.arrow_SetRequest_key()),\n        valid_optional_value(reqm.arrow_SetRequest_value()),\n        next_set_request_complete(pre, post, src, seqno, reqm, sm, replym, out, should_send),\n    ensures\n        post.h == pre.h,\n{\n}",
+    "reason": "When the host owns the key and receives a valid SetRequest, the hashtable must be updated; if h never changes, all writes are silently discarded."
+  }
+]

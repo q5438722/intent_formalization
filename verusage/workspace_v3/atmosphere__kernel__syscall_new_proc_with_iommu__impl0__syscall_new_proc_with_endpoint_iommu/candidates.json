@@ -1,0 +1,37 @@
+[
+  {
+    "name": "preconditions_unsatisfiable",
+    "target_fn": "syscall_new_proc_with_endpoint_iommu",
+    "type": "logical",
+    "code": "proof fn phi_1_preconditions_unsatisfiable(va_range: VaRange4K, endpoint_index: EndpointIdx)\n    requires\n        va_range.wf(),\n        va_range.len * 3 + 3 < usize::MAX,\n        0 <= endpoint_index < MAX_NUM_ENDPOINT_DESCRIPTORS,\n    ensures\n        false,\n{\n}",
+    "reason": "If provable, the combined preconditions are contradictory, making the spec vacuously correct and the function uncallable."
+  },
+  {
+    "name": "va_range_len_forced_zero",
+    "target_fn": "syscall_new_proc_with_endpoint_iommu",
+    "type": "boundary",
+    "code": "proof fn phi_2_va_range_len_forced_zero(va_range: VaRange4K)\n    requires\n        va_range.wf(),\n        va_range.len * 3 + 3 < usize::MAX,\n    ensures\n        va_range.len == 0,\n{\n}",
+    "reason": "If provable, the well-formedness invariant forces zero-length ranges, meaning no pages can ever be mapped by this syscall."
+  },
+  {
+    "name": "no_valid_endpoint_index",
+    "target_fn": "syscall_new_proc_with_endpoint_iommu",
+    "type": "boundary",
+    "code": "proof fn phi_3_no_valid_endpoint_index(endpoint_index: EndpointIdx)\n    requires\n        0 <= endpoint_index < MAX_NUM_ENDPOINT_DESCRIPTORS,\n    ensures\n        false,\n{\n}",
+    "reason": "If provable, MAX_NUM_ENDPOINT_DESCRIPTORS is zero (or the bound is contradictory), meaning no valid endpoint index exists and the syscall can never be invoked."
+  },
+  {
+    "name": "va_range_len_under_two",
+    "target_fn": "syscall_new_proc_with_endpoint_iommu",
+    "type": "behavioral",
+    "code": "proof fn phi_4_va_range_len_under_two(va_range: VaRange4K)\n    requires\n        va_range.wf(),\n        va_range.len * 3 + 3 < usize::MAX,\n    ensures\n        va_range.len < 2,\n{\n}",
+    "reason": "If provable, the spec constrains va_range to at most 1 page, severely limiting the syscall to trivial cases and preventing meaningful address-space sharing."
+  },
+  {
+    "name": "wf_forces_overflow_conflict",
+    "target_fn": "syscall_new_proc_with_endpoint_iommu",
+    "type": "logical",
+    "code": "proof fn phi_5_wf_forces_overflow_conflict(va_range: VaRange4K)\n    requires\n        va_range.wf(),\n    ensures\n        va_range.len * 3 + 3 >= usize::MAX,\n{\n}",
+    "reason": "If provable, va_range.wf() alone implies the overflow guard can never be satisfied, making the preconditions of the syscall mutually contradictory."
+  }
+]

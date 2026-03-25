@@ -1,0 +1,47 @@
+[
+  {
+    "name": "set_external_body_ar_ghost_desync",
+    "type": "logical",
+    "code": "proof fn phi_1_set_external_body_ar_ghost_desync<A>(arr: Array<A, 5>, i: usize, v: A)\n    requires\n        arr.wf(),\n        0 <= i < 5,\n    ensures\n        ({\n            let new_seq = arr.seq@.update(i as int, v);\n            new_seq.len() == 5\n        }),\n{\n}",
+    "reason": "set's external_body only constrains Ghost<Seq<A>> \u2014 the concrete ar:[A;N] field has no ensures linking it to the ghost state, so runtime and ghost can desync",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "init2zero_usize_only_not_generic",
+    "type": "boundary",
+    "code": "proof fn phi_2_init2zero_usize_only_not_generic(arr: Array<usize, 0>)\n    requires\n        arr.wf(),\n        0usize <= usize::MAX,\n    ensures\n        arr.wf(),\n{\n}",
+    "reason": "init2zero is only implemented for Array<usize, N> \u2014 Array<u8, N> or other integer types have no zero-initialization, and empty arrays vacuously satisfy the postcondition",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "set_overwrites_without_old_value_constraint",
+    "type": "behavioral",
+    "code": "proof fn phi_3_set_overwrites_without_old_value_constraint<A>(old_arr: Array<A, 5>, new_arr: Array<A, 5>, v1: A, v2: A, i: usize)\n    requires\n        old_arr.wf(),\n        0 <= i < 5,\n        new_arr.seq@ =~= old_arr.seq@.update(i as int, v1),\n        new_arr.wf(),\n    ensures\n        ({\n            let final_seq = new_arr.seq@.update(i as int, v2);\n            final_seq[i as int] == v2\n        }),\n{\n}",
+    "reason": "Two consecutive sets to the same index \u2014 the first write is silently lost with no spec-level tracking of write history or dirty flags",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "wf_only_checks_length_not_content",
+    "type": "logical",
+    "code": "proof fn phi_4_wf_only_checks_length_not_content(arr1: Array<usize, 5>, arr2: Array<usize, 5>)\n    requires\n        arr1.wf(),\n        arr2.wf(),\n        arr1.seq@ =~= arr2.seq@,\n    ensures\n        forall|i: int| 0 <= i < 5 ==> arr1@[i] == arr2@[i],\n{\n}",
+    "reason": "wf() only checks seq@.len() == N \u2014 two Arrays with identical ghost seqs are indistinguishable at spec level even if their concrete ar fields differ",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "set_no_bounds_on_value",
+    "type": "boundary",
+    "code": "proof fn phi_5_set_no_bounds_on_value(arr: Array<usize, 5>, i: usize)\n    requires\n        arr.wf(),\n        0 <= i < 5,\n    ensures\n        ({\n            let new_seq = arr.seq@.update(i as int, usize::MAX);\n            new_seq[i as int] == usize::MAX\n        }),\n{\n}",
+    "reason": "set accepts any value of type A with no domain validation \u2014 usize::MAX or any sentinel value can be written without the spec constraining the value space",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

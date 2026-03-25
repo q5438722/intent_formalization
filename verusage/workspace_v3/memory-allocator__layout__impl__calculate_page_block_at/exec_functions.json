@@ -1,0 +1,6 @@
+[
+  {
+    "name": "calculate_page_block_at",
+    "code": "pub fn calculate_page_block_at(\n    page_start: usize,\n    block_size: usize,\n    idx: usize,\n    Ghost(page_id): Ghost<PageId>\n) -> (p: usize)\n    requires page_start == block_start_at(page_id, block_size as int, 0),\n        block_start_at(page_id, block_size as int, 0)\n            + idx as int * block_size as int <= segment_start(page_id.segment_id) + SEGMENT_SIZE,\n        segment_start(page_id.segment_id) + SEGMENT_SIZE < usize::MAX,\n    ensures\n        p == block_start_at(page_id, block_size as int, idx as int),\n        p == page_start + idx as int * block_size as int\n{\n    proof {\n        const_facts();\n        assert(block_size * idx >= 0) by(nonlinear_arith)\n            requires block_size >= 0, idx >= 0;\n        assert(block_size * idx == idx * block_size) by(nonlinear_arith);\n    }\n    let p = page_start + block_size * idx;\n    return p;\n}"
+  }
+]

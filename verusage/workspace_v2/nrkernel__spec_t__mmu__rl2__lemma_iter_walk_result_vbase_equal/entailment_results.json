@@ -1,0 +1,47 @@
+[
+  {
+    "name": "walk_next_external_body_unconstrained",
+    "type": "logical",
+    "code": "proof fn phi_1_walk_next_external_body_unconstrained(mem: PTMem, walk1: Walk, walk2: Walk)\n    requires\n        walk1.vaddr == walk2.vaddr,\n        walk1.path == walk2.path,\n        walk1.complete == walk2.complete,\n    ensures\n        walk_next(mem, walk1) == walk_next(mem, walk2),\n{\n}",
+    "reason": "`walk_next` is `external_body` with `unimplemented!()` \u2014 completely opaque, so identical inputs could produce different outputs",
+    "entailed": true,
+    "verus_output": "verification results:: 7 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "lemma_aux1_external_body_path_equality",
+    "type": "logical",
+    "code": "proof fn phi_2_lemma_aux1_external_body_path_equality(mem: PTMem, vaddr: usize)\n    ensures\n        iter_walk(mem, iter_walk(mem, vaddr).result().vaddr()).path == iter_walk(mem, vaddr).path,\n{\n    lemma_iter_walk_result_vbase_equal_aux1(mem, vaddr);\n}",
+    "reason": "`lemma_iter_walk_result_vbase_equal_aux1` is `external_body` \u2014 the claimed path equality between walking from the result vaddr and the original walk is trusted without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 7 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "lemma_aux2_external_body_vaddr_idempotent",
+    "type": "logical",
+    "code": "proof fn phi_3_lemma_aux2_external_body_vaddr_idempotent(mem: PTMem, vaddr: usize)\n    ensures\n        iter_walk(mem, iter_walk(mem, vaddr).result().vaddr()).result().vaddr() == iter_walk(mem, vaddr).result().vaddr(),\n{\n    lemma_iter_walk_result_vbase_equal_aux2(mem, vaddr);\n}",
+    "reason": "`lemma_iter_walk_result_vbase_equal_aux2` is `external_body` \u2014 the vaddr idempotency property is trusted without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 7 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "flags_eagerly_computed_beyond_path",
+    "type": "boundary",
+    "code": "proof fn phi_4_flags_eagerly_computed_beyond_path(walk: Walk)\n    requires\n        walk.path.len() == 2,\n        walk.path[0].1 is Directory,\n        walk.path[1].1 is Page,\n    ensures\n        walk.flags() == Flags::from_GPDE(walk.path[0].1).combine(Flags::from_GPDE(walk.path[1].1)),\n{\n}",
+    "reason": "`Walk::flags` eagerly indexes `path[2]` and `path[3]` even when path.len() == 2 \u2014 the computation of `flags2` and `flags3` reads beyond the path but the final result selects `flags1`, relying on Verus not triggering the out-of-bounds access in spec mode",
+    "entailed": true,
+    "verus_output": "verification results:: 7 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "walk_result_invalid_aligns_to_page",
+    "type": "behavioral",
+    "code": "proof fn phi_5_walk_result_invalid_aligns_to_page(walk: Walk)\n    requires\n        walk.path.len() > 0,\n        walk.path.last().1 is Invalid,\n        walk.complete,\n        walk.vaddr % PAGE_SIZE as usize == 0,\n    ensures\n        walk.result() is Invalid,\n        walk.result()->Invalid_vaddr == walk.vaddr,\n{\n}",
+    "reason": "An invalid walk result aligns the vaddr to PAGE_SIZE \u2014 for already page-aligned vaddrs this is identity, but for non-aligned vaddrs the reported Invalid address differs from the actual queried address",
+    "entailed": true,
+    "verus_output": "verification results:: 7 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: serialize_max_length_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `lemma_spec_serialize_max_length` is `external_body` with `unimplemented!()`. The individual element serialization length bound is entirely trusted without verification. Note this version replaces the previously-seen verified version of the same lemma.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: serialize_prefix_max_length_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: Same `external_body` `lemma_spec_serialize_max_length` — the prefix serialization length bound is a second ensures clause of the same unverified lemma. This is an independent trust assumption (prefix lengths bounded) from the same unverified stub.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: serialize_ignores_count_field
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `spec_serialize` uses `vs.fold_left(...)` which iterates over the provided sequence regardless of `self.1`. The count field is completely ignored during serialization — a persistent spec design gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: max_length_2_full_take_identity
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `vs.take(vs.len())` equals `vs`, so the ensures clause reduces to the precondition `c.spec_serialize(vs).len() <= usize::MAX`. This is a trivial tautology, not a spec gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: serialize_empty_is_empty
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `fold_left(Seq::empty(), f)` on an empty sequence returns `Seq::empty()` by the vstd base case. Correct by definition.
+===VERDICT_END===
+
+===SUMMARY===
+Three true positives: `lemma_spec_serialize_max_length` is now `external_body` (unlike the previously-seen verified version), making both its ensures clauses (individual element bound and prefix bound) unverified trust assumptions; and `spec_serialize` continues to ignore the count field entirely. Two false positives: the full-take identity is a trivial tautology restating the precondition, and empty serialization follows from fold_left's base case.
+===END_SUMMARY===

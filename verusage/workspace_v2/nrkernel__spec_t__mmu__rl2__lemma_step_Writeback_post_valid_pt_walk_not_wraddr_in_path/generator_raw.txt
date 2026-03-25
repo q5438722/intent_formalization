@@ -1,0 +1,85 @@
+The file ends there. This is the rl2/rl3 combined file with State, store buffers, memops. Let me generate candidates targeting the step_MemOp and related areas.
+
+===PHI_START===
+NAME: write_preserves_pml4
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_write_preserves_pml4(mem: PTMem, addr: usize, value: usize)
+    ensures
+        mem.write(addr, value).pml4 == mem.pml4,
+{
+}
+```
+REASON: `PTMem::write` explicitly preserves pml4 — tests that individual writes never change the page table root pointer
+===PHI_END===
+
+===PHI_START===
+NAME: write_seq_preserves_pml4
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_write_seq_preserves_pml4(mem: PTMem, writes: Seq<(usize, usize)>)
+    ensures
+        mem.write_seq(writes).pml4 == mem.pml4,
+{
+    // Induction on writes.len()
+    if writes.len() > 0 {
+        let prefix = writes.drop_last();
+        let last = writes.last();
+        assert(mem.write_seq(prefix).pml4 == mem.pml4) by {
+            phi_2_write_seq_preserves_pml4(mem, prefix);
+        };
+    }
+}
+```
+REASON: A sequence of writes should never change pml4 since each individual write preserves it — but `fold_left` could have subtle interaction issues
+===PHI_END===
+
+===PHI_START===
+NAME: valid_core_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_valid_core_external_body(c: Constants, core1: Core, core2: Core)
+    requires
+        core1.node_id == core2.node_id,
+        core1.core_id == core2.core_id,
+    ensures
+        c.valid_core(core1) == c.valid_core(core2),
+{
+}
+```
+REASON: `valid_core` is `external_body` — identical cores should get the same validity result, but this is unverified
+===PHI_END===
+
+===PHI_START===
+NAME: write_read_same_addr
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_write_read_same_addr(mem: PTMem, addr: usize, value: usize)
+    ensures
+        mem.write(addr, value).read(addr) == value,
+{
+}
+```
+REASON: Writing then reading the same address should return the written value — tests that `Map::insert` followed by `Map::index` is consistent
+===PHI_END===
+
+===PHI_START===
+NAME: write_read_different_addr
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_write_read_different_addr(mem: PTMem, addr1: usize, addr2: usize, value: usize)
+    requires
+        addr1 != addr2,
+        mem.mem.contains_key(addr2),
+    ensures
+        mem.write(addr1, value).read(addr2) == mem.read(addr2),
+{
+}
+```
+REASON: Writing to one address should not affect reads from a different address — tests non-interference of memory writes
+===PHI_END===

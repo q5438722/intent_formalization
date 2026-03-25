@@ -1,0 +1,52 @@
+[
+  {
+    "name": "blocked_thread_owning_proc_changes",
+    "target_fn": "block_running_thread",
+    "type": "behavioral",
+    "reason": "Blocking a thread should not change its owning process; the spec does not explicitly preserve owning_proc for the target thread",
+    "entailed": false,
+    "verified": 21,
+    "errors": 1,
+    "output_tail": ".\n1627 |           new_pm.get_thread(thread_ptr).owning_proc != old_pm.get_thread(thread_ptr).owning_proc,\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 23 warnings emitted\n\n"
+  },
+  {
+    "name": "endpoint_queue_empty_after_push",
+    "target_fn": "block_running_thread",
+    "type": "boundary",
+    "reason": "After pushing a thread onto the endpoint queue, queue length must be at least 1; an empty queue would indicate broken push semantics",
+    "entailed": false,
+    "verified": 21,
+    "errors": 1,
+    "output_tail": "         new_pm.get_endpoint(\n1633 | |             old_pm.get_thread(thread_ptr).endpoint_descriptors@[endpoint_index as int].unwrap(),\n1634 | |         ).queue@.len() == 0,\n     | |___________________________^ failed this postcondition\n\nerror: aborting due to 1 previous error; 23 warnings emitted\n\n"
+  },
+  {
+    "name": "running_cpu_still_some_after_block",
+    "target_fn": "block_running_thread",
+    "type": "logical",
+    "reason": "A BLOCKED thread should not have a running CPU; if wf() allows this, the cpu-thread invariant (threads_cpu_wf) is too weak",
+    "entailed": false,
+    "verified": 21,
+    "errors": 1,
+    "output_tail": ": IPCPayLoad,\n1613 | | )\n     | |_- at the end of the function body\n...\n1622 |           new_pm.get_thread(thread_ptr).running_cpu.is_Some(),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 23 warnings emitted\n\n"
+  },
+  {
+    "name": "endpoint_rf_counter_changes",
+    "target_fn": "block_running_thread",
+    "type": "behavioral",
+    "reason": "Blocking a thread on an endpoint should not change the endpoint's reference counter; the spec omits rf_counter preservation for the target endpoint",
+    "entailed": false,
+    "verified": 21,
+    "errors": 1,
+    "output_tail": "       ).rf_counter != old_pm.get_endpoint(\n1637 | |             old_pm.get_thread(thread_ptr).endpoint_descriptors@[endpoint_index as int].unwrap(),\n1638 | |         ).rf_counter,\n     | |____________________^ failed this postcondition\n\nerror: aborting due to 1 previous error; 23 warnings emitted\n\n"
+  },
+  {
+    "name": "endpoint_owning_container_changes",
+    "target_fn": "block_running_thread",
+    "type": "logical",
+    "reason": "Blocking a thread should not migrate the target endpoint to a different container; the spec preserves queue_state and owning_threads but omits owning_container",
+    "entailed": false,
+    "verified": 21,
+    "errors": 1,
+    "output_tail": "ntainer != old_pm.get_endpoint(\n1637 | |             old_pm.get_thread(thread_ptr).endpoint_descriptors@[endpoint_index as int].unwrap(),\n1638 | |         ).owning_container,\n     | |__________________________^ failed this postcondition\n\nerror: aborting due to 1 previous error; 23 warnings emitted\n\n"
+  }
+]

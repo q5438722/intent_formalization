@@ -1,0 +1,47 @@
+[
+  {
+    "name": "l0_entry_size_overflow_check",
+    "type": "boundary",
+    "code": "proof fn phi_1_l0_entry_size_overflow_check()\n    ensures\n        L0_ENTRY_SIZE as nat == 512 * 512 * 512 * 4096,\n{\n}",
+    "reason": "`L0_ENTRY_SIZE = 512 * 512 * L2_ENTRY_SIZE = 512^3 * 4096 = 549755813888` which exceeds `usize::MAX` on 32-bit but fits in 64-bit \u2014 tests that the constant computation doesn't overflow given `size_of usize == 8`",
+    "entailed": true,
+    "verus_output": "verification results:: 8 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "arch_layers_all_same_num_entries",
+    "type": "behavioral",
+    "code": "proof fn phi_2_arch_layers_all_same_num_entries()\n    ensures\n        forall|i: int, j: int| 0 <= i < 4 && 0 <= j < 4 ==>\n            x86_arch_spec.layers[i].num_entries == x86_arch_spec.layers[j].num_entries,\n{\n}",
+    "reason": "All four layers have identical `num_entries` (512) \u2014 if different layers should have different fan-outs, this uniformity could mask a missing architectural constraint",
+    "entailed": true,
+    "verus_output": "ression matches the\n      pattern specified by one of the quantifier's triggers.)\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__defs__x86_arch_exec/phi_2_arch_layers_all_same_num_entries.rs:95:9\n   |\n95 | /         forall|i: int, j: int| 0 <= i < 4 && 0 <= j < 4 ==>\n96 | |             x86_arch_spec.layers[i].num_entries == x86_arch_spec.layers[j].num_entries,\n   | |______________________________________________________________________________________^\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "arch_exec_view_roundtrip_layer_count",
+    "type": "logical",
+    "code": "proof fn phi_3_arch_exec_view_roundtrip_layer_count()\n    ensures\n        x86_arch_exec()@.layers.len() == 4,\n{\n}",
+    "reason": "The `ArchExec` uses a fixed `[ArchLayerExec; 4]` array \u2014 the view always has exactly 4 layers, preventing architectures with fewer page table levels (e.g., 3-level for 32-bit PAE)",
+    "entailed": false,
+    "verus_output": "error: cannot call function `phi_3_arch_exec_view_roundtrip_layer_count::x86_arch_exec` with mode exec\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__defs__x86_arch_exec/phi_3_arch_exec_view_roundtrip_layer_count.rs:95:9\n   |\n95 |         x86_arch_exec()@.layers.len() == 4,\n   |         ^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "entry_sizes_strictly_decreasing",
+    "type": "behavioral",
+    "code": "proof fn phi_4_entry_sizes_strictly_decreasing()\n    ensures\n        x86_arch_spec.layers[0].entry_size > x86_arch_spec.layers[1].entry_size,\n        x86_arch_spec.layers[1].entry_size > x86_arch_spec.layers[2].entry_size,\n        x86_arch_spec.layers[2].entry_size > x86_arch_spec.layers[3].entry_size,\n{\n}",
+    "reason": "Entry sizes are strictly decreasing from L0 to L3 \u2014 tests that the layer ordering matches the expected top-down hierarchy (L0=512G, L1=1G, L2=2M, L3=4K)",
+    "entailed": true,
+    "verus_output": "verification results:: 8 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "arch_exec_fixed_size_array",
+    "type": "boundary",
+    "code": "proof fn phi_5_arch_exec_fixed_size_array(ae: ArchExec)\n    ensures\n        ae@.layers.len() == 4,\n{\n}",
+    "reason": "`ArchExec` uses `[ArchLayerExec; 4]` so every `ArchExec` instance always has exactly 4 layers \u2014 prevents representing 5-level paging (LA57) or non-standard page table depths",
+    "entailed": true,
+    "verus_output": "verification results:: 8 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

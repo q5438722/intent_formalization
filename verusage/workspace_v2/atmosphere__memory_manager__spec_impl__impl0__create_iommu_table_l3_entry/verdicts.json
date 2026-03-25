@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "no_mapping_infer_trivial_from_empty",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "An empty page table has all mappings equal to empty maps, so no virtual address maps to any physical address. Deriving `page_not_mapped(p)` for any `p` is the correct and expected consequence \u2014 `page_not_mapped` only checks the ghost mapping fields, which is exactly what `is_empty` clears."
+  },
+  {
+    "phi": "root_table_wf_no_resolve_constraint",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The ensures is `true` (trivially valid), but the real issue it highlights is genuine: all the invariants in `root_table_wf` linking `resolve` results to valid IOids and active IOMMU tables are commented out. This means the spec allows a resolved PCI device to reference an out-of-range or freed IOid with no constraint."
+  },
+  {
+    "phi": "create_l2_no_pcid_mapping_isolation",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The ensures clause is a tautology (`x == x`), proving nothing about isolation. The concern about IOMMU/process page tables mapping the same physical page is about data pages, not page table structure pages \u2014 `page_closure` disjointness and `pagetable_iommu_table_disjoint` handle structural page isolation, and shared data page mappings are an intentional DMA design pattern."
+  },
+  {
+    "phi": "root_table_cache_stale_none_allowed",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The ensures is `true`, making this trivially valid. The cache being allowed to have None entries when resolve returns Some is intentional \u2014 it's a lazy/on-demand cache where entries are populated as needed, not a mirror that must be kept in sync. The invariant correctly ensures that when a cache entry IS populated, it matches resolve."
+  }
+]

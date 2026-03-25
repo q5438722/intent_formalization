@@ -1,0 +1,81 @@
+===PHI_START===
+NAME: ptmem_view_external_body_unconstrained
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_ptmem_view_external_body_unconstrained(pt1: PTMem, pt2: PTMem)
+    requires
+        pt1.mem !== pt2.mem,
+    ensures
+        pt1@ === pt2@,
+{
+}
+```
+REASON: `PTMem::view` is `external_body` with no postconditions — completely unspecified, so two PTMem instances with different underlying memory could have identical PTE views
+===PHI_END===
+
+===PHI_START===
+NAME: rl3_interp_external_body_unconstrained
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_rl3_interp_external_body_unconstrained(s1: crate::rl3::State, s2: crate::rl3::State)
+    requires
+        true,
+    ensures
+        s1.interp() === s2.interp(),
+{
+}
+```
+REASON: `rl3::State::interp` is `external_body` closed spec — completely opaque with no postconditions, so any two rl3 states could have identical rl2 interpretations
+===PHI_END===
+
+===PHI_START===
+NAME: extra_mappings_external_body_unconstrained
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_extra_mappings_external_body_unconstrained(s: crate::os::State)
+    requires
+        true,
+    ensures
+        s.extra_mappings() === Map::empty(),
+{
+}
+```
+REASON: `extra_mappings` is `external_body` with no specification — the SMT solver could assume it's always empty, silently dropping pending map/unmap state
+===PHI_END===
+
+===PHI_START===
+NAME: write_does_not_change_view
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_write_does_not_change_view(pt: PTMem, addr: usize, value: usize)
+    requires
+        true,
+    ensures
+        pt.write(addr, value)@ === pt@,
+{
+}
+```
+REASON: Since `PTMem::view` is `external_body` with no connection to `mem`, writes to page table memory may have no observable effect on the PTE interpretation
+===PHI_END===
+
+===PHI_START===
+NAME: applied_mappings_union_prefer_right_shadows_extra
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_applied_mappings_union_prefer_right_shadows_extra(s: crate::os::State, base: nat, pte: PTE)
+    requires
+        s.extra_mappings().contains_pair(base, pte),
+        s.interp_pt_mem().dom().contains(base),
+    ensures
+        s.applied_mappings()[base] == s.interp_pt_mem()[base],
+        s.applied_mappings()[base] !== pte || pte == s.interp_pt_mem()[base],
+{
+}
+```
+REASON: `union_prefer_right` means `interp_pt_mem` always shadows `extra_mappings` at overlapping keys — extra_mappings entries at conflicting bases are silently dropped
+===PHI_END===

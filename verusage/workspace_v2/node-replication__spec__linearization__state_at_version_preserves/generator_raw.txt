@@ -1,0 +1,84 @@
+===PHI_START===
+NAME: push_preserves_prefix_state
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_push_preserves_prefix_state<DT: Dispatch>(
+    a: Seq<DT::WriteOperation>,
+    x: DT::WriteOperation,
+    i: LogIdx,
+)
+    requires
+        i <= a.len(),
+    ensures
+        compute_nrstate_at_version::<DT>(a, i) == compute_nrstate_at_version::<DT>(a.push(x), i),
+{
+    state_at_version_preserves::<DT>(a, a.push(x), x, i);
+}
+```
+REASON: Appending an operation preserves state at all prior versions — the new operation is invisible to prefix computations
+===PHI_END===
+
+===PHI_START===
+NAME: version_zero_always_init
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_version_zero_always_init<DT: Dispatch>(log: Seq<DT::WriteOperation>)
+    ensures
+        compute_nrstate_at_version::<DT>(log, 0) == DT::init_spec(),
+{
+}
+```
+REASON: Version 0 always returns `init_spec()` regardless of log contents — the initial state is hardcoded
+===PHI_END===
+
+===PHI_START===
+NAME: single_op_state
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_single_op_state<DT: Dispatch>(op: DT::WriteOperation)
+    ensures
+        compute_nrstate_at_version::<DT>(Seq::empty().push(op), 1) == DT::dispatch_mut_spec(DT::init_spec(), op).0,
+{
+}
+```
+REASON: A single-element log at version 1 applies the op to init_spec — tests that the recursion unfolds correctly for the minimal non-trivial case
+===PHI_END===
+
+===PHI_START===
+NAME: dispatch_mut_spec_unconstrained
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_dispatch_mut_spec_unconstrained<DT: Dispatch>(
+    a: Seq<DT::WriteOperation>,
+    op: DT::WriteOperation,
+)
+    requires
+        a.len() == 0,
+    ensures ({
+        let log = a.push(op);
+        let (new_state, _resp) = DT::dispatch_mut_spec(DT::init_spec(), op);
+        compute_nrstate_at_version::<DT>(log, 1) == new_state
+    }),
+{
+}
+```
+REASON: `dispatch_mut_spec` is a trait method with no constraints — any implementation can define arbitrary state transitions, and the spec blindly trusts it
+===PHI_END===
+
+===PHI_START===
+NAME: refinement_proof_phantom
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_refinement_proof_phantom()
+    ensures
+        exists|p: RefinementProof| true,
+{
+}
+```
+REASON: `RefinementProof` is a unit-like tracked struct — its existence is unconditionally provable, meaning the refinement witness carries no actual proof content
+===PHI_END===

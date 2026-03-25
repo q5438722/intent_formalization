@@ -1,0 +1,98 @@
+===PHI_START===
+NAME: get_proc_container_dom_without_full_wf
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_get_proc_container_dom_without_full_wf(pm: ProcessManager, proc_ptr: ProcPtr)
+    requires
+        pm.proc_perms_wf(),
+        pm.process_fields_wf(),
+        pm.proc_dom().contains(proc_ptr),
+        !pm.wf(),
+    ensures
+        pm.container_dom().contains(pm.get_proc(proc_ptr).owning_container),
+{
+}
+```
+REASON: `get_proc`'s external_body ensures `self.wf() ==> container_dom.contains(ret.owning_container)` — but without full `wf()`, the SMT solver might still derive this from the weaker preconditions, leaking a conclusion that should only hold under full well-formedness
+===PHI_END===
+
+===PHI_START===
+NAME: owned_cpus_shared_across_containers
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_owned_cpus_shared_across_containers(pm: ProcessManager, c1: ContainerPtr, c2: ContainerPtr, cpu: CpuId)
+    requires
+        pm.container_perms_wf(),
+        pm.container_cpu_wf(),
+        pm.container_fields_wf(),
+        pm.container_dom().contains(c1),
+        pm.container_dom().contains(c2),
+        c1 != c2,
+        pm.get_container(c1).owned_cpus@.contains(cpu),
+    ensures
+        !pm.get_container(c2).owned_cpus@.contains(cpu),
+{
+}
+```
+REASON: `container_cpu_wf` establishes a bijection between `owned_cpus` and `cpu_list[].owning_container`, but if `owned_cpus` is a Ghost field without an explicit disjointness predicate, two containers could claim the same CPU
+===PHI_END===
+
+===PHI_START===
+NAME: inactive_cpu_owning_container_unconstrained
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_inactive_cpu_owning_container_unconstrained(pm: ProcessManager, cpu_i: CpuId)
+    requires
+        pm.cpus_wf(),
+        pm.container_cpu_wf(),
+        pm.container_perms_wf(),
+        0 <= cpu_i < NUM_CPUS,
+        pm.cpu_list@[cpu_i as int].active == false,
+    ensures
+        pm.container_dom().contains(pm.cpu_list@[cpu_i as int].owning_container),
+{
+}
+```
+REASON: `container_cpu_wf` requires every CPU's `owning_container` to be in `container_dom` regardless of whether the CPU is active — an inactive CPU should arguably not need a valid owning container
+===PHI_END===
+
+===PHI_START===
+NAME: scheduler_thread_not_in_thread_dom
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_scheduler_thread_not_in_thread_dom(pm: ProcessManager, c_ptr: ContainerPtr, i: int)
+    requires
+        pm.container_perms_wf(),
+        pm.container_fields_wf(),
+        pm.container_dom().contains(c_ptr),
+        0 <= i < pm.get_container(c_ptr).scheduler@.len(),
+    ensures
+        pm.thread_dom().contains(pm.get_container(c_ptr).scheduler@[i]),
+{
+}
+```
+REASON: The `scheduler` StaticLinkedList contains ThreadPtrs, but neither `container_fields_wf` nor `container_tree_wf` constrains that scheduler entries are in `thread_dom` — stale or invalid thread pointers could appear in the scheduler
+===PHI_END===
+
+===PHI_START===
+NAME: owned_threads_not_subset_thread_dom
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_owned_threads_not_subset_thread_dom(pm: ProcessManager, c_ptr: ContainerPtr, t: ThreadPtr)
+    requires
+        pm.container_perms_wf(),
+        pm.container_fields_wf(),
+        pm.container_dom().contains(c_ptr),
+        pm.get_container(c_ptr).owned_threads@.contains(t),
+    ensures
+        pm.thread_dom().contains(t),
+{
+}
+```
+REASON: Container's `owned_threads` is a Ghost<Set<ThreadPtr>> with no predicate constraining it to be a subset of `thread_dom` — a container could claim ownership of thread pointers that don't exist in the thread permissions map
+===PHI_END===

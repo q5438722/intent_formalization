@@ -1,0 +1,85 @@
+===PHI_START===
+NAME: align_exceeds_input
+TARGET_FN: align_to_usize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_align_exceeds_input(a: usize, b: usize)
+    requires
+        b > 0,
+    ensures
+        align_to_usize(a, b) > a,
+{
+}
+```
+REASON: Aligning down should never produce a value strictly greater than the original input
+===PHI_END===
+
+===PHI_START===
+NAME: align_identity_broken
+TARGET_FN: align_to_usize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_align_identity_broken(a: usize)
+    requires
+        a < usize::MAX,
+    ensures
+        align_to_usize(a, 1) != a,
+{
+}
+```
+REASON: Aligning to a 1-byte boundary should be the identity operation for any input
+===PHI_END===
+
+===PHI_START===
+NAME: zero_not_aligned
+TARGET_FN: aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_zero_not_aligned(b: usize)
+    requires
+        b > 0,
+    ensures
+        !aligned(0 as nat, b as nat),
+{
+}
+```
+REASON: Zero is divisible by every positive number and should always be considered aligned
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_not_fixpoint
+TARGET_FN: align_to_usize
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_aligned_not_fixpoint(a: usize, b: usize)
+    requires
+        b > 0,
+        aligned(a as nat, b as nat),
+    ensures
+        align_to_usize(a, b) != a,
+{
+}
+```
+REASON: If an address is already aligned, align_to_usize should return it unchanged
+===PHI_END===
+
+===PHI_START===
+NAME: align_result_not_aligned
+TARGET_FN: aligned
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_align_result_not_aligned(a: usize, b: usize)
+    requires
+        b > 0,
+    ensures
+        !aligned(align_to_usize(a, b) as nat, b as nat),
+{
+}
+```
+REASON: The result of align_to_usize must itself be aligned to the given boundary
+===PHI_END===

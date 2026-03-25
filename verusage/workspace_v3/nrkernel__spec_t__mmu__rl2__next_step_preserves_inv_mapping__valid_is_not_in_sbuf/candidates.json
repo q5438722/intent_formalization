@@ -1,0 +1,37 @@
+[
+  {
+    "name": "align_exceeds_input",
+    "target_fn": "align_to_usize",
+    "type": "behavioral",
+    "code": "proof fn phi_1_align_exceeds_input(a: usize, b: usize)\n    requires\n        b > 0,\n    ensures\n        align_to_usize(a, b) > a,\n{\n}",
+    "reason": "Alignment rounds down, so the result must never exceed the input"
+  },
+  {
+    "name": "align_always_zero",
+    "target_fn": "align_to_usize",
+    "type": "boundary",
+    "code": "proof fn phi_2_align_always_zero(a: usize, b: usize)\n    requires\n        b > 0,\n        a > 0,\n    ensures\n        align_to_usize(a, b) == 0usize,\n{\n}",
+    "reason": "A trivially-zero alignment function would satisfy divisibility but discard address information"
+  },
+  {
+    "name": "align_identity_when_unaligned",
+    "target_fn": "align_to_usize",
+    "type": "logical",
+    "code": "proof fn phi_3_align_identity_when_unaligned(a: usize, b: usize)\n    requires\n        b > 1,\n        a as nat % b as nat != 0,\n    ensures\n        align_to_usize(a, b) == a,\n{\n}",
+    "reason": "When the input is not aligned, the result must differ from the input; identity here means no rounding occurred"
+  },
+  {
+    "name": "aligned_implies_zero",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "code": "proof fn phi_4_aligned_implies_zero(addr: nat, size: nat)\n    requires\n        size > 0,\n        aligned(addr, size),\n    ensures\n        addr == 0nat,\n{\n}",
+    "reason": "Many non-zero addresses are aligned; if only zero satisfies alignment the spec is degenerate"
+  },
+  {
+    "name": "aligned_false_compose",
+    "target_fn": "aligned",
+    "type": "logical",
+    "code": "proof fn phi_5_aligned_false_compose(a: nat, b: nat, c: nat)\n    requires\n        b > 1,\n        c > 1,\n        aligned(a, b),\n        aligned(a, c),\n    ensures\n        aligned(a, b * c),\n{\n}",
+    "reason": "Alignment to b and c individually does not imply alignment to b*c (e.g. 12 is aligned to 4 and 6 but not 24)"
+  }
+]

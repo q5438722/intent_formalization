@@ -1,0 +1,47 @@
+[
+  {
+    "name": "owned_threads_shared_across_containers",
+    "type": "logical",
+    "code": "proof fn phi_1_owned_threads_shared_across_containers(pm: ProcessManager, c1: ContainerPtr, c2: ContainerPtr, t: ThreadPtr)\n    requires\n        pm.container_perms_wf(),\n        pm.container_tree_wf(),\n        pm.container_dom().contains(c1),\n        pm.container_dom().contains(c2),\n        c1 != c2,\n        pm.get_container(c1).owned_threads@.contains(t),\n    ensures\n        !pm.get_container(c2).owned_threads@.contains(t),\n{\n}",
+    "reason": "The `owned_threads` Ghost field has no cross-container disjointness constraint \u2014 two distinct containers could claim ownership of the same thread simultaneously",
+    "entailed": false,
+    "verus_output": "phi_1_owned_threads_shared_across_containers(pm: ProcessManager, c1: ContainerPtr, c2: ContainerPtr, t: ThreadPtr)\n     |       --------------------------------------------------------------------------------------------------------------------- at the end of the function body\n...\n1770 |         !pm.get_container(c2).owned_threads@.contains(t),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 23 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "owned_endpoints_shared_across_containers",
+    "type": "logical",
+    "code": "proof fn phi_2_owned_endpoints_shared_across_containers(pm: ProcessManager, c1: ContainerPtr, c2: ContainerPtr, e: EndpointPtr)\n    requires\n        pm.container_perms_wf(),\n        pm.container_tree_wf(),\n        pm.container_dom().contains(c1),\n        pm.container_dom().contains(c2),\n        c1 != c2,\n        pm.get_container(c1).owned_endpoints@.contains(e),\n    ensures\n        !pm.get_container(c2).owned_endpoints@.contains(e),\n{\n}",
+    "reason": "The `owned_endpoints` Ghost field lacks any disjointness predicate across containers, allowing the same endpoint to appear in multiple containers' ownership sets",
+    "entailed": false,
+    "verus_output": "endpoints_shared_across_containers(pm: ProcessManager, c1: ContainerPtr, c2: ContainerPtr, e: EndpointPtr)\n     |       ------------------------------------------------------------------------------------------------------------------------- at the end of the function body\n...\n1770 |         !pm.get_container(c2).owned_endpoints@.contains(e),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 23 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "thread_running_cpu_container_mismatch",
+    "type": "behavioral",
+    "code": "proof fn phi_3_thread_running_cpu_container_mismatch(pm: ProcessManager, t_ptr: ThreadPtr, cpu_i: CpuId)\n    requires\n        pm.cpus_wf(),\n        pm.threads_cpu_wf(),\n        pm.container_perms_wf(),\n        pm.container_cpu_wf(),\n        pm.thread_dom().contains(t_ptr),\n        pm.get_thread(t_ptr).state == ThreadState::RUNNING,\n        pm.get_thread(t_ptr).running_cpu == Some(cpu_i),\n        0 <= cpu_i < NUM_CPUS,\n    ensures\n        pm.cpu_list@[cpu_i as int].owning_container == pm.get_thread(t_ptr).owning_container,\n{\n}",
+    "reason": "A running thread's owning_container should match its CPU's owning_container \u2014 if this isn't entailed, a thread could run on a CPU belonging to a different container, breaking isolation",
+    "entailed": true,
+    "verus_output": " method `vstd::prelude::OptionAdditionalFns::is_None`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__impl_new_thread__impl0__new_thread/phi_3_thread_running_cpu_container_mismatch.rs:1731:35\n     |\n1731 |         ret.1@.value().error_code.is_None(),\n     |                                   ^^^^^^^\n\nwarning: 23 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "no_root_process_allows_owned_threads",
+    "type": "logical",
+    "code": "proof fn phi_4_no_root_process_allows_owned_threads(pm: ProcessManager, c_ptr: ContainerPtr)\n    requires\n        pm.container_perms_wf(),\n        pm.process_trees_wf(),\n        pm.container_dom().contains(c_ptr),\n        pm.get_container(c_ptr).root_process.is_None(),\n    ensures\n        pm.get_container(c_ptr).owned_threads@ =~= Set::<ThreadPtr>::empty(),\n{\n}",
+    "reason": "A container with no root process and zero owned_procs should not own any threads \u2014 but `process_trees_wf` only constrains `owned_procs.len() == 0`, leaving `owned_threads` Ghost field unconstrained",
+    "entailed": false,
+    "verus_output": "    |\n1761 | proof fn phi_4_no_root_process_allows_owned_threads(pm: ProcessManager, c_ptr: ContainerPtr)\n     |       -------------------------------------------------------------------------------------- at the end of the function body\n...\n1768 |         pm.get_container(c_ptr).owned_threads@ =~= Set::<ThreadPtr>::empty(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 24 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "get_proc_container_dom_without_full_wf",
+    "type": "logical",
+    "code": "proof fn phi_5_get_proc_container_dom_without_full_wf(pm: ProcessManager, proc_ptr: ProcPtr)\n    requires\n        pm.proc_perms_wf(),\n        pm.process_fields_wf(),\n        pm.proc_dom().contains(proc_ptr),\n        !pm.wf(),\n    ensures\n        pm.container_dom().contains(pm.get_proc(proc_ptr).owning_container),\n{\n}",
+    "reason": "`get_proc` external_body ensures `self.wf() ==> container_dom.contains(ret.owning_container)` \u2014 with only `proc_perms_wf + process_fields_wf` (not full wf), the container_dom membership is NOT guaranteed, yet SMT might derive it from leaked constraints",
+    "entailed": false,
+    "verus_output": "\n     |\n1761 | proof fn phi_5_get_proc_container_dom_without_full_wf(pm: ProcessManager, proc_ptr: ProcPtr)\n     |       -------------------------------------------------------------------------------------- at the end of the function body\n...\n1768 |         pm.container_dom().contains(pm.get_proc(proc_ptr).owning_container),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 23 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

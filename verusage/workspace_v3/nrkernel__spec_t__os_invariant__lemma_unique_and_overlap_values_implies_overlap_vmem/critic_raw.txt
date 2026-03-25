@@ -1,0 +1,10 @@
+===VERDICT_START===
+PHI: inv_allows_empty_arch
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The `Arch::inv()` spec function only requires `self.layers.len() <= X86_NUM_LAYERS` and a universally quantified condition over layers that is vacuously true when there are zero layers. This means a degenerate zero-layer architecture satisfies the invariant despite being unable to describe any address translation. The spec is too weak — it should require `0 < self.layers.len()`.
+===VERDICT_END===
+
+===SUMMARY===
+The single candidate property identifies a genuine spec weakness in `Arch::inv()`: the invariant lacks a lower bound on the number of layers, allowing a zero-layer architecture to trivially satisfy it. Since `Arch` and its invariant are used throughout the MMU specification to reason about page table structure and address translation, admitting a degenerate empty architecture could silently weaken downstream proofs that assume at least one translation layer exists. Adding `0 < self.layers.len()` (or even `self.layers.len() == X86_NUM_LAYERS` for the concrete x86 case) would close this gap.
+===END_SUMMARY===

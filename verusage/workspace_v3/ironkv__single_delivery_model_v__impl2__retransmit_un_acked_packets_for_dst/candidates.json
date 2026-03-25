@@ -1,0 +1,37 @@
+[
+  {
+    "name": "un_acked_always_empty",
+    "target_fn": "retransmit_un_acked_packets_for_dst",
+    "type": "behavioral",
+    "code": "proof fn phi_1_un_acked_always_empty(sd: CSingleDelivery, src: EndPoint, dst: EndPoint)\n    requires\n        sd.valid(),\n        src.abstractable(),\n        sd.send_state@.contains_key(dst@),\n    ensures\n        sd@.un_acked_messages_for_dest(src@, dst@) =~= Set::<Packet>::empty(),\n{\n}",
+    "reason": "If provable, retransmit_un_acked_packets_for_dst never adds any packets, making retransmission a no-op"
+  },
+  {
+    "name": "zero_count_nonempty",
+    "target_fn": "un_acked_messages_for_dest_up_to",
+    "type": "boundary",
+    "code": "proof fn phi_2_zero_count_nonempty(sd: CSingleDelivery, src: EndPoint, dst: EndPoint)\n    requires\n        sd.valid(),\n        src.abstractable(),\n        sd.send_state@.contains_key(dst@),\n    ensures\n        exists |p: Packet| sd@.un_acked_messages_for_dest_up_to(src@, dst@, 0 as nat).contains(p),\n{\n}",
+    "reason": "If provable, the zero-count prefix set is non-empty, indicating an off-by-one error in the set comprehension bound"
+  },
+  {
+    "name": "routing_src_equals_dst",
+    "target_fn": "un_acked_messages_for_dest",
+    "type": "logical",
+    "code": "proof fn phi_3_routing_src_equals_dst(sd: CSingleDelivery, src: EndPoint, dst: EndPoint, p: Packet)\n    requires\n        sd.valid(),\n        src.abstractable(),\n        sd.send_state@.contains_key(dst@),\n        sd@.un_acked_messages_for_dest(src@, dst@).contains(p),\n    ensures\n        p.src == p.dst,\n{\n}",
+    "reason": "If provable, every retransmitted packet is sent back to its own source, indicating a routing confusion between src and dst"
+  },
+  {
+    "name": "un_acked_at_most_singleton",
+    "target_fn": "retransmit_un_acked_packets_for_dst",
+    "type": "behavioral",
+    "code": "proof fn phi_4_un_acked_at_most_singleton(sd: CSingleDelivery, src: EndPoint, dst: EndPoint, p1: Packet, p2: Packet)\n    requires\n        sd.valid(),\n        src.abstractable(),\n        sd.send_state@.contains_key(dst@),\n        sd@.un_acked_messages_for_dest(src@, dst@).contains(p1),\n        sd@.un_acked_messages_for_dest(src@, dst@).contains(p2),\n    ensures\n        p1 == p2,\n{\n}",
+    "reason": "If provable, the un-acked set never contains more than one distinct packet, meaning batched retransmission is impossible"
+  },
+  {
+    "name": "count_increment_no_growth",
+    "target_fn": "un_acked_messages_for_dest_up_to",
+    "type": "boundary",
+    "code": "proof fn phi_5_count_increment_no_growth(sd: CSingleDelivery, src: EndPoint, dst: EndPoint, n: nat)\n    requires\n        sd.valid(),\n        src.abstractable(),\n        sd.send_state@.contains_key(dst@),\n        n < sd@.send_state[dst@].un_acked.len(),\n    ensures\n        sd@.un_acked_messages_for_dest_up_to(src@, dst@, n + 1) =~= sd@.un_acked_messages_for_dest_up_to(src@, dst@, n),\n{\n}",
+    "reason": "If provable, adding the next un-acked message to the prefix never enlarges the set, so accumulation of retransmit obligations is broken"
+  }
+]

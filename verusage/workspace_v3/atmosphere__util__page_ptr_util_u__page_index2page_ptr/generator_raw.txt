@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: nonzero_index_zero_result
+TARGET_FN: page_index2page_ptr
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_nonzero_index_zero_result(i: usize)
+    requires
+        0 < i < NUM_PAGES,
+    ensures
+        spec_page_index2page_ptr(i) == 0,
+{
+}
+```
+REASON: A nonzero page index mapping to pointer 0 would indicate arithmetic overflow or a collapsed mapping
+===PHI_END===
+
+===PHI_START===
+NAME: max_index_wraps_below_input
+TARGET_FN: page_index2page_ptr
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_max_index_wraps_below_input(i: usize)
+    requires
+        i == (NUM_PAGES - 1) as usize,
+    ensures
+        spec_page_index2page_ptr(i) < i,
+{
+}
+```
+REASON: At the maximum valid index the result wrapping below the index itself would indicate unsigned overflow in the multiplication
+===PHI_END===
+
+===PHI_START===
+NAME: non_injective_mapping
+TARGET_FN: page_index2page_ptr
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_non_injective_mapping(i: usize, j: usize)
+    requires
+        0 <= i < NUM_PAGES,
+        0 <= j < NUM_PAGES,
+        i != j,
+    ensures
+        spec_page_index2page_ptr(i) == spec_page_index2page_ptr(j),
+{
+}
+```
+REASON: Two distinct page indices producing the same pointer would make the mapping ambiguous and corrupt page identity
+===PHI_END===
+
+===PHI_START===
+NAME: result_exceeds_max_usize
+TARGET_FN: page_index2page_ptr
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_result_exceeds_max_usize(i: usize)
+    requires
+        0 <= i < NUM_PAGES,
+    ensures
+        spec_page_index2page_ptr(i) > MAX_USIZE as usize,
+{
+}
+```
+REASON: A page pointer exceeding the declared MAX_USIZE bound would violate the system's memory model invariant
+===PHI_END===
+
+===PHI_START===
+NAME: not_page_aligned
+TARGET_FN: page_index2page_ptr
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_not_page_aligned(i: usize)
+    requires
+        0 <= i < NUM_PAGES,
+    ensures
+        spec_page_index2page_ptr(i) % 4096 != 0,
+{
+}
+```
+REASON: A page pointer that is not 4096-aligned would violate the fundamental page-alignment invariant required by the memory subsystem
+===PHI_END===

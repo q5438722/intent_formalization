@@ -1,0 +1,47 @@
+[
+  {
+    "name": "compare_slice_reflexive",
+    "type": "behavioral",
+    "code": "proof fn phi_1_compare_slice_reflexive(x: Seq<u8>)\n    ensures\n        x =~= x,\n{\n}",
+    "reason": "Extensional equality should be reflexive \u2014 if it weren't, `compare_slice(x, x)` could return false",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "compare_slice_symmetric",
+    "type": "behavioral",
+    "code": "proof fn phi_2_compare_slice_symmetric(x: Seq<u8>, y: Seq<u8>)\n    requires\n        x =~= y,\n    ensures\n        y =~= x,\n{\n}",
+    "reason": "Extensional equality should be symmetric \u2014 if comparison were order-dependent, it would violate basic equality semantics",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "compare_slice_empty_equal",
+    "type": "boundary",
+    "code": "proof fn phi_3_compare_slice_empty_equal()\n    ensures\n        Seq::<u8>::empty() =~= Seq::<u8>::empty(),\n{\n}",
+    "reason": "Two empty slices should always compare equal \u2014 if the loop or length check mishandled zero-length inputs, this could fail",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "compare_slice_different_lengths_not_equal",
+    "type": "boundary",
+    "code": "proof fn phi_4_compare_slice_different_lengths_not_equal(x: Seq<u8>, y: Seq<u8>)\n    requires\n        x.len() != y.len(),\n    ensures\n        !(x =~= y),\n{\n}",
+    "reason": "Sequences of different lengths should never be extensionally equal \u2014 if `=~=` ignored length, the early return would be unsound",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "compare_slice_single_diff_not_equal",
+    "type": "behavioral",
+    "code": "proof fn phi_5_compare_slice_single_diff_not_equal(x: Seq<u8>, y: Seq<u8>, k: int)\n    requires\n        x.len() == y.len(),\n        0 <= k < x.len(),\n        x[k] != y[k],\n    ensures\n        !(x =~= y),\n{\n}",
+    "reason": "A single differing element should make the sequences unequal \u2014 if `=~=` were too coarse-grained, the element-wise comparison loop would be incorrect",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

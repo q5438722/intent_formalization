@@ -1,0 +1,37 @@
+[
+  {
+    "name": "start_always_zero",
+    "target_fn": "new",
+    "type": "behavioral",
+    "code": "proof fn phi_1_start_always_zero<Perm: CheckPermission<Seq<u8>>, PMRegion: PersistentMemoryRegion>(\n    result: WriteRestrictedPersistentMemorySubregion,\n    wrpm: &WriteRestrictedPersistentMemoryRegion<Perm, PMRegion>,\n    perm: &Perm,\n    start: u64,\n    len: nat,\n    is_writable_absolute_addr_fn: spec_fn(int) -> bool,\n)\n    requires\n        wrpm.inv(),\n        start + len <= wrpm@.len() <= u64::MAX,\n        result.inv(wrpm, perm),\n        result.constants() == wrpm.constants(),\n        result.start() == start,\n        result.len() == len,\n        result.initial_region_view() == wrpm@,\n        result.is_writable_absolute_addr_fn() == is_writable_absolute_addr_fn,\n        result.view(wrpm) == get_subregion_view(wrpm@, start as nat, len),\n    ensures\n        result.start() == 0,\n{\n}",
+    "reason": "Would mean the subregion is always anchored at offset 0, ignoring the caller-supplied start position"
+  },
+  {
+    "name": "view_always_empty",
+    "target_fn": "new",
+    "type": "boundary",
+    "code": "proof fn phi_2_view_always_empty<Perm: CheckPermission<Seq<u8>>, PMRegion: PersistentMemoryRegion>(\n    result: WriteRestrictedPersistentMemorySubregion,\n    wrpm: &WriteRestrictedPersistentMemoryRegion<Perm, PMRegion>,\n    perm: &Perm,\n    start: u64,\n    len: nat,\n    is_writable_absolute_addr_fn: spec_fn(int) -> bool,\n)\n    requires\n        wrpm.inv(),\n        start + len <= wrpm@.len() <= u64::MAX,\n        len > 0,\n        result.inv(wrpm, perm),\n        result.len() == len,\n        result.view(wrpm) == get_subregion_view(wrpm@, start as nat, len),\n    ensures\n        result.view(wrpm).len() == 0,\n{\n}",
+    "reason": "Would mean even a positively-sized subregion yields an empty view, making all reads vacuous"
+  },
+  {
+    "name": "subregion_equals_full_region",
+    "target_fn": "new",
+    "type": "logical",
+    "code": "proof fn phi_3_subregion_equals_full_region<Perm: CheckPermission<Seq<u8>>, PMRegion: PersistentMemoryRegion>(\n    result: WriteRestrictedPersistentMemorySubregion,\n    wrpm: &WriteRestrictedPersistentMemoryRegion<Perm, PMRegion>,\n    perm: &Perm,\n    start: u64,\n    len: nat,\n    is_writable_absolute_addr_fn: spec_fn(int) -> bool,\n)\n    requires\n        wrpm.inv(),\n        start > 0,\n        len > 0,\n        start + len <= wrpm@.len() <= u64::MAX,\n        result.inv(wrpm, perm),\n        result.start() == start,\n        result.len() == len,\n        result.initial_region_view() == wrpm@,\n        result.view(wrpm) == get_subregion_view(wrpm@, start as nat, len),\n    ensures\n        result.view(wrpm).len() == wrpm@.len(),\n{\n}",
+    "reason": "Would mean the subregion view spans the entire region regardless of start/len, breaking memory isolation"
+  },
+  {
+    "name": "initial_view_equals_subregion_view_always",
+    "target_fn": "new",
+    "type": "behavioral",
+    "code": "proof fn phi_4_initial_view_equals_subregion_view_always<Perm: CheckPermission<Seq<u8>>, PMRegion: PersistentMemoryRegion>(\n    result: WriteRestrictedPersistentMemorySubregion,\n    wrpm: &WriteRestrictedPersistentMemoryRegion<Perm, PMRegion>,\n    perm: &Perm,\n    start: u64,\n    len: nat,\n    is_writable_absolute_addr_fn: spec_fn(int) -> bool,\n)\n    requires\n        wrpm.inv(),\n        start > 0,\n        start + len < wrpm@.len(),\n        wrpm@.len() <= u64::MAX,\n        result.inv(wrpm, perm),\n        result.start() == start,\n        result.len() == len,\n        result.initial_region_view() == wrpm@,\n        result.view(wrpm) == result.initial_subregion_view(),\n        result.view(wrpm) == get_subregion_view(wrpm@, start as nat, len),\n    ensures\n        result.initial_region_view().len() == result.len(),\n{\n}",
+    "reason": "Would mean the full region length always equals the subregion length, collapsing region/subregion distinction"
+  },
+  {
+    "name": "len_forced_zero",
+    "target_fn": "new",
+    "type": "boundary",
+    "code": "proof fn phi_5_len_forced_zero<Perm: CheckPermission<Seq<u8>>, PMRegion: PersistentMemoryRegion>(\n    result: WriteRestrictedPersistentMemorySubregion,\n    wrpm: &WriteRestrictedPersistentMemoryRegion<Perm, PMRegion>,\n    perm: &Perm,\n    start: u64,\n    len: nat,\n    is_writable_absolute_addr_fn: spec_fn(int) -> bool,\n)\n    requires\n        wrpm.inv(),\n        start + len <= wrpm@.len() <= u64::MAX,\n        result.inv(wrpm, perm),\n        result.constants() == wrpm.constants(),\n        result.start() == start,\n        result.len() == len,\n        result.initial_region_view() == wrpm@,\n        result.is_writable_absolute_addr_fn() == is_writable_absolute_addr_fn,\n        result.view(wrpm) == get_subregion_view(wrpm@, start as nat, len),\n        forall|alt_region_view: PersistentMemoryRegionView, alt_crash_state: Seq<u8>|\n            {\n                &&& #[trigger] alt_region_view.can_crash_as(alt_crash_state)\n                &&& wrpm@.len() == alt_region_view.len()\n                &&& views_differ_only_where_subregion_allows(\n                    wrpm@, alt_region_view, start as nat, len, is_writable_absolute_addr_fn,\n                )\n            } ==> perm.check_permission(alt_crash_state),\n    ensures\n        len == 0,\n{\n}",
+    "reason": "Would mean the preconditions are only satisfiable for zero-length subregions, making the constructor useless for real allocations"
+  }
+]

@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "owned_threads_shared_across_containers",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "Neither `container_perms_wf` nor `container_tree_wf` constrains `owned_threads` at all. The preconditions are simultaneously satisfiable, and the ensures confirms two distinct containers can own the same thread, violating the unique ownership model described in the code comments."
+  },
+  {
+    "phi": "new_container_inherits_parent_owned_threads",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "The ensures merely restates a precondition, but the real finding is that `new_container_ensures` never requires `new_container_perms[new_container_ptr].value().owned_threads@ =~= Set::empty()`. A freshly created container should start with no owned threads, yet the spec permits arbitrary thread sets."
+  },
+  {
+    "phi": "new_container_preserve_inv_1_external_body",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "All seven `new_container_preserve_tree_inv_*` lemmas are `external_body`, meaning the entire proof that container creation preserves `container_tree_wf` is axiomatically assumed. While the postconditions are likely correct given the detailed `new_container_ensures` preconditions, this is a real soundness gap \u2014 any bug in the specification of `new_container_ensures` would go undetected."
+  },
+  {
+    "phi": "scheduler_contains_non_owned_thread",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "The spec never relates `scheduler` contents to `owned_threads`. A container can schedule threads it doesn't own, breaking the containment model where only owned threads should be schedulable by a container."
+  },
+  {
+    "phi": "owned_procs_shared_across_containers",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "Neither `container_perms_wf` nor `container_tree_wf` constrains `owned_procs` beyond requiring `children.wf()` and `children.unique()`. The same process can appear in two distinct containers' `owned_procs` lists, violating the single-parent ownership model for processes."
+  }
+]

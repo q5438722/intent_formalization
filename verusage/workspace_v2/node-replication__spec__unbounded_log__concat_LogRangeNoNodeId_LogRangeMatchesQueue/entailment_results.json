@@ -1,0 +1,47 @@
+[
+  {
+    "name": "no_node_id_empty_range",
+    "type": "boundary",
+    "code": "proof fn phi_1_no_node_id_empty_range<DT: Dispatch>(\n    log: Map<LogIdx, LogEntry<DT>>,\n    idx: LogIdx,\n    node_id: NodeId,\n)\n    ensures\n        LogRangeNoNodeId::<DT>(log, idx, idx, node_id),\n{\n}",
+    "reason": "An empty range `[idx, idx)` vacuously satisfies `LogRangeNoNodeId` \u2014 tests that the base case holds regardless of log contents",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "concat_no_node_extends_match",
+    "type": "behavioral",
+    "code": "proof fn phi_2_concat_no_node_extends_match<DT: Dispatch>(\n    queue: Seq<ReqId>,\n    log: Map<LogIdx, LogEntry<DT>>,\n    nodeId: NodeId,\n    updates: Map<ReqId, UpdateState<DT>>,\n    a: LogIdx,\n    b: LogIdx,\n    c: LogIdx,\n)\n    requires\n        a <= b <= c,\n        LogRangeNoNodeId(log, a, b, nodeId),\n        LogRangeMatchesQueue(queue, log, 0, b, c, nodeId, updates),\n    ensures\n        LogRangeMatchesQueue(queue, log, 0, a, c, nodeId, updates),\n{\n    concat_LogRangeNoNodeId_LogRangeMatchesQueue(queue, log, 0, a, b, c, nodeId, updates);\n}",
+    "reason": "Prepending a no-node-id range to a matching range extends the match \u2014 tests that remote-only log entries can be freely prepended",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "all_remote_empty_queue",
+    "type": "behavioral",
+    "code": "proof fn phi_3_all_remote_empty_queue<DT: Dispatch>(\n    log: Map<LogIdx, LogEntry<DT>>,\n    nodeId: NodeId,\n    updates: Map<ReqId, UpdateState<DT>>,\n    start: LogIdx,\n    end: LogIdx,\n)\n    requires\n        start <= end,\n        LogRangeNoNodeId(log, start, end, nodeId),\n    ensures\n        LogRangeMatchesQueue(Seq::<ReqId>::empty(), log, 0, start, end, nodeId, updates),\n{\n    concat_LogRangeNoNodeId_LogRangeMatchesQueue(Seq::empty(), log, 0, start, end, end, nodeId, updates);\n}",
+    "reason": "A log range with no local entries matches an empty queue \u2014 tests that all-remote ranges require zero queue elements",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "no_node_id_single_entry",
+    "type": "behavioral",
+    "code": "proof fn phi_4_no_node_id_single_entry<DT: Dispatch>(\n    log: Map<LogIdx, LogEntry<DT>>,\n    idx: LogIdx,\n    nodeId: NodeId,\n    remoteId: NodeId,\n)\n    requires\n        log.contains_key(idx),\n        log[idx].node_id == remoteId,\n        remoteId != nodeId,\n    ensures\n        LogRangeNoNodeId::<DT>(log, idx, idx + 1, nodeId),\n{\n}",
+    "reason": "A single remote entry satisfies LogRangeNoNodeId \u2014 tests the one-element inductive case",
+    "entailed": false,
+    "verus_output": "o_node_id_single_entry.rs:167:9\n    |\n156 |   proof fn phi_4_no_node_id_single_entry<DT: Dispatch>(\n    |  _______-\n157 | |     log: Map<LogIdx, LogEntry<DT>>,\n158 | |     idx: LogIdx,\n159 | |     nodeId: NodeId,\n160 | |     remoteId: NodeId,\n161 | | )\n    | |_- at the end of the function body\n...\n167 |           LogRangeNoNodeId::<DT>(log, idx, idx + 1, nodeId),\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "no_node_id_ignores_extra_keys",
+    "type": "logical",
+    "code": "proof fn phi_5_no_node_id_ignores_extra_keys<DT: Dispatch>(\n    log: Map<LogIdx, LogEntry<DT>>,\n    extra_entry: LogEntry<DT>,\n    start: LogIdx,\n    end: LogIdx,\n    extra_idx: LogIdx,\n    nodeId: NodeId,\n)\n    requires\n        start <= end,\n        extra_idx >= end,\n        LogRangeNoNodeId(log, start, end, nodeId),\n    ensures\n        LogRangeNoNodeId(log.insert(extra_idx, extra_entry), start, end, nodeId),\n    decreases end - start,\n{\n    if start < end {\n        phi_5_no_node_id_ignores_extra_keys(log, extra_entry, start + 1, end, extra_idx, nodeId);\n    }\n}",
+    "reason": "Inserting a log entry at or beyond `end` doesn't affect `LogRangeNoNodeId` \u2014 tests that the predicate is insensitive to out-of-range mutations",
+    "entailed": true,
+    "verus_output": "verification results:: 4 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

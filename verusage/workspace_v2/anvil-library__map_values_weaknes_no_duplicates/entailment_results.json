@@ -1,0 +1,47 @@
+[
+  {
+    "name": "map_injective_preserves_no_dup",
+    "type": "logical",
+    "code": "proof fn phi_1_map_injective_preserves_no_dup(s: Seq<int>, map: spec_fn(int) -> int)\n    requires\n        s.no_duplicates(),\n        forall |x: int, y: int| x != y ==> map(x) != map(y),\n    ensures\n        s.map_values(map).no_duplicates(),\n{\n}",
+    "reason": "injective map should preserve no_duplicates \u2014 tests the converse direction not proven by the lemma",
+    "entailed": false,
+    "verus_output": "error: Could not automatically infer triggers for this quantifier.  Use #[trigger] annotations to manually mark trigger terms instead.\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-library__map_values_weaknes_no_duplicates/phi_1_map_injective_preserves_no_dup.rs:26:9\n   |\n26 |         forall |x: int, y: int| x != y ==> map(x) != map(y),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "empty_seq_no_duplicates",
+    "type": "boundary",
+    "code": "proof fn phi_2_empty_seq_no_duplicates(map: spec_fn(int) -> int)\n    ensures\n        Seq::<int>::empty().map_values(map).no_duplicates(),\n{\n}",
+    "reason": "empty sequence trivially has no duplicates \u2014 boundary test for vacuous quantifier handling",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "singleton_no_duplicates",
+    "type": "boundary",
+    "code": "proof fn phi_3_singleton_no_duplicates(v: int, map: spec_fn(int) -> int)\n    ensures\n        seq![v].map_values(map).no_duplicates(),\n{\n}",
+    "reason": "singleton mapped sequence trivially has no duplicates \u2014 tests minimal nontrivial case",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "mapped_len_equals_original_len",
+    "type": "behavioral",
+    "code": "proof fn phi_4_mapped_len_equals_original_len(s: Seq<int>, map: spec_fn(int) -> int)\n    ensures\n        s.map_values(map).len() == s.len(),\n{\n}",
+    "reason": "map_values should preserve length \u2014 if it doesn't, the index-based proof in the lemma could be reasoning over misaligned indices",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "non_injective_map_loses_no_dup",
+    "type": "behavioral",
+    "code": "proof fn phi_5_non_injective_map_loses_no_dup(v1: int, v2: int)\n    requires\n        v1 != v2,\n    ensures\n        !seq![v1, v2].map_values(|x: int| 0int).no_duplicates(),\n{\n}",
+    "reason": "constant map on distinct elements should produce duplicates \u2014 if this fails, map_values or no_duplicates is broken",
+    "entailed": false,
+    "verus_output": "erusage/workspace_v2/anvil-library__map_values_weaknes_no_duplicates/phi_5_non_injective_map_loses_no_dup.rs:27:9\n   |\n23 | proof fn phi_5_non_injective_map_loses_no_dup(v1: int, v2: int)\n   |       --------------------------------------------------------- at the end of the function body\n...\n27 |         !seq![v1, v2].map_values(|x: int| 0int).no_duplicates(),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

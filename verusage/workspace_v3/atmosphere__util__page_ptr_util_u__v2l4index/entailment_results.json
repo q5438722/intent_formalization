@@ -1,0 +1,52 @@
+[
+  {
+    "name": "always_minimum_index",
+    "target_fn": "v2l4index",
+    "type": "behavioral",
+    "reason": "If provable, the L4 index is always 1 and the function is degenerate, unable to address multiple L4 page-table entries.",
+    "entailed": false,
+    "verified": 6,
+    "errors": 1,
+    "output_tail": "s_minimum_index(va: usize)\n   |       ---------------------------------------- at the end of the function body\n...\n90 |         spec_v2l4index(va) == KERNEL_MEM_END_L4INDEX,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "upper_bound_unreachable",
+    "target_fn": "v2l4index",
+    "type": "boundary",
+    "reason": "If provable, the maximum L4 index 0x1ff is unreachable, meaning the ensures upper bound is vacuously loose and the top page-table slot is inaccessible.",
+    "entailed": false,
+    "verified": 6,
+    "errors": 1,
+    "output_tail": "   |\n86 | proof fn phi_2_upper_bound_unreachable(va: usize)\n   |       ------------------------------------------- at the end of the function body\n...\n90 |         spec_v2l4index(va) < 0x1ff,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "lower_bound_unreachable",
+    "target_fn": "v2l4index",
+    "type": "boundary",
+    "reason": "If provable, the lower bound KERNEL_MEM_END_L4INDEX is never actually achieved, making the ensures lower bound vacuously loose.",
+    "entailed": false,
+    "verified": 6,
+    "errors": 1,
+    "output_tail": "nd_unreachable(va: usize)\n   |       ------------------------------------------- at the end of the function body\n...\n90 |         spec_v2l4index(va) > KERNEL_MEM_END_L4INDEX,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "result_always_even",
+    "target_fn": "v2l4index",
+    "type": "logical",
+    "reason": "If provable, odd L4 indices are unreachable, halving the effective address space coverage of the page table.",
+    "entailed": false,
+    "verified": 6,
+    "errors": 1,
+    "output_tail": "rs:90:9\n   |\n86 | proof fn phi_4_result_always_even(va: usize)\n   |       -------------------------------------- at the end of the function body\n...\n90 |         spec_v2l4index(va) % 2 == 0,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "injective_on_valid_addresses",
+    "target_fn": "v2l4index",
+    "type": "logical",
+    "reason": "If provable, every distinct valid VA maps to a distinct L4 index, meaning each index covers at most one address \u2014 contradicting the purpose of page-table indexing which groups many addresses under one entry.",
+    "entailed": false,
+    "verified": 6,
+    "errors": 1,
+    "output_tail": "2: usize)\n   |       ------------------------------------------------------------- at the end of the function body\n...\n92 |         spec_v2l4index(va1) != spec_v2l4index(va2),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

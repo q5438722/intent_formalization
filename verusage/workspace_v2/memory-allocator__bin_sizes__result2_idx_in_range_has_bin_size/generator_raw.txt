@@ -1,0 +1,79 @@
+===PHI_START===
+NAME: size_of_bin_external_body_unconstrained
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_size_of_bin_external_body_unconstrained()
+    ensures
+        size_of_bin(1) == size_of_bin(1),
+{
+}
+```
+REASON: `size_of_bin` is `external_body` with no axioms — its return value is completely uninterpreted, so `pfd_lower`, `pfd_upper`, and the entire bin-fitting pipeline have no concrete meaning
+===PHI_END===
+
+===PHI_START===
+NAME: smallest_bin_wsize1_is_bin1
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_smallest_bin_wsize1_is_bin1()
+    ensures
+        smallest_bin_fitting_size(0) == 1,
+        smallest_bin_fitting_size(1) == 1,
+        smallest_bin_fitting_size(8) == 1,
+{
+}
+```
+REASON: `smallest_bin_fitting_size` maps all sizes 0–8 to bin 1 because `wsize = (size + 7) / 8` yields wsize ≤ 1 for size ≤ 8 — bins 2–8 (wsize 2–8 range) are unreachable for byte sizes ≤ 8, potentially misallocating small objects
+===PHI_END===
+
+===PHI_START===
+NAME: pow2_negative_is_one
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_pow2_negative_is_one(e: int)
+    requires
+        e < 0,
+    ensures
+        pow2(e) == 1,
+{
+}
+```
+REASON: `pow2` returns 1 for all negative exponents — mathematically 2^(-n) is a fraction, so callers passing negative exponents by mistake silently get 1
+===PHI_END===
+
+===PHI_START===
+NAME: result_idx_external_body_trusted
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_result_idx_external_body_trusted(bin_idx: int, wsize: int)
+    requires
+        valid_bin_idx(bin_idx),
+        pfd_lower(bin_idx) <= wsize <= pfd_upper(bin_idx),
+        check_idx_in_range_has_bin_size(bin_idx, wsize, wsize + 1),
+    ensures
+        smallest_bin_fitting_size(wsize * INTPTR_SIZE) == bin_idx,
+{
+    result_idx_in_range_has_bin_size(bin_idx, wsize, wsize + 1);
+}
+```
+REASON: `result_idx_in_range_has_bin_size` is `external_body` — the inductive unrolling lemma that connects `check_idx_in_range_has_bin_size` to the universally quantified property is trusted without proof, so the entire bin-fitting correctness chain rests on an unverified assumption
+===PHI_END===
+
+===PHI_START===
+NAME: smallest_bin_huge_boundary
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_smallest_bin_huge_boundary()
+    ensures
+        smallest_bin_fitting_size(524288 * 8 + 1) == BIN_HUGE as int,
+        smallest_bin_fitting_size(524288 * 8) != BIN_HUGE as int,
+{
+}
+```
+REASON: The boundary between the computed bin path and BIN_HUGE is at wsize > 524288 (strict), so wsize == 524288 (size == 4194304) takes the complex computation path rather than mapping to BIN_HUGE — off-by-one could cause the largest non-huge size to get an incorrect bin index
+===PHI_END===

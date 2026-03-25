@@ -1,0 +1,47 @@
+[
+  {
+    "name": "pde_directory_addr_masked",
+    "type": "behavioral",
+    "code": "proof fn phi_1_pde_directory_addr_masked(entry: usize, layer: nat)\n    requires\n        layer < 4,\n        entry & 1 == 1,\n        (PDE { entry, layer: Ghost(layer) })@ is Directory,\n    ensures\n        (PDE { entry, layer: Ghost(layer) })@->Directory_addr == (entry & MASK_ADDR) as usize,\n{\n}",
+    "reason": "Directory addresses should be extracted via `entry & MASK_ADDR` \u2014 tests that the address field extraction is consistent across all layers that produce Directory entries",
+    "entailed": true,
+    "verus_output": "` has been renamed to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__next_step_preserves_inv_unmapping/phi_1_pde_directory_addr_masked.rs:171:9\n    |\n171 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pde_layer1_page_uses_different_mask",
+    "type": "behavioral",
+    "code": "proof fn phi_2_pde_layer1_page_uses_different_mask(entry: usize)\n    requires\n        entry & 1 == 1,\n        (PDE { entry, layer: Ghost(1) }).all_mb0_bits_are_zero(),\n        (PDE { entry, layer: Ghost(1) })@ is Page,\n    ensures\n        (PDE { entry, layer: Ghost(1) })@->Page_addr == (entry & MASK_L1_PG_ADDR) as usize,\n{\n}",
+    "reason": "Layer 1 (PDPT) Page entries use `MASK_L1_PG_ADDR` (bits 30+) instead of `MASK_ADDR` (bits 12+) \u2014 if wrong, 1GB pages would have incorrect physical base addresses",
+    "entailed": true,
+    "verus_output": " renamed to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__next_step_preserves_inv_unmapping/phi_2_pde_layer1_page_uses_different_mask.rs:171:9\n    |\n171 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pt_walk_path_l0_entry_is_pde_view",
+    "type": "behavioral",
+    "code": "proof fn phi_3_pt_walk_path_l0_entry_is_pde_view(mem: PTMem, vaddr: usize)\n    ensures\n        mem.pt_walk(vaddr).path[0].1 == (PDE { entry: mem.read(add(mem.pml4, mul(l0_bits!(vaddr), WORD_SIZE))), layer: Ghost(0) })@,\n{\n}",
+    "reason": "The first path entry's GPDE should match PDE::view of the raw entry read from pml4 + l0_index*8 \u2014 tests that pt_walk correctly records the PDE interpretation at layer 0",
+    "entailed": true,
+    "verus_output": "en renamed to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__next_step_preserves_inv_unmapping/phi_3_pt_walk_path_l0_entry_is_pde_view.rs:171:9\n    |\n171 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "all_mb0_external_body_gates_all_present",
+    "type": "logical",
+    "code": "proof fn phi_4_all_mb0_external_body_gates_all_present(entry: usize, layer: nat)\n    requires\n        layer < 4,\n        entry & 1 == 1,\n        !(PDE { entry, layer: Ghost(layer) }).all_mb0_bits_are_zero(),\n    ensures\n        (PDE { entry, layer: Ghost(layer) })@ is Invalid,\n{\n}",
+    "reason": "When `all_mb0_bits_are_zero` returns false for a present entry, PDE::view falls through to Invalid \u2014 but since `all_mb0_bits_are_zero` is `external_body`, Verus cannot verify it actually checks the right bits, potentially misclassifying valid entries",
+    "entailed": true,
+    "verus_output": "amed to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__next_step_preserves_inv_unmapping/phi_4_all_mb0_external_body_gates_all_present.rs:171:9\n    |\n171 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "walk_path_len_bounded_1_to_4",
+    "type": "behavioral",
+    "code": "proof fn phi_5_walk_path_len_bounded_1_to_4(mem: PTMem, vaddr: usize)\n    ensures\n        1 <= mem.pt_walk(vaddr).path.len() <= 4,\n{\n}",
+    "reason": "The walk should always produce 1-4 path entries (L0 invalid \u2192 1, L0\u2192L1 invalid \u2192 2, etc.) \u2014 tests that no branch of pt_walk creates paths outside these bounds",
+    "entailed": true,
+    "verus_output": "as been renamed to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__next_step_preserves_inv_unmapping/phi_5_walk_path_len_bounded_1_to_4.rs:171:9\n    |\n171 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

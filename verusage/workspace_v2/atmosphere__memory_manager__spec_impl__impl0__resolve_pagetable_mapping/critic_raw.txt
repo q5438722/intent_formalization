@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: page_entry_to_map_entry_drops_present
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `spec_page_entry_to_map_entry` copies addr, write, and execute_disable but silently drops the present bit. A non-present page entry produces a MapEntry indistinguishable from a present one, which could mask bugs where non-present entries are accidentally used as valid mappings.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: is_empty_l4_dom_unbounded
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `is_empty` clears l3/l2/l1 domains and all mappings but never constrains `l4_table@.dom()`. An "empty" page table's `page_closure()` can contain arbitrary extra L4 pointers beyond cr3, potentially interfering with page ownership disjointness invariants.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: resolve_l4_returns_non_present_kernel
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `spec_resolve_mapping_l4` returns `Some` for kernel-range indices (`l4i < kernel_l4_end`) even when `present == false`. Downstream resolution functions (L3, L2, L1) then dereference the returned entry's `addr` to look up sub-tables, treating a non-present entry as a valid page table pointer — this is a real spec gap that could lead to unsound reasoning about kernel address space resolution.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: resolve_1g_and_l3_mutual_exclusion_by_ps
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This confirms the correct and intended behavior: `spec_resolve_mapping_1g_l3` requires `ps == true` while `spec_resolve_mapping_l3` requires `ps == false`, ensuring mutual exclusion between 1GB hugepage and non-hugepage L3 resolution. This is a desirable property.
+===VERDICT_END===
+
+===SUMMARY===
+Three true positives were identified. `page_entry_to_map_entry_drops_present` highlights that MapEntry silently loses the present bit, making non-present entries look valid. `is_empty_l4_dom_unbounded` shows that "empty" page tables can retain stale L4 domain entries in page_closure. `resolve_l4_returns_non_present_kernel` reveals that kernel-range L4 resolution returns non-present entries as Some, which downstream functions may unsoundly dereference. The mutual exclusion property (`resolve_1g_and_l3_mutual_exclusion_by_ps`) is a false positive confirming correct ps-based dispatch between 1GB and non-hugepage paths.
+===END_SUMMARY===

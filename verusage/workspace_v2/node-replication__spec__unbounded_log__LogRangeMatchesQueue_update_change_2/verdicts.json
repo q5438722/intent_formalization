@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "update_change_2_non_queue_rid_droppable",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`LogRangeMatchesQueue` only accesses `updates` via `queue[queueIndex]` \u2014 entries not in the queue are never referenced. Removing them is correct and expected; this is the intended frame condition of `update_change_2`."
+  },
+  {
+    "phi": "update_change_2_empty_updates_all_remote",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "When the queue is empty, all log entries in the range are remote. The spec never looks up `updates` for remote entries, so replacing updates with an empty map is correct. This is the expected behavior for all-remote ranges."
+  },
+  {
+    "phi": "update_change_2_swap_non_queue_state",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Same reasoning as the droppable case \u2014 non-queue rids are never accessed by `LogRangeMatchesQueue`, so their state is irrelevant. Inserting an arbitrary state for a non-queue rid is correct."
+  },
+  {
+    "phi": "empty_log_range_exhausts_queue",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Directly follows from the base case of the recursive definition: `logIndexLower == logIndexUpper ==> queueIndex == queue.len()`. This is the intended termination condition."
+  }
+]

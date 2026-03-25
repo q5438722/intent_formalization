@@ -1,0 +1,47 @@
+[
+  {
+    "name": "execution_equality_forces_fn_equality",
+    "type": "logical",
+    "code": "proof fn phi_1_execution_equality_forces_fn_equality(f: spec_fn(nat) -> int, g: spec_fn(nat) -> int)\n    requires\n        forall |i: nat| #[trigger] f(i) == g(i),\n    ensures\n        f == g,\n{\n    let ex1 = Execution { nat_to_state: f };\n    let ex2 = Execution { nat_to_state: g };\n    execution_equality::<int>(ex1, ex2);\n}",
+    "reason": "execution_equality forces intensional equality of spec_fn from pointwise extensional equivalence \u2014 structurally distinct closures collapsed to equal without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "suffix_zero_equals_self",
+    "type": "boundary",
+    "code": "proof fn phi_2_suffix_zero_equals_self(ex: Execution<int>)\n    ensures\n        ex.suffix(0) == ex,\n{\n    execution_equality::<int>(ex, ex.suffix(0));\n}",
+    "reason": "suffix(0) produces a fresh closure |i| f(i + 0) which is intensionally distinct from f \u2014 execution_equality silently collapses this gap",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "suffix_composition_equals_addition",
+    "type": "boundary",
+    "code": "proof fn phi_3_suffix_composition_equals_addition(ex: Execution<int>, a: nat, b: nat)\n    ensures\n        ex.suffix(a).suffix(b) == ex.suffix(a + b),\n{\n    execution_equality::<int>(ex.suffix(a).suffix(b), ex.suffix(a + b));\n}",
+    "reason": "suffix(a).suffix(b) nests two closures |i| (|j| f(j+a))(i+b) while suffix(a+b) has |i| f(i+a+b) \u2014 execution_equality forces intensional equality of structurally distinct nested closures",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "inv_preserved_for_all_indices",
+    "type": "behavioral",
+    "code": "proof fn phi_4_inv_preserved_for_all_indices(ex: Execution<int>, next: TempPred<int>, inv: TempPred<int>)\n    requires\n        inv.satisfied_by(ex),\n        forall |idx: nat| next.satisfied_by(#[trigger] ex.suffix(idx)),\n        forall |idx: nat| inv.satisfied_by(#[trigger] ex.suffix(idx)) && next.satisfied_by(ex.suffix(idx))\n            ==> inv.satisfied_by(ex.suffix(idx + 1)),\n    ensures\n        forall |i: nat| inv.satisfied_by(#[trigger] ex.suffix(i)),\n{\n    assert forall |i: nat| inv.satisfied_by(#[trigger] ex.suffix(i)) by {\n        next_preserves_inv_rec::<int>(ex, next, inv, i);\n    };\n}",
+    "reason": "next_preserves_inv_rec generalizes to a universal quantifier over all indices \u2014 if execution_equality is unsound, the entire inductive invariant preservation is compromised",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "trivial_inv_any_execution",
+    "type": "behavioral",
+    "code": "proof fn phi_5_trivial_inv_any_execution(ex: Execution<int>, next: TempPred<int>, i: nat)\n    requires\n        forall |idx: nat| next.satisfied_by(#[trigger] ex.suffix(idx)),\n        forall |idx: nat| next.satisfied_by(#[trigger] ex.suffix(idx))\n            ==> next.satisfied_by(ex.suffix(idx + 1)),\n    ensures\n        next.satisfied_by(ex.suffix(i)),\n{\n    next_preserves_inv_rec::<int>(ex, next, next, i);\n}",
+    "reason": "instantiating inv=next makes the inductive step trivially true from the first premise alone \u2014 the lemma degenerates into reproving a premise, exercising execution_equality without meaningful invariant reasoning",
+    "entailed": false,
+    "verus_output": "verification results:: 1 verified, 1 errors\nerror: precondition not satisfied\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-library__next_preserves_inv_rec/phi_5_trivial_inv_any_execution.rs:75:5\n   |\n41 |         inv.satisfied_by(ex),\n   |         -------------------- failed precondition\n...\n75 |     next_preserves_inv_rec::<int>(ex, next, next, i);\n   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

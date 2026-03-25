@@ -1,0 +1,84 @@
+===PHI_START===
+NAME: empty_contains_zero
+TARGET_FN: empty
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_empty_contains_zero(cm: CommitMask)
+    requires
+        cm@ == Set::<int>::empty(),
+    ensures
+        cm@.contains(0),
+{
+}
+```
+REASON: The empty commit mask should not contain element 0; if entailed, the spec contradicts emptiness.
+===PHI_END===
+
+===PHI_START===
+NAME: empty_contains_boundary_511
+TARGET_FN: empty
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_empty_contains_boundary_511(cm: CommitMask)
+    requires
+        cm@ == Set::<int>::empty(),
+    ensures
+        cm@.contains(511),
+{
+}
+```
+REASON: The empty mask should not contain the maximum valid bit index 511; if entailed, the ensures is over-permissive.
+===PHI_END===
+
+===PHI_START===
+NAME: empty_is_nonempty
+TARGET_FN: empty
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_empty_is_nonempty(cm: CommitMask)
+    requires
+        cm@ == Set::<int>::empty(),
+    ensures
+        exists|i: int| cm@.contains(i),
+{
+}
+```
+REASON: An empty set must have no members; if an element exists, the postcondition is inconsistent.
+===PHI_END===
+
+===PHI_START===
+NAME: empty_equals_singleton
+TARGET_FN: empty
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_empty_equals_singleton(cm: CommitMask)
+    requires
+        cm@ == Set::<int>::empty(),
+    ensures
+        cm@ =~= Set::<int>::empty().insert(0),
+{
+}
+```
+REASON: The empty set should never be extensionally equal to a singleton set; if entailed, the spec is unsound.
+===PHI_END===
+
+===PHI_START===
+NAME: empty_contains_negative
+TARGET_FN: empty
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_empty_contains_negative(cm: CommitMask)
+    requires
+        cm@ == Set::<int>::empty(),
+    ensures
+        cm@.contains(-1),
+{
+}
+```
+REASON: Negative indices are outside the valid bit range; if the empty mask contains −1, the view abstraction is broken.
+===PHI_END===

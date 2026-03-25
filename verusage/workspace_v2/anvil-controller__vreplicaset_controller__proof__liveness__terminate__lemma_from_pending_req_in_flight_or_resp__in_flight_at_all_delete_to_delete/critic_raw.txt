@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: unmarshal_local_state_can_fail
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This property just says `true` holds when unmarshal fails — it's a tautology that demonstrates nothing. The underlying concern about unwrap() on Err is valid in principle, but the system maintains invariants ensuring that local_state values stored in ongoing_reconciles are always unmarshallable, so the closures are never invoked on non-unmarshallable values in reachable states.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: has_pending_req_no_contains_key_guard
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This just confirms that at_expected_reconcile_states returns false when the key is absent, which is exactly its intended behavior — the contains_key check is the guard. The concern about has_pending_req_msg lacking a guard is moot because pending_req_in_flight_or_resp_in_flight_at_reconcile_state only evaluates has_pending_req_msg in the consequent of an implication guarded by at_expected_reconcile_states.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: object_ref_ignores_uid
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This faithfully models Kubernetes semantics where ObjectRef is (kind, name, namespace) — the standard resource identifier. UID provides global uniqueness but is not part of the resource key. The system handles stale instances through resource_version checks and reconcile restart logic, not through ObjectRef.
+===VERDICT_END===
+
+===SUMMARY===
+All three candidates are false positives. The unmarshal failure property is a tautology. The contains_key guard concern is addressed by the implication structure in pending_req_in_flight_or_resp_in_flight_at_reconcile_state. The object_ref uid omission matches real Kubernetes API semantics where resources are keyed by kind/name/namespace.
+===END_SUMMARY===

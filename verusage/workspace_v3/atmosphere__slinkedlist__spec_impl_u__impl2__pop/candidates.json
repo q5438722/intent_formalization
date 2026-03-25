@@ -1,0 +1,37 @@
+[
+  {
+    "name": "pop_returned_still_in_result",
+    "target_fn": "pop",
+    "type": "behavioral",
+    "code": "proof fn phi_1_pop_returned_still_in_result<T: Copy, const N: usize>(\n    old_self: StaticLinkedList<T, N>,\n    new_self: StaticLinkedList<T, N>,\n    ret: (T, SLLIndex),\n)\n    requires\n        old_self.wf(),\n        old_self.len() > 0,\n        old_self.unique(),\n        N > 2,\n        new_self.wf(),\n        new_self.len() == old_self.len() - 1,\n        new_self@ == old_self@.skip(1),\n        ret.0 == old_self@[0],\n        ret.1 == old_self.get_node_ref(ret.0),\n        forall|v:T| #![auto] new_self@.contains(v) ==> old_self.get_node_ref(v) == new_self.get_node_ref(v),\n    ensures\n        new_self@.contains(ret.0),\n{\n}",
+    "reason": "The popped head element should NOT remain in the result sequence when the list has unique elements"
+  },
+  {
+    "name": "pop_single_leaves_nonempty",
+    "target_fn": "pop",
+    "type": "boundary",
+    "code": "proof fn phi_2_pop_single_leaves_nonempty<T: Copy, const N: usize>(\n    old_self: StaticLinkedList<T, N>,\n    new_self: StaticLinkedList<T, N>,\n    ret: (T, SLLIndex),\n)\n    requires\n        old_self.wf(),\n        old_self.len() == 1,\n        old_self.unique(),\n        N > 2,\n        new_self.wf(),\n        new_self.len() == old_self.len() - 1,\n        new_self@ == old_self@.skip(1),\n        ret.0 == old_self@[0],\n        ret.1 == old_self.get_node_ref(ret.0),\n    ensures\n        new_self.len() > 0,\n{\n}",
+    "reason": "Popping the only element should yield an empty list, not a non-empty one"
+  },
+  {
+    "name": "pop_skips_two_elements",
+    "target_fn": "pop",
+    "type": "logical",
+    "code": "proof fn phi_3_pop_skips_two_elements<T: Copy, const N: usize>(\n    old_self: StaticLinkedList<T, N>,\n    new_self: StaticLinkedList<T, N>,\n    ret: (T, SLLIndex),\n)\n    requires\n        old_self.wf(),\n        old_self.len() > 2,\n        old_self.unique(),\n        N > 2,\n        new_self.wf(),\n        new_self.len() == old_self.len() - 1,\n        new_self@ == old_self@.skip(1),\n        ret.0 == old_self@[0],\n        ret.1 == old_self.get_node_ref(ret.0),\n        forall|v:T| #![auto] new_self@.contains(v) ==> old_self.get_node_ref(v) == new_self.get_node_ref(v),\n    ensures\n        new_self@ =~= old_self@.skip(2),\n{\n}",
+    "reason": "Pop should remove exactly one element; skipping two would silently lose data"
+  },
+  {
+    "name": "pop_node_ref_changed_for_remaining",
+    "target_fn": "pop",
+    "type": "behavioral",
+    "code": "proof fn phi_4_pop_node_ref_changed_for_remaining<T: Copy, const N: usize>(\n    old_self: StaticLinkedList<T, N>,\n    new_self: StaticLinkedList<T, N>,\n    ret: (T, SLLIndex),\n    v: T,\n)\n    requires\n        old_self.wf(),\n        old_self.len() > 0,\n        old_self.unique(),\n        N > 2,\n        new_self.wf(),\n        new_self.len() == old_self.len() - 1,\n        new_self@ == old_self@.skip(1),\n        ret.0 == old_self@[0],\n        ret.1 == old_self.get_node_ref(ret.0),\n        forall|v:T| #![auto] new_self@.contains(v) ==> old_self.get_node_ref(v) == new_self.get_node_ref(v),\n        new_self@.contains(v),\n    ensures\n        old_self.get_node_ref(v) != new_self.get_node_ref(v),\n{\n}",
+    "reason": "Node refs for values remaining in the list must be stable across pop; instability would break external index holders"
+  },
+  {
+    "name": "pop_ret_index_negative",
+    "target_fn": "pop",
+    "type": "boundary",
+    "code": "proof fn phi_5_pop_ret_index_negative<T: Copy, const N: usize>(\n    old_self: StaticLinkedList<T, N>,\n    new_self: StaticLinkedList<T, N>,\n    ret: (T, SLLIndex),\n)\n    requires\n        old_self.wf(),\n        old_self.len() > 0,\n        old_self.unique(),\n        N > 2,\n        new_self.wf(),\n        new_self.len() == old_self.len() - 1,\n        new_self@ == old_self@.skip(1),\n        ret.0 == old_self@[0],\n        ret.1 == old_self.get_node_ref(ret.0),\n        forall|v:T| #![auto] new_self@.contains(v) ==> old_self.get_node_ref(v) == new_self.get_node_ref(v),\n    ensures\n        ret.1 < 0,\n{\n}",
+    "reason": "The returned node index should be a valid non-negative array position; a negative index would be an invalid reference"
+  }
+]

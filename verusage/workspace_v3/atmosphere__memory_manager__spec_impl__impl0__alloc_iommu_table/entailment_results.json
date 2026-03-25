@@ -1,0 +1,52 @@
+[
+  {
+    "name": "free_ioids_not_consumed",
+    "target_fn": "alloc_iommu_table",
+    "type": "boundary",
+    "reason": "If the free ioid list never shrinks, the allocator can hand out ioids without consuming resources, allowing unbounded allocation",
+    "entailed": false,
+    "verified": 16,
+    "errors": 1,
+    "output_tail": "----------------------------------- at the end of the function body\n...\n880 |         new_self.free_ioids.len() >= old_self.free_ioids.len(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 11 warnings emitted\n\n"
+  },
+  {
+    "name": "alloc_activates_extra_pcid",
+    "target_fn": "alloc_iommu_table",
+    "type": "logical",
+    "reason": "If allocating an ioid causes a previously-inactive pcid to become active, ioid and pcid allocation domains are not properly isolated",
+    "entailed": false,
+    "verified": 16,
+    "errors": 1,
+    "output_tail": "------------------------------------------------------------------------------------------- at the end of the function body\n...\n881 |         new_self.pcid_active(pcid),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 11 warnings emitted\n\n"
+  },
+  {
+    "name": "other_ioid_mapping_corrupted",
+    "target_fn": "alloc_iommu_table",
+    "type": "behavioral",
+    "reason": "If allocating a new ioid silently corrupts another active ioid's IOMMU page-table mapping, memory isolation between IO devices is broken",
+    "entailed": false,
+    "verified": 16,
+    "errors": 1,
+    "output_tail": "w_self.get_iommu_table_mapping_by_ioid(other) != old_self.get_iommu_table_mapping_by_ioid(other),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 11 warnings emitted\n\n"
+  },
+  {
+    "name": "alloc_wrong_proc_ptr",
+    "target_fn": "alloc_iommu_table",
+    "type": "behavioral",
+    "reason": "If the newly allocated ioid is bound to a zero/null proc pointer instead of the requested one, device-to-process ownership is lost",
+    "entailed": false,
+    "verified": 16,
+    "errors": 1,
+    "output_tail": "--------------------------------------------------------------- at the end of the function body\n...\n878 |         new_self.ioid_to_proc_ptr(ret) == 0usize,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 11 warnings emitted\n\n"
+  },
+  {
+    "name": "ret_mapping_nonempty",
+    "target_fn": "alloc_iommu_table",
+    "type": "logical",
+    "reason": "If the freshly allocated IOMMU table already contains mappings, the new IO device could access stale physical memory from a prior owner, breaking DMA isolation",
+    "entailed": false,
+    "verified": 16,
+    "errors": 1,
+    "output_tail": "--------------- at the end of the function body\n...\n879 |         new_self.get_iommu_table_mapping_by_ioid(ret).dom().contains(va),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 11 warnings emitted\n\n"
+  }
+]

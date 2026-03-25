@@ -1,0 +1,17 @@
+===VERDICT_START===
+PHI: free_pcid_empty_implies_no_page_closure
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is the expected behavior — free PCIDs must have empty mappings and no lower-level tables. The L4 root page still existing is by design; every PCID always has an L4 table allocated so it can be quickly reused without allocation on activation.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: iommu_kernel_l4_end_zero_vacuous_is_empty
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: IOMMU tables handle device DMA and intentionally have no kernel memory region, so `kernel_l4_end == 0` is correct by design. The asymmetry with process page tables (`kernel_l4_end == KERNEL_MEM_END_L4INDEX`) reflects the real hardware/OS distinction: CPUs need kernel mappings, devices don't.
+===VERDICT_END===
+
+===SUMMARY===
+Both candidates are false positives. `free_pcid_empty_implies_no_page_closure` describes the expected invariant that free PCIDs have cleared lower-level tables and mappings while retaining their L4 root for efficient reuse. `iommu_kernel_l4_end_zero_vacuous_is_empty` reflects the intentional design that IOMMU tables serve device DMA without kernel address space reservations, making `kernel_l4_end == 0` the correct value.
+===END_SUMMARY===

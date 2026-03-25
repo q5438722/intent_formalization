@@ -1,0 +1,52 @@
+[
+  {
+    "name": "inv_allows_empty_arch",
+    "target_fn": "inv",
+    "type": "behavioral",
+    "reason": "An empty architecture with zero layers should not satisfy the invariant, as a valid MMU arch needs at least one layer",
+    "entailed": true,
+    "verified": 6,
+    "errors": 0,
+    "output_tail": "gers.)\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v3/nrkernel__definitions_u__impl3__lemma_entry_sizes_increase/phi_1_inv_allows_empty_arch.rs:103:9\n    |\n103 |         exists|a: Arch| a.inv() && a.layers.len() == 0,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\n"
+  },
+  {
+    "name": "inv_allows_unit_num_entries",
+    "target_fn": "num_entries",
+    "type": "logical",
+    "reason": "A multi-layer arch where every layer has num_entries==1 is degenerate \u2014 page tables provide no fan-out and the hierarchy is pointless",
+    "entailed": false,
+    "verified": 5,
+    "errors": 1,
+    "output_tail": "num_entries.rs:103:9\n    |\n103 | /         exists|a: Arch| a.inv() && a.layers.len() >= 2 &&\n104 | |             (forall|i: nat| i < a.layers.len() ==> a.num_entries(i) == 1),\n    | |_________________________________________________________________________^\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "inv_allows_equal_consecutive_entry_sizes",
+    "target_fn": "entry_size",
+    "type": "logical",
+    "reason": "Consecutive layers with identical entry_size means the higher layer doesn't actually subdivide address space, violating the purpose of hierarchical paging",
+    "entailed": false,
+    "verified": 5,
+    "errors": 1,
+    "output_tail": "try_sizes_increase/phi_3_inv_allows_equal_consecutive_entry_sizes.rs:103:9\n    |\n103 | /         exists|a: Arch| a.inv() && a.layers.len() >= 2 &&\n104 | |             a.entry_size(0) == a.entry_size(1),\n    | |______________________________________________^\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "entry_size_is_next_layer_size_vacuous_beyond_bounds",
+    "target_fn": "entry_size_is_next_layer_size",
+    "type": "boundary",
+    "reason": "entry_size_is_next_layer_size is vacuously true for out-of-range indices, which could mask specification errors if callers forget bounds checks",
+    "entailed": true,
+    "verified": 6,
+    "errors": 0,
+    "output_tail": "verification results:: 6 verified, 0 errors\n\n"
+  },
+  {
+    "name": "inv_allows_top_entry_size_one",
+    "target_fn": "inv",
+    "type": "boundary",
+    "reason": "A full 4-layer arch whose top-level entry_size is 1 byte maps only 1 byte total \u2014 far too small for any real x86 page table hierarchy",
+    "entailed": false,
+    "verified": 5,
+    "errors": 1,
+    "output_tail": "nitions_u__impl3__lemma_entry_sizes_increase/phi_5_inv_allows_top_entry_size_one.rs:103:9\n    |\n103 | /         exists|a: Arch| a.inv() && a.layers.len() == X86_NUM_LAYERS &&\n104 | |             a.entry_size(0) == 1,\n    | |________________________________^\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

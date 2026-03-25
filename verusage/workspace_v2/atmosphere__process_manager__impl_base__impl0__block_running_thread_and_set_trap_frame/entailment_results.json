@@ -1,0 +1,47 @@
+[
+  {
+    "name": "sll_len_without_wf_returns_value_list_len",
+    "type": "logical",
+    "code": "proof fn phi_1_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    ensures\n        sll.len() == sll.value_list_len,\n{\n}",
+    "reason": "StaticLinkedList::len's external_body ensures l == self.value_list_len unconditionally without requiring wf() \u2014 the raw field value is trusted even if the linked list is corrupted",
+    "entailed": false,
+    "verus_output": "_returns_value_list_len.rs:1710:9\n     |\n1708 | proof fn phi_1_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n     |       -------------------------------------------------------------------------------------------------- at the end of the function body\n1709 |     ensures\n1710 |         sll.len() == sll.value_list_len,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 22 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "owned_threads_shared_across_containers",
+    "type": "logical",
+    "code": "proof fn phi_2_owned_threads_shared_across_containers(\n    pm: ProcessManager,\n    c1: ContainerPtr,\n    c2: ContainerPtr,\n    t: ThreadPtr,\n)\n    requires\n        pm.wf(),\n        pm.container_dom().contains(c1),\n        pm.container_dom().contains(c2),\n        c1 != c2,\n        pm.get_container(c1).owned_threads@.contains(t),\n        pm.get_container(c2).owned_threads@.contains(t),\n    ensures\n        pm.get_container(c1).owned_threads@.contains(t),\n        pm.get_container(c2).owned_threads@.contains(t),\n{\n}",
+    "reason": "No spec enforces cross-container disjointness of owned_threads \u2014 two distinct containers can claim the same thread via Ghost fields, violating unique ownership",
+    "entailed": true,
+    "verus_output": "alFns::is_None`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__impl_base__impl0__block_running_thread_and_set_trap_frame/phi_2_owned_threads_shared_across_containers.rs:1623:42\n     |\n1623 |         thread_perm@.value().running_cpu.is_None(),\n     |                                          ^^^^^^^\n\nwarning: 22 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "owned_endpoints_shared_across_containers",
+    "type": "logical",
+    "code": "proof fn phi_3_owned_endpoints_shared_across_containers(\n    pm: ProcessManager,\n    c1: ContainerPtr,\n    c2: ContainerPtr,\n    ep: EndpointPtr,\n)\n    requires\n        pm.wf(),\n        pm.container_dom().contains(c1),\n        pm.container_dom().contains(c2),\n        c1 != c2,\n        pm.get_container(c1).owned_endpoints@.contains(ep),\n        pm.get_container(c2).owned_endpoints@.contains(ep),\n    ensures\n        pm.get_container(c1).owned_endpoints@.contains(ep),\n        pm.get_container(c2).owned_endpoints@.contains(ep),\n{\n}",
+    "reason": "No spec enforces cross-container disjointness of owned_endpoints despite code comments stating endpoints should \"ONLY be referenced by threads in the subtree\"",
+    "entailed": true,
+    "verus_output": "Fns::is_None`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__impl_base__impl0__block_running_thread_and_set_trap_frame/phi_3_owned_endpoints_shared_across_containers.rs:1623:42\n     |\n1623 |         thread_perm@.value().running_cpu.is_None(),\n     |                                          ^^^^^^^\n\nwarning: 22 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "get_thread_leaks_container_children_wf",
+    "type": "logical",
+    "code": "proof fn phi_4_get_thread_leaks_container_children_wf(\n    pm: ProcessManager,\n    t_ptr: ThreadPtr,\n)\n    requires\n        pm.wf(),\n        pm.thread_dom().contains(t_ptr),\n    ensures\n        pm.get_container(pm.get_thread(t_ptr).owning_container).children.wf(),\n        pm.get_container(pm.get_thread(t_ptr).owning_container).scheduler.wf(),\n        pm.get_container(pm.get_thread(t_ptr).owning_container).owned_procs.wf(),\n{\n}",
+    "reason": "get_thread's external_body ensures leak three container sub-field wf properties through a thread accessor \u2014 cross-subsystem coupling where a thread lookup exposes container internals",
+    "entailed": false,
+    "verus_output": "_children_wf.rs:1717:9\n     |\n1708 |   proof fn phi_4_get_thread_leaks_container_children_wf(\n     |  _______-\n1709 | |     pm: ProcessManager,\n1710 | |     t_ptr: ThreadPtr,\n1711 | | )\n     | |_- at the end of the function body\n...\n1717 |           pm.get_container(pm.get_thread(t_ptr).owning_container).scheduler.wf(),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 2 previous errors; 22 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "cpus_wf_no_active_thread_dom_check",
+    "type": "behavioral",
+    "code": "proof fn phi_5_cpus_wf_no_active_thread_dom_check(\n    pm: ProcessManager,\n    cpu_i: CpuId,\n)\n    requires\n        pm.wf(),\n        0 <= cpu_i < NUM_CPUS,\n        pm.cpu_list@[cpu_i as int].active,\n        pm.cpu_list@[cpu_i as int].current_thread.is_Some(),\n    ensures\n        pm.container_dom().contains(pm.cpu_list@[cpu_i as int].owning_container),\n{\n}",
+    "reason": "cpus_wf only constrains inactive CPUs (active==false ==> current_thread.is_None()) but active CPUs with current_thread.is_Some() have no cpus_wf constraint on thread validity \u2014 container_cpu_wf separately ensures owning_container is valid for ALL cpus regardless",
+    "entailed": false,
+    "verus_output": "unning_thread_and_set_trap_frame/phi_5_cpus_wf_no_active_thread_dom_check.rs:1718:37\n     |\n1718 |         pm.container_dom().contains(pm.cpu_list@[cpu_i as int].owning_container),\n     |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^\n     |\n    ::: /home/chentianyu/intent_formalization/verus/vstd/seq.rs:62:13\n     |\n  62 |             0 <= i < self.len(),\n     |             ------------------- recommendation not met\n\nerror: aborting due to 1 previous error; 23 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

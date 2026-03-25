@@ -1,0 +1,37 @@
+[
+  {
+    "name": "write_changes_subregion_length",
+    "target_fn": "write_absolute",
+    "type": "behavioral",
+    "code": "proof fn phi_1_write_changes_subregion_length(\n    view_before: PersistentMemoryRegionView,\n    addr: int,\n    bytes: Seq<u8>,\n)\n    requires\n        0 <= addr,\n        addr + bytes.len() <= view_before.len(),\n        view_before.no_outstanding_writes_in_range(addr, addr + bytes.len()),\n    ensures\n        view_before.write(addr, bytes).len() != view_before.len(),\n{\n}",
+    "reason": "Write should never change the length of the subregion view; if it did, invariant `self.view(wrpm).len() == self.len()` would break on subsequent calls."
+  },
+  {
+    "name": "empty_write_changes_view",
+    "target_fn": "write_absolute",
+    "type": "boundary",
+    "code": "proof fn phi_2_empty_write_changes_view(\n    view_before: PersistentMemoryRegionView,\n    addr: int,\n)\n    requires\n        view_before.len() > 0,\n        0 <= addr,\n        addr <= view_before.len(),\n        view_before.no_outstanding_writes_in_range(addr, addr),\n    ensures\n        view_before.write(addr, Seq::<u8>::empty()) != view_before,\n{\n}",
+    "reason": "A zero-length write must be a no-op; if the spec allowed it to modify the view, callers could observe spurious state changes from vacuous writes."
+  },
+  {
+    "name": "write_modifies_outside_range",
+    "target_fn": "write_absolute",
+    "type": "logical",
+    "code": "proof fn phi_3_write_modifies_outside_range(\n    view_before: PersistentMemoryRegionView,\n    addr: int,\n    bytes: Seq<u8>,\n    k: int,\n)\n    requires\n        0 <= addr,\n        addr + bytes.len() <= view_before.len(),\n        0 <= k < view_before.len(),\n        !(addr <= k < addr + bytes.len()),\n        view_before.no_outstanding_writes_in_range(addr, addr + bytes.len()),\n    ensures\n        view_before.write(addr, bytes).state[k] != view_before.state[k],\n{\n}",
+    "reason": "Bytes outside the written range must be unaffected; if write could modify them, the `views_differ_only_where_subregion_allows` invariant would be violated."
+  },
+  {
+    "name": "write_alters_state_at_last_flush",
+    "target_fn": "write_absolute",
+    "type": "logical",
+    "code": "proof fn phi_4_write_alters_state_at_last_flush(\n    view_before: PersistentMemoryRegionView,\n    addr: int,\n    bytes: Seq<u8>,\n    k: int,\n)\n    requires\n        0 <= addr,\n        bytes.len() > 0,\n        addr + bytes.len() <= view_before.len(),\n        addr <= k < addr + bytes.len(),\n        view_before.no_outstanding_writes_in_range(addr, addr + bytes.len()),\n    ensures\n        view_before.write(addr, bytes).state[k].state_at_last_flush\n            != view_before.state[k].state_at_last_flush,\n{\n}",
+    "reason": "Write must only set outstanding_write, never alter state_at_last_flush; changing it would corrupt the crash-consistency model since flush recovery depends on state_at_last_flush being stable."
+  },
+  {
+    "name": "nonempty_write_is_noop",
+    "target_fn": "write_absolute",
+    "type": "behavioral",
+    "code": "proof fn phi_5_nonempty_write_is_noop(\n    view_before: PersistentMemoryRegionView,\n    addr: int,\n    bytes: Seq<u8>,\n)\n    requires\n        bytes.len() > 0,\n        0 <= addr,\n        addr + bytes.len() <= view_before.len(),\n        view_before.no_outstanding_writes_in_range(addr, addr + bytes.len()),\n    ensures\n        view_before.write(addr, bytes) =~= view_before,\n{\n}",
+    "reason": "A non-empty write to a region with no outstanding writes must visibly change the view (outstanding_write goes from None to Some); if it were a no-op the write would be silently lost."
+  }
+]

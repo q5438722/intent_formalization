@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: mod_identity_small
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_mod_identity_small(i: int, len: int)
+    requires
+        0 <= i < len,
+        len > 0,
+    ensures
+        (i % len) == i,
+{
+    int_mod_less_than_same(i, len);
+}
+```
+REASON: Modulo of a value smaller than the divisor equals itself — tests the core ensures clause directly
+===PHI_END===
+
+===PHI_START===
+NAME: mod_zero_is_zero
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_mod_zero_is_zero(len: int)
+    requires
+        len > 0,
+    ensures
+        (0int % len) == 0,
+{
+    int_mod_less_than_same(0, len);
+}
+```
+REASON: 0 mod anything positive is 0 — tests the lower boundary
+===PHI_END===
+
+===PHI_START===
+NAME: mod_len_minus_one
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_mod_len_minus_one(len: int)
+    requires
+        len > 1,
+    ensures
+        ((len - 1) % len) == len - 1,
+{
+    int_mod_less_than_same(len - 1, len);
+}
+```
+REASON: `(len-1) % len == len-1` — tests the upper boundary just below the divisor
+===PHI_END===
+
+===PHI_START===
+NAME: mod_one_is_identity
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_mod_one_is_identity(i: int)
+    requires
+        0 <= i < 1,
+    ensures
+        (i % 1) == i,
+{
+    int_mod_less_than_same(i, 1);
+}
+```
+REASON: With `len == 1`, only `i == 0` satisfies the precondition — tests the degenerate divisor case
+===PHI_END===
+
+===PHI_START===
+NAME: mod_identity_implies_less
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_mod_identity_implies_less(i: int, len: int)
+    requires
+        0 <= i < len,
+        len > 0,
+    ensures
+        (i % len) < len,
+{
+    int_mod_less_than_same(i, len);
+}
+```
+REASON: The modulo result is strictly less than the divisor — a weaker consequence that follows from the identity, but could mask that this only holds under `i < len`
+===PHI_END===

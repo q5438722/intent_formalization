@@ -1,0 +1,47 @@
+[
+  {
+    "name": "filter_skip_entire_seq_is_empty",
+    "type": "boundary",
+    "code": "proof fn phi_1_filter_skip_entire_seq_is_empty<A>(s: Seq<A>, pred: spec_fn(A) -> bool)\n    requires\n        s.len() > 0,\n        forall |j: int| 0 <= j < s.len() ==> !pred(s[j]),\n    ensures\n        s.filter(pred).len() == 0,\n{\n    lemma_filter_skip_rejected(s, pred, s.len() as int);\n    assert(s.skip(s.len() as int) =~= Seq::<A>::empty());\n    reveal(Seq::filter);\n}",
+    "reason": "If no element satisfies the predicate, the filter result is empty \u2014 this is expected behavior, not a spec gap",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "skip_zero_is_identity",
+    "type": "boundary",
+    "code": "proof fn phi_2_skip_zero_is_identity<A>(s: Seq<A>, pred: spec_fn(A) -> bool)\n    ensures\n        s.filter(pred) == s.skip(0).filter(pred),\n{\n    lemma_filter_skip_rejected(s, pred, 0);\n}",
+    "reason": "Calling with i=0 trivially holds (vacuous quantifier) and gives a tautology \u2014 the lemma's precondition is vacuously satisfiable, potentially masking misuse where the caller believes elements were actually checked",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "filter_skip_rejected_drop_last_equiv",
+    "type": "logical",
+    "code": "proof fn phi_3_filter_skip_rejected_drop_last_equiv<A>(s: Seq<A>, pred: spec_fn(A) -> bool)\n    requires\n        s.len() > 0,\n        !pred(s[0]),\n    ensures\n        s.filter(pred) == s.subrange(1, s.len() as int).filter(pred),\n{\n    lemma_filter_skip_rejected(s, pred, 1);\n    assert(s.skip(1) =~= s.subrange(1, s.len() as int));\n}",
+    "reason": "Skipping a single rejected element and filtering the rest equals filtering the whole \u2014 this is correct but could be chained inductively to strip arbitrary prefixes without rechecking the predicate on removed elements",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "filter_empty_skip_any",
+    "type": "boundary",
+    "code": "proof fn phi_4_filter_empty_skip_any<A>(pred: spec_fn(A) -> bool, i: int)\n    requires\n        0 <= i <= 0,\n    ensures\n        Seq::<A>::empty().filter(pred) == Seq::<A>::empty().skip(i).filter(pred),\n{\n    lemma_filter_skip_rejected(Seq::<A>::empty(), pred, i);\n}",
+    "reason": "The lemma accepts empty sequences with i=0 and produces a trivial equality \u2014 empty-sequence edge case is handled but reveals no filtering work was done",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "skip_at_len_filter_equals_empty_filter",
+    "type": "logical",
+    "code": "proof fn phi_5_skip_at_len_filter_equals_empty_filter<A>(s: Seq<A>, pred: spec_fn(A) -> bool)\n    requires\n        s.len() > 0,\n        forall |j: int| 0 <= j < s.len() ==> !pred(s[j]),\n    ensures\n        s.filter(pred) == Seq::<A>::empty().filter(pred),\n{\n    lemma_filter_skip_rejected(s, pred, s.len() as int);\n    assert(s.skip(s.len() as int) =~= Seq::<A>::empty());\n}",
+    "reason": "When all elements are rejected, filtering the sequence equals filtering an empty sequence \u2014 this conflates \"all rejected\" with \"no data\", which could hide logic errors in callers that distinguish between empty input and fully-filtered input",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

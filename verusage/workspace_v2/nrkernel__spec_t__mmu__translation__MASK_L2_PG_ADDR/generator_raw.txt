@@ -1,0 +1,77 @@
+===PHI_START===
+NAME: mask_l2_pg_addr_low_21_bits_zero
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_mask_l2_pg_addr_low_21_bits_zero()
+    ensures
+        MASK_L2_PG_ADDR_SPEC & 0x1F_FFFF == 0,
+{
+    axiom_max_phyaddr_width_facts();
+    assert(forall|low: usize, high: usize| low <= high && high < 64 ==> bitmask_inc!(low, high) & (!0usize >> (64 - low)) == 0) by (bit_vector);
+}
+```
+REASON: Bits 0-20 should be clear in the 2MB page mask — if any leak through, physical address extraction for 2MB pages would include sub-page offset bits
+===PHI_END===
+
+===PHI_START===
+NAME: mask_l2_pg_addr_bit_21_set
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_mask_l2_pg_addr_bit_21_set()
+    ensures
+        MASK_L2_PG_ADDR_SPEC & (1usize << 21) != 0,
+{
+    axiom_max_phyaddr_width_facts();
+}
+```
+REASON: Bit 21 should be the lowest set bit — if clear, the mask starts at bit 22+ and loses one bit of 2MB page physical address resolution
+===PHI_END===
+
+===PHI_START===
+NAME: mask_l2_pg_addr_high_bits_clear
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_mask_l2_pg_addr_high_bits_clear()
+    ensures
+        MASK_L2_PG_ADDR_SPEC & !((1usize << 52) - 1) == 0,
+{
+    axiom_max_phyaddr_width_facts();
+    assert(1usize << 52 == 0x10000000000000) by (compute);
+}
+```
+REASON: No bits at or above position 52 should be set — if the mask extends beyond max physical address width, extracted addresses would include invalid high bits
+===PHI_END===
+
+===PHI_START===
+NAME: mask_l2_excludes_bits_12_to_20
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_mask_l2_excludes_bits_12_to_20()
+    ensures
+        MASK_L2_PG_ADDR_SPEC & bitmask_inc!(12usize, 20usize) == 0,
+{
+    axiom_max_phyaddr_width_facts();
+    assert(bitmask_inc!(12usize, 20usize) == 0x1FF000) by (compute);
+}
+```
+REASON: Bits 12-20 are in MASK_ADDR (4KB) but should not be in MASK_L2_PG_ADDR (2MB) — if present, 2MB page addresses would extract sub-2MB offset bits as part of the physical base
+===PHI_END===
+
+===PHI_START===
+NAME: mask_l2_pg_addr_nonzero
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_mask_l2_pg_addr_nonzero()
+    ensures
+        MASK_L2_PG_ADDR_SPEC != 0,
+{
+    axiom_max_phyaddr_width_facts();
+}
+```
+REASON: For any MAX_PHYADDR_WIDTH in [32, 52], the L2 mask must be nonzero — a zero mask would make 2MB page translation impossible
+===PHI_END===

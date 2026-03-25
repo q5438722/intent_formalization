@@ -1,0 +1,110 @@
+===PHI_START===
+NAME: spurious_io_mapping_on_target
+TARGET_FN: add_io_mapping_4k
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_spurious_io_mapping_on_target(old_alloc: PageAllocator, new_alloc: PageAllocator, target_ptr: PagePtr, ioid: IOid, va: VAddr, rogue_ioid: IOid, rogue_va: VAddr)
+    requires
+        old_alloc.wf(),
+        old_alloc.mapped_pages_4k().contains(target_ptr),
+        !old_alloc.page_io_mappings(target_ptr).contains((ioid, va)),
+        old_alloc.page_mappings(target_ptr).len() + old_alloc.page_io_mappings(target_ptr).len() < usize::MAX,
+        new_alloc.page_io_mappings(target_ptr) =~= old_alloc.page_io_mappings(target_ptr).insert((ioid, va)),
+        (rogue_ioid, rogue_va) != (ioid, va),
+        !old_alloc.page_io_mappings(target_ptr).contains((rogue_ioid, rogue_va)),
+    ensures
+        new_alloc.page_io_mappings(target_ptr).contains((rogue_ioid, rogue_va)),
+{
+}
+```
+REASON: If provable, add_io_mapping_4k's postcondition allows fabricating IO mappings beyond the one explicitly inserted.
+===PHI_END===
+
+===PHI_START===
+NAME: regular_mappings_destroyed
+TARGET_FN: add_io_mapping_4k
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_regular_mappings_destroyed(old_alloc: PageAllocator, new_alloc: PageAllocator, target_ptr: PagePtr, ioid: IOid, va: VAddr)
+    requires
+        old_alloc.wf(),
+        old_alloc.mapped_pages_4k().contains(target_ptr),
+        !old_alloc.page_io_mappings(target_ptr).contains((ioid, va)),
+        old_alloc.page_mappings(target_ptr).len() + old_alloc.page_io_mappings(target_ptr).len() < usize::MAX,
+        new_alloc.page_mappings(target_ptr) =~= old_alloc.page_mappings(target_ptr),
+        old_alloc.page_mappings(target_ptr).len() > 0,
+    ensures
+        new_alloc.page_mappings(target_ptr).len() == 0,
+{
+}
+```
+REASON: If provable, adding an IO mapping could silently wipe out all regular (non-IO) virtual mappings for the target page.
+===PHI_END===
+
+===PHI_START===
+NAME: set_ref_count_corrupts_other_pages
+TARGET_FN: set_ref_count
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_set_ref_count_corrupts_other_pages(old_alloc: PageAllocator, new_alloc: PageAllocator, index: usize, ref_count: usize, other: int)
+    requires
+        old_alloc.page_array.wf(),
+        0 <= index < NUM_PAGES,
+        new_alloc.page_array.wf(),
+        forall|i: int| #![trigger new_alloc.page_array@[i]] #![trigger old_alloc.page_array@[i]]
+            0 <= i < NUM_PAGES && i != index ==> new_alloc.page_array@[i] =~= old_alloc.page_array@[i],
+        0 <= other < NUM_PAGES,
+        other != index as int,
+    ensures
+        new_alloc.page_array@[other].state != old_alloc.page_array@[other].state,
+{
+}
+```
+REASON: If provable, set_ref_count's frame condition is vacuous and modifying one index silently corrupts another page's state.
+===PHI_END===
+
+===PHI_START===
+NAME: set_io_mapping_corrupts_regular_mappings
+TARGET_FN: set_io_mapping
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_set_io_mapping_corrupts_regular_mappings(old_alloc: PageAllocator, new_alloc: PageAllocator, index: usize)
+    requires
+        old_alloc.page_array.wf(),
+        0 <= index < NUM_PAGES,
+        new_alloc.page_array.wf(),
+        new_alloc.page_array@[index as int].mappings =~= old_alloc.page_array@[index as int].mappings,
+        old_alloc.page_array@[index as int].mappings@.len() > 0,
+    ensures
+        new_alloc.page_array@[index as int].mappings@.len() == 0,
+{
+}
+```
+REASON: If provable, set_io_mapping's postcondition that preserves regular mappings is inconsistent, allowing silent data loss.
+===PHI_END===
+
+===PHI_START===
+NAME: free_page_removed_from_list
+TARGET_FN: add_io_mapping_4k
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_free_page_removed_from_list(old_alloc: PageAllocator, new_alloc: PageAllocator, target_ptr: PagePtr, ioid: IOid, va: VAddr, p: PagePtr)
+    requires
+        old_alloc.wf(),
+        old_alloc.mapped_pages_4k().contains(target_ptr),
+        !old_alloc.page_io_mappings(target_ptr).contains((ioid, va)),
+        old_alloc.page_mappings(target_ptr).len() + old_alloc.page_io_mappings(target_ptr).len() < usize::MAX,
+        new_alloc.free_pages_4k() =~= old_alloc.free_pages_4k(),
+        old_alloc.free_pages_4k().contains(p),
+    ensures
+        !new_alloc.free_pages_4k().contains(p),
+{
+}
+```
+REASON: If provable, add_io_mapping_4k's postcondition allows free pages to vanish from the free list, breaking memory safety.
+===PHI_END===

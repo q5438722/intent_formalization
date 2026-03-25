@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: obtain_bit_aux_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `lemma_obtain_bit_index_1_aux` is `external_body` — the property that any nonzero value has a set bit below `hi` is mathematically true but unverified. This is a trust gap: the axiom could be subtly wrong (e.g., off-by-one in `hi` bound) with no verification to catch it.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: obtain_bit_hi_1_forces_bit_0
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The preconditions `a != 0` and `a >> 1 == 0` together force `a == 1`, so the only set bit is bit 0. The axiom correctly returns `i == 0` and `is_bit_set(a, 0)` — this is the expected and correct behavior for this boundary case.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: is_bit_set_opaque_reveal
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `is_bit_set` is a plain spec fn with body `a & (1usize << b) == (1usize << b)`. Revealing it and then proving equivalence with its own body is a tautology — this is standard Verus usage, not a spec gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: obtain_bit_index_any_nonzero
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Any nonzero 64-bit integer must have at least one set bit — this is a fundamental mathematical fact. With `global size_of usize == 8` fixing usize to 64 bits, the property is correct and expected.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: obtain_bit_aux_hi_zero_vacuous
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The preconditions `a != 0` and `a >> 0 == 0` are contradictory since `a >> 0 == a` and `a != 0` implies `a >> 0 != 0`. The `requires` is unsatisfiable, so the `ensures false` is vacuously true — no soundness issue.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: `lemma_obtain_bit_index_1_aux` is an `external_body` axiom trusting the existence of a set bit below `hi` in any nonzero value without proof. While mathematically correct, this represents an unverified trust assumption. The other four candidates are false positives — they are either correct mathematical consequences of the axioms (boundary cases, tautological reveals, fundamental bit properties) or have vacuously true ensures from contradictory preconditions.
+===END_SUMMARY===

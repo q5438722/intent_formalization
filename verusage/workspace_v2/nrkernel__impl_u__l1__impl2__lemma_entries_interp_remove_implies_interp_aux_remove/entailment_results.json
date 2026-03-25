@@ -1,0 +1,47 @@
+[
+  {
+    "name": "interp_of_entry_key_between_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_interp_of_entry_key_between_external_body(d: Directory, i: nat, va: nat)\n    requires\n        d.inv(),\n        i < d.entries.len(),\n        d.interp_of_entry(i).contains_key(va),\n    ensures\n        d.entry_base(i) <= va,\n        va < d.next_entry_base(i),\n{\n    d.lemma_interp_of_entry_key_between(i, va);\n}",
+    "reason": "`lemma_interp_of_entry_key_between` is `external_body` \u2014 the bound that VA keys in an entry's interp fall within [entry_base, next_entry_base) is trusted without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "interp_aux_contains_implies_entry_contains_external_body",
+    "type": "logical",
+    "code": "proof fn phi_2_interp_aux_contains_implies_entry_contains_external_body(d: Directory, va: nat)\n    requires\n        d.inv(),\n        d.interp_aux(0).contains_key(va),\n    ensures\n        exists|i: nat| #![auto] 0 <= i < d.num_entries() && d.interp_of_entry(i).contains_key(va),\n{\n    d.lemma_interp_aux_contains_implies_interp_of_entry_contains(0);\n}",
+    "reason": "`lemma_interp_aux_contains_implies_interp_of_entry_contains` is `external_body` \u2014 the decomposition of interp_aux keys into individual entry contributions is trusted without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "distinct_entries_disjoint_ranges",
+    "type": "behavioral",
+    "code": "proof fn phi_3_distinct_entries_disjoint_ranges(d: Directory, i: nat, j: nat, va: nat)\n    requires\n        d.inv(),\n        i < j,\n        j < d.entries.len(),\n        d.interp_of_entry(i).contains_key(va),\n    ensures\n        !d.interp_of_entry(j).contains_key(va),\n{\n    d.lemma_interp_of_entry_key_between(i, va);\n    if d.interp_of_entry(j).contains_key(va) {\n        d.lemma_interp_of_entry_key_between(j, va);\n    }\n}",
+    "reason": "Two applications of the external_body key-between axiom derive entry disjointness \u2014 if the bounds axiom were wrong, overlapping entries could silently shadow each other",
+    "entailed": false,
+    "verus_output": "e_v2/nrkernel__impl_u__l1__impl2__lemma_entries_interp_remove_implies_interp_aux_remove/phi_3_distinct_entries_disjoint_ranges.rs:377:9\n    |\n377 |           !d.interp_of_entry(j).contains_key(va),\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n...\n380 | /     if d.interp_of_entry(j).contains_key(va) {\n381 | |         d.lemma_interp_of_entry_key_between(j, va);\n382 | |     }\n    | |_____- at the end of the function body\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "remove_propagates_to_interp_aux",
+    "type": "behavioral",
+    "code": "proof fn phi_4_remove_propagates_to_interp_aux(d1: Directory, d2: Directory, idx: nat, vaddr: nat)\n    requires\n        d1.inv(),\n        d2.inv(),\n        idx < d1.entries.len(),\n        d1.arch == d2.arch,\n        d1.layer == d2.layer,\n        d1.base_vaddr == d2.base_vaddr,\n        d1.entries[idx as int].interp(d1.entry_base(idx)).contains_key(vaddr),\n        d2.entries[idx as int].interp(d1.entry_base(idx)) == d1.entries[idx as int].interp(d1.entry_base(idx)).remove(vaddr),\n        forall|j: nat| j < d1.entries.len() && j != idx\n            ==> (#[trigger] d1.entries[j as int]).interp(d1.entry_base(j))\n                        == d2.entries[j as int].interp(d1.entry_base(j)),\n    ensures\n        d2.interp_aux(0) === d1.interp_aux(0).remove(vaddr),\n{\n    d1.lemma_entries_interp_remove_implies_interp_aux_remove(d2, idx, vaddr, 0);\n}",
+    "reason": "Remove propagation depends on both external_body axioms \u2014 the verified proof uses key-between and contains-implies-entry-contains as unverified foundations",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_entry_key_equals_base",
+    "type": "boundary",
+    "code": "proof fn phi_5_page_entry_key_equals_base(d: Directory, i: nat, va: nat)\n    requires\n        d.inv(),\n        i < d.entries.len(),\n        d.entries[i as int] is Page,\n        d.interp_of_entry(i).contains_key(va),\n    ensures\n        va == d.entry_base(i),\n{\n}",
+    "reason": "A page entry's singleton map has exactly one key (entry_base) \u2014 if va is in the map, it must equal the base; tests that the open spec unfolds correctly",
+    "entailed": true,
+    "verus_output": "verification results:: 11 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

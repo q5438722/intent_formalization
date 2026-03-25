@@ -1,0 +1,158 @@
+===PHI_START===
+NAME: target_leaves_mapped_4k
+TARGET_FN: remove_mapping_4k_helper3
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_target_leaves_mapped_4k(pre: PageAllocator, post: PageAllocator, target_ptr: PagePtr, pcid: Pcid, va: VAddr)
+    requires
+        pre.wf(),
+        pre.mapped_pages_4k().contains(target_ptr),
+        pre.page_mappings(target_ptr).contains((pcid, va)),
+        pre.page_array@[page_ptr2page_index(target_ptr) as int].ref_count != 1,
+        post.wf(),
+        post.allocated_pages_4k() =~= pre.allocated_pages_4k(),
+        post.allocated_pages_2m() =~= pre.allocated_pages_2m(),
+        post.allocated_pages_1g() =~= pre.allocated_pages_1g(),
+        forall|p: PagePtr|
+            post.page_is_mapped(p) && p != target_ptr ==> post.page_mappings(p) =~= pre.page_mappings(p) && post.page_io_mappings(p) =~= pre.page_io_mappings(p),
+        post.page_mappings(target_ptr) =~= pre.page_mappings(target_ptr).remove((pcid, va)),
+        post.page_io_mappings(target_ptr) =~= pre.page_io_mappings(target_ptr),
+        post.container_map_4k@ =~= pre.container_map_4k@,
+        post.container_map_2m@ =~= pre.container_map_2m@,
+        post.container_map_1g@ =~= pre.container_map_1g@,
+    ensures
+        !post.mapped_pages_4k().contains(target_ptr),
+{
+}
+```
+REASON: Target page should remain in mapped_pages_4k since ref_count != 1 implies other mappings still exist after removing one
+===PHI_END===
+
+===PHI_START===
+NAME: target_enters_free_list
+TARGET_FN: remove_mapping_4k_helper3
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_target_enters_free_list(pre: PageAllocator, post: PageAllocator, target_ptr: PagePtr, pcid: Pcid, va: VAddr)
+    requires
+        pre.wf(),
+        pre.mapped_pages_4k().contains(target_ptr),
+        pre.page_mappings(target_ptr).contains((pcid, va)),
+        pre.page_array@[page_ptr2page_index(target_ptr) as int].ref_count != 1,
+        post.wf(),
+        post.allocated_pages_4k() =~= pre.allocated_pages_4k(),
+        post.allocated_pages_2m() =~= pre.allocated_pages_2m(),
+        post.allocated_pages_1g() =~= pre.allocated_pages_1g(),
+        forall|p: PagePtr|
+            post.page_is_mapped(p) && p != target_ptr ==> post.page_mappings(p) =~= pre.page_mappings(p) && post.page_io_mappings(p) =~= pre.page_io_mappings(p),
+        post.page_mappings(target_ptr) =~= pre.page_mappings(target_ptr).remove((pcid, va)),
+        post.page_io_mappings(target_ptr) =~= pre.page_io_mappings(target_ptr),
+        post.container_map_4k@ =~= pre.container_map_4k@,
+        post.container_map_2m@ =~= pre.container_map_2m@,
+        post.container_map_1g@ =~= pre.container_map_1g@,
+    ensures
+        post.free_pages_4k@.contains(target_ptr),
+{
+}
+```
+REASON: A mapped page with remaining references should never be moved to the free list after removing a single mapping
+===PHI_END===
+
+===PHI_START===
+NAME: mapped_2m_page_lost
+TARGET_FN: remove_mapping_4k_helper3
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_mapped_2m_page_lost(pre: PageAllocator, post: PageAllocator, target_ptr: PagePtr, pcid: Pcid, va: VAddr, p_2m: PagePtr)
+    requires
+        pre.wf(),
+        pre.mapped_pages_4k().contains(target_ptr),
+        pre.page_mappings(target_ptr).contains((pcid, va)),
+        pre.page_array@[page_ptr2page_index(target_ptr) as int].ref_count != 1,
+        pre.mapped_pages_2m().contains(p_2m),
+        post.wf(),
+        post.allocated_pages_4k() =~= pre.allocated_pages_4k(),
+        post.allocated_pages_2m() =~= pre.allocated_pages_2m(),
+        post.allocated_pages_1g() =~= pre.allocated_pages_1g(),
+        forall|p: PagePtr|
+            post.page_is_mapped(p) && p != target_ptr ==> post.page_mappings(p) =~= pre.page_mappings(p) && post.page_io_mappings(p) =~= pre.page_io_mappings(p),
+        post.page_mappings(target_ptr) =~= pre.page_mappings(target_ptr).remove((pcid, va)),
+        post.page_io_mappings(target_ptr) =~= pre.page_io_mappings(target_ptr),
+        post.container_map_4k@ =~= pre.container_map_4k@,
+        post.container_map_2m@ =~= pre.container_map_2m@,
+        post.container_map_1g@ =~= pre.container_map_1g@,
+    ensures
+        !post.mapped_pages_2m().contains(p_2m),
+{
+}
+```
+REASON: Removing a 4k mapping should never cause a 2m mapped page to leave the mapped_pages_2m set
+===PHI_END===
+
+===PHI_START===
+NAME: mapped_1g_page_lost
+TARGET_FN: remove_mapping_4k_helper3
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_mapped_1g_page_lost(pre: PageAllocator, post: PageAllocator, target_ptr: PagePtr, pcid: Pcid, va: VAddr, p_1g: PagePtr)
+    requires
+        pre.wf(),
+        pre.mapped_pages_4k().contains(target_ptr),
+        pre.page_mappings(target_ptr).contains((pcid, va)),
+        pre.page_array@[page_ptr2page_index(target_ptr) as int].ref_count != 1,
+        pre.mapped_pages_1g().contains(p_1g),
+        post.wf(),
+        post.allocated_pages_4k() =~= pre.allocated_pages_4k(),
+        post.allocated_pages_2m() =~= pre.allocated_pages_2m(),
+        post.allocated_pages_1g() =~= pre.allocated_pages_1g(),
+        forall|p: PagePtr|
+            post.page_is_mapped(p) && p != target_ptr ==> post.page_mappings(p) =~= pre.page_mappings(p) && post.page_io_mappings(p) =~= pre.page_io_mappings(p),
+        post.page_mappings(target_ptr) =~= pre.page_mappings(target_ptr).remove((pcid, va)),
+        post.page_io_mappings(target_ptr) =~= pre.page_io_mappings(target_ptr),
+        post.container_map_4k@ =~= pre.container_map_4k@,
+        post.container_map_2m@ =~= pre.container_map_2m@,
+        post.container_map_1g@ =~= pre.container_map_1g@,
+    ensures
+        !post.mapped_pages_1g().contains(p_1g),
+{
+}
+```
+REASON: Removing a 4k mapping should never cause a 1g mapped page to leave the mapped_pages_1g set
+===PHI_END===
+
+===PHI_START===
+NAME: other_4k_page_unmapped
+TARGET_FN: remove_mapping_4k_helper3
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_other_4k_page_unmapped(pre: PageAllocator, post: PageAllocator, target_ptr: PagePtr, pcid: Pcid, va: VAddr, other_ptr: PagePtr)
+    requires
+        pre.wf(),
+        pre.mapped_pages_4k().contains(target_ptr),
+        pre.page_mappings(target_ptr).contains((pcid, va)),
+        pre.page_array@[page_ptr2page_index(target_ptr) as int].ref_count != 1,
+        pre.mapped_pages_4k().contains(other_ptr),
+        other_ptr != target_ptr,
+        post.wf(),
+        post.allocated_pages_4k() =~= pre.allocated_pages_4k(),
+        post.allocated_pages_2m() =~= pre.allocated_pages_2m(),
+        post.allocated_pages_1g() =~= pre.allocated_pages_1g(),
+        forall|p: PagePtr|
+            post.page_is_mapped(p) && p != target_ptr ==> post.page_mappings(p) =~= pre.page_mappings(p) && post.page_io_mappings(p) =~= pre.page_io_mappings(p),
+        post.page_mappings(target_ptr) =~= pre.page_mappings(target_ptr).remove((pcid, va)),
+        post.page_io_mappings(target_ptr) =~= pre.page_io_mappings(target_ptr),
+        post.container_map_4k@ =~= pre.container_map_4k@,
+        post.container_map_2m@ =~= pre.container_map_2m@,
+        post.container_map_1g@ =~= pre.container_map_1g@,
+    ensures
+        !post.page_is_mapped(other_ptr),
+{
+}
+```
+REASON: The spec preserves mappings only for pages still mapped in post-state; a different 4k page could silently lose its mapped status since mapped_pages_4k preservation is not explicitly ensured
+===PHI_END===

@@ -1,0 +1,37 @@
+[
+  {
+    "name": "full_missing_zero",
+    "target_fn": "is_full",
+    "type": "behavioral",
+    "code": "proof fn phi_1_full_missing_zero(cm: CommitMask, b: bool)\n    requires\n        b == (cm@ == Set::new(|i: int| 0 <= i < COMMIT_MASK_BITS)),\n        b == true,\n    ensures\n        !cm@.contains(0int),\n{\n}",
+    "reason": "If is_full returns true yet index 0 is absent, the ensures clause does not correctly characterize the full set"
+  },
+  {
+    "name": "always_full",
+    "target_fn": "is_full",
+    "type": "boundary",
+    "code": "proof fn phi_2_always_full(cm: CommitMask, b: bool)\n    requires\n        b == (cm@ == Set::new(|i: int| 0 <= i < COMMIT_MASK_BITS)),\n    ensures\n        b == true,\n{\n}",
+    "reason": "If is_full always returns true regardless of mask content, the spec is vacuously weak"
+  },
+  {
+    "name": "false_implies_empty",
+    "target_fn": "is_full",
+    "type": "logical",
+    "code": "proof fn phi_3_false_implies_empty(cm: CommitMask, b: bool)\n    requires\n        b == (cm@ == Set::new(|i: int| 0 <= i < COMMIT_MASK_BITS)),\n        b == false,\n    ensures\n        cm@ =~= Set::empty(),\n{\n}",
+    "reason": "If not-full implies empty, the spec conflates partial occupancy with emptiness"
+  },
+  {
+    "name": "full_is_half_range",
+    "target_fn": "is_full",
+    "type": "boundary",
+    "code": "proof fn phi_4_full_is_half_range(cm: CommitMask, b: bool)\n    requires\n        b == (cm@ == Set::new(|i: int| 0 <= i < COMMIT_MASK_BITS)),\n        b == true,\n    ensures\n        cm@ =~= Set::new(|i: int| 0 <= i < 256),\n{\n}",
+    "reason": "If the full set equals [0,256) instead of [0,512), COMMIT_MASK_BITS is incorrectly halved"
+  },
+  {
+    "name": "full_contains_out_of_range",
+    "target_fn": "is_full",
+    "type": "boundary",
+    "code": "proof fn phi_5_full_contains_out_of_range(cm: CommitMask, b: bool)\n    requires\n        b == (cm@ == Set::new(|i: int| 0 <= i < COMMIT_MASK_BITS)),\n        b == true,\n    ensures\n        cm@.contains(512int),\n{\n}",
+    "reason": "If the full set contains index 512 the upper bound is off-by-one and the mask covers more bits than intended"
+  }
+]

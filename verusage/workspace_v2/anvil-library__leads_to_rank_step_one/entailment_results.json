@@ -1,0 +1,47 @@
+[
+  {
+    "name": "leads_to_rank_step_one_help_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_1_leads_to_rank_step_one_help_intensional_bridge(spec: TempPred<int>, p: spec_fn(nat) -> TempPred<int>, n: nat)\n    requires\n        forall |n: nat| #![trigger p(n)] (n > 0 ==> spec.entails(p(n).leads_to(p((n - 1) as nat)))),\n    ensures\n        spec.entails(p(n).leads_to(p(0))),\n{\n    leads_to_rank_step_one_help::<int>(spec, p, n);\n}",
+    "reason": "leads_to_rank_step_one_help is external_body performing induction over n to chain leads_to steps \u2014 the transitive composition of leads_to through nested always/implies/eventually closures bridges multiple intensional gaps without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "rank_zero_leads_to_self",
+    "type": "boundary",
+    "code": "proof fn phi_2_rank_zero_leads_to_self(spec: TempPred<int>, p: spec_fn(nat) -> TempPred<int>)\n    requires\n        forall |n: nat| #![trigger p(n)] (n > 0 ==> spec.entails(p(n).leads_to(p((n - 1) as nat)))),\n    ensures\n        spec.entails(p(0).leads_to(p(0))),\n{\n    leads_to_rank_step_one_help::<int>(spec, p, 0);\n}",
+    "reason": "at n=0 the base case derives p(0).leads_to(p(0)) without any premise \u2014 the external_body axiom must handle this reflexive case internally, requiring leads_to reflexivity through unverified closure resolution",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "vacuous_premise_any_leads_to",
+    "type": "behavioral",
+    "code": "proof fn phi_3_vacuous_premise_any_leads_to(spec: TempPred<int>, q: TempPred<int>, n: nat)\n    requires\n        forall |n: nat| #![trigger (|k: nat| q)(n)] (n > 0 ==> spec.entails((|k: nat| q)(n).leads_to((|k: nat| q)((n - 1) as nat)))),\n    ensures\n        spec.entails(q.leads_to(q)),\n{\n    leads_to_rank_step_one_help::<int>(spec, |k: nat| q, n);\n}",
+    "reason": "instantiating p as a constant function makes all step premises trivially q.leads_to(q) \u2014 the external_body axiom derives this for any spec without verifying leads_to reflexivity",
+    "entailed": false,
+    "verus_output": "error: the argument to `closure_to_fn` must be a closure\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-library__leads_to_rank_step_one/phi_3_vacuous_premise_any_leads_to.rs:99:37\n   |\n99 |         forall |n: nat| #![trigger (|k: nat| q)(n)] (n > 0 ==> spec.entails((|k: nat| q)(n).leads_to((|k: nat| q)((n - 1) as nat)))),\n   |                                     ^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "false_spec_any_rank_leads_to",
+    "type": "boundary",
+    "code": "proof fn phi_4_false_spec_any_rank_leads_to(p: spec_fn(nat) -> TempPred<int>, n: nat)\n    ensures\n        TempPred::<int>::new(|ex: Execution<int>| false).entails(p(n).leads_to(p(0))),\n{\n    leads_to_rank_step_one_help::<int>(TempPred::new(|ex: Execution<int>| false), p, n);\n}",
+    "reason": "an unsatisfiable spec vacuously satisfies all step premises and thus entails any ranked leads_to chain \u2014 the external_body axiom propagates vacuous truth without detecting spec inconsistency",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "single_step_amplified_to_full_chain",
+    "type": "logical",
+    "code": "proof fn phi_5_single_step_amplified_to_full_chain(spec: TempPred<int>, p: spec_fn(nat) -> TempPred<int>)\n    requires\n        forall |n: nat| #![trigger p(n)] (n > 0 ==> spec.entails(p(n).leads_to(p((n - 1) as nat)))),\n    ensures\n        forall |n: nat| #[trigger] spec.entails(p(n).leads_to(p(0))),\n{\n    leads_to_rank_step_one::<int>(spec, p);\n}",
+    "reason": "leads_to_rank_step_one composes unboundedly many leads_to steps through the external_body helper \u2014 each composition trusts the axiom to resolve fresh intensional closure gaps in the transitive leads_to chain",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

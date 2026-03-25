@@ -1,0 +1,15 @@
+# Spec Consistency Report
+
+**Source:** `/home/chentianyu/intent_formalization/verusage/source-projects/atmosphere/verified/kernel/kernel__create_and_share_pages__impl0__check_address_space_va_range_shareable.rs`
+**Date:** 2026-03-24T06:41:12Z
+**Status:** NO_PHIS_GENERATED
+
+## Stats
+
+- Candidates generated: 0
+- Entailed (verified): 0
+- True positives: 0
+- False positives: 0
+
+## All Candidates
+

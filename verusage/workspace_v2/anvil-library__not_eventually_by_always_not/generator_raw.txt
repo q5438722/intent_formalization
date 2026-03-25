@@ -1,0 +1,85 @@
+===PHI_START===
+NAME: always_unfold_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_always_unfold_intensional_bridge(ex: Execution<int>, p: TempPred<int>, i: nat)
+    requires
+        always(p).satisfied_by(ex),
+    ensures
+        p.satisfied_by(ex.suffix(i)),
+{
+    always_unfold::<int>(ex, p);
+}
+```
+REASON: always_unfold is external_body bridging always's TempPred::new closure-wrapped forall to a bare forall in ensures — intensionally distinct formulations equated without proof
+===PHI_END===
+
+===PHI_START===
+NAME: not_eventually_from_always_not
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_not_eventually_from_always_not(ex: Execution<int>, p: TempPred<int>)
+    requires
+        always(not(p)).satisfied_by(ex),
+    ensures
+        not(eventually(p)).satisfied_by(ex),
+{
+    not_eventually_by_always_not::<int>(ex, p);
+}
+```
+REASON: not_eventually_by_always_not bridges always(not(p)) to not(eventually(p)) — these are intensionally distinct TempPred closures (forall-of-not vs not-of-exists) equated through always_unfold without verifying closure identity
+===PHI_END===
+
+===PHI_START===
+NAME: always_not_blocks_any_witness
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_always_not_blocks_any_witness(ex: Execution<int>, p: TempPred<int>, witness: nat)
+    requires
+        always(not(p)).satisfied_by(ex),
+    ensures
+        !p.satisfied_by(ex.suffix(witness)),
+{
+    always_unfold::<int>(ex, not(p));
+}
+```
+REASON: always_unfold allows extracting negation at any specific witness index — if the closure bridge is unsound, this could incorrectly block valid witnesses
+===PHI_END===
+
+===PHI_START===
+NAME: double_not_eventually_collapse
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_double_not_eventually_collapse(ex: Execution<int>, p: TempPred<int>)
+    requires
+        always(not(not(p))).satisfied_by(ex),
+    ensures
+        not(eventually(not(p))).satisfied_by(ex),
+{
+    not_eventually_by_always_not::<int>(ex, not(p));
+}
+```
+REASON: applying always(not(not(p))) => not(eventually(not(p))) chains two levels of not-closure wrapping — if closure identity resolution is unsound, double negation could produce incorrect temporal conclusions
+===PHI_END===
+
+===PHI_START===
+NAME: always_not_self_contradicts_eventually
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_always_not_self_contradicts_eventually(ex: Execution<int>, p: TempPred<int>)
+    requires
+        always(not(p)).satisfied_by(ex),
+        eventually(p).satisfied_by(ex),
+    ensures
+        false,
+{
+    not_eventually_by_always_not::<int>(ex, p);
+}
+```
+REASON: combining always(not(p)) and eventually(p) derives false — if either the always_unfold bridge or the not/eventually closure resolution is unsound, this contradiction could be reached from consistent premises
+===PHI_END===

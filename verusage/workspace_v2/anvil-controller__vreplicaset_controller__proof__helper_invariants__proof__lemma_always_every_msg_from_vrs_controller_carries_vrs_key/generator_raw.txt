@@ -1,0 +1,83 @@
+===PHI_START===
+NAME: unmarshal_spec_total
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_unmarshal_spec_total<T: ResourceView>(v: Value)
+    requires
+        true,
+    ensures
+        T::unmarshal_spec(v) is Ok,
+{
+}
+```
+REASON: unmarshal_spec is uninterpreted — there is no axiom making it total, so arbitrary Values should be rejectable
+===PHI_END===
+
+===PHI_START===
+NAME: marshal_status_unmarshal_spec_compatible
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_marshal_status_unmarshal_spec_compatible<T: ResourceView>(s: T::Status)
+    requires
+        true,
+    ensures
+        T::unmarshal_spec(T::marshal_status(s)) is Ok,
+{
+}
+```
+REASON: marshal_status and unmarshal_spec operate on unrelated domains — a marshalled status Value should NOT be decodable as a valid spec
+===PHI_END===
+
+===PHI_START===
+NAME: allocate_idempotent
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_allocate_idempotent(a: ReconcileIdAllocator)
+    requires
+        a.reconcile_id_counter >= 0,
+    ensures
+        a.allocate().0 == a,
+{
+}
+```
+REASON: allocate increments reconcile_id_counter by 1, so the returned allocator must differ from the original — idempotence would mean IDs are never consumed
+===PHI_END===
+
+===PHI_START===
+NAME: object_ref_ignores_namespace
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_object_ref_ignores_namespace(req1: UpdateRequest, req2: UpdateRequest)
+    requires
+        req1.obj.kind == req2.obj.kind,
+        req1.name == req2.name,
+        req1.namespace != req2.namespace,
+    ensures
+        req1.key() == req2.key(),
+{
+}
+```
+REASON: key() includes namespace — two requests with different namespaces but same name should produce different ObjectRefs, not equal ones
+===PHI_END===
+
+===PHI_START===
+NAME: marshal_roundtrip_preserves_kind_field
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_marshal_roundtrip_preserves_kind_field<T: ResourceView>(obj: DynamicObjectView)
+    requires
+        obj.kind == T::kind(),
+        T::unmarshal_spec(obj.spec) is Ok,
+        T::unmarshal_status(obj.status) is Ok,
+    ensures
+        T::unmarshal(obj)->Ok_0.marshal().spec == obj.spec,
+{
+}
+```
+REASON: marshal_spec is uninterpreted so marshal(unmarshal(obj)).spec = marshal_spec(unmarshal_spec(obj.spec)) which need not equal obj.spec — only the reverse roundtrip (unmarshal∘marshal = id) is guaranteed
+===PHI_END===

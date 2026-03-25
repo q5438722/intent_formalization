@@ -1,0 +1,47 @@
+[
+  {
+    "name": "memop_valid_size_excludes_3",
+    "type": "boundary",
+    "code": "proof fn phi_1_memop_valid_size_excludes_3()\n    ensures\n        !(MemOp::Load { size: 3, result: LoadResult::Pagefault }).valid_op_size(),\n{\n}",
+    "reason": "`valid_op_size` only allows 1, 2, 4, 8 \u2014 a 3-byte operation is rejected; tests that the size whitelist doesn't accidentally include non-power-of-2 sizes which x86 doesn't support as atomic memory operations",
+    "entailed": false,
+    "verus_output": "xec` in initializer of `MemOp`\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__step_Writeback_preserves_inv_unmapping__inflight_walks/phi_1_memop_valid_size_excludes_3.rs:1593:11\n     |\n1593 |         !(MemOp::Load { size: 3, result: LoadResult::Pagefault }).valid_op_size(),\n     |           ^^^^^^^^^^^ missing `is_exec`\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\nFor more information about this error, try `rustc --explain E0063`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "update_range_at_zero_replaces_prefix",
+    "type": "behavioral",
+    "code": "proof fn phi_2_update_range_at_zero_replaces_prefix(s: Seq<u8>, new: Seq<u8>)\n    requires\n        new.len() <= s.len(),\n    ensures\n        update_range(s, 0, new).len() == s.len(),\n        forall|i: int| 0 <= i < new.len() ==> update_range(s, 0, new)[i] == new[i],\n        forall|i: int| new.len() <= i < s.len() ==> #[trigger] update_range(s, 0, new)[i] == s[i],\n{\n}",
+    "reason": "`update_range` at index 0 should replace the prefix and preserve the suffix \u2014 tests that the subrange+concat construction correctly handles the boundary; incorrect slicing would corrupt physical memory updates",
+    "entailed": true,
+    "verus_output": "sparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__step_Writeback_preserves_inv_unmapping__inflight_walks/phi_2_update_range_at_zero_replaces_prefix.rs:175:9\n    |\n175 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "walk_result_vaddr_invalid_returns_input",
+    "type": "behavioral",
+    "code": "proof fn phi_3_walk_result_vaddr_invalid_returns_input(vaddr: usize)\n    ensures\n        WalkResult::Invalid { vaddr }.vaddr() == vaddr,\n{\n}",
+    "reason": "For invalid walks, `vaddr()` should return the original queried address \u2014 tests that the Invalid variant faithfully records the input; if it returned a different address, error handling would target the wrong virtual address",
+    "entailed": false,
+    "verus_output": "uct`, `enum`, `union`, `trait`, `auto`, `impl`, `default`, `global`, `broadcast`, `macro`, identifier, `self`, `super`, `crate`, `::`\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__step_Writeback_preserves_inv_unmapping__inflight_walks/phi_3_walk_result_vaddr_invalid_returns_input.rs:1593:38\n     |\n1593 |         WalkResult::Invalid { vaddr }.vaddr() == vaddr,\n     |                                      ^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "combine_flags_disable_execute_propagates",
+    "type": "behavioral",
+    "code": "proof fn phi_4_combine_flags_disable_execute_propagates(f1: Flags, f2: Flags)\n    requires\n        f1.disable_execute,\n    ensures\n        f1.combine(f2).disable_execute,\n{\n}",
+    "reason": "`combine` uses OR for `disable_execute` \u2014 a single NX-flagged directory entry in the walk chain forces the final mapping to be non-executable; if this propagation failed, code execution from non-executable pages would be allowed",
+    "entailed": true,
+    "verus_output": "ent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__step_Writeback_preserves_inv_unmapping__inflight_walks/phi_4_combine_flags_disable_execute_propagates.rs:175:9\n    |\n175 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "lemma_write_seq_pml4_external_body",
+    "type": "logical",
+    "code": "proof fn phi_5_lemma_write_seq_pml4_external_body(mem: PTMem, writes: Seq<(usize, usize)>)\n    ensures\n        mem.write_seq(writes).pml4 == mem.pml4,\n{\n    mem.lemma_write_seq(writes);\n}",
+    "reason": "`lemma_write_seq` is `external_body` \u2014 pml4 preservation through arbitrary write sequences is asserted without proof; if `write_seq` could modify pml4, the page table root would shift silently",
+    "entailed": true,
+    "verus_output": "ansparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__step_Writeback_preserves_inv_unmapping__inflight_walks/phi_5_lemma_write_seq_pml4_external_body.rs:175:9\n    |\n175 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

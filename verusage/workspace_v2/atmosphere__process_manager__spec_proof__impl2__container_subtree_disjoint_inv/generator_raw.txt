@@ -1,0 +1,93 @@
+===PHI_START===
+NAME: get_thread_ensures_without_wf
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_get_thread_ensures_without_wf(pm: ProcessManager, t_ptr: ThreadPtr)
+    requires
+        pm.wf(),
+        pm.thread_dom().contains(t_ptr),
+    ensures
+        pm.proc_dom().contains(pm.get_thread(t_ptr).owning_proc),
+        pm.container_dom().contains(pm.get_thread(t_ptr).owning_container),
+{
+}
+```
+REASON: The `get_thread` external_body ensures `proc_dom.contains(ret.owning_proc)` and `container_dom.contains(ret.owning_container)` but neither `threads_cpu_wf` nor any visible predicate in `wf()` actually constrains these cross-domain membership properties — they are asserted purely by the trusted external_body
+===PHI_END===
+
+===PHI_START===
+NAME: owned_threads_not_subset_thread_dom
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_owned_threads_not_subset_thread_dom(pm: ProcessManager, c_ptr: ContainerPtr, t: ThreadPtr)
+    requires
+        pm.container_perms_wf(),
+        pm.container_fields_wf(),
+        pm.container_dom().contains(c_ptr),
+        pm.get_container(c_ptr).owned_threads@.contains(t),
+    ensures
+        pm.thread_dom().contains(t),
+{
+}
+```
+REASON: Container's `owned_threads` is a Ghost<Set<ThreadPtr>> with no predicate requiring it to be a subset of `thread_dom` — a container could claim ownership of nonexistent threads
+===PHI_END===
+
+===PHI_START===
+NAME: scheduler_entries_in_thread_dom
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_scheduler_entries_in_thread_dom(pm: ProcessManager, c_ptr: ContainerPtr, i: int)
+    requires
+        pm.container_perms_wf(),
+        pm.container_fields_wf(),
+        pm.container_dom().contains(c_ptr),
+        0 <= i < pm.get_container(c_ptr).scheduler@.len(),
+    ensures
+        pm.thread_dom().contains(pm.get_container(c_ptr).scheduler@[i]),
+{
+}
+```
+REASON: The `scheduler` StaticLinkedList holds ThreadPtrs but `container_fields_wf` only requires `scheduler.wf()` and `scheduler.unique()` — no predicate ensures scheduler entries are valid thread pointers in `thread_dom`
+===PHI_END===
+
+===PHI_START===
+NAME: owned_endpoints_not_subset_endpoint_dom
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_owned_endpoints_not_subset_endpoint_dom(pm: ProcessManager, c_ptr: ContainerPtr, e: EndpointPtr)
+    requires
+        pm.container_perms_wf(),
+        pm.container_fields_wf(),
+        pm.container_dom().contains(c_ptr),
+        pm.get_container(c_ptr).owned_endpoints@.contains(e),
+    ensures
+        pm.endpoint_perms@.dom().contains(e),
+{
+}
+```
+REASON: Container's `owned_endpoints` is a Ghost<Set<EndpointPtr>> with no predicate constraining it to be a subset of `endpoint_dom` — a container could claim ownership of endpoints that don't exist
+===PHI_END===
+
+===PHI_START===
+NAME: get_proc_owned_threads_wf_without_process_fields
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_get_proc_owned_threads_wf_without_process_fields(pm: ProcessManager, p_ptr: ProcPtr)
+    requires
+        pm.proc_perms_wf(),
+        pm.process_fields_wf(),
+        pm.proc_dom().contains(p_ptr),
+        !pm.wf(),
+    ensures
+        pm.get_proc(p_ptr).owned_threads.wf(),
+{
+}
+```
+REASON: The `get_proc` external_body unconditionally ensures `ret.owned_threads.wf()` regardless of whether `wf()` holds — this is stronger than the spec-level `process_fields_wf` which derives the same conclusion, suggesting the external_body leaks extra guarantees beyond what the open specs establish
+===PHI_END===

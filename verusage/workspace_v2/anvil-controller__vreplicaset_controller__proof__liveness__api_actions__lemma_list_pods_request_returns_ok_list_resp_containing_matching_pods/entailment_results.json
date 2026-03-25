@@ -1,0 +1,47 @@
+[
+  {
+    "name": "filter_empty_implies_no_elements_false_direction",
+    "type": "logical",
+    "code": "proof fn phi_1_filter_empty_implies_no_elements_false_direction(s: Seq<int>, pred: spec_fn(int) -> bool)\n    requires\n        s.filter(pred).len() == 0,\n        s.len() > 0,\n    ensures\n        forall |e: int| #[trigger] s.contains(e) ==> !pred(e),\n{\n    seq_pred_false_on_all_elements_is_equivalent_to_empty_filter(s, pred);\n}",
+    "reason": "the external_body lemma asserts a biconditional between empty filter and universal non-satisfaction \u2014 if unsound, it could let you prove no elements satisfy a predicate just because filter length is 0, even if the filter implementation has bugs",
+    "entailed": true,
+    "verus_output": "hes` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__api_actions__lemma_list_pods_request_returns_ok_list_resp_containing_matching_pods/phi_1_filter_empty_implies_no_elements_false_direction.rs:377:1\n    |\n377 | / #[is_variant]\n378 | | pub enum BuiltinControllersStep {\n379 | |     RunGarbageCollector,\n380 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "set_to_seq_roundtrip_inflates",
+    "type": "boundary",
+    "code": "proof fn phi_2_set_to_seq_roundtrip_inflates(s: Set<int>)\n    requires\n        s.finite(),\n        s.len() > 0,\n    ensures\n        s.to_seq().len() == s.len(),\n{\n    finite_set_to_seq_contains_all_set_elements(s);\n    finite_set_to_seq_has_no_duplicates(s);\n}",
+    "reason": "combining the external_body contains-biconditional with no_duplicates implicitly forces to_seq().len() == s.len() \u2014 if the two trusted axioms are inconsistent with the actual to_seq implementation this could be unsound",
+    "entailed": false,
+    "verus_output": "oller__proof__liveness__api_actions__lemma_list_pods_request_returns_ok_list_resp_containing_matching_pods/phi_2_set_to_seq_roundtrip_inflates.rs:3948:9\n     |\n3943 | proof fn phi_2_set_to_seq_roundtrip_inflates(s: Set<int>)\n     |       --------------------------------------------------- at the end of the function body\n...\n3948 |         s.to_seq().len() == s.len(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "filter_contains_then_original_and_pred",
+    "type": "logical",
+    "code": "proof fn phi_3_filter_contains_then_original_and_pred(s: Seq<int>, pred: spec_fn(int) -> bool, x: int)\n    requires\n        s.contains(x),\n        pred(x),\n    ensures\n        s.filter(pred).contains(x),\n{\n    seq_pred_false_on_all_elements_is_equivalent_to_empty_filter(s, pred);\n}",
+    "reason": "the external_body equivalence lemma only relates empty filter to universal non-satisfaction \u2014 deriving that a specific satisfying element must appear in the filter output relies on the trusted axiom being strong enough, which could mask a missing completeness axiom",
+    "entailed": true,
+    "verus_output": "` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__api_actions__lemma_list_pods_request_returns_ok_list_resp_containing_matching_pods/phi_3_filter_contains_then_original_and_pred.rs:377:1\n    |\n377 | / #[is_variant]\n378 | | pub enum BuiltinControllersStep {\n379 | |     RunGarbageCollector,\n380 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "marshal_preserves_integrity_trusted",
+    "type": "logical",
+    "code": "proof fn phi_4_marshal_preserves_integrity_trusted(obj: DynamicObjectView)\n    requires\n        obj.kind == PodView::kind(),\n        PodView::unmarshal(obj) is Ok,\n    ensures\n        PodView::unmarshal(obj)->Ok_0.marshal() == obj,\n{\n    PodView::marshal_preserves_integrity();\n    let pod = PodView::unmarshal(obj)->Ok_0;\n    assert(PodView::unmarshal(pod.marshal()) is Ok);\n    assert(pod == PodView::unmarshal(pod.marshal())->Ok_0);\n}",
+    "reason": "marshal_preserves_integrity is external_body and only guarantees unmarshal(marshal(o)) == o \u2014 the reverse direction (marshal(unmarshal(obj)) == obj) is NOT axiomatized, so if entailed it reveals the uninterpreted functions accidentally give a stronger-than-intended bijection",
+    "entailed": false,
+    "verus_output": "esp_containing_matching_pods/phi_4_marshal_preserves_integrity_trusted.rs:3948:9\n     |\n3943 | proof fn phi_4_marshal_preserves_integrity_trusted(obj: DynamicObjectView)\n     |       -------------------------------------------------------------------- at the end of the function body\n...\n3948 |         PodView::unmarshal(obj)->Ok_0.marshal() == obj,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "finite_filter_on_infinite_set",
+    "type": "boundary",
+    "code": "proof fn phi_5_finite_filter_on_infinite_set(f: spec_fn(int) -> bool)\n    requires\n        exists |x: int| f(x),\n        exists |x: int| !f(x),\n    ensures\n        Set::full().filter(f).finite(),\n{\n    finite_set_to_finite_filtered_set(Set::full(), f);\n}",
+    "reason": "finite_set_to_finite_filtered_set requires s.finite() but Set::full() is infinite \u2014 if Verus accepts this call it would mean the precondition check is bypassed via the external_body trust, allowing infinite sets to be treated as finite",
+    "entailed": false,
+    "verus_output": "nfer triggers for this quantifier.  Use #[trigger] annotations to manually mark trigger terms instead.\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__api_actions__lemma_list_pods_request_returns_ok_list_resp_containing_matching_pods/phi_5_finite_filter_on_infinite_set.rs:3945:9\n     |\n3945 |         exists |x: int| f(x),\n     |         ^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: view_domain_only_base_walks
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `PTMem::view` is defined as `Map::new(|va| self.is_base_pt_walk(va), ...)`. After `reveal`, `contains_key(va)` directly implies the domain predicate `is_base_pt_walk(va)`. This is correct by construction — the view map's domain is exactly the base walk set.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: view_value_equals_walk_pte
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `PTMem::view` is `Map::new(|va| self.is_base_pt_walk(va), |va| self.pt_walk(va).result()->pte)`. After `reveal`, indexing into the map at a key satisfying the domain predicate returns the value function applied to that key. This is correct by `Map::new` axioms.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: walk_result_path_len1_arbitrary
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: When `path.len() == 1` and the last entry is Page, none of the `if path.len() == 2/3/4` branches match, so `Walk::result` falls through to the `else { arbitrary() }` case. The result is unconstrained — it could be `Valid` or anything else. This is a real spec gap since a length-1 Page path has no defined semantics.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: is_base_pt_walk_requires_max_base
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `is_base_pt_walk` explicitly requires `vaddr < MAX_BASE` as its first conjunct. When `va >= MAX_BASE`, this conjunct is false, so the whole predicate is false. This is correct and intentional — the view is bounded by the virtual address space limit.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: all_mb0_bits_external_body_unconstrained
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `P || !P` is a tautology that holds for any boolean expression regardless of whether it's `external_body` or not. This proves nothing about the external_body gap — it would verify even with a fully specified implementation.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: `Walk::result` returns `arbitrary()` for path length 1 with a Page entry, leaving behavior unconstrained for this edge case. Four false positives: view domain/value properties follow directly from `Map::new` after reveal, the MAX_BASE bound is an explicit guard in `is_base_pt_walk`, and `P || !P` is a tautology that doesn't expose the `all_mb0_bits_are_zero` external_body gap.
+===END_SUMMARY===

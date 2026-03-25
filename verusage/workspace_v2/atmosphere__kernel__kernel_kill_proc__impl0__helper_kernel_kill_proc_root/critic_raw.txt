@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: container_map_4k_allows_double_ownership
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The ensures clause is not a tautology — it requires both containment predicates to hold simultaneously under the assumption that both are in the preconditions, which Verus confirms is satisfiable. The real issue is that `container_map_4k` is a Ghost field with no disjointness constraint in the visible spec, meaning two distinct containers can claim the same page. A well-formed allocator should enforce exclusive page ownership across containers.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: mapped_pages_not_subset_of_allocated
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures clause trivially restates the precondition (`mapped_pages_4k().contains(p)` implies itself). This proves nothing about the relationship between mapped and allocated pages. While the observation about missing subset constraints may be valid, this PHI doesn't demonstrate it.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: free_pages_overlap_allocated
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures clause merely conjoins the two preconditions, which is trivially true given the requires clause. This doesn't demonstrate that the spec *allows* overlap — it only shows that assuming overlap doesn't lead to contradiction, which is vacuously true for any pair of independent predicates. A meaningful test would derive `false` or an absurd consequence from the overlap assumption, or show overlap is constructible from wf().
+===VERDICT_END===
+
+===SUMMARY===
+One of three candidates is a true positive. The `container_map_4k_allows_double_ownership` PHI correctly identifies that the Ghost field `container_map_4k` lacks any disjointness predicate, allowing two distinct containers to claim the same physical page — a real spec gap for a page allocator. The other two candidates (`mapped_pages_not_subset_of_allocated` and `free_pages_overlap_allocated`) are false positives: both have ensures clauses that trivially follow from their preconditions without revealing any actual spec weakness. Their underlying observations about missing constraints may be valid, but the PHI formulations fail to meaningfully demonstrate them.
+===END_SUMMARY===

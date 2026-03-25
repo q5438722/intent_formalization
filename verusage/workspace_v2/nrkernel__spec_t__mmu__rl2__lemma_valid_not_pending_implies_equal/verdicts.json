@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "lemma_view_addr_aligned_external_body",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`lemma_view_addr_aligned` is `external_body` with `unimplemented!()` \u2014 directory address 4KB-alignment and overflow bounds are asserted from PDE bitmask extraction without bitvector proof. This is a critical trust assumption since pt_walk uses these addresses to compute next-level table locations."
+  },
+  {
+    "phi": "lemma_bit_indices_less_512_external_body",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`lemma_bit_indices_less_512` is `external_body` with `unimplemented!()` \u2014 the <512 bound for 9-bit field extraction is provable by `by (bit_vector)` but is instead trusted without proof. This bound is used to ensure page table index validity throughout pt_walk."
+  },
+  {
+    "phi": "pt_walk_l0_addr_in_pml4_range",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`pt_walk` defines `l0_addr = add(self.pml4, l0_idx)` and constructs the path with `l0_addr` as the first entry's address in all branches. This is correct by construction \u2014 the ensures is a direct read-back of the definition."
+  },
+  {
+    "phi": "write_seq_idle_plus_write_seq",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Both `lemma_write_seq` (domain monotonicity) and `lemma_write_seq_idle` (read frame) are `external_body` with `unimplemented!()`. This chains two unverified assumptions to establish that disjoint-address writes preserve both domain membership and read values \u2014 a compound trust assumption."
+  },
+  {
+    "phi": "page_addr_aligned_external_body",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Same as `lemma_view_addr_aligned_external_body` but for Page entries \u2014 page frame address 4KB-alignment and overflow bounds from bitmask extraction are trusted without proof. This is essential for walk result correctness since page addresses feed into physical address computation."
+  }
+]

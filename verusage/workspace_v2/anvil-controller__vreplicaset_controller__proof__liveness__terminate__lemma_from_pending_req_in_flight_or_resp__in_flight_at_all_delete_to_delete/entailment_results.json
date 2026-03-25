@@ -1,0 +1,47 @@
+[
+  {
+    "name": "unmarshal_local_state_can_fail",
+    "type": "logical",
+    "code": "proof fn phi_1_unmarshal_local_state_can_fail(v: Value)\n    requires\n        VReplicaSetReconcileState::unmarshal(v) is Err,\n    ensures\n        true,\n{\n}",
+    "reason": "unmarshal is uninterpreted with no totality axiom, so at_step_closure and unwrap_local_state_closure call .unwrap() on potentially-Err results \u2014 any predicate using these closures has undefined behavior on non-unmarshallable local states",
+    "entailed": true,
+    "verus_output": "-> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__terminate__lemma_from_pending_req_in_flight_or_resp__in_flight_at_all_delete_to_delete/phi_1_unmarshal_local_state_can_fail.rs:173:1\n    |\n173 | / #[is_variant]\n174 | | pub enum APIRequest {\n175 | |     GetRequest(GetRequest),\n176 | |     ListRequest(ListRequest),\n...   |\n182 | |     GetThenUpdateRequest(GetThenUpdateRequest),\n183 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "at_step_closure_vacuous_on_bad_state",
+    "type": "behavioral",
+    "code": "proof fn phi_2_at_step_closure_vacuous_on_bad_state(v: Value, step: VReplicaSetRecStepView)\n    requires\n        VReplicaSetReconcileState::unmarshal(v) is Err,\n    ensures\n        at_step_closure(step)(v) == at_step_closure(VReplicaSetRecStepView::Init)(v),\n{\n}",
+    "reason": "when unmarshal fails, unwrap() produces an arbitrary value, so at_step_closure cannot distinguish any two steps on corrupt local state \u2014 all reconcile step predicates collapse to the same truth value",
+    "entailed": false,
+    "verus_output": "2 | proof fn phi_2_at_step_closure_vacuous_on_bad_state(v: Value, step: VReplicaSetRecStepView)\n    |       ------------------------------------------------------------------------------------- at the end of the function body\n...\n886 |         at_step_closure(step)(v) == at_step_closure(VReplicaSetRecStepView::Init)(v),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "has_pending_req_no_contains_key_guard",
+    "type": "boundary",
+    "code": "proof fn phi_3_has_pending_req_no_contains_key_guard(controller_id: int, s: ClusterState, key: ObjectRef)\n    requires\n        !s.ongoing_reconciles(controller_id).contains_key(key),\n    ensures\n        !Cluster::at_expected_reconcile_states(controller_id, key, at_step_closure(VReplicaSetRecStepView::Init))(s),\n{\n}",
+    "reason": "at_expected_reconcile_states guards on contains_key, but has_pending_req_msg does not \u2014 if these predicates are composed in contexts where the guard is missing, map indexing on absent keys yields arbitrary values",
+    "entailed": true,
+    "verus_output": "e/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__terminate__lemma_from_pending_req_in_flight_or_resp__in_flight_at_all_delete_to_delete/phi_3_has_pending_req_no_contains_key_guard.rs:173:1\n    |\n173 | / #[is_variant]\n174 | | pub enum APIRequest {\n175 | |     GetRequest(GetRequest),\n176 | |     ListRequest(ListRequest),\n...   |\n182 | |     GetThenUpdateRequest(GetThenUpdateRequest),\n183 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pending_req_state_vacuous_when_no_pending",
+    "type": "behavioral",
+    "code": "proof fn phi_4_pending_req_state_vacuous_when_no_pending(controller_id: int, key: ObjectRef, s: ClusterState)\n    requires\n        s.ongoing_reconciles(controller_id).contains_key(key),\n        s.ongoing_reconciles(controller_id)[key].pending_req_msg is None,\n    ensures\n        Cluster::pending_req_in_flight_or_resp_in_flight_at_reconcile_state(\n            controller_id, key, |_s: ReconcileLocalState| true\n        )(s),\n{\n}",
+    "reason": "pending_req_in_flight_or_resp_in_flight_at_reconcile_state is vacuously true when pending_req_msg is None (has_pending_req_msg fails), so any reconcile state without a pending request trivially satisfies the invariant regardless of actual in-flight message status",
+    "entailed": false,
+    "verus_output": "ending(controller_id: int, key: ObjectRef, s: ClusterState)\n    |         ------------------------------------------------------------------------------------------------------- at the end of the function body\n...\n887 | /         Cluster::pending_req_in_flight_or_resp_in_flight_at_reconcile_state(\n888 | |             controller_id, key, |_s: ReconcileLocalState| true\n889 | |         )(s),\n    | |____________^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "object_ref_ignores_uid",
+    "type": "behavioral",
+    "code": "proof fn phi_5_object_ref_ignores_uid(v1: VReplicaSetView, v2: VReplicaSetView)\n    requires\n        v1.metadata.name is Some,\n        v2.metadata.name is Some,\n        v1.metadata.namespace is Some,\n        v2.metadata.namespace is Some,\n        v1.metadata.name == v2.metadata.name,\n        v1.metadata.namespace == v2.metadata.namespace,\n        v1.metadata.uid != v2.metadata.uid,\n    ensures\n        v1.object_ref() == v2.object_ref(),\n{\n}",
+    "reason": "object_ref uses only kind/name/namespace and ignores uid, so a deleted-and-recreated VReplicaSet with a new uid maps to the same ObjectRef \u2014 the liveness lemma's ongoing_reconciles keyed by object_ref could conflate old and new instances",
+    "entailed": true,
+    "verus_output": "tml\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__terminate__lemma_from_pending_req_in_flight_or_resp__in_flight_at_all_delete_to_delete/phi_5_object_ref_ignores_uid.rs:173:1\n    |\n173 | / #[is_variant]\n174 | | pub enum APIRequest {\n175 | |     GetRequest(GetRequest),\n176 | |     ListRequest(ListRequest),\n...   |\n182 | |     GetThenUpdateRequest(GetThenUpdateRequest),\n183 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

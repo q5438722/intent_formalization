@@ -1,0 +1,47 @@
+[
+  {
+    "name": "create_key_namespace_diverges",
+    "type": "behavioral",
+    "code": "proof fn phi_1_create_key_namespace_diverges(req: CreateRequest)\n    requires\n        req.obj.metadata.namespace is Some,\n        req.namespace != req.obj.metadata.namespace->0,\n    ensures\n        req.key().namespace != req.obj.metadata.namespace->0,\n{\n}",
+    "reason": "CreateRequest::key uses self.namespace not self.obj.metadata.namespace, so the key can silently disagree with the object's own namespace",
+    "entailed": true,
+    "verus_output": "github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__spec__invariant_since_phase_iii_is_stable/phi_1_create_key_namespace_diverges.rs:194:1\n    |\n194 | / #[is_variant]\n195 | | pub enum APIRequest {\n196 | |     GetRequest(GetRequest),\n197 | |     ListRequest(ListRequest),\n...   |\n203 | |     GetThenUpdateRequest(GetThenUpdateRequest),\n204 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "update_key_ignores_obj_name",
+    "type": "behavioral",
+    "code": "proof fn phi_2_update_key_ignores_obj_name(req: UpdateRequest)\n    requires\n        req.obj.metadata.name is Some,\n        req.name != req.obj.metadata.name->0,\n    ensures\n        req.key().name != req.obj.metadata.name->0,\n{\n}",
+    "reason": "UpdateRequest::key uses self.name rather than self.obj.metadata.name, allowing the update to target a different resource than the object payload describes",
+    "entailed": true,
+    "verus_output": "g.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__spec__invariant_since_phase_iii_is_stable/phi_2_update_key_ignores_obj_name.rs:194:1\n    |\n194 | / #[is_variant]\n195 | | pub enum APIRequest {\n196 | |     GetRequest(GetRequest),\n197 | |     ListRequest(ListRequest),\n...   |\n203 | |     GetThenUpdateRequest(GetThenUpdateRequest),\n204 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "get_then_update_key_ignores_obj_namespace",
+    "type": "behavioral",
+    "code": "proof fn phi_3_get_then_update_key_ignores_obj_namespace(req: GetThenUpdateRequest)\n    requires\n        req.obj.metadata.namespace is Some,\n        req.namespace != req.obj.metadata.namespace->0,\n    ensures\n        req.key().namespace != req.obj.metadata.namespace->0,\n{\n}",
+    "reason": "GetThenUpdateRequest::key uses self.namespace not self.obj.metadata.namespace, enabling a cross-namespace object swap",
+    "entailed": true,
+    "verus_output": "rus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__spec__invariant_since_phase_iii_is_stable/phi_3_get_then_update_key_ignores_obj_namespace.rs:194:1\n    |\n194 | / #[is_variant]\n195 | | pub enum APIRequest {\n196 | |     GetRequest(GetRequest),\n197 | |     ListRequest(ListRequest),\n...   |\n203 | |     GetThenUpdateRequest(GetThenUpdateRequest),\n204 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "controller_owner_ref_ignores_namespace",
+    "type": "logical",
+    "code": "proof fn phi_4_controller_owner_ref_ignores_namespace(v1: VReplicaSetView, v2: VReplicaSetView)\n    requires\n        v1.metadata.name is Some,\n        v2.metadata.name is Some,\n        v1.metadata.uid is Some,\n        v2.metadata.uid is Some,\n        v1.metadata.name->0 == v2.metadata.name->0,\n        v1.metadata.uid->0 == v2.metadata.uid->0,\n        v1.metadata.namespace != v2.metadata.namespace,\n    ensures\n        v1.controller_owner_ref() == v2.controller_owner_ref(),\n{\n}",
+    "reason": "controller_owner_ref uses only name and uid but not namespace \u2014 two VReplicaSets in different namespaces with the same name and uid produce identical owner references, conflating cross-namespace ownership",
+    "entailed": true,
+    "verus_output": "/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__spec__invariant_since_phase_iii_is_stable/phi_4_controller_owner_ref_ignores_namespace.rs:194:1\n    |\n194 | / #[is_variant]\n195 | | pub enum APIRequest {\n196 | |     GetRequest(GetRequest),\n197 | |     ListRequest(ListRequest),\n...   |\n203 | |     GetThenUpdateRequest(GetThenUpdateRequest),\n204 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "unmarshal_skips_state_validation",
+    "type": "behavioral",
+    "code": "proof fn phi_5_unmarshal_skips_state_validation(obj: DynamicObjectView)\n    requires\n        obj.kind == PodView::kind(),\n        PodView::unmarshal_spec(obj.spec) is Ok,\n        PodView::unmarshal_status(obj.status) is Ok,\n    ensures\n        PodView::unmarshal(obj) is Ok,\n{\n}",
+    "reason": "unmarshal succeeds whenever kind/spec/status parse correctly but never checks state_validation \u2014 objects that violate domain invariants (e.g. pods with spec == None) can be successfully unmarshalled",
+    "entailed": true,
+    "verus_output": "hub.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__liveness__spec__invariant_since_phase_iii_is_stable/phi_5_unmarshal_skips_state_validation.rs:194:1\n    |\n194 | / #[is_variant]\n195 | | pub enum APIRequest {\n196 | |     GetRequest(GetRequest),\n197 | |     ListRequest(ListRequest),\n...   |\n203 | |     GetThenUpdateRequest(GetThenUpdateRequest),\n204 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

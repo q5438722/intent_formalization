@@ -1,0 +1,151 @@
+===PHI_START===
+NAME: push_result_empty
+TARGET_FN: push
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_push_result_empty<T: Copy, const N: usize>(
+    old_self: StaticLinkedList<T, N>,
+    new_self: StaticLinkedList<T, N>,
+    new_value: T,
+    free_node_index: SLLIndex,
+)
+    requires
+        old_self.wf(),
+        old_self.spec_len() < N,
+        old_self.unique(),
+        !old_self@.contains(new_value),
+        N > 2,
+        new_self.wf(),
+        new_self@ == old_self@.push(new_value),
+        new_self.spec_len() == old_self.spec_len() + 1,
+        new_self.unique(),
+    ensures
+        new_self@.len() == 0,
+{
+}
+```
+REASON: Push should increase length, so the result being empty would indicate a contradictory or vacuous spec.
+===PHI_END===
+
+===PHI_START===
+NAME: push_new_value_missing
+TARGET_FN: push
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_push_new_value_missing<T: Copy, const N: usize>(
+    old_self: StaticLinkedList<T, N>,
+    new_self: StaticLinkedList<T, N>,
+    new_value: T,
+    free_node_index: SLLIndex,
+)
+    requires
+        old_self.wf(),
+        old_self.spec_len() < N,
+        old_self.unique(),
+        !old_self@.contains(new_value),
+        N > 2,
+        new_self.wf(),
+        new_self@ == old_self@.push(new_value),
+        new_self.spec_len() == old_self.spec_len() + 1,
+        new_self.get_node_ref(new_value) == free_node_index,
+        new_self.unique(),
+    ensures
+        !new_self@.contains(new_value),
+{
+}
+```
+REASON: After pushing new_value, it must be contained in the result; its absence would mean push silently drops the element.
+===PHI_END===
+
+===PHI_START===
+NAME: push_returns_negative_index
+TARGET_FN: push
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_push_returns_negative_index<T: Copy, const N: usize>(
+    old_self: StaticLinkedList<T, N>,
+    new_self: StaticLinkedList<T, N>,
+    new_value: T,
+    free_node_index: SLLIndex,
+)
+    requires
+        old_self.wf(),
+        old_self.spec_len() < N,
+        old_self.unique(),
+        !old_self@.contains(new_value),
+        N > 2,
+        new_self.wf(),
+        new_self@ == old_self@.push(new_value),
+        new_self.spec_len() == old_self.spec_len() + 1,
+        new_self.get_node_ref(new_value) == free_node_index,
+        new_self.unique(),
+    ensures
+        free_node_index < 0,
+{
+}
+```
+REASON: The returned index references an array slot; a negative value would be an invalid index indicating the spec lacks a bounds guarantee.
+===PHI_END===
+
+===PHI_START===
+NAME: push_seq_unchanged
+TARGET_FN: push
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_push_seq_unchanged<T: Copy, const N: usize>(
+    old_self: StaticLinkedList<T, N>,
+    new_self: StaticLinkedList<T, N>,
+    new_value: T,
+    free_node_index: SLLIndex,
+)
+    requires
+        old_self.wf(),
+        old_self.spec_len() < N,
+        old_self.unique(),
+        !old_self@.contains(new_value),
+        N > 2,
+        new_self.wf(),
+        new_self@ == old_self@.push(new_value),
+        new_self.spec_len() == old_self.spec_len() + 1,
+        new_self.unique(),
+    ensures
+        new_self@ =~= old_self@,
+{
+}
+```
+REASON: If the post-state sequence equals the pre-state sequence, push had no observable effect, contradicting its purpose.
+===PHI_END===
+
+===PHI_START===
+NAME: push_exceeds_capacity
+TARGET_FN: push
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_push_exceeds_capacity<T: Copy, const N: usize>(
+    old_self: StaticLinkedList<T, N>,
+    new_self: StaticLinkedList<T, N>,
+    new_value: T,
+    free_node_index: SLLIndex,
+)
+    requires
+        old_self.wf(),
+        old_self.spec_len() < N,
+        old_self.unique(),
+        !old_self@.contains(new_value),
+        N > 2,
+        new_self.wf(),
+        new_self@ == old_self@.push(new_value),
+        new_self.spec_len() == old_self.spec_len() + 1,
+        new_self.unique(),
+    ensures
+        new_self.spec_len() > N,
+{
+}
+```
+REASON: The list length after push must stay within capacity N; exceeding it would indicate the spec fails to enforce the fixed-size invariant.
+===PHI_END===

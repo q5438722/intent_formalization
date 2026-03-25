@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: is_empty_ignores_l4_below_kernel_end
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is by design. `is_empty` means "no user-space mappings" — kernel entries below `kernel_l4_end` are shared across all page tables and are supposed to persist even when a table is "empty." The invariant `kernel_entries@ =~= self.kernel_entries_ghost@` ensures kernel entries are consistent, not absent.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: alloc_iommu_preserves_all_pcid_mappings
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The precondition explicitly requires `new_mm.page_tables =~= old_mm.page_tables`, so identical PCID mappings follow trivially from structural equality. This is a tautological consequence of the preconditions, not a spec gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: alloc_iommu_new_mapping_empty
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The preconditions state `!old_mm.ioid_active(ret)` (ret was free) and `new_mm.iommu_tables =~= old_mm.iommu_tables` (tables unchanged). Since `iommutables_wf` requires free IOIDs to have `is_empty()` tables (which includes empty mappings), and `new_mm.wf()` holds, the empty mapping follows correctly from the free-implies-empty invariant.
+===VERDICT_END===
+
+===SUMMARY===
+All three candidates are false positives. `is_empty_ignores_l4_below_kernel_end` reflects the intentional design that kernel entries persist across "empty" page tables. The other two (`alloc_iommu_preserves_all_pcid_mappings` and `alloc_iommu_new_mapping_empty`) are trivial consequences of their preconditions — one follows from structural equality of page tables, the other from the free-implies-is_empty invariant combined with unchanged IOMMU tables.
+===END_SUMMARY===

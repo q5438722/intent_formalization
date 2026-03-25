@@ -1,0 +1,17 @@
+===VERDICT_START===
+PHI: step_unmap_sound_empty_inflights
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: When there are no in-flight threads, there are no concurrent operations to conflict with. The unmap soundness check is specifically about preventing races with concurrent map/unmap operations — if no threads are active, any unmap is indeed safe from a concurrency perspective. The existence check for the mapping itself is handled elsewhere in the transition logic.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: unmap_sound_ignores_existing_mappings
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `step_Unmap_sound` is specifically a concurrency safety check — it verifies that an unmap doesn't conflict with in-flight operations. Whether the mapping exists at the given vaddr is a separate concern handled by other parts of the transition system (the unmap step itself would return an error result if the mapping doesn't exist). Separation of concerns is standard in layered state machine specs.
+===VERDICT_END===
+
+===SUMMARY===
+Both candidates are false positives. `step_Unmap_sound` is intentionally scoped to concurrency safety — checking only for conflicts with in-flight thread operations. Mapping existence validation is handled separately in the transition logic. The empty-inflights case is trivially correct by design: no concurrent threads means no race conditions to guard against.
+===END_SUMMARY===

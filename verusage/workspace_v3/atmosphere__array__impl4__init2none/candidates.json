@@ -1,0 +1,37 @@
+[
+  {
+    "name": "set_is_noop",
+    "target_fn": "set",
+    "type": "behavioral",
+    "code": "proof fn phi_1_set_is_noop(pre_seq: Seq<int>, post_seq: Seq<int>, i: int, out: int, n: int)\n    requires\n        n > 0,\n        0 <= i < n,\n        pre_seq.len() == n,\n        post_seq =~= pre_seq.update(i, out),\n        post_seq.len() == n,\n    ensures\n        pre_seq =~= post_seq,\n{\n}",
+    "reason": "If provable, set never modifies the array, making the operation a no-op regardless of the value written"
+  },
+  {
+    "name": "set_corrupts_other_index",
+    "target_fn": "set",
+    "type": "behavioral",
+    "code": "proof fn phi_2_set_corrupts_other(pre_seq: Seq<int>, post_seq: Seq<int>, i: int, j: int, out: int, n: int)\n    requires\n        n > 1,\n        0 <= i < n,\n        0 <= j < n,\n        i != j,\n        pre_seq.len() == n,\n        post_seq =~= pre_seq.update(i, out),\n        post_seq.len() == n,\n    ensures\n        pre_seq[j] != post_seq[j],\n{\n}",
+    "reason": "If provable, set has unintended side effects on indices other than the target index"
+  },
+  {
+    "name": "set_ignores_value",
+    "target_fn": "set",
+    "type": "boundary",
+    "code": "proof fn phi_3_set_ignores_value(pre_seq: Seq<int>, post_seq: Seq<int>, i: int, out: int, n: int)\n    requires\n        n > 0,\n        0 <= i < n,\n        pre_seq.len() == n,\n        post_seq =~= pre_seq.update(i, out),\n        post_seq.len() == n,\n    ensures\n        post_seq[i] != out,\n{\n}",
+    "reason": "If provable, set does not actually store the provided value at the target index"
+  },
+  {
+    "name": "init2none_first_is_some",
+    "target_fn": "init2none",
+    "type": "logical",
+    "code": "proof fn phi_4_init2none_first_is_some(post_seq: Seq<Option<int>>, n: int)\n    requires\n        n > 0,\n        post_seq.len() == n,\n        forall|index: int| 0 <= index < n ==> (#[trigger] post_seq[index]).is_None(),\n    ensures\n        post_seq[0].is_Some(),\n{\n}",
+    "reason": "If provable, init2none leaves the first element as Some, directly contradicting its all-None guarantee"
+  },
+  {
+    "name": "init2none_empties_seq",
+    "target_fn": "init2none",
+    "type": "boundary",
+    "code": "proof fn phi_5_init2none_empties_seq(post_seq: Seq<Option<int>>, n: int)\n    requires\n        n > 0,\n        post_seq.len() == n,\n        forall|index: int| 0 <= index < n ==> (#[trigger] post_seq[index]).is_None(),\n    ensures\n        post_seq =~= Seq::<Option<int>>::empty(),\n{\n}",
+    "reason": "If provable, init2none collapses the array to an empty sequence instead of preserving length while filling with None"
+  }
+]

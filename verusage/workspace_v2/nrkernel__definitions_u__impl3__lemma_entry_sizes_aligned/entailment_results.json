@@ -1,0 +1,47 @@
+[
+  {
+    "name": "aligned_transitive_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_aligned_transitive_external_body(a: nat, b: nat, c: nat)\n    requires\n        0 < b,\n        0 < c,\n        aligned(a, b),\n        aligned(b, c),\n    ensures\n        aligned(a, c),\n{\n    aligned_transitive(a, b, c);\n}",
+    "reason": "`aligned_transitive` is `external_body` \u2014 transitivity of alignment (divisibility) is trusted without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 7 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "entry_sizes_aligned_uses_external",
+    "type": "logical",
+    "code": "proof fn phi_2_entry_sizes_aligned_uses_external(arch: Arch, i: nat, j: nat)\n    requires\n        arch.inv(),\n        i <= j,\n        j < arch.layers.len(),\n    ensures\n        aligned(arch.entry_size(i), arch.entry_size(j)),\n{\n    arch.lemma_entry_sizes_aligned(i, j);\n}",
+    "reason": "The verified `lemma_entry_sizes_aligned` depends on the unverified `aligned_transitive` external_body \u2014 if transitivity were wrong the entire alignment chain would be unsound",
+    "entailed": true,
+    "verus_output": "verification results:: 7 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "aligned_transitive_chain",
+    "type": "logical",
+    "code": "proof fn phi_3_aligned_transitive_chain(a: nat, b: nat, c: nat, d: nat)\n    requires\n        0 < b,\n        0 < c,\n        0 < d,\n        aligned(a, b),\n        aligned(b, c),\n        aligned(c, d),\n    ensures\n        aligned(a, d),\n{\n    aligned_transitive(a, b, c);\n    aligned_transitive(a, c, d);\n}",
+    "reason": "Two applications of the external_body axiom yield a 3-step transitivity chain \u2014 the unverified axiom composes freely to derive alignment across arbitrarily many intermediaries",
+    "entailed": true,
+    "verus_output": "verification results:: 7 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "self_aligned_from_lemma",
+    "type": "boundary",
+    "code": "proof fn phi_4_self_aligned_from_lemma(arch: Arch, i: nat)\n    requires\n        arch.inv(),\n        i < arch.layers.len(),\n    ensures\n        aligned(arch.entry_size(i), arch.entry_size(i)),\n{\n    arch.lemma_entry_sizes_aligned(i, i);\n}",
+    "reason": "Self-alignment is trivially true but the lemma proves it via nonlinear_arith rather than from `x % x == 0` \u2014 tests the base case path",
+    "entailed": true,
+    "verus_output": "verification results:: 7 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "adjacent_alignment_from_inv",
+    "type": "behavioral",
+    "code": "proof fn phi_5_adjacent_alignment_from_inv(arch: Arch, i: nat)\n    requires\n        arch.inv(),\n        i + 1 < arch.layers.len(),\n    ensures\n        arch.entry_size(i) % arch.entry_size(i + 1) == 0,\n{\n    arch.lemma_entry_sizes_aligned(i, i + 1);\n}",
+    "reason": "Adjacent layer divisibility follows from `entry_size(i) == entry_size(i+1) * num_entries(i+1)` \u2014 but the proof path goes through the lemma that uses the external_body `aligned_transitive`",
+    "entailed": true,
+    "verus_output": "verification results:: 7 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

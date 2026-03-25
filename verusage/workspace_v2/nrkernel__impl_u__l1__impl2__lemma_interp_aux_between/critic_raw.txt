@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: interp_of_entry_between_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `lemma_interp_of_entry_between` is `external_body` with `unimplemented!()` body — the VA bounding property `entry_base(i) <= va < next_entry_base(i)` for all keys in an entry's interpretation is trusted without proof. This is the foundational axiom for the entire interp_aux bounding chain.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: interp_of_entry_frame_bound_external_body
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is the second ensures clause of the same `external_body` axiom already captured by φ1. Both VA bounds and frame size bounds are part of a single trust assumption — flagging them separately adds no new information.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: lemma_entry_base_strict_monotone_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `lemma_entry_base_from_index` is `external_body` with `unimplemented!()` body — strict monotonicity of `base + idx * entry_size` is a correct arithmetic fact but trusted without proof. Used by `lemma_interp_aux_between` for the inductive step.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: next_entry_leq_next_base_external_body
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is another ensures clause of the same `lemma_entry_base_from_index` external_body already captured by φ3. The gap-free property is part of the same trust assumption.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: interp_aux_va_upper_bounded
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is a verified consequence of `lemma_interp_aux_between`, which has a full proof body. The trust gaps are already captured by φ1 and φ3; this adds no new unverified assumption.
+===VERDICT_END===
+
+===SUMMARY===
+Two true positives: `lemma_interp_of_entry_between` and `lemma_entry_base_from_index` are both `external_body` axioms trusting correct but unproven properties — entry interpretation VA/frame bounds and entry base address strict monotonicity respectively. The other three are false positives — redundant ensures clauses from the same axioms and a verified downstream consequence.
+===END_SUMMARY===

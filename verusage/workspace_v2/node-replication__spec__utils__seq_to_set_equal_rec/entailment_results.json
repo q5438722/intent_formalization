@@ -1,0 +1,47 @@
+[
+  {
+    "name": "seq_to_set_rec_contains_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_seq_to_set_rec_contains_external_body(seq: Seq<nat>)\n    ensures\n        forall|a| #[trigger] seq.contains(a) <==> seq_to_set_rec(seq).contains(a),\n{\n    seq_to_set_rec_contains(seq);\n}",
+    "reason": "`seq_to_set_rec_contains` is `external_body` \u2014 the biconditional between `seq.contains(a)` and `seq_to_set_rec(seq).contains(a)` is trusted without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "seq_to_set_equal_rec_via_external",
+    "type": "logical",
+    "code": "proof fn phi_2_seq_to_set_equal_rec_via_external(seq: Seq<nat>)\n    ensures\n        seq_to_set(seq) == seq_to_set_rec(seq),\n{\n    seq_to_set_equal_rec(seq);\n}",
+    "reason": "The equality `seq_to_set == seq_to_set_rec` depends on the unverified `seq_to_set_rec_contains` axiom \u2014 if that axiom is wrong, the two definitions could disagree",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "seq_to_set_rec_empty",
+    "type": "boundary",
+    "code": "proof fn phi_3_seq_to_set_rec_empty()\n    ensures\n        seq_to_set_rec(Seq::<nat>::empty()) == Set::<nat>::empty(),\n{\n}",
+    "reason": "Empty sequence produces empty set \u2014 tests the base case of the recursive definition",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "seq_to_set_rec_singleton",
+    "type": "boundary",
+    "code": "proof fn phi_4_seq_to_set_rec_singleton(x: nat)\n    ensures\n        seq_to_set_rec(seq![x]) == set!{x},\n{\n}",
+    "reason": "A singleton sequence produces a singleton set \u2014 tests the one-element recursive step",
+    "entailed": false,
+    "verus_output": "ion not satisfied\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/node-replication__spec__utils__seq_to_set_equal_rec/phi_4_seq_to_set_rec_singleton.rs:58:9\n   |\n56 | proof fn phi_4_seq_to_set_rec_singleton(x: nat)\n   |       ----------------------------------------- at the end of the function body\n57 |     ensures\n58 |         seq_to_set_rec(seq![x]) == set!{x},\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "seq_to_set_rec_superset_of_elements",
+    "type": "behavioral",
+    "code": "proof fn phi_5_seq_to_set_rec_superset_of_elements(seq: Seq<nat>, i: int)\n    requires\n        0 <= i < seq.len(),\n    ensures\n        seq_to_set_rec(seq).contains(seq[i]),\n{\n    seq_to_set_rec_contains(seq);\n    assert(seq.contains(seq[i]));\n}",
+    "reason": "Every element at a valid index is in the resulting set \u2014 depends on the unverified `seq_to_set_rec_contains` external_body axiom",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

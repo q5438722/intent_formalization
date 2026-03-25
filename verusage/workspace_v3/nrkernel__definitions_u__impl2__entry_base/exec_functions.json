@@ -1,0 +1,26 @@
+[
+  {
+    "name": "entry_size",
+    "code": "pub open spec(checked) fn entry_size(self, layer: nat) -> nat\n        recommends\n            layer < self.layers.len(),\n    {\n        self.layers[layer as int].entry_size\n    }"
+  },
+  {
+    "name": "num_entries",
+    "code": "pub open spec(checked) fn num_entries(self, layer: nat) -> nat\n        recommends\n            layer < self.layers.len(),\n    {\n        self.layers.index(layer as int).num_entries\n    }"
+  },
+  {
+    "name": "inv",
+    "code": "pub open spec(checked) fn inv(&self) -> bool {\n        &&& self.layers.len() <= X86_NUM_LAYERS\n        &&& forall|i: nat|\n            #![trigger self.entry_size(i)]\n            #![trigger self.num_entries(i)]\n            i < self.layers.len() ==> {\n                &&& 0 < self.entry_size(i) <= X86_MAX_ENTRY_SIZE\n                &&& 0 < self.num_entries(i) <= X86_NUM_ENTRIES\n                &&& self.entry_size_is_next_layer_size(i)\n            }\n    }"
+  },
+  {
+    "name": "entry_size_is_next_layer_size",
+    "code": "pub open spec(checked) fn entry_size_is_next_layer_size(self, i: nat) -> bool\n        recommends\n            i < self.layers.len(),\n    {\n        i + 1 < self.layers.len() ==> self.entry_size(i) == self.entry_size((i + 1) as nat)\n            * self.num_entries((i + 1) as nat)\n    }"
+  },
+  {
+    "name": "entry_base",
+    "code": "#[verifier(inline)]\n    pub open spec(checked) fn entry_base(self, layer: nat, base: nat, idx: nat) -> nat\n        recommends\n            self.inv(),\n            layer < self.layers.len(),\n    {\n        // base + idx * self.entry_size(layer)\n        entry_base_from_index(base, idx, self.entry_size(layer))\n    }"
+  },
+  {
+    "name": "entry_base",
+    "code": "pub fn entry_base(&self, layer: usize, base: usize, idx: usize) -> (res: usize)\n        requires\n            self@.inv(),\n            layer < self@.layers.len(),\n            base <= MAX_BASE,\n            idx <= X86_NUM_ENTRIES,\n        ensures\n            res == self@.entry_base(layer as nat, base as nat, idx as nat)\n    {\n        proof {\n            // FIXME: Weird error message when using the spec const here\n            // lib::mult_leq_mono_both(idx as nat, self@.entry_size(layer as nat), X86_NUM_ENTRIES as nat, X86_MAX_ENTRY_SIZE);\n            mult_leq_mono_both(idx as nat, self@.entry_size(layer as nat), X86_NUM_ENTRIES as nat, 512 * 1024 * 1024 * 1024);\n        }\n\n        base + idx * self.entry_size(layer)\n    }"
+  }
+]

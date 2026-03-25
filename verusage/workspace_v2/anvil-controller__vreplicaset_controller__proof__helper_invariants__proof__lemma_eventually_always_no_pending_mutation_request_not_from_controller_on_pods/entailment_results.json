@@ -1,0 +1,47 @@
+[
+  {
+    "name": "unmarshal_total_for_any_value",
+    "type": "boundary",
+    "code": "proof fn phi_1_unmarshal_total_for_any_value<T: ResourceView>(obj: DynamicObjectView)\n    requires\n        obj.kind == T::kind(),\n    ensures\n        T::unmarshal(obj) is Ok,\n{\n}",
+    "reason": "no marshal_preserves_integrity proof exists in this version \u2014 unmarshal_spec/unmarshal_status are uninterpreted with zero axioms, so matching kind alone cannot guarantee successful unmarshalling",
+    "entailed": false,
+    "verus_output": "ys_no_pending_mutation_request_not_from_controller_on_pods/phi_1_unmarshal_total_for_any_value.rs:4593:9\n     |\n4589 | proof fn phi_1_unmarshal_total_for_any_value<T: ResourceView>(obj: DynamicObjectView)\n     |       ------------------------------------------------------------------------------- at the end of the function body\n...\n4593 |         T::unmarshal(obj) is Ok,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "in_flight_unique_ids_implies_singleton",
+    "type": "logical",
+    "code": "proof fn phi_2_in_flight_unique_ids_implies_singleton(s: ClusterState, msg1: Message, msg2: Message)\n    requires\n        Cluster::every_in_flight_msg_has_unique_id()(s),\n        s.in_flight().contains(msg1),\n        s.in_flight().contains(msg2),\n        msg1.rpc_id == msg2.rpc_id,\n    ensures\n        msg1 == msg2,\n        s.in_flight().count(msg1) == 1,\n{\n}",
+    "reason": "unique IDs imply msg1==msg2 but NOT that the multiset count is 1 \u2014 a Multiset can contain duplicate entries of the same message, and the spec only constrains distinct messages",
+    "entailed": false,
+    "verus_output": "_pods/phi_2_in_flight_unique_ids_implies_singleton.rs:4597:9\n     |\n4589 | proof fn phi_2_in_flight_unique_ids_implies_singleton(s: ClusterState, msg1: Message, msg2: Message)\n     |       ---------------------------------------------------------------------------------------------- at the end of the function body\n...\n4597 |         s.in_flight().count(msg1) == 1,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "crash_disabled_implies_controller_exists",
+    "type": "logical",
+    "code": "proof fn phi_3_crash_disabled_implies_controller_exists(s: ClusterState, controller_id: int)\n    requires\n        Cluster::crash_disabled(controller_id)(s),\n    ensures\n        Cluster::there_is_the_controller_state(controller_id)(s),\n{\n}",
+    "reason": "crash_disabled indexes into controller_and_externals without a contains_key guard \u2014 satisfying crash_disabled should NOT independently prove the controller exists (it would require the precondition or trigger an out-of-domain access)",
+    "entailed": false,
+    "verus_output": "troller_exists.rs:4593:9\n     |\n4589 | proof fn phi_3_crash_disabled_implies_controller_exists(s: ClusterState, controller_id: int)\n     |       -------------------------------------------------------------------------------------- at the end of the function body\n...\n4593 |         Cluster::there_is_the_controller_state(controller_id)(s),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "allocator_bound_implies_empty_flight",
+    "type": "behavioral",
+    "code": "proof fn phi_4_allocator_bound_implies_empty_flight(s: ClusterState)\n    requires\n        Cluster::every_in_flight_msg_has_lower_id_than_allocator()(s),\n        s.rpc_id_allocator.rpc_id_counter == 0int,\n    ensures\n        forall |msg: Message| !s.in_flight().contains(msg),\n{\n}",
+    "reason": "if counter is 0 then all messages need rpc_id < 0 (negative) \u2014 this would mean no messages can be in flight, which is only valid if rpc_id is int; if the system allows counter=0 as initial state this proves emptiness which may be too strong",
+    "entailed": true,
+    "verus_output": "es` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__helper_invariants__proof__lemma_eventually_always_no_pending_mutation_request_not_from_controller_on_pods/phi_4_allocator_bound_implies_empty_flight.rs:838:1\n    |\n838 | / #[is_variant]\n839 | | pub enum BuiltinControllersStep {\n840 | |     RunGarbageCollector,\n841 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "req_drop_and_pod_monkey_independent",
+    "type": "logical",
+    "code": "proof fn phi_5_req_drop_and_pod_monkey_independent(s: ClusterState)\n    requires\n        Cluster::req_drop_disabled()(s),\n    ensures\n        Cluster::pod_monkey_disabled()(s),\n{\n}",
+    "reason": "req_drop_enabled and pod_monkey_enabled are independent boolean fields on ClusterState \u2014 disabling request dropping should NOT entail that the pod monkey is also disabled",
+    "entailed": false,
+    "verus_output": "ually_always_no_pending_mutation_request_not_from_controller_on_pods/phi_5_req_drop_and_pod_monkey_independent.rs:4593:9\n     |\n4589 | proof fn phi_5_req_drop_and_pod_monkey_independent(s: ClusterState)\n     |       ------------------------------------------------------------- at the end of the function body\n...\n4593 |         Cluster::pod_monkey_disabled()(s),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

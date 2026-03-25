@@ -1,0 +1,47 @@
+[
+  {
+    "name": "not_subset_has_witness",
+    "type": "behavioral",
+    "code": "proof fn phi_1_not_subset_has_witness(a: u64, b: u64) -> (i: u64)\n    requires\n        a & b != b,\n    ensures\n        i < 64,\n        !is_bit_set!(a, i),\n        is_bit_set!(b, i),\n{\n    assert(a >> 64 == 0) by (bit_vector);\n    assert(b >> 64 == 0) by (bit_vector);\n    lemma_obtain_bit_index_3_aux(a, b, 64)\n}",
+    "reason": "Any pair where `a & b != b` has a witness bit set in `b` but clear in `a` below 64 \u2014 this is mathematically correct and serves as a sanity check that the lemma is usable at hi=64",
+    "entailed": true,
+    "verus_output": "verification results:: 8 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "hi_1_forces_bit_0",
+    "type": "boundary",
+    "code": "proof fn phi_2_hi_1_forces_bit_0(a: u64, b: u64) -> (i: u64)\n    requires\n        a & b != b,\n        a >> 1 == 0,\n        b >> 1 == 0,\n    ensures\n        i == 0,\n        !is_bit_set!(a, 0u64),\n        is_bit_set!(b, 0u64),\n{\n    let i = lemma_obtain_bit_index_3_aux(a, b, 1);\n    i\n}",
+    "reason": "With hi=1, the only possible witness index is 0 \u2014 tests that the recursion base case correctly identifies the lowest bit",
+    "entailed": true,
+    "verus_output": "verification results:: 6 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "concrete_witness_0_and_1",
+    "type": "boundary",
+    "code": "proof fn phi_3_concrete_witness_0_and_1() -> (i: u64)\n    ensures\n        i < 64,\n        !is_bit_set!(0u64, i),\n        is_bit_set!(1u64, i),\n        i == 0,\n{\n    assert(0u64 & 1u64 != 1u64) by (bit_vector);\n    assert(0u64 >> 64 == 0) by (bit_vector);\n    assert(1u64 >> 64 == 0) by (bit_vector);\n    let i = lemma_obtain_bit_index_3_aux(0, 1, 64);\n    assert(i == 0) by (bit_vector)\n        requires !is_bit_set!(0u64, i), is_bit_set!(1u64, i), i < 64;\n    i\n}",
+    "reason": "For a=0, b=1 the unique witness is bit 0 \u2014 verifies the lemma produces the correct concrete result",
+    "entailed": true,
+    "verus_output": "verification results:: 10 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "result_strictly_less_than_hi",
+    "type": "logical",
+    "code": "proof fn phi_4_result_strictly_less_than_hi(a: u64, b: u64, hi: u64) -> (i: u64)\n    requires\n        a & b != b,\n        hi <= 64,\n        a >> hi == 0,\n        b >> hi == 0,\n    ensures\n        i < hi,\n{\n    lemma_obtain_bit_index_3_aux(a, b, hi)\n}",
+    "reason": "The result index is strictly below hi \u2014 a weaker consequence that tests the bound propagation of the decreases/ensures interaction",
+    "entailed": true,
+    "verus_output": "verification results:: 6 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "witness_implies_b_nonzero",
+    "type": "logical",
+    "code": "proof fn phi_5_witness_implies_b_nonzero(a: u64, b: u64, hi: u64)\n    requires\n        a & b != b,\n        hi <= 64,\n        a >> hi == 0,\n        b >> hi == 0,\n    ensures\n        b != 0,\n{\n    let i = lemma_obtain_bit_index_3_aux(a, b, hi);\n    assert(b != 0) by (bit_vector)\n        requires is_bit_set!(b, i), i < 64;\n}",
+    "reason": "If `a & b != b` then `b` must be nonzero (it has a bit not covered by `a`) \u2014 tests that the ensures is strong enough to derive this basic consequence",
+    "entailed": true,
+    "verus_output": "verification results:: 7 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

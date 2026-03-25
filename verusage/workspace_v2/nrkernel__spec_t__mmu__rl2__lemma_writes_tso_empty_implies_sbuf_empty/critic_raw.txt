@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: tso_empty_implies_all_sbufs_empty
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is a correct and desirable property. `writer_sbuf_subset_tso_writes` ensures every sbuf entry's address is in `writes.tso`. If `tso` is empty, no entries can exist, so the sbuf must be empty. The verified proof in `lemma_writes_tso_empty_implies_sbuf_empty` demonstrates this explicitly.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: sbuf_unique_implies_no_duplicate_contains
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `writer_sbuf_entries_are_unique` states that for `i1 != i2`, the addresses differ. The contrapositive is: if addresses are equal, then `i1 == i2`. This is a direct logical restatement of the uniqueness invariant, not a spec gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: history_pending_maps_unmaps_independent
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures clause `P || Q` where `P` is already in the requires is a tautology — it's trivially true regardless of `Q`. This doesn't actually test whether both maps can contain the same key simultaneously; it just proves `P ==> P || Q`.
+===VERDICT_END===
+
+===SUMMARY===
+All three candidates are false positives. TSO-empty-implies-sbuf-empty is a correct consequence of the subset invariant. Sbuf uniqueness injectivity is a contrapositive restatement. The history independence test is a tautology (`P ==> P || Q`) that doesn't actually probe the mutual exclusion question it claims to test.
+===END_SUMMARY===

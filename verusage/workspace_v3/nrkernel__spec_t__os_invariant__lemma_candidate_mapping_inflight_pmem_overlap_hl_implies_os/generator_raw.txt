@@ -1,0 +1,87 @@
+===PHI_START===
+NAME: aligned_zero_size
+TARGET_FN: aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_aligned_zero_size(addr: nat)
+    ensures
+        aligned(addr, 0),
+{
+}
+```
+REASON: If alignment to size 0 is trivially true for all addresses, the spec fails to guard against meaningless zero-size alignment checks
+===PHI_END===
+
+===PHI_START===
+NAME: inv_allows_empty_arch
+TARGET_FN: inv
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_inv_allows_empty_arch(arch: Arch)
+    requires
+        arch.layers.len() == 0,
+    ensures
+        arch.inv(),
+{
+}
+```
+REASON: If an architecture with zero layers satisfies inv(), then page table reasoning becomes vacuous and no translations are possible
+===PHI_END===
+
+===PHI_START===
+NAME: upper_vaddr_no_progress
+TARGET_FN: upper_vaddr
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_upper_vaddr_no_progress(arch: Arch, layer: nat, base: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+    ensures
+        arch.upper_vaddr(layer, base) == base,
+{
+}
+```
+REASON: If upper_vaddr equals base, the layer maps zero address space, making the entire page table level useless
+===PHI_END===
+
+===PHI_START===
+NAME: entry_size_uniform_across_layers
+TARGET_FN: entry_size_is_next_layer_size
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_entry_size_uniform_across_layers(arch: Arch)
+    requires
+        arch.inv(),
+        arch.layers.len() >= 2,
+    ensures
+        arch.entry_size(0) == arch.entry_size(1),
+{
+}
+```
+REASON: If adjacent layers have identical entry sizes, the hierarchical decomposition is broken and multi-level translation provides no granularity benefit
+===PHI_END===
+
+===PHI_START===
+NAME: entry_base_non_monotonic
+TARGET_FN: entry_base
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_entry_base_non_monotonic(arch: Arch, layer: nat, base: nat, i: nat, j: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+        i < j,
+        j <= arch.num_entries(layer),
+    ensures
+        arch.entry_base(layer, base, j) <= arch.entry_base(layer, base, i),
+{
+}
+```
+REASON: If a higher index yields a lower-or-equal entry base address, the virtual address space ordering is violated and page table walks cannot correctly partition memory
+===PHI_END===

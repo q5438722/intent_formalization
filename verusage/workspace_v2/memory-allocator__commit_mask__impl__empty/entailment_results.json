@@ -1,0 +1,47 @@
+[
+  {
+    "name": "is_bit_set_not0_no_bound",
+    "type": "logical",
+    "code": "proof fn phi_1_is_bit_set_not0_no_bound(j: usize)\n    requires\n        j >= 64,\n    ensures\n        is_bit_set(!0usize, j),\n{\n    lemma_is_bit_set();\n}",
+    "reason": "`is_bit_set(!0usize, j)` is axiomatized for ALL `j: usize` with no `j < 64` guard \u2014 for `j >= 64`, `1usize << j` wraps, so the axiom asserts properties about out-of-range bit positions",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "or_bit_set_no_bound",
+    "type": "logical",
+    "code": "proof fn phi_2_or_bit_set_no_bound(a: usize, b: usize, j: usize)\n    requires\n        j >= 64,\n    ensures\n        is_bit_set(a | b, j) <==> is_bit_set(a, j) || is_bit_set(b, j),\n{\n    lemma_is_bit_set();\n}",
+    "reason": "The OR biconditional has no `j < 64` guard \u2014 for out-of-range positions where `1usize << j` wraps, this axiom produces conclusions about wrapped bit operations",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "and_bit_set_no_bound",
+    "type": "logical",
+    "code": "proof fn phi_3_and_bit_set_no_bound(a: usize, b: usize, j: usize)\n    requires\n        j >= 64,\n    ensures\n        is_bit_set(a & b, j) <==> is_bit_set(a, j) && is_bit_set(b, j),\n{\n    lemma_is_bit_set();\n}",
+    "reason": "The AND biconditional has no `j < 64` guard \u2014 for out-of-range bit positions, `1usize << j` wraps and the axiom asserts equivalences that don't correspond to real bit semantics",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "not0_and_zero_inconsistency",
+    "type": "logical",
+    "code": "proof fn phi_4_not0_and_zero_inconsistency(j: usize)\n    requires\n        j >= 64,\n    ensures\n        is_bit_set(!0usize & 0usize, j),\n{\n    lemma_is_bit_set();\n}",
+    "reason": "Combining unbounded `is_bit_set(!0, j)` with unbounded AND biconditional yields `is_bit_set(0, j)` for `j >= 64` \u2014 but `!0usize & 0usize == 0`, so this asserts a set bit in zero, potentially deriving false",
+    "entailed": false,
+    "verus_output": "ror: postcondition not satisfied\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__commit_mask__impl__empty/phi_4_not0_and_zero_inconsistency.rs:77:9\n   |\n73 | proof fn phi_4_not0_and_zero_inconsistency(j: usize)\n   |       ---------------------------------------------- at the end of the function body\n...\n77 |         is_bit_set(!0usize & 0usize, j),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "lemma_view_no_range_guard",
+    "type": "logical",
+    "code": "proof fn phi_5_lemma_view_no_range_guard(cm: &CommitMask, i: int)\n    requires\n        cm@.contains(i),\n    ensures\n        ({\n            let a = i / usize::BITS as int;\n            let b = (i % usize::BITS as int) as usize;\n            &&& a * 64 + b == i\n            &&& is_bit_set(cm.mask[a], b)\n        }),\n{\n    cm.lemma_view();\n}",
+    "reason": "`lemma_view`'s first ensures decomposes any `i` in `self@` without guarding `0 <= a < 8` \u2014 for `i >= 512` or `i < 0`, `a` falls outside `[0,8)` making `self.mask[a]` an out-of-bounds spec access",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

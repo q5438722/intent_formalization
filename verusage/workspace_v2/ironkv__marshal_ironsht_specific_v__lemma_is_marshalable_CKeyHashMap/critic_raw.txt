@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: fold_left_sum_external_body_negative
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: An empty sequence's `fold_left` with init 0 returning 0 is the definitional base case of `fold_left` — this holds by the semantics of `Seq::fold_left` itself, not by any external_body axiom. The property is trivially correct.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: ckeyhashmap_serialize_len_unchecked
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The `is_marshalable` spec for `CKeyHashMap` explicitly includes `self.to_vec().ghost_serialize().len() <= ckeyhashmap_max_serialized_size() as int` as a conjunct. The ensures is a direct restatement of a precondition — this is tautological, not a spec gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: lemma_seq_fold_left_append_len_unchecked
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `lemma_seq_fold_left_append_len_int` is `external_body` and asserts that the length of a byte-concatenation fold equals the corresponding integer-sum fold. While mathematically correct, this is a fundamental property used throughout all serialization length reasoning and is never machine-checked — any error in the statement (e.g., off-by-one in the inductive step) would silently corrupt all downstream bounds.
+===VERDICT_END===
+
+===SUMMARY===
+Two of three candidates are false positives: the empty-fold base case is definitionally true and the serialization length bound is a tautological restatement of an `is_marshalable` conjunct. The one true positive is the `external_body` `lemma_seq_fold_left_append_len_int`, which establishes a critical correspondence between byte-level and integer-level fold computations without machine-checked proof — this axiom underpins all serialization length calculations and any error in its statement would propagate silently.
+===END_SUMMARY===

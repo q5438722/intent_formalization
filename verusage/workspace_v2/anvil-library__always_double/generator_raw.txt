@@ -1,0 +1,90 @@
+===PHI_START===
+NAME: always_unfold_intensional_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_always_unfold_intensional_bridge(ex: Execution<int>, p: TempPred<int>, i: nat)
+    requires
+        always(p).satisfied_by(ex),
+    ensures
+        p.satisfied_by(ex.suffix(i)),
+{
+    always_unfold::<int>(ex, p);
+}
+```
+REASON: always_unfold is external_body bridging the intensional gap between the forall inside always's closure and a bare forall in the ensures — this unverified axiom could be unsound if Verus's SMT encoding ever distinguishes these closures
+===PHI_END===
+
+===PHI_START===
+NAME: always_propagate_suffix_composition
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_always_propagate_suffix_composition(ex: Execution<int>, p: TempPred<int>, i: nat, j: nat)
+    requires
+        always(p).satisfied_by(ex),
+    ensures
+        p.satisfied_by(ex.suffix(i).suffix(j)),
+{
+    always_propagate_forwards::<int>(ex, p, i);
+    always_unfold::<int>(ex.suffix(i), p);
+}
+```
+REASON: chaining always_propagate_forwards with always_unfold gives access to p on doubly-nested suffixes ex.suffix(i).suffix(j), which is intensionally distinct from ex.suffix(i+j) — the axioms implicitly collapse this distinction without proof
+===PHI_END===
+
+===PHI_START===
+NAME: always_double_unfold_to_bare
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_always_double_unfold_to_bare(ex: Execution<int>, p: TempPred<int>, i: nat, j: nat)
+    requires
+        always(p).satisfied_by(ex),
+    ensures
+        p.satisfied_by(ex.suffix(i).suffix(j)),
+{
+    always_double::<int>(ex, p);
+    always_unfold::<int>(ex, always(p));
+    always_unfold::<int>(ex.suffix(i), p);
+}
+```
+REASON: always_double composes with double-unfolding to yield p on ex.suffix(i).suffix(j) — if always(always(p)) can be freely unfolded twice, the external_body axioms together provide arbitrary suffix composition without proving suffix(i).suffix(j) == suffix(i+j)
+===PHI_END===
+
+===PHI_START===
+NAME: always_propagate_unbounded
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_always_propagate_unbounded(ex: Execution<int>, p: TempPred<int>)
+    requires
+        always(p).satisfied_by(ex),
+    ensures
+        forall |i: nat, j: nat| p.satisfied_by(#[trigger] ex.suffix(i).suffix(j)),
+{
+    assert forall |i: nat, j: nat| p.satisfied_by(#[trigger] ex.suffix(i).suffix(j)) by {
+        always_propagate_forwards::<int>(ex, p, i);
+        always_unfold::<int>(ex.suffix(i), p);
+    };
+}
+```
+REASON: the two external_body axioms together yield a universally quantified double-suffix property — this unbounded composition amplifies trust surface since suffix nesting never reduces to a single offset without an explicit composition lemma
+===PHI_END===
+
+===PHI_START===
+NAME: always_propagate_zero_redundant
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_always_propagate_zero_redundant(ex: Execution<int>, p: TempPred<int>)
+    requires
+        always(p).satisfied_by(ex),
+    ensures
+        always(p).satisfied_by(ex.suffix(0)),
+{
+    always_propagate_forwards::<int>(ex, p, 0);
+}
+```
+REASON: always_propagate_forwards at i=0 asserts always(p) holds on ex.suffix(0), but ex.suffix(0) wraps nat_to_state in a new closure |i| f(i+0) which is intensionally distinct from ex — the axiom silently equates these without proof
+===PHI_END===

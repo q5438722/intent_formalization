@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: interp_log_length_equals_gtail
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `Seq::new(global_tail, f)` produces a sequence of length `global_tail` by definition. Entries beyond `gtail` being dropped is the intended semantics — `interp_log` interprets exactly the committed log prefix up to `gtail`.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: refinement_at_zero
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Both `simple_log` and `unbounded_log` versions of `compute_nrstate_at_version` return `DT::init_spec()` at version 0. This is the trivially correct base case of the refinement proof — intended by design.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: interp_log_ignores_extra_entries
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `interp_log` constructs a `Seq` of length `gtail` indexing only `[0, gtail)`. Inserting at index `gtail` doesn't affect any index in that range. This is correct — the interpretation only covers the committed prefix.
+===VERDICT_END===
+
+===SUMMARY===
+All three candidates are false positives. The `interp_log` length equaling `gtail` is definitional from `Seq::new`. The version-0 refinement is the trivial base case. And ignoring entries beyond `gtail` is the intended semantics of interpreting only the committed log prefix. The file contains fully verified proofs with no external_body trust gaps (except the phantom `RefinementProof` struct which carries no logical content).
+===END_SUMMARY===

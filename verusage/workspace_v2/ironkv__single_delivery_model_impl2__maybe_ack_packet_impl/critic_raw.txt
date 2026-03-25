@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: valid_ack_redundant_abstractable
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The redundancy is harmless — `valid_ack` requiring `ack.abstractable()` explicitly alongside `outbound_packet_is_valid(&ack)` (which also requires it) is just defensive specification style. The comment expresses a code-quality concern, not a soundness gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: tombstone_lookup_default_zero
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Defaulting to 0 for unknown sources is the standard IronFleet/SHT protocol design — a fresh endpoint with no tombstone entry legitimately has received no packets, so sequence number 0 is correct. This is intentional protocol semantics.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: ckeyhasmap_view_unconstrained
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `CKeyHashMap::view` and `spec_to_vec` are both uninterpreted with no axiom relating them. This means the abstract map view is completely unconstrained relative to the vector serialization, allowing the verifier to assume arbitrary abstract states that don't correspond to the actual HashMap contents.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: `CKeyHashMap` has two uninterpreted spec functions (`view` and `spec_to_vec`) with no connecting axiom, leaving the abstract map interpretation completely unconstrained relative to the concrete representation. The other two candidates are false positives — the redundant `abstractable()` check in `valid_ack` is defensive but harmless, and the tombstone default of 0 is correct IronFleet protocol semantics for unknown senders.
+===END_SUMMARY===

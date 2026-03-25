@@ -1,0 +1,47 @@
+[
+  {
+    "name": "lemma_bits_align_external_body_l2",
+    "type": "logical",
+    "code": "proof fn phi_1_lemma_bits_align_external_body_l2(vaddr: usize)\n    ensures\n        l0_bits!(align_to_usize(vaddr, L2_ENTRY_SIZE)) == l0_bits!(vaddr),\n        l1_bits!(align_to_usize(vaddr, L2_ENTRY_SIZE)) == l1_bits!(vaddr),\n        l2_bits!(align_to_usize(vaddr, L2_ENTRY_SIZE)) == l2_bits!(vaddr),\n{\n    lemma_bits_align_to_usize(vaddr);\n}",
+    "reason": "`lemma_bits_align_to_usize` is `external_body` \u2014 L2 alignment preserving l0/l1/l2 bits is trusted without proof",
+    "entailed": true,
+    "verus_output": "amed to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_iter_walk_result_vbase_equal_aux2/phi_1_lemma_bits_align_external_body_l2.rs:173:9\n    |\n173 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "iter_walk_vaddr_idempotent_via_external",
+    "type": "logical",
+    "code": "proof fn phi_2_iter_walk_vaddr_idempotent_via_external(mem: PTMem, vaddr: usize)\n    ensures\n        iter_walk(mem, iter_walk(mem, vaddr).result().vaddr()).result().vaddr() == iter_walk(mem, vaddr).result().vaddr(),\n{\n    lemma_iter_walk_result_vbase_equal_aux2(mem, vaddr);\n}",
+    "reason": "Walk vaddr idempotency depends on unverified `lemma_bits_align_to_usize` \u2014 if alignment doesn't preserve indexing bits, re-walking from the result vaddr could diverge",
+    "entailed": true,
+    "verus_output": "o `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_iter_walk_result_vbase_equal_aux2/phi_2_iter_walk_vaddr_idempotent_via_external.rs:173:9\n    |\n173 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "walk_next_entry_from_arbitrary_mem",
+    "type": "boundary",
+    "code": "proof fn phi_3_walk_next_entry_from_arbitrary_mem(mem: PTMem, vaddr: usize)\n    requires\n        !mem.mem.contains_key(add(mem.pml4, mul(l0_bits!(vaddr), WORD_SIZE))),\n    ensures\n        ({\n            reveal(walk_next);\n            let w = walk_next(mem, Walk { vaddr, path: seq![], complete: false });\n            w.path.len() == 1\n        }),\n{\n    reveal(walk_next);\n}",
+    "reason": "When the L0 address is not in `mem.mem`'s domain, `PTMem::read` returns an arbitrary value via `Map::index` on a missing key \u2014 the walk proceeds with an unspecified PDE entry",
+    "entailed": false,
+    "verus_output": "thematical expression\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_iter_walk_result_vbase_equal_aux2/phi_3_walk_next_entry_from_arbitrary_mem.rs:497:9\n    |\n497 | /         ({\n498 | |             reveal(walk_next);\n499 | |             let w = walk_next(mem, Walk { vaddr, path: seq![], complete: false });\n500 | |             w.path.len() == 1\n501 | |         }),\n    | |__________^\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "walk_result_directory_last_arbitrary",
+    "type": "boundary",
+    "code": "proof fn phi_4_walk_result_directory_last_arbitrary(walk: Walk, addr: usize)\n    requires\n        walk.path.len() == 4,\n        walk.path.last().1 is Directory,\n        walk.complete,\n    ensures\n        !(walk.result() is Valid),\n        !(walk.result() is Invalid),\n{\n}",
+    "reason": "A 4-entry walk ending in Directory (complete but not Page or Invalid) falls through both `if` branches to `arbitrary()` \u2014 the result is completely undefined",
+    "entailed": false,
+    "verus_output": "rkernel__spec_t__mmu__rl2__lemma_iter_walk_result_vbase_equal_aux2/phi_4_walk_result_directory_last_arbitrary.rs:500:9\n    |\n493 | proof fn phi_4_walk_result_directory_last_arbitrary(walk: Walk, addr: usize)\n    |       ---------------------------------------------------------------------- at the end of the function body\n...\n500 |         !(walk.result() is Invalid),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 2 previous errors; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "all_mb0_bits_are_zero_external_body_opaque",
+    "type": "logical",
+    "code": "proof fn phi_5_all_mb0_bits_are_zero_external_body_opaque(e1: usize, e2: usize, layer: nat)\n    requires\n        e1 == e2,\n    ensures\n        (PDE { entry: e1, layer: Ghost(layer) }).all_mb0_bits_are_zero()\n        == (PDE { entry: e2, layer: Ghost(layer) }).all_mb0_bits_are_zero(),\n{\n}",
+    "reason": "`all_mb0_bits_are_zero` is `external_body` \u2014 PDE validity is governed by an opaque predicate with no specification",
+    "entailed": true,
+    "verus_output": "repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_iter_walk_result_vbase_equal_aux2/phi_5_all_mb0_bits_are_zero_external_body_opaque.rs:173:9\n    |\n173 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: region_flush_idempotent_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `lemma_if_no_outstanding_writes_to_region_then_flush_is_idempotent` is `external_body` with `unimplemented!()`. The property requires showing that `state.map(|_, b| b.flush())` produces a sequence extensionally equal to the original when all outstanding writes are `None` — this needs per-element reasoning plus `ext_equal` on sequences, which is trusted rather than verified.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: flush_outstanding_write_takes_new_value
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `flush_byte` with `outstanding_write == Some(val)` returns `val`, so `flush().state_at_last_flush == val`. The second ensures is a tautology (`a != b || val == b`). Both follow directly from the definitions.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: flush_region_preserves_length
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `flush` uses `self.state.map(...)` which preserves sequence length by the vstd `map` axiom. Correct by construction.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: no_outstanding_writes_after_flush
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Each `b.flush()` sets `outstanding_write: None`. After `map`, every element at index `k` has `outstanding_write.is_none()`. The quantifier in `no_outstanding_writes` is satisfied by SMT unfolding.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: no_outstanding_writes_in_empty_range
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `no_outstanding_writes_in_range(i, i)` quantifies over `k` where `i <= k < i`, which is empty. Vacuously true.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: the single-region flush idempotency lemma is `external_body`, trusting extensional sequence equality after map without proof. Four false positives confirm correct definitional properties: flush commits pending values, map preserves length, flush clears all outstanding writes, and empty ranges are vacuously clean.
+===END_SUMMARY===

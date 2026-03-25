@@ -1,0 +1,47 @@
+[
+  {
+    "name": "unmarshal_status_total",
+    "type": "boundary",
+    "code": "proof fn phi_1_unmarshal_status_total<T: ResourceView>(v: Value)\n    requires\n        true,\n    ensures\n        T::unmarshal_status(v) is Ok,\n{\n}",
+    "reason": "unmarshal_status is uninterpreted \u2014 no axiom makes it total, so it should be possible for arbitrary Values to fail unmarshalling",
+    "entailed": false,
+    "verus_output": "invariants__proof__lemma_eventually_always_no_other_pending_request_interferes_with_vrs_reconcile/phi_1_unmarshal_status_total.rs:5113:9\n     |\n5109 | proof fn phi_1_unmarshal_status_total<T: ResourceView>(v: Value)\n     |       ---------------------------------------------------------- at the end of the function body\n...\n5113 |         T::unmarshal_status(v) is Ok,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "marshal_spec_constant",
+    "type": "logical",
+    "code": "proof fn phi_2_marshal_spec_constant<T: ResourceView>(s1: T::Spec, s2: T::Spec)\n    requires\n        true,\n    ensures\n        T::marshal_spec(s1) == T::marshal_spec(s2),\n{\n}",
+    "reason": "marshal_spec is uninterpreted \u2014 if it were provably constant, all specs would marshal to the same Value, destroying information and contradicting the roundtrip property",
+    "entailed": false,
+    "verus_output": "ng_request_interferes_with_vrs_reconcile/phi_2_marshal_spec_constant.rs:5113:9\n     |\n5109 | proof fn phi_2_marshal_spec_constant<T: ResourceView>(s1: T::Spec, s2: T::Spec)\n     |       ------------------------------------------------------------------------- at the end of the function body\n...\n5113 |         T::marshal_spec(s1) == T::marshal_spec(s2),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "create_request_key_ignores_obj_kind",
+    "type": "behavioral",
+    "code": "proof fn phi_3_create_request_key_ignores_obj_kind(r1: CreateRequest, r2: CreateRequest)\n    requires\n        r1.obj.metadata.name == r2.obj.metadata.name,\n        r1.namespace == r2.namespace,\n        r1.obj.kind != r2.obj.kind,\n    ensures\n        r1.key() == r2.key(),\n{\n}",
+    "reason": "CreateRequest::key includes obj.kind \u2014 requests with same name/namespace but different kinds should produce different ObjectRefs",
+    "entailed": false,
+    "verus_output": "_other_pending_request_interferes_with_vrs_reconcile/phi_3_create_request_key_ignores_obj_kind.rs:5115:9\n     |\n5109 | proof fn phi_3_create_request_key_ignores_obj_kind(r1: CreateRequest, r2: CreateRequest)\n     |       ---------------------------------------------------------------------------------- at the end of the function body\n...\n5115 |         r1.key() == r2.key(),\n     |         ^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "allocate_returns_zero_initially",
+    "type": "boundary",
+    "code": "proof fn phi_4_allocate_returns_zero_initially(a: ReconcileIdAllocator)\n    requires\n        a.reconcile_id_counter > 0,\n    ensures\n        a.allocate().1 == 0nat,\n{\n}",
+    "reason": "allocate returns the current counter \u2014 if the counter is already positive, the returned ID must equal that positive value, not zero",
+    "entailed": false,
+    "verus_output": "_proof__lemma_eventually_always_no_other_pending_request_interferes_with_vrs_reconcile/phi_4_allocate_returns_zero_initially.rs:5113:9\n     |\n5109 | proof fn phi_4_allocate_returns_zero_initially(a: ReconcileIdAllocator)\n     |       ----------------------------------------------------------------- at the end of the function body\n...\n5113 |         a.allocate().1 == 0nat,\n     |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "create_update_keys_agree_on_same_obj",
+    "type": "logical",
+    "code": "proof fn phi_5_create_update_keys_agree_on_same_obj(cr: CreateRequest, ur: UpdateRequest)\n    requires\n        cr.obj == ur.obj,\n        cr.namespace == ur.namespace,\n    ensures\n        cr.key() == ur.key(),\n{\n}",
+    "reason": "CreateRequest::key uses obj.metadata.name while UpdateRequest::key uses self.name \u2014 even with the same obj and namespace, name fields are sourced differently and need not agree",
+    "entailed": false,
+    "verus_output": "her_pending_request_interferes_with_vrs_reconcile/phi_5_create_update_keys_agree_on_same_obj.rs:5114:9\n     |\n5109 | proof fn phi_5_create_update_keys_agree_on_same_obj(cr: CreateRequest, ur: UpdateRequest)\n     |       ----------------------------------------------------------------------------------- at the end of the function body\n...\n5114 |         cr.key() == ur.key(),\n     |         ^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

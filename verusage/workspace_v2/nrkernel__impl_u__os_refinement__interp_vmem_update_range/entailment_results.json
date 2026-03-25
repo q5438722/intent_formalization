@@ -1,0 +1,47 @@
+[
+  {
+    "name": "ptmem_view_external_body_unconstrained",
+    "type": "logical",
+    "code": "proof fn phi_1_ptmem_view_external_body_unconstrained(pt1: PTMem, pt2: PTMem)\n    requires\n        pt1.mem !== pt2.mem,\n    ensures\n        pt1@ === pt2@,\n{\n}",
+    "reason": "`PTMem::view` is `external_body` with no postconditions \u2014 completely unspecified, so two PTMem instances with different underlying memory could have identical PTE views",
+    "entailed": false,
+    "verus_output": "hentianyu/intent_formalization/verusage/workspace_v2/nrkernel__impl_u__os_refinement__interp_vmem_update_range/phi_1_ptmem_view_external_body_unconstrained.rs:655:9\n    |\n651 | proof fn phi_1_ptmem_view_external_body_unconstrained(pt1: PTMem, pt2: PTMem)\n    |       ----------------------------------------------------------------------- at the end of the function body\n...\n655 |         pt1@ === pt2@,\n    |         ^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "rl3_interp_external_body_unconstrained",
+    "type": "logical",
+    "code": "proof fn phi_2_rl3_interp_external_body_unconstrained(s1: crate::rl3::State, s2: crate::rl3::State)\n    requires\n        true,\n    ensures\n        s1.interp() === s2.interp(),\n{\n}",
+    "reason": "`rl3::State::interp` is `external_body` closed spec \u2014 completely opaque with no postconditions, so any two rl3 states could have identical rl2 interpretations",
+    "entailed": false,
+    "verus_output": "s_refinement__interp_vmem_update_range/phi_2_rl3_interp_external_body_unconstrained.rs:655:9\n    |\n651 | proof fn phi_2_rl3_interp_external_body_unconstrained(s1: crate::rl3::State, s2: crate::rl3::State)\n    |       --------------------------------------------------------------------------------------------- at the end of the function body\n...\n655 |         s1.interp() === s2.interp(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "extra_mappings_external_body_unconstrained",
+    "type": "logical",
+    "code": "proof fn phi_3_extra_mappings_external_body_unconstrained(s: crate::os::State)\n    requires\n        true,\n    ensures\n        s.extra_mappings() === Map::empty(),\n{\n}",
+    "reason": "`extra_mappings` is `external_body` with no specification \u2014 the SMT solver could assume it's always empty, silently dropping pending map/unmap state",
+    "entailed": false,
+    "verus_output": "v2/nrkernel__impl_u__os_refinement__interp_vmem_update_range/phi_3_extra_mappings_external_body_unconstrained.rs:655:9\n    |\n651 | proof fn phi_3_extra_mappings_external_body_unconstrained(s: crate::os::State)\n    |       ------------------------------------------------------------------------ at the end of the function body\n...\n655 |         s.extra_mappings() === Map::empty(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "write_does_not_change_view",
+    "type": "behavioral",
+    "code": "proof fn phi_4_write_does_not_change_view(pt: PTMem, addr: usize, value: usize)\n    requires\n        true,\n    ensures\n        pt.write(addr, value)@ === pt@,\n{\n}",
+    "reason": "Since `PTMem::view` is `external_body` with no connection to `mem`, writes to page table memory may have no observable effect on the PTE interpretation",
+    "entailed": false,
+    "verus_output": "tion/verusage/workspace_v2/nrkernel__impl_u__os_refinement__interp_vmem_update_range/phi_4_write_does_not_change_view.rs:655:9\n    |\n651 | proof fn phi_4_write_does_not_change_view(pt: PTMem, addr: usize, value: usize)\n    |       ------------------------------------------------------------------------- at the end of the function body\n...\n655 |         pt.write(addr, value)@ === pt@,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "applied_mappings_union_prefer_right_shadows_extra",
+    "type": "behavioral",
+    "code": "proof fn phi_5_applied_mappings_union_prefer_right_shadows_extra(s: crate::os::State, base: nat, pte: PTE)\n    requires\n        s.extra_mappings().contains_pair(base, pte),\n        s.interp_pt_mem().dom().contains(base),\n    ensures\n        s.applied_mappings()[base] == s.interp_pt_mem()[base],\n        s.applied_mappings()[base] !== pte || pte == s.interp_pt_mem()[base],\n{\n}",
+    "reason": "`union_prefer_right` means `interp_pt_mem` always shadows `extra_mappings` at overlapping keys \u2014 extra_mappings entries at conflicting bases are silently dropped",
+    "entailed": true,
+    "verus_output": "verification results:: 14 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

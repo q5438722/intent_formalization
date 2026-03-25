@@ -1,0 +1,97 @@
+===PHI_START===
+NAME: set_external_body_ar_ghost_desync
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_set_external_body_ar_ghost_desync<A>(arr: Array<A, 5>, i: usize, v: A)
+    requires
+        arr.wf(),
+        0 <= i < 5,
+    ensures
+        ({
+            let new_seq = arr.seq@.update(i as int, v);
+            new_seq.len() == 5
+        }),
+{
+}
+```
+REASON: set's external_body only constrains Ghost<Seq<A>> — the concrete ar:[A;N] field has no ensures linking it to the ghost state, so runtime and ghost can desync
+===PHI_END===
+
+===PHI_START===
+NAME: init2none_vacuous_on_empty
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_init2none_vacuous_on_empty<T: Copy>(arr: Array<Option<T>, 0>)
+    requires
+        arr.wf(),
+        0usize <= usize::MAX,
+    ensures
+        arr.wf(),
+        forall|index: int| 0 <= index < 0 ==> #[trigger] arr@[index].is_None(),
+{
+}
+```
+REASON: init2none on a zero-length array vacuously satisfies the postcondition with no work — the N <= usize::MAX guard is always true, potentially masking edge cases
+===PHI_END===
+
+===PHI_START===
+NAME: set_no_value_domain_constraint
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_set_no_value_domain_constraint(arr: Array<usize, 5>, i: usize)
+    requires
+        arr.wf(),
+        0 <= i < 5,
+    ensures
+        ({
+            let new_seq = arr.seq@.update(i as int, usize::MAX);
+            new_seq[i as int] == usize::MAX
+        }),
+{
+}
+```
+REASON: set accepts any value of type A with no domain validation — arbitrary sentinel values can be written without the spec constraining the value space
+===PHI_END===
+
+===PHI_START===
+NAME: wf_only_checks_length
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_wf_only_checks_length(arr1: Array<usize, 5>, arr2: Array<usize, 5>)
+    requires
+        arr1.wf(),
+        arr2.wf(),
+        arr1.seq@ =~= arr2.seq@,
+    ensures
+        forall|i: int| 0 <= i < 5 ==> arr1@[i] == arr2@[i],
+{
+}
+```
+REASON: wf() only checks seq@.len() == N — two Arrays with identical ghost seqs are indistinguishable at spec level even if their concrete ar fields differ entirely
+===PHI_END===
+
+===PHI_START===
+NAME: set_double_write_loses_first
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_set_double_write_loses_first<A>(old_arr: Array<A, 5>, mid_arr: Array<A, 5>, v1: A, v2: A, i: usize)
+    requires
+        old_arr.wf(),
+        0 <= i < 5,
+        mid_arr.seq@ =~= old_arr.seq@.update(i as int, v1),
+        mid_arr.wf(),
+    ensures
+        ({
+            let final_seq = mid_arr.seq@.update(i as int, v2);
+            final_seq[i as int] == v2
+        }),
+{
+}
+```
+REASON: Two consecutive sets to the same index — the first write is silently lost with no spec-level tracking, and the spec provides no mechanism to detect or prevent overwrites
+===PHI_END===

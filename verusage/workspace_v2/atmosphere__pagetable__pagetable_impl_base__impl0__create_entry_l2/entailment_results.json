@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize2pa_mem_valid_unconditional",
+    "type": "logical",
+    "code": "proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body ensures MEM_valid(ret) for ALL inputs \u2014 trusts without proof that masking any arbitrary usize yields a valid physical address",
+    "entailed": false,
+    "verus_output": "ization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__create_entry_l2/phi_1_usize2pa_mem_valid_unconditional.rs:1305:9\n     |\n1303 | proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n     |       --------------------------------------------------- at the end of the function body\n1304 |     ensures\n1305 |         MEM_valid(usize2pa(v)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 59 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "spec_index2va_bitand_not_shift",
+    "type": "logical",
+    "code": "proof fn phi_2_spec_index2va_bitand_not_shift(l4i: L4Index, l3i: L3Index, l2i: L2Index, l1i: L1Index)\n    requires\n        l4i <= 0x1ff,\n        l3i <= 0x1ff,\n        l2i <= 0x1ff,\n        l1i <= 0x1ff,\n    ensures\n        spec_index2va((l4i, l3i, l2i, l1i)) == 0,\n{\n}",
+    "reason": "spec_index2va uses `&` (bitwise AND) between shifted components instead of `|` (bitwise OR) \u2014 ANDing shifted non-overlapping fields together produces zero, making all virtual address computations collapse to 0",
+    "entailed": false,
+    "verus_output": "_index2va_bitand_not_shift.rs:1310:9\n     |\n1303 | proof fn phi_2_spec_index2va_bitand_not_shift(l4i: L4Index, l3i: L3Index, l2i: L2Index, l1i: L1Index)\n     |       ----------------------------------------------------------------------------------------------- at the end of the function body\n...\n1310 |         spec_index2va((l4i, l3i, l2i, l1i)) == 0,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 59 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "wf_mapping_4k_all_same_va",
+    "type": "logical",
+    "code": "proof fn phi_3_wf_mapping_4k_all_same_va(pt: PageTable, l4i: L4Index, l3i: L3Index, l2i: L2Index, l1i: L1Index, l4j: L4Index, l3j: L3Index, l2j: L2Index, l1j: L1Index)\n    requires\n        pt.kernel_l4_end <= l4i < 512,\n        0 <= l3i < 512,\n        0 <= l2i < 512,\n        0 <= l1i < 512,\n        pt.kernel_l4_end <= l4j < 512,\n        0 <= l3j < 512,\n        0 <= l2j < 512,\n        0 <= l1j < 512,\n    ensures\n        spec_index2va((l4i, l3i, l2i, l1i)) == spec_index2va((l4j, l3j, l2j, l1j)),\n{\n}",
+    "reason": "Since spec_index2va uses & instead of |, ALL index tuples map to the same VA (0), destroying injectivity \u2014 the mapping specs cannot distinguish different page table entries",
+    "entailed": false,
+    "verus_output": "dex, l1j: L1Index)\n     |       ----------------------------------------------------------------------------------------------------------------------------------------------------------------- at the end of the function body\n...\n1314 |         spec_index2va((l4i, l3i, l2i, l1i)) == spec_index2va((l4j, l3j, l2j, l1j)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 59 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "va_1g_valid_uses_2m_spec",
+    "type": "behavioral",
+    "code": "proof fn phi_4_va_1g_valid_uses_2m_spec(va: usize)\n    ensures\n        va_1g_valid(va) == spec_va_2m_valid(va),\n{\n}",
+    "reason": "The `va_1g_valid` function's ensures clause says `ret == spec_va_2m_valid(va)` instead of `ret == spec_va_1g_valid(va)` \u2014 a copy-paste bug that makes 1G VA validation use the 2M mask",
+    "entailed": true,
+    "verus_output": "id_uses_2m_spec.rs:67:10\n   |\n67 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__create_entry_l2/phi_4_va_1g_valid_uses_2m_spec.rs:76:10\n   |\n76 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 59 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "reveal_wf_external_body_chain",
+    "type": "logical",
+    "code": "proof fn phi_5_reveal_wf_external_body_chain(pt: PageTable)\n    requires\n        pt.wf(),\n    ensures\n        pt.wf_l4(),\n        pt.wf_l3(),\n        pt.wf_l2(),\n        pt.wf_l1(),\n        pt.disjoint_l4(),\n        pt.disjoint_l3(),\n        pt.disjoint_l2(),\n        pt.table_pages_wf(),\n        pt.user_only(),\n        pt.pcid_ioid_wf(),\n        pt.tlb_wf(),\n        pt.tlb_submap_of_mapping(),\n{\n    pt.reveal_page_table_wf();\n    pt.reveal_page_table_levels_wf();\n    pt.reveal_page_table_disjoint_wf();\n    pt.reveal_page_table_mappings_wf();\n    pt.reveal_page_table_addtional_wf();\n}",
+    "reason": "The entire wf() decomposition chain is external_body \u2014 all five reveal lemmas are axiomatically trusted, meaning the relationship between wf() and its sub-predicates is unverified and could be inconsistent",
+    "entailed": true,
+    "verus_output": "body_chain.rs:67:10\n   |\n67 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__pagetable__pagetable_impl_base__impl0__create_entry_l2/phi_5_reveal_wf_external_body_chain.rs:76:10\n   |\n76 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 59 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

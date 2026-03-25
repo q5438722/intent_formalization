@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: finish_iter_walk_always_complete
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `finish_iter_walk` applies `walk_next` up to 4 times starting from path.len()==0. Each `walk_next` step appends one entry and sets `complete: !(entry is Directory)`. After 4 steps (path.len()==4), `walk_next` uses `arbitrary()` which cannot produce a Directory variant in x86's 4-level structure. The walk always completes within 4 levels — this is correct and desirable.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: all_mb0_bits_are_zero_external_body_unsound
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This φ is a tautology (`P ==> P`), which is trivially true for any proposition regardless of whether `all_mb0_bits_are_zero` is external_body. It does not actually demonstrate any unsoundness or spec gap — it proves nothing about the predicate's behavior.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: nonpos_write_invalidates_only_at_idx
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is an exact duplicate of the already-proven lemma `lemma_finish_iter_walk_valid_with_nonpos_write_in_path` in the source. The property is correct: clearing the P bit at an entry along a valid walk's path invalidates the walk, because subsequent steps read the now-non-present entry and produce Invalid. This is desirable behavior.
+===VERDICT_END===
+
+===SUMMARY===
+All three candidates are false positives. `finish_iter_walk` correctly completes within 4 levels by construction, the `all_mb0_bits_are_zero` tautology proves nothing about the external_body gap, and the nonpos-write invalidation property is an exact duplicate of an existing verified lemma confirming correct page table semantics.
+===END_SUMMARY===

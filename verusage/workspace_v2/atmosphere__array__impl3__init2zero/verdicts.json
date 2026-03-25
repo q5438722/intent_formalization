@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "set_external_body_ar_ghost_desync",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "The `set` external_body ensures only constrain `self.seq@` (the Ghost field). The concrete `ar: [A;N]` is never mentioned in any ensures, so there is no formal guarantee the runtime array is updated. This is a real ghost-runtime desync gap inherent to the Array abstraction."
+  },
+  {
+    "phi": "init2zero_usize_only_not_generic",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This PHI merely shows an empty array vacuously satisfies `wf()` \u2014 that's standard behavior. The fact that `init2zero` is only for `usize` is a design choice, not a spec gap. The property proven is trivially true and reveals no issue."
+  },
+  {
+    "phi": "set_overwrites_without_old_value_constraint",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is just `Seq::update` semantics \u2014 updating index `i` with `v2` yields `v2` at index `i`. That two writes to the same index lose the first value is standard array behavior, not a spec gap. No system requires write-history tracking for a simple array."
+  },
+  {
+    "phi": "wf_only_checks_length_not_content",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Two arrays with `arr1.seq@ =~= arr2.seq@` have extensionally equal ghost sequences, so element-wise equality follows from `Seq` axioms. The concrete `ar` fields differing is the same ghost-runtime desync already captured by PHI 1 \u2014 this PHI itself just proves a tautology about extensional equality."
+  },
+  {
+    "phi": "set_no_bounds_on_value",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Rust arrays can store any value of type `A` \u2014 for `usize`, all values including `usize::MAX` are valid. There is no domain restriction needed. This is standard `Seq::update` semantics, not a spec gap."
+  }
+]

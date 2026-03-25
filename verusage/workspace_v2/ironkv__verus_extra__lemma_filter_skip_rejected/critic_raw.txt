@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: filter_skip_entire_seq_is_empty
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Filtering a sequence where no element satisfies the predicate yields an empty result. This is the correct and expected semantics of `filter`.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: skip_zero_is_identity
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `s.skip(0) == s` is a basic identity, and the lemma's vacuous precondition at i=0 is correct — no elements need to be rejected to skip zero elements. This is expected behavior.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: filter_skip_rejected_drop_last_equiv
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Skipping one rejected element preserves the filter result — this is the fundamental correctness property of `filter`. Chaining it inductively is exactly the intended use pattern, not a vulnerability.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: filter_empty_skip_any
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The empty sequence with i=0 is a trivial base case. The equality `empty.filter(pred) == empty.skip(0).filter(pred)` is a tautology that reveals no spec issue.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: skip_at_len_filter_equals_empty_filter
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: When all elements are rejected, `s.filter(pred)` equals `Seq::empty().filter(pred)` which equals `Seq::empty()`. This is the correct mathematical identity — `filter` produces the same result regardless of how many rejected elements were in the input.
+===VERDICT_END===
+
+===SUMMARY===
+All five candidates are false positives. The lemma `lemma_filter_skip_rejected` is a straightforward correctness property of sequence filtering: skipping a prefix of rejected elements doesn't change the filter result. All tested properties — empty sequences, zero skip, single skip, full rejection — are expected mathematical consequences of this fact with no spec gaps identified.
+===END_SUMMARY===

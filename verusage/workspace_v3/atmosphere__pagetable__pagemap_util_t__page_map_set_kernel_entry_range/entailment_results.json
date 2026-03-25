@@ -1,0 +1,52 @@
+[
+  {
+    "name": "set_no_requires_is_noop",
+    "target_fn": "page_map_set_no_requires",
+    "type": "behavioral",
+    "reason": "If verified, the set operation is a no-op \u2014 the written entry always equals the old entry regardless of the value argument, meaning the spec fails to constrain the write.",
+    "entailed": false,
+    "verified": 15,
+    "errors": 1,
+    "output_tail": "\n    | |_- at the end of the function body\n...\n297 |           new_page_map.spec_index(index) =~= old_page_map.spec_index(index),\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n"
+  },
+  {
+    "name": "kernel_range_preserves_all",
+    "target_fn": "page_map_set_kernel_entry_range",
+    "type": "behavioral",
+    "reason": "If verified, kernel entries are never actually written \u2014 the function is a no-op for the kernel range, meaning the spec doesn't distinguish old from new entries.",
+    "entailed": false,
+    "verified": 15,
+    "errors": 1,
+    "output_tail": "   0 <= i < KERNEL_MEM_END_L4INDEX ==> new_page_map.spec_index(i) =~= old_page_map.spec_index(i),\n    | |_________________________________________________________________________________________________________^ failed this postcondition\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n"
+  },
+  {
+    "name": "set_modifies_other_entries",
+    "target_fn": "page_map_set_no_requires",
+    "type": "logical",
+    "reason": "If verified, writing at one index corrupts a different index, violating the frame/non-interference property of the page map set operation.",
+    "entailed": false,
+    "verified": 15,
+    "errors": 1,
+    "output_tail": "\n289 | | )\n    | |_- at the end of the function body\n...\n300 |           !(new_page_map.spec_index(j) =~= old_page_map.spec_index(j)),\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n"
+  },
+  {
+    "name": "kernel_range_corrupts_above",
+    "target_fn": "page_map_set_kernel_entry_range",
+    "type": "boundary",
+    "reason": "If verified, setting kernel entries in [0, KERNEL_MEM_END_L4INDEX) also corrupts entries at or above that boundary, breaking isolation of the non-kernel region.",
+    "entailed": false,
+    "verified": 15,
+    "errors": 1,
+    "output_tail": "\n288 | | )\n    | |_- at the end of the function body\n...\n299 |           !(new_page_map.spec_index(j) =~= old_page_map.spec_index(j)),\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n"
+  },
+  {
+    "name": "set_drops_present_bit",
+    "target_fn": "page_map_set_no_requires",
+    "type": "logical",
+    "reason": "If verified, writing a present page entry silently clears its present bit, meaning the spec loses permission information and mapped pages would appear unmapped.",
+    "entailed": false,
+    "verified": 15,
+    "errors": 1,
+    "output_tail": "alue: PageEntry,\n288 | | )\n    | |_- at the end of the function body\n...\n298 |           new_page_map.spec_index(index).perm.present == false,\n    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n"
+  }
+]

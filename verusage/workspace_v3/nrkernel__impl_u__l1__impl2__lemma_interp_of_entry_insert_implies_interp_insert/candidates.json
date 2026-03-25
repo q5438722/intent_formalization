@@ -1,0 +1,37 @@
+[
+  {
+    "name": "empty_arch_satisfies_inv",
+    "target_fn": "Arch::inv",
+    "type": "boundary",
+    "code": "proof fn phi_1_empty_arch_satisfies_inv()\n    ensures\n        (Arch { layers: Seq::<ArchLayer>::empty() }).inv(),\n{\n}",
+    "reason": "An architecture with zero layers vacuously satisfies inv, allowing a degenerate page table that cannot map any address space"
+  },
+  {
+    "name": "unaligned_base_vaddr_well_formed",
+    "target_fn": "Directory::well_formed",
+    "type": "behavioral",
+    "code": "proof fn phi_2_unaligned_base_vaddr_well_formed(arch: Arch, entries: Seq<NodeEntry>)\n    requires\n        arch.inv(),\n        arch.layers.len() > 0,\n        entries.len() == arch.num_entries(0),\n    ensures\n        (Directory { entries: entries, layer: 0, base_vaddr: 1, arch: arch }).well_formed(),\n{\n}",
+    "reason": "A directory with base_vaddr=1 (unaligned to any page boundary) passes well_formed because the alignment check is commented out in the source"
+  },
+  {
+    "name": "all_invalid_entries_satisfy_inv",
+    "target_fn": "Directory::inv",
+    "type": "logical",
+    "code": "proof fn phi_3_all_invalid_entries_satisfy_inv(d: Directory)\n    requires\n        d.well_formed(),\n        forall|i: nat| i < d.entries.len() ==> d.entries[i as int] is Invalid,\n    ensures\n        d.inv(),\n{\n}",
+    "reason": "A directory where every entry is Invalid vacuously satisfies all inv sub-conditions, meaning the spec permits a page table that maps nothing at all"
+  },
+  {
+    "name": "update_wrong_page_size_preserves_inv",
+    "target_fn": "Directory::update",
+    "type": "behavioral",
+    "code": "proof fn phi_4_update_wrong_page_size_preserves_inv(d: Directory, n: nat, pte: PTE)\n    requires\n        d.inv(),\n        n < d.num_entries(),\n        pte.frame.size != d.entry_size(),\n    ensures\n        d.update(n, NodeEntry::Page(pte)).inv(),\n{\n}",
+    "reason": "If a page with mismatched frame size can be inserted while preserving inv, the pages_match_entry_size invariant is ineffective"
+  },
+  {
+    "name": "entry_size_equal_across_layers",
+    "target_fn": "Arch::entry_size_is_next_layer_size",
+    "type": "boundary",
+    "code": "proof fn phi_5_entry_size_equal_across_layers()\n    ensures\n        exists|a: Arch| a.inv() && a.layers.len() >= 2\n            && a.entry_size(0) == a.entry_size(1),\n{\n    let layer = ArchLayer { entry_size: 1, num_entries: 1 };\n    let a = Arch { layers: seq![layer, layer] };\n    assert(a.entry_size(0) == 1);\n    assert(a.entry_size(1) == 1);\n    assert(a.num_entries(1) == 1);\n}",
+    "reason": "Two consecutive layers with identical entry_size (via num_entries=1) means a layer adds no address-space subdivision, violating the x86 expectation that each layer partitions into multiple entries"
+  }
+]

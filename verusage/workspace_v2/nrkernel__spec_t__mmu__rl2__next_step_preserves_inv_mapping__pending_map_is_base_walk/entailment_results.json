@@ -1,0 +1,47 @@
+[
+  {
+    "name": "mask_l3_pg_addr_equals_mask_addr",
+    "type": "logical",
+    "code": "proof fn phi_1_mask_l3_pg_addr_equals_mask_addr()\n    ensures\n        MASK_L3_PG_ADDR_SPEC == MASK_ADDR_SPEC,\n{\n}",
+    "reason": "Both are `bitmask_inc!(12, MAX_PHYADDR_WIDTH - 1)` \u2014 if they're equal, L3 page addresses use the same mask as directory addresses, meaning L3 pages have no additional address bits beyond the standard mask",
+    "entailed": true,
+    "verus_output": "nsparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__next_step_preserves_inv_mapping__pending_map_is_base_walk/phi_1_mask_l3_pg_addr_equals_mask_addr.rs:306:9\n    |\n306 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pde_zero_entry_is_invalid",
+    "type": "behavioral",
+    "code": "proof fn phi_2_pde_zero_entry_is_invalid(layer: nat)\n    requires\n        layer < 4,\n    ensures\n        (PDE { entry: 0, layer: Ghost(layer) })@ is Invalid,\n{\n}",
+    "reason": "An all-zero PDE entry should be Invalid since P bit (bit 0) is 0 \u2014 tests that the entry-zero case correctly falls to Invalid rather than being misclassified",
+    "entailed": false,
+    "verus_output": "c_t__mmu__rl2__next_step_preserves_inv_mapping__pending_map_is_base_walk/phi_2_pde_zero_entry_is_invalid.rs:1172:9\n     |\n1168 | proof fn phi_2_pde_zero_entry_is_invalid(layer: nat)\n     |       ---------------------------------------------- at the end of the function body\n...\n1172 |         (PDE { entry: 0, layer: Ghost(layer) })@ is Invalid,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pde_p_bit_required_for_directory",
+    "type": "logical",
+    "code": "proof fn phi_3_pde_p_bit_required_for_directory(entry: usize, layer: nat)\n    requires\n        layer < 4,\n        entry & 1 == 0,\n    ensures\n        !((PDE { entry, layer: Ghost(layer) })@ is Directory),\n{\n}",
+    "reason": "Without the P bit set, a PDE should never be classified as Directory \u2014 tests that the `v & MASK_FLAG_P == MASK_FLAG_P` guard works correctly",
+    "entailed": false,
+    "verus_output": "ng_map_is_base_walk/phi_3_pde_p_bit_required_for_directory.rs:1173:9\n     |\n1168 | proof fn phi_3_pde_p_bit_required_for_directory(entry: usize, layer: nat)\n     |       ------------------------------------------------------------------- at the end of the function body\n...\n1173 |         !((PDE { entry, layer: Ghost(layer) })@ is Directory),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pde_p_bit_required_for_page",
+    "type": "logical",
+    "code": "proof fn phi_4_pde_p_bit_required_for_page(entry: usize, layer: nat)\n    requires\n        layer < 4,\n        entry & 1 == 0,\n    ensures\n        !((PDE { entry, layer: Ghost(layer) })@ is Page),\n{\n}",
+    "reason": "Without the P bit set, a PDE should never be classified as Page \u2014 tests the same guard for the Page variant",
+    "entailed": false,
+    "verus_output": "serves_inv_mapping__pending_map_is_base_walk/phi_4_pde_p_bit_required_for_page.rs:1173:9\n     |\n1168 | proof fn phi_4_pde_p_bit_required_for_page(entry: usize, layer: nat)\n     |       -------------------------------------------------------------- at the end of the function body\n...\n1173 |         !((PDE { entry, layer: Ghost(layer) })@ is Page),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "mask_l1_pg_addr_subset_of_mask_addr",
+    "type": "logical",
+    "code": "proof fn phi_5_mask_l1_pg_addr_subset_of_mask_addr()\n    ensures\n        MASK_L1_PG_ADDR_SPEC & MASK_ADDR_SPEC == MASK_L1_PG_ADDR_SPEC,\n{\n    axiom_max_phyaddr_width_facts();\n}",
+    "reason": "`MASK_L1_PG_ADDR` (bits 30..MAX_PHYADDR_WIDTH-1) should be a subset of `MASK_ADDR` (bits 12..MAX_PHYADDR_WIDTH-1) \u2014 if the masks don't nest, L1 page addresses could include bits outside the standard address mask",
+    "entailed": false,
+    "verus_output": "g__pending_map_is_base_walk/phi_5_mask_l1_pg_addr_subset_of_mask_addr.rs:1170:9\n     |\n1168 | proof fn phi_5_mask_l1_pg_addr_subset_of_mask_addr()\n     |       ---------------------------------------------- at the end of the function body\n1169 |     ensures\n1170 |         MASK_L1_PG_ADDR_SPEC & MASK_ADDR_SPEC == MASK_L1_PG_ADDR_SPEC,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: aligned_zero_size
+TARGET_FN: aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_aligned_zero_size()
+    ensures
+        aligned(5, 0),
+{
+}
+```
+REASON: If alignment with size 0 is satisfiable, it masks division-by-zero in any spec that relies on aligned without guarding size > 0
+===PHI_END===
+
+===PHI_START===
+NAME: inv_empty_arch
+TARGET_FN: inv
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_inv_empty_arch()
+    ensures
+        (Arch { layers: seq![] }).inv(),
+{
+}
+```
+REASON: An architecture with zero layers is vacuously valid under inv, which would allow meaningless architectures to satisfy all downstream specs
+===PHI_END===
+
+===PHI_START===
+NAME: upper_vaddr_no_progress
+TARGET_FN: upper_vaddr
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_upper_vaddr_no_progress(arch: Arch, layer: nat, base: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+    ensures
+        arch.upper_vaddr(layer, base) <= base,
+{
+}
+```
+REASON: If upper_vaddr never exceeds base, the layer covers zero address space, making all entry-size and mapping reasoning unsound
+===PHI_END===
+
+===PHI_START===
+NAME: entry_base_collision
+TARGET_FN: entry_base
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_entry_base_collision(arch: Arch, layer: nat, base: nat, i: nat, j: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+        i < arch.num_entries(layer),
+        j < arch.num_entries(layer),
+        i != j,
+    ensures
+        arch.entry_base(layer, base, i) == arch.entry_base(layer, base, j),
+{
+}
+```
+REASON: Distinct entry indices mapping to the same base address would collapse the entire page table structure, making separate pages indistinguishable
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_implies_double_aligned
+TARGET_FN: aligned
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_aligned_implies_double_aligned(addr: nat, size: nat)
+    requires
+        size > 0,
+        aligned(addr, size),
+    ensures
+        aligned(addr, 2 * size),
+{
+}
+```
+REASON: Alignment to size does not imply alignment to 2*size; if provable it would mean every 4K-aligned address is also 8K-aligned, breaking page-size distinctions
+===PHI_END===

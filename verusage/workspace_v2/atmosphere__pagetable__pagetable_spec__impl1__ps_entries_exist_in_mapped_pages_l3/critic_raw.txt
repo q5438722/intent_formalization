@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: resolve_l4_returns_some_for_kernel_region
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is intentional behavior. The `spec_resolve_mapping_l4` function deliberately returns `Some` for kernel-region indices (`l4i < kernel_l4_end`) regardless of the present bit. The kernel region is shared across all address spaces and is always considered "resolved" — the spec models this by unconditionally returning the entry for kernel indices.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: page_closure_l4_l3_can_overlap
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The spec allows `cr3` to appear in both `l4_table@.dom()` (which equals `{cr3}` by `wf_l4`) and `l3_tables@.dom()` simultaneously — no cross-level disjointness predicate exists. This means the same physical page could serve as both the L4 and an L3 page table, which would cause hardware to interpret the same memory at two different levels.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: wf_mapping_1g_va_1g_valid_is_2m_valid
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `va_1g_valid` has `when_used_as_spec(spec_va_2m_valid)` — a clear copy-paste bug from `va_2m_valid`. This makes `va_1g_valid(va)` in spec context evaluate `spec_va_2m_valid(va)`, so `wf_mapping_1g`'s constraint that all mapped VAs satisfy `va_1g_valid` is silently weakened to only require 2M alignment instead of 1G alignment.
+===VERDICT_END===
+
+===SUMMARY===
+Two true positives were found. The `va_1g_valid` copy-paste bug (high confidence) causes `when_used_as_spec(spec_va_2m_valid)` instead of `spec_va_1g_valid`, silently weakening all 1G address validation throughout the spec including `wf_mapping_1g`. The missing cross-level disjointness between page table level domains (medium confidence) allows the same physical page to appear in both `l4_table` and `l3_tables` simultaneously. The kernel-region resolve behavior is intentional design — the kernel region is always considered present regardless of the actual entry's present bit.
+===END_SUMMARY===

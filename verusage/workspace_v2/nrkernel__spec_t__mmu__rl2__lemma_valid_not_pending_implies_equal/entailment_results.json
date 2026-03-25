@@ -1,0 +1,47 @@
+[
+  {
+    "name": "lemma_view_addr_aligned_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_lemma_view_addr_aligned_external_body(pde: PDE)\n    requires\n        pde.layer@ < 4,\n        pde@ is Directory,\n    ensures\n        aligned(pde@->Directory_addr as nat, 4096),\n        pde@->Directory_addr < usize::MAX - 4096,\n{\n    pde.lemma_view_addr_aligned();\n}",
+    "reason": "`lemma_view_addr_aligned` is `external_body` \u2014 directory address alignment and overflow bounds are trusted without proof from the PDE bit-extraction logic",
+    "entailed": true,
+    "verus_output": "ed to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_valid_not_pending_implies_equal/phi_1_lemma_view_addr_aligned_external_body.rs:260:9\n    |\n260 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "lemma_bit_indices_less_512_external_body",
+    "type": "logical",
+    "code": "proof fn phi_2_lemma_bit_indices_less_512_external_body(va: usize)\n    ensures\n        l0_bits!(va) < 512,\n        l1_bits!(va) < 512,\n        l2_bits!(va) < 512,\n        l3_bits!(va) < 512,\n{\n    lemma_bit_indices_less_512(va);\n}",
+    "reason": "`lemma_bit_indices_less_512` is `external_body` \u2014 the 9-bit extraction bound (<512) for each page table level index is trusted without bitvector proof",
+    "entailed": true,
+    "verus_output": "to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_valid_not_pending_implies_equal/phi_2_lemma_bit_indices_less_512_external_body.rs:260:9\n    |\n260 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pt_walk_l0_addr_in_pml4_range",
+    "type": "behavioral",
+    "code": "proof fn phi_3_pt_walk_l0_addr_in_pml4_range(mem: PTMem, vaddr: usize)\n    ensures\n        mem.pt_walk(vaddr).path[0].0 == add(mem.pml4, mul(l0_bits!(vaddr), WORD_SIZE)),\n{\n}",
+    "reason": "The first path entry address should be pml4 + l0_index * 8 \u2014 tests that pt_walk correctly computes the L0 address from pml4 base",
+    "entailed": true,
+    "verus_output": "en renamed to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_valid_not_pending_implies_equal/phi_3_pt_walk_l0_addr_in_pml4_range.rs:260:9\n    |\n260 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "write_seq_idle_plus_write_seq",
+    "type": "logical",
+    "code": "proof fn phi_4_write_seq_idle_plus_write_seq(mem: PTMem, writes: Seq<(usize, usize)>, addr: usize)\n    requires\n        forall|i| 0 <= i < writes.len() ==> (#[trigger] writes[i]).0 != addr,\n        mem.mem.contains_key(addr),\n    ensures\n        mem.write_seq(writes).mem.contains_key(addr),\n        mem.write_seq(writes).read(addr) == mem.read(addr),\n{\n    mem.lemma_write_seq(writes);\n    mem.lemma_write_seq_idle(writes, addr);\n}",
+    "reason": "Both `lemma_write_seq` and `lemma_write_seq_idle` are `external_body` \u2014 domain preservation and read frame together chain two unverified assumptions",
+    "entailed": true,
+    "verus_output": "en renamed to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_valid_not_pending_implies_equal/phi_4_write_seq_idle_plus_write_seq.rs:260:9\n    |\n260 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_addr_aligned_external_body",
+    "type": "logical",
+    "code": "proof fn phi_5_page_addr_aligned_external_body(pde: PDE)\n    requires\n        pde.layer@ < 4,\n        pde@ is Page,\n    ensures\n        aligned(pde@->Page_addr as nat, 4096),\n        pde@->Page_addr < usize::MAX - 4096,\n{\n    pde.lemma_view_addr_aligned();\n}",
+    "reason": "`lemma_view_addr_aligned` trusts page frame address alignment and overflow bounds \u2014 the bitmask extraction producing a 4KB-aligned address is unverified",
+    "entailed": true,
+    "verus_output": " renamed to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__lemma_valid_not_pending_implies_equal/phi_5_page_addr_aligned_external_body.rs:260:9\n    |\n260 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

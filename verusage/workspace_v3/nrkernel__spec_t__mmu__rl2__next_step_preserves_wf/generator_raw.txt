@@ -1,0 +1,92 @@
+Here are 5 candidate undesirable properties targeting `align_to_usize` and `aligned`:
+
+===PHI_START===
+NAME: align_exceeds_input
+TARGET_FN: align_to_usize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_align_exceeds_input(a: usize, b: usize)
+    requires
+        b > 0,
+        a >= b,
+    ensures
+        align_to_usize(a, b) > a,
+{
+}
+```
+REASON: Aligning down should never produce a value larger than the original input
+===PHI_END===
+
+===PHI_START===
+NAME: align_result_not_aligned
+TARGET_FN: align_to_usize
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_align_result_not_aligned(a: usize, b: usize)
+    requires
+        b > 0,
+        a < 0x1_0000_0000_0000usize,
+        b < 0x1_0000_0000_0000usize,
+    ensures
+        !aligned(align_to_usize(a, b) as nat, b as nat),
+{
+}
+```
+REASON: The result of align_to_usize should always be aligned to b; if not, the spec is wrong
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_identity_broken
+TARGET_FN: aligned
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_aligned_identity_broken(a: usize, b: usize)
+    requires
+        b > 0,
+        aligned(a as nat, b as nat),
+        a <= usize::MAX - b,
+    ensures
+        align_to_usize(a, b) != a,
+{
+}
+```
+REASON: If a is already aligned to b, align_to_usize should be the identity; deviation indicates inconsistency
+===PHI_END===
+
+===PHI_START===
+NAME: align_to_one_not_identity
+TARGET_FN: align_to_usize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_align_to_one_not_identity(a: usize)
+    requires
+        a < usize::MAX,
+    ensures
+        align_to_usize(a, 1) != a,
+{
+}
+```
+REASON: Aligning to 1 should always return the input unchanged since every integer is 1-aligned
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_zero_size_vacuous
+TARGET_FN: aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_aligned_zero_size_vacuous(addr: nat)
+    requires
+        addr > 0,
+        addr < MAX_PHYADDR,
+    ensures
+        aligned(addr, 0),
+{
+}
+```
+REASON: aligned with size 0 causes division by zero in modulo; if this verifies, the spec admits undefined behavior
+===PHI_END===

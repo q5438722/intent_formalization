@@ -1,0 +1,52 @@
+[
+  {
+    "name": "ios_length_mismatch",
+    "target_fn": "deliver_packet_seq",
+    "type": "behavioral",
+    "reason": "If ios length differs from packets length, deliver_packet_seq's bijection between sent packets and io events is broken",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "---------------------------------------------- at the end of the function body\n...\n1113 |         map_sent_packet_seq_to_ios(packets).len() != packets.len(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "empty_packets_nonempty_ios",
+    "target_fn": "deliver_packet_seq",
+    "type": "boundary",
+    "reason": "Mapping an empty packet sequence should yield empty ios; non-empty output from nothing would fabricate send events",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "------------------------- at the end of the function body\n1110 |     ensures\n1111 |         map_sent_packet_seq_to_ios(Seq::<CPacket>::empty()).len() > 0,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "mapped_ios_not_all_sends",
+    "target_fn": "deliver_packet_seq",
+    "type": "logical",
+    "reason": "map_sent_packet_seq_to_ios wraps every packet in Send; if all_ios_are_sends were false, the ensures of deliver_packet_seq would be inconsistent",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "---------------------------------------------------- at the end of the function body\n...\n1113 |         !all_ios_are_sends(map_sent_packet_seq_to_ios(packets)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "invalid_send_passes_check",
+    "target_fn": "no_invalid_sends",
+    "type": "logical",
+    "reason": "no_invalid_sends must reject any Send carrying InvalidMessage; passing here means the guard is vacuously true or mis-specified",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "        seq![LIoOp::<AbstractEndPoint, SingleMessage<Message>>::Send {\n1113 | |                 s: LPacket { dst: dst, src: src, msg: SingleMessage::InvalidMessage {} }\n1114 | |             }]\n1115 | |         ),\n     | |_________^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "singleton_packet_set_empty",
+    "target_fn": "deliver_packet_seq",
+    "type": "behavioral",
+    "reason": "Abstractifying a singleton packet sequence to an empty set would silently discard outbound packets, violating deliver_packet_seq's completeness guarantee",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "end of the function body\n...\n1113 |         abstractify_seq_of_cpackets_to_set_of_sht_packets(seq![cp]) == Set::<Packet>::empty(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

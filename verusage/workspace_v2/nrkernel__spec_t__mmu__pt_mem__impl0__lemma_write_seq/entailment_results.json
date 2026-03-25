@@ -1,0 +1,47 @@
+[
+  {
+    "name": "write_preserves_pml4",
+    "type": "behavioral",
+    "code": "proof fn phi_1_write_preserves_pml4(pt: PTMem, addr: usize, value: usize)\n    ensures\n        pt.write(addr, value).pml4 == pt.pml4,\n{\n}",
+    "reason": "`write` never modifies `pml4` \u2014 even writing to the address that stores the PML4 pointer leaves the `pml4` field unchanged, allowing the PML4 base to diverge from physical memory",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "write_overwrites_silently",
+    "type": "behavioral",
+    "code": "proof fn phi_2_write_overwrites_silently(pt: PTMem, addr: usize, v1: usize, v2: usize)\n    requires\n        v1 != v2,\n    ensures\n        pt.write(addr, v1).write(addr, v2).mem[addr] == v2,\n{\n}",
+    "reason": "Sequential writes to the same address silently overwrite \u2014 no write-ordering or consistency check, so a concurrent writer could clobber page table entries without detection",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "write_seq_empty_identity",
+    "type": "boundary",
+    "code": "proof fn phi_3_write_seq_empty_identity(pt: PTMem)\n    ensures\n        pt.write_seq(Seq::empty()) === pt,\n{\n}",
+    "reason": "`write_seq` with an empty sequence is identity \u2014 tests the base case of `fold_left`",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "write_expands_domain",
+    "type": "behavioral",
+    "code": "proof fn phi_4_write_expands_domain(pt: PTMem, addr: usize, value: usize)\n    requires\n        !pt.mem.contains_key(addr),\n    ensures\n        pt.write(addr, value).mem.contains_key(addr),\n{\n}",
+    "reason": "Writing to an unmapped address creates a new entry \u2014 there's no guard preventing writes to addresses outside the allocated page table region, allowing arbitrary memory expansion",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "write_seq_order_matters",
+    "type": "logical",
+    "code": "proof fn phi_5_write_seq_order_matters(pt: PTMem, addr: usize, v1: usize, v2: usize)\n    requires\n        v1 != v2,\n    ensures\n        pt.write_seq(seq![(addr, v1), (addr, v2)]).mem[addr] == v2,\n        pt.write_seq(seq![(addr, v2), (addr, v1)]).mem[addr] == v1,\n{\n}",
+    "reason": "`write_seq` is order-dependent via `fold_left` \u2014 the last write to a given address wins, meaning reordering the write sequence changes the final state",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

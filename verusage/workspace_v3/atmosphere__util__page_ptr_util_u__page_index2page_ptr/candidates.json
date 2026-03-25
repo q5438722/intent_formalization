@@ -1,0 +1,37 @@
+[
+  {
+    "name": "nonzero_index_zero_result",
+    "target_fn": "page_index2page_ptr",
+    "type": "behavioral",
+    "code": "proof fn phi_1_nonzero_index_zero_result(i: usize)\n    requires\n        0 < i < NUM_PAGES,\n    ensures\n        spec_page_index2page_ptr(i) == 0,\n{\n}",
+    "reason": "A nonzero page index mapping to pointer 0 would indicate arithmetic overflow or a collapsed mapping"
+  },
+  {
+    "name": "max_index_wraps_below_input",
+    "target_fn": "page_index2page_ptr",
+    "type": "boundary",
+    "code": "proof fn phi_2_max_index_wraps_below_input(i: usize)\n    requires\n        i == (NUM_PAGES - 1) as usize,\n    ensures\n        spec_page_index2page_ptr(i) < i,\n{\n}",
+    "reason": "At the maximum valid index the result wrapping below the index itself would indicate unsigned overflow in the multiplication"
+  },
+  {
+    "name": "non_injective_mapping",
+    "target_fn": "page_index2page_ptr",
+    "type": "logical",
+    "code": "proof fn phi_3_non_injective_mapping(i: usize, j: usize)\n    requires\n        0 <= i < NUM_PAGES,\n        0 <= j < NUM_PAGES,\n        i != j,\n    ensures\n        spec_page_index2page_ptr(i) == spec_page_index2page_ptr(j),\n{\n}",
+    "reason": "Two distinct page indices producing the same pointer would make the mapping ambiguous and corrupt page identity"
+  },
+  {
+    "name": "result_exceeds_max_usize",
+    "target_fn": "page_index2page_ptr",
+    "type": "boundary",
+    "code": "proof fn phi_4_result_exceeds_max_usize(i: usize)\n    requires\n        0 <= i < NUM_PAGES,\n    ensures\n        spec_page_index2page_ptr(i) > MAX_USIZE as usize,\n{\n}",
+    "reason": "A page pointer exceeding the declared MAX_USIZE bound would violate the system's memory model invariant"
+  },
+  {
+    "name": "not_page_aligned",
+    "target_fn": "page_index2page_ptr",
+    "type": "logical",
+    "code": "proof fn phi_5_not_page_aligned(i: usize)\n    requires\n        0 <= i < NUM_PAGES,\n    ensures\n        spec_page_index2page_ptr(i) % 4096 != 0,\n{\n}",
+    "reason": "A page pointer that is not 4096-aligned would violate the fundamental page-alignment invariant required by the memory subsystem"
+  }
+]

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "lemma_entry_sizes_aligned_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_lemma_entry_sizes_aligned_external_body(arch: Arch, i: nat, j: nat)\n    requires\n        arch.inv(),\n        i <= j,\n        j < arch.layers.len(),\n    ensures\n        aligned(arch.entry_size(i), arch.entry_size(j)),\n{\n    arch.lemma_entry_sizes_aligned(i, j);\n}",
+    "reason": "`lemma_entry_sizes_aligned` is `external_body` \u2014 the alignment relationship between layer entry sizes is trusted without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 5 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "self_aligned",
+    "type": "boundary",
+    "code": "proof fn phi_2_self_aligned(arch: Arch, i: nat)\n    requires\n        arch.inv(),\n        i < arch.layers.len(),\n    ensures\n        aligned(arch.entry_size(i), arch.entry_size(i)),\n{\n    arch.lemma_entry_sizes_aligned(i, i);\n}",
+    "reason": "Every entry size is self-aligned \u2014 trivially true for any nonzero nat, but derived from the external_body axiom rather than from first principles",
+    "entailed": true,
+    "verus_output": "verification results:: 5 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "aligned_auto_instantiation",
+    "type": "behavioral",
+    "code": "proof fn phi_3_aligned_auto_instantiation(arch: Arch)\n    requires\n        arch.inv(),\n        arch.layers.len() >= 2,\n    ensures\n        aligned(arch.entry_size(0), arch.entry_size(1)),\n{\n    arch.lemma_entry_sizes_aligned_auto();\n}",
+    "reason": "Layer 0's entry size is aligned to layer 1's \u2014 follows from auto lemma which itself depends on the unverified external_body base lemma",
+    "entailed": true,
+    "verus_output": "verification results:: 5 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "adjacent_layers_divisible",
+    "type": "logical",
+    "code": "proof fn phi_4_adjacent_layers_divisible(arch: Arch, i: nat)\n    requires\n        arch.inv(),\n        i + 1 < arch.layers.len(),\n    ensures\n        arch.entry_size(i) % arch.entry_size(i + 1) == 0,\n{\n    arch.lemma_entry_sizes_aligned(i, i + 1);\n}",
+    "reason": "Adjacent layer entry sizes are divisible \u2014 the `entry_size_is_next_layer_size` invariant makes `entry_size(i) == entry_size(i+1) * num_entries(i+1)`, so divisibility is a verified consequence, but the alignment lemma's external_body makes even this path unverified",
+    "entailed": true,
+    "verus_output": "verification results:: 5 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "aligned_transitive_via_external",
+    "type": "logical",
+    "code": "proof fn phi_5_aligned_transitive_via_external(arch: Arch, i: nat, j: nat, k: nat)\n    requires\n        arch.inv(),\n        i <= j,\n        j <= k,\n        k < arch.layers.len(),\n    ensures\n        aligned(arch.entry_size(i), arch.entry_size(k)),\n{\n    arch.lemma_entry_sizes_aligned(i, k);\n}",
+    "reason": "Alignment is transitive across non-adjacent layers \u2014 this skips intermediate layers entirely, relying solely on the external_body axiom without verifying the inductive chain",
+    "entailed": true,
+    "verus_output": "verification results:: 5 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

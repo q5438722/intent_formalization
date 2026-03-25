@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: remove_container_preserves_inv_external_body_trusted
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: All 7 `remove_container_preserve_tree_inv_*` lemmas are `external_body`, meaning the entire proof that container removal preserves tree invariants is axiomatically trusted. This is a real soundness gap — any bug in the `remove_container_ensures` spec would go undetected.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: removed_container_owned_threads_leaked
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `remove_container_ensures` never requires `owned_threads@ =~= Set::empty()` as a precondition. The container is removed from the domain while potentially still owning threads, which are silently orphaned with no transfer or cleanup requirement.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: removed_container_owned_endpoints_leaked
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: Same pattern — `remove_container_ensures` never requires `owned_endpoints@ =~= Set::empty()`. Endpoints are silently orphaned when the container is removed, violating the code comment's intent that endpoints should only be referenced within the subtree.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: removed_container_owned_procs_leaked
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `remove_container_ensures` never requires `owned_procs@ =~= Seq::empty()`. Processes are silently orphaned when the container is removed from the domain.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: parent_subtree_not_shrunk_after_remove
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The spec explicitly handles this correctly. `remove_container_ensures` includes: for all `c_ptr` in `uppertree_seq`, `new_container_perms[c_ptr].subtree_set@ =~= old_container_perms[c_ptr].subtree_set@.remove(container_ptr)`. The ensures merely restates what the spec already guarantees — this is a desirable property, not a gap.
+===VERDICT_END===
+
+===SUMMARY===
+Four true positives and one false positive. The most significant finding is that all 7 removal invariant preservation lemmas are `external_body` — the entire correctness argument for container removal is axiomatically trusted. The three resource-leak findings (owned_threads, owned_endpoints, owned_procs) confirm the systematic pattern that `remove_container_ensures` focuses exclusively on tree structure while ignoring resource ownership cleanup. The subtree shrinking property is correctly a false positive — the spec explicitly handles ancestor subtree_set updates via the `uppertree_seq`-triggered clause.
+===END_SUMMARY===

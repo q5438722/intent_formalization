@@ -1,0 +1,10 @@
+===VERDICT_START===
+PHI: arch_inv_vacuous_empty
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `Arch::inv()` uses a universal quantifier over layers — when `layers.len() == 0`, the quantifier is vacuously true and the only other conjunct is `0 <= X86_NUM_LAYERS`, which trivially holds. This means an empty `Arch` (no layers at all) satisfies `inv()`, yet it represents no valid x86 page-table structure. Any code relying on `arch.inv()` to guarantee at least one layer of translation is unsound against this edge case. The spec targets `Arch::inv`, which is a pure spec function, but it is the central invariant consumed by executable/proof code throughout, so the gap is real.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive found: `Arch::inv()` is vacuously satisfied by an `Arch` with zero layers because both the layer-count bound (`0 <= 4`) and the universally-quantified layer properties hold trivially on an empty sequence. This is a genuine spec weakness — the invariant should include a `self.layers.len() > 0` conjunct (or similar) to rule out degenerate empty architectures that no real x86 page table would have. Any downstream proof or executable code assuming `arch.inv()` implies the existence of at least one translation layer is relying on an unwritten assumption.
+===END_SUMMARY===

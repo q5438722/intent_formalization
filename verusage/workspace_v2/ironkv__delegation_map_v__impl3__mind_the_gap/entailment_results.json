@@ -1,0 +1,47 @@
+[
+  {
+    "name": "gap_reflexive_on_end",
+    "type": "boundary",
+    "code": "proof fn phi_1_gap_reflexive_on_end<K: KeyTrait + VerusClone>(som: StrictlyOrderedMap<K>)\n    requires\n        som.valid(),\n    ensures\n        som.gap(KeyIterator::end_spec(), KeyIterator::end_spec()),\n{\n    K::cmp_properties();\n    assert forall |ki: KeyIterator<K>| KeyIterator::end_spec().lt_spec(ki) && ki.lt_spec(KeyIterator::end_spec()) implies !(som@.contains_key(*ki.get())) by {\n        // end.lt_spec(ki) requires end.k.is_Some which is false, so vacuously true\n    }\n}",
+    "reason": "`gap(end, end)` is vacuously true since `end.lt_spec(ki)` requires `end.k.is_Some()` which is always false \u2014 this means any endpoint-bounded gap trivially holds regardless of map contents",
+    "entailed": false,
+    "verus_output": "- method `valid` not found for this struct\n...\n167 |         som.valid(),\n    |             ^^^^^ method not found in `StrictlyOrderedMap<K>`\n    |\n    = help: items from traits can only be used if the trait is implemented and in scope\n    = note: the following trait defines an item `valid`, perhaps you need to implement it:\n            candidate #1: `vstd::pcm::PCM`\n\nerror: aborting due to 1 previous error; 9 warnings emitted\n\nFor more information about this error, try `rustc --explain E0599`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "lt_spec_not_reflexive",
+    "type": "logical",
+    "code": "proof fn phi_2_lt_spec_not_reflexive<K: KeyTrait + VerusClone>(ki: KeyIterator<K>)\n    requires\n        !ki.is_end_spec(),\n    ensures\n        !ki.lt_spec(ki),\n{\n    K::cmp_properties();\n}",
+    "reason": "`lt_spec` should be irreflexive for non-end iterators \u2014 if this verifies, it confirms `cmp_spec` irreflexivity, but if it fails, `gap` reasoning would be unsound since a key could be both a lower and upper bound",
+    "entailed": true,
+    "verus_output": "e `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__delegation_map_v__impl3__mind_the_gap/phi_2_lt_spec_not_reflexive.rs:152:91\n    |\n152 |       || (!self.k.is_None() && !other.k.is_None() && self.k.get_Some_0().cmp_spec(other.k.get_Some_0()).lt())\n    |                                                                                           ^^^^^^^^^^\n\nwarning: 9 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "mind_the_gap_transitive_vacuous",
+    "type": "logical",
+    "code": "proof fn phi_3_mind_the_gap_transitive_vacuous<K: KeyTrait + VerusClone>(som: StrictlyOrderedMap<K>, w: KeyIterator<K>, z: KeyIterator<K>)\n    requires\n        som.gap(w, KeyIterator::end_spec()),\n        som.gap(KeyIterator::end_spec(), z),\n    ensures\n        som.gap(w, z),\n{\n    som.mind_the_gap();\n    assert(KeyIterator::<K>::end_spec().lt_spec(KeyIterator::<K>::end_spec()) == false);\n}",
+    "reason": "Transitivity of `gap` through `end` iterators \u2014 `gap(end, z)` is vacuously true for any `z`, so `gap(w, z)` would follow from `gap(w, end)` alone, making the second premise meaningless and the transitivity rule weaker than expected",
+    "entailed": true,
+    "verus_output": "`matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__delegation_map_v__impl3__mind_the_gap/phi_3_mind_the_gap_transitive_vacuous.rs:152:91\n    |\n152 |       || (!self.k.is_None() && !other.k.is_None() && self.k.get_Some_0().cmp_spec(other.k.get_Some_0()).lt())\n    |                                                                                           ^^^^^^^^^^\n\nwarning: 9 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "gap_narrowing_allows_trivial",
+    "type": "behavioral",
+    "code": "proof fn phi_4_gap_narrowing_allows_trivial<K: KeyTrait + VerusClone>(som: StrictlyOrderedMap<K>, w: KeyIterator<K>, x: KeyIterator<K>)\n    requires\n        som.gap(w, x),\n    ensures\n        som.gap(x, x),\n{\n    som.mind_the_gap();\n    assert(x.geq_spec(w) || !w.lt_spec(x));\n}",
+    "reason": "`gap(x, x)` is always vacuously true (no `ki` with `x < ki < x`), so the narrowing property holds trivially \u2014 callers using `gap` narrowing might incorrectly believe they've established a meaningful gap when they've only produced a vacuous one",
+    "entailed": false,
+    "verus_output": "------------- at the end of the function body\n...\n169 |         som.gap(x, x),\n    |         ^^^^^^^^^^^^^ failed this postcondition\n\nerror: assertion failed\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__delegation_map_v__impl3__mind_the_gap/phi_4_gap_narrowing_allows_trivial.rs:172:12\n    |\n172 |     assert(x.geq_spec(w) || !w.lt_spec(x));\n    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ assertion failed\n\nerror: aborting due to 2 previous errors; 9 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "geq_spec_end_geq_everything",
+    "type": "boundary",
+    "code": "proof fn phi_5_geq_spec_end_geq_everything<K: KeyTrait + VerusClone>(ki: KeyIterator<K>)\n    ensures\n        KeyIterator::<K>::end_spec().geq_spec(ki),\n{\n    K::cmp_properties();\n}",
+    "reason": "`end` is `geq` every iterator since `end.lt_spec(ki)` is always false (requires `end.k.is_Some()`) \u2014 this means `gap` narrowing with `end` as a bound in `geq_spec` always succeeds, potentially hiding gaps that should not narrow to endpoint boundaries",
+    "entailed": true,
+    "verus_output": " or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__delegation_map_v__impl3__mind_the_gap/phi_5_geq_spec_end_geq_everything.rs:152:91\n    |\n152 |       || (!self.k.is_None() && !other.k.is_None() && self.k.get_Some_0().cmp_spec(other.k.get_Some_0()).lt())\n    |                                                                                           ^^^^^^^^^^\n\nwarning: 9 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

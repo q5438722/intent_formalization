@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "remove_container_preserves_owned_threads_overlap",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "Neither `container_tree_wf` nor `remove_container_ensures` constrains `owned_threads` disjointness. After container removal, the new_container_perms still allows two distinct containers to claim the same thread \u2014 the resource ownership gap persists through the removal operation."
+  },
+  {
+    "phi": "remove_container_no_resource_cleanup",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`remove_container_ensures` removes `container_ptr` from the domain (`!new_container_perms.dom().contains(container_ptr)`) but has no postcondition about transferring or releasing its `owned_threads`, `owned_endpoints`, or `owned_procs`. Resources owned by the removed container are silently lost with no spec-level accounting."
+  },
+  {
+    "phi": "unique_implys_no_duplicates_external_body",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "This is an `external_body` proof bridging `unique()` (defined over `spec_seq` and `value_list_len`) to `Seq::no_duplicates()`. The `unique` spec uses `self.len()` which resolves to `spec_len` \u2192 `self@.len()`, but `len()`'s external_body unconditionally returns `value_list_len` \u2014 the connection between these representations is entirely trusted without proof."
+  },
+  {
+    "phi": "root_container_parent_unconstrained",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`container_root_wf` sets `depth == 0` for root and requires non-root nodes to have `parent.is_Some()`, but never asserts `root.parent.is_None()`. The root can carry a spurious parent pointer, which could cause confusion in upward traversal or invariant reasoning."
+  }
+]

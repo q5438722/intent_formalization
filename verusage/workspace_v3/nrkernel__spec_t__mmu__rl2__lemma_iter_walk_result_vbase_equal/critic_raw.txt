@@ -1,0 +1,17 @@
+===VERDICT_START===
+PHI: result_not_aligned
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `align_to_usize` is a spec function (`open spec(checked) fn`), not an executable function, so the φ targets the wrong function kind. Moreover, the property is mathematically false: `a - (a % b)` is always divisible by `b` when `b > 0`, so the ensures clause `align_to_usize(a, b) % (b as int) != 0` cannot hold and would not verify.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: same_block_different_align
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Again targets a spec function, not an executable function. The property is also mathematically false: when `a % b < b - 1`, we have `(a+1) % b = (a % b) + 1`, so `align_to_usize(a+1, b) = (a+1) - ((a%b)+1) = a - (a%b) = align_to_usize(a, b)`. The two values are equal, directly contradicting the ensures clause claiming they differ.
+===VERDICT_END===
+
+===SUMMARY===
+Both candidate properties target `align_to_usize`, which is a pure spec function (`open spec(checked) fn`), not an executable function, making them out-of-scope for exec-spec consistency analysis. Additionally, both properties assert mathematically false claims about the standard floor-alignment operation `sub(a, a % b)`: φ1 claims the result is not a multiple of `b` (it always is), and φ2 claims consecutive addresses within the same alignment block map to different bases (they always map to the same base). Neither property could verify and neither reveals a real spec issue.
+===END_SUMMARY===

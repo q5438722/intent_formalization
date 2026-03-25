@@ -1,0 +1,80 @@
+===PHI_START===
+NAME: usize2pa_mem_valid_unconditional
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)
+    ensures
+        MEM_valid(usize2pa(v)),
+{
+}
+```
+REASON: usize2pa's external_body unconditionally ensures MEM_valid(ret) for ANY input — any arbitrary usize is treated as having a valid physical address after masking, trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: sll_len_without_wf_returns_value_list_len
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)
+    ensures
+        sll.len() == sll.value_list_len,
+{
+}
+```
+REASON: StaticLinkedList::len's external_body ensures l == self.value_list_len unconditionally without requiring wf() — corrupted linked list returns raw field as trusted length
+===PHI_END===
+
+===PHI_START===
+NAME: container_map_4k_allows_double_ownership
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_container_map_4k_allows_double_ownership(pa: PageAllocator, c1: ContainerPtr, c2: ContainerPtr, p: PagePtr)
+    requires
+        c1 != c2,
+        pa.container_map_4k@.dom().contains(c1),
+        pa.container_map_4k@.dom().contains(c2),
+        pa.container_map_4k@[c1].contains(p),
+        pa.container_map_4k@[c2].contains(p),
+    ensures
+        pa.container_map_4k@[c1].contains(p) && pa.container_map_4k@[c2].contains(p),
+{
+}
+```
+REASON: container_map_4k is a Ghost field with no disjointness predicate — two different containers can simultaneously claim ownership of the same physical page without contradiction
+===PHI_END===
+
+===PHI_START===
+NAME: mapped_pages_not_subset_of_allocated
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_mapped_pages_not_subset_of_allocated(pa: PageAllocator, p: PagePtr)
+    requires
+        pa.mapped_pages_4k().contains(p),
+    ensures
+        pa.mapped_pages_4k().contains(p),
+{
+}
+```
+REASON: mapped_pages_4k has no visible constraint requiring it to be a subset of allocated_pages_4k — a page can be in the mapped set without being allocated, since both are independent closed external_body specs
+===PHI_END===
+
+===PHI_START===
+NAME: free_pages_overlap_allocated
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_free_pages_overlap_allocated(pa: PageAllocator, p: PagePtr)
+    requires
+        pa.free_pages_4k().contains(p),
+        pa.allocated_pages_4k().contains(p),
+    ensures
+        pa.free_pages_4k().contains(p) && pa.allocated_pages_4k().contains(p),
+{
+}
+```
+REASON: free_pages_4k and allocated_pages_4k are both closed external_body specs with no visible disjointness constraint — a page can be simultaneously free and allocated without contradiction
+===PHI_END===

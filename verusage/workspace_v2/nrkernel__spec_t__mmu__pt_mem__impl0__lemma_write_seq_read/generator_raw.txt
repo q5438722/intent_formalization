@@ -1,0 +1,81 @@
+===PHI_START===
+NAME: write_seq_read_unique_key
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_write_seq_read_unique_key(pt: PTMem, addr: usize, v1: usize, v2: usize)
+    requires
+        v1 != v2,
+    ensures
+        pt.write_seq(seq![(addr, v1)]).mem[addr] == v1,
+{
+    pt.lemma_write_seq_read(seq![(addr, v1)], 0);
+}
+```
+REASON: Tests that a single-element write_seq correctly stores the value — basic sanity check of the lemma
+===PHI_END===
+
+===PHI_START===
+NAME: write_seq_read_requires_uniqueness
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_write_seq_read_requires_uniqueness(pt: PTMem, addr: usize, v1: usize, v2: usize)
+    requires
+        v1 != v2,
+    ensures
+        pt.write_seq(seq![(addr, v1), (addr, v2)]).mem[addr] == v2,
+{
+}
+```
+REASON: With duplicate keys, `lemma_write_seq_read` can't be applied (uniqueness precondition fails) — but fold_left still gives last-write-wins, testing that the spec is consistent even without the lemma
+===PHI_END===
+
+===PHI_START===
+NAME: write_seq_read_does_not_require_domain
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_write_seq_read_does_not_require_domain(pt: PTMem, addr: usize, value: usize)
+    requires
+        !pt.mem.contains_key(addr),
+    ensures
+        pt.write_seq(seq![(addr, value)]).mem.contains_key(addr),
+        pt.write_seq(seq![(addr, value)]).mem[addr] == value,
+{
+    pt.lemma_write_seq_read(seq![(addr, value)], 0);
+}
+```
+REASON: `lemma_write_seq_read` has no precondition requiring the address to be in the original domain — writes can target arbitrary addresses outside allocated page table memory
+===PHI_END===
+
+===PHI_START===
+NAME: write_seq_drop_last_preserves_earlier
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_write_seq_drop_last_preserves_earlier(pt: PTMem, a1: usize, v1: usize, a2: usize, v2: usize)
+    requires
+        a1 != a2,
+    ensures
+        pt.write_seq(seq![(a1, v1), (a2, v2)]).mem[a1] == v1,
+{
+    pt.lemma_write_seq_read(seq![(a1, v1), (a2, v2)], 0);
+}
+```
+REASON: Earlier writes to distinct addresses survive later writes — tests that the inductive case correctly preserves non-overwritten entries
+===PHI_END===
+
+===PHI_START===
+NAME: write_seq_empty_no_effect
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_write_seq_empty_no_effect(pt: PTMem)
+    ensures
+        pt.write_seq(Seq::<(usize, usize)>::empty()) === pt,
+{
+}
+```
+REASON: Empty write_seq is identity — tests fold_left base case
+===PHI_END===

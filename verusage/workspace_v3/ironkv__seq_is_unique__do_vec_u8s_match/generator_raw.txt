@@ -1,0 +1,88 @@
+===PHI_START===
+NAME: always_returns_true
+TARGET_FN: do_vec_u8s_match
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_always_returns_true(s1: Seq<u8>, s2: Seq<u8>, eq: bool)
+    requires
+        eq == (s1 == s2),
+    ensures
+        eq == true,
+{
+}
+```
+REASON: Would mean the function claims all vectors are equal, ignoring actual contents
+===PHI_END===
+
+===PHI_START===
+NAME: always_returns_false
+TARGET_FN: do_vec_u8s_match
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_always_returns_false(s1: Seq<u8>, s2: Seq<u8>, eq: bool)
+    requires
+        eq == (s1 == s2),
+    ensures
+        eq == false,
+{
+}
+```
+REASON: Would mean the function never reports equality, even for identical vectors
+===PHI_END===
+
+===PHI_START===
+NAME: diff_lengths_can_match
+TARGET_FN: do_vec_u8s_match
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_diff_lengths_can_match(s1: Seq<u8>, s2: Seq<u8>, eq: bool)
+    requires
+        eq == (s1 == s2),
+        s1.len() != s2.len(),
+    ensures
+        eq == true,
+{
+}
+```
+REASON: Would mean vectors of different lengths could be considered equal, violating length check
+===PHI_END===
+
+===PHI_START===
+NAME: not_reflexive
+TARGET_FN: do_vec_u8s_match
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_not_reflexive(s: Seq<u8>, eq: bool)
+    requires
+        eq == (s == s),
+    ensures
+        eq == false,
+{
+}
+```
+REASON: Would mean a vector compared against itself is reported as not matching, breaking reflexivity
+===PHI_END===
+
+===PHI_START===
+NAME: single_diff_ignored
+TARGET_FN: do_vec_u8s_match
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_single_diff_ignored(s1: Seq<u8>, s2: Seq<u8>, eq: bool)
+    requires
+        s1.len() == s2.len(),
+        s1.len() > 0,
+        s1[0] != s2[0],
+        eq == (s1 == s2),
+    ensures
+        eq == true,
+{
+}
+```
+REASON: Would mean a difference in the first element is ignored, so distinct vectors are treated as equal
+===PHI_END===

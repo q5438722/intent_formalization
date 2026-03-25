@@ -1,0 +1,47 @@
+[
+  {
+    "name": "pow2_negative_is_one",
+    "type": "boundary",
+    "code": "proof fn phi_1_pow2_negative_is_one(e: int)\n    requires\n        e < 0,\n    ensures\n        pow2(e) == 1,\n{\n}",
+    "reason": "`pow2` returns 1 for all negative exponents \u2014 mathematically 2^(-n) is a fraction, so callers passing negative exponents by mistake silently get 1",
+    "entailed": true,
+    "verus_output": "verification results:: 15 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "pow2_non_injective_at_zero",
+    "type": "boundary",
+    "code": "proof fn phi_2_pow2_non_injective_at_zero()\n    ensures\n        pow2(0) == pow2(-1) && pow2(-1) == pow2(-100),\n{\n}",
+    "reason": "All non-positive inputs collapse to 1, making `pow2` non-injective below 1 \u2014 could mask off-by-one errors near e=0 boundaries",
+    "entailed": true,
+    "verus_output": "verification results:: 15 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "div2_y_overflow_unchecked",
+    "type": "boundary",
+    "code": "proof fn phi_3_div2_y_overflow_unchecked(x: u64)\n    requires\n        x == u64::MAX,\n    ensures\n        x as int / (u64::MAX as int * 2) == (x as int / u64::MAX as int) / 2,\n{\n    div2(x, u64::MAX as int);\n}",
+    "reason": "`div2` takes `y: int` with no upper bound \u2014 `y * 2` can exceed any machine word, making the lemma applicable to divisions by values unrealizable as machine integers",
+    "entailed": true,
+    "verus_output": "verification results:: 15 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "mul_assoc_smuggles_commutativity",
+    "type": "logical",
+    "code": "proof fn phi_4_mul_assoc_smuggles_commutativity(x: nat, y: nat)\n    ensures\n        x * y == y * x,\n{\n    mul_assoc(x, y, 1);\n}",
+    "reason": "`mul_assoc` ensures `(x*y)*z == y*(x*z)` which with z=1 yields commutativity \u2014 may let proofs go through for unintended reasons",
+    "entailed": true,
+    "verus_output": "verification results:: 15 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "shift_zero_always_zero",
+    "type": "boundary",
+    "code": "proof fn phi_5_shift_zero_always_zero(shift: u64)\n    requires\n        0 <= shift < 64,\n    ensures\n        0u64 >> shift == 0,\n{\n    shift_is_div(0u64, shift);\n    pow2_positive(shift as int);\n}",
+    "reason": "Right-shifting zero always yields zero \u2014 trivially true but tests that `shift_is_div` doesn't produce unsound nonzero results for zero input",
+    "entailed": true,
+    "verus_output": "verification results:: 15 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

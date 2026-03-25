@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: overlap_reflexive_nonzero
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: When `r.size > 0`, `overlap(r, r)` enters the `region1.base <= region2.base` branch (since `r.base <= r.base`), and the `region1.base == region2.base` check is trivially true. Self-overlap of non-empty regions is correct and expected.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: overlap_same_base_zero_size
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: Two zero-size regions at the same base overlap because `overlap` checks `region1.base == region2.base` before checking sizes. This means empty/degenerate regions at the same address are considered conflicting, which could unnecessarily block valid mappings with zero-size PTEs or cause spurious overlap detection.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: candidate_mapping_in_bounds_pmem_strict_vs_nonstrict
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is a direct restatement of the `candidate_mapping_in_bounds_pmem` definition. The inconsistency between `<` (virtual) and `<=` (physical) is an intentional design choice — physical memory ranges are typically closed at the upper bound while virtual address spaces use exclusive upper bounds. This is not a spec gap.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: zero-size regions at the same base are considered overlapping due to the `region1.base == region2.base` equality check in `overlap`, which doesn't account for empty regions. Two false positives: self-overlap of non-empty regions is correct by construction, and the strict vs non-strict bound inconsistency between virtual and physical mapping checks is a direct restatement of the definitions reflecting intentional design choices.
+===END_SUMMARY===

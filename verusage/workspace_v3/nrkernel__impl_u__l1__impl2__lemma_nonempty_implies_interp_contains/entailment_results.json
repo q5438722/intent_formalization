@@ -1,0 +1,52 @@
+[
+  {
+    "name": "inv_allows_zero_layers",
+    "target_fn": "Arch::inv",
+    "type": "behavioral",
+    "reason": "Arch::inv should require at least one layer; a zero-layer architecture is degenerate and unusable for address translation",
+    "entailed": true,
+    "verified": 12,
+    "errors": 0,
+    "output_tail": "verification results:: 12 verified, 0 errors\n\n"
+  },
+  {
+    "name": "entry_base_overlap",
+    "target_fn": "Arch::entry_base",
+    "type": "boundary",
+    "reason": "Distinct entry indices at the same layer must map to distinct base addresses; overlap would corrupt address translation",
+    "entailed": false,
+    "verified": 11,
+    "errors": 1,
+    "output_tail": "-------------------------------- at the end of the function body\n...\n310 |         arch.entry_base(layer, base, i) == arch.entry_base(layer, base, j),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "interp_of_entry_key_overlap",
+    "target_fn": "Directory::interp",
+    "type": "logical",
+    "reason": "Two different directory entries should never map the same virtual address; overlapping keys would cause ambiguous translations",
+    "entailed": false,
+    "verified": 11,
+    "errors": 1,
+    "output_tail": "t)\n    |       --------------------------------------------------------------------------- at the end of the function body\n...\n310 |         d.interp_of_entry(j).contains_key(va),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "well_formed_allows_zero_entries",
+    "target_fn": "Directory::well_formed",
+    "type": "boundary",
+    "reason": "A well-formed directory with zero entries is degenerate; well_formed should guarantee at least one slot via arch.inv",
+    "entailed": false,
+    "verified": 11,
+    "errors": 1,
+    "output_tail": "of fn phi_4_well_formed_allows_zero_entries(d: Directory)\n    |       ------------------------------------------------------ at the end of the function body\n...\n306 |         d.num_entries() == 0,\n    |         ^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "contains_zero_entry_size",
+    "target_fn": "Arch::contains_entry_size_at_index_atleast",
+    "type": "logical",
+    "reason": "Under a valid arch invariant all entry sizes are positive, so finding an entry_size of 0 would indicate an inconsistent spec",
+    "entailed": false,
+    "verified": 11,
+    "errors": 1,
+    "output_tail": "(arch: Arch)\n    |       --------------------------------------------- at the end of the function body\n...\n307 |         arch.contains_entry_size_at_index_atleast(0, 0),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

@@ -1,0 +1,37 @@
+[
+  {
+    "name": "mask_is_zero",
+    "target_fn": "MASK_L2_PG_ADDR",
+    "type": "behavioral",
+    "code": "proof fn phi_1_mask_is_zero()\n    ensures\n        MASK_L2_PG_ADDR_SPEC == 0usize,\n{\n    axiom_max_phyaddr_width_facts();\n}",
+    "reason": "A zero mask would fail to extract any L2 page address bits, making all L2 translations collapse to address zero"
+  },
+  {
+    "name": "low_bits_set",
+    "target_fn": "MASK_L2_PG_ADDR",
+    "type": "boundary",
+    "code": "proof fn phi_2_low_bits_set()\n    ensures\n        MASK_L2_PG_ADDR_SPEC & 0x1FFFFFusize != 0usize,\n{\n    axiom_max_phyaddr_width_facts();\n}",
+    "reason": "Bits 0-20 must be clear in an L2 (2MiB) page address mask; setting them would include page-offset bits in the physical address extraction"
+  },
+  {
+    "name": "mask_all_ones",
+    "target_fn": "MASK_L2_PG_ADDR",
+    "type": "behavioral",
+    "code": "proof fn phi_3_mask_all_ones()\n    ensures\n        MASK_L2_PG_ADDR_SPEC == 0xFFFF_FFFF_FFFF_FFFFusize,\n{\n    axiom_max_phyaddr_width_facts();\n}",
+    "reason": "An all-ones mask would pass through all 64 bits, defeating the purpose of masking the L2 page-table entry to its physical address field"
+  },
+  {
+    "name": "bit20_set",
+    "target_fn": "MASK_L2_PG_ADDR",
+    "type": "boundary",
+    "code": "proof fn phi_4_bit20_set()\n    ensures\n        MASK_L2_PG_ADDR_SPEC & (1usize << 20usize) != 0usize,\n{\n    axiom_max_phyaddr_width_facts();\n}",
+    "reason": "Bit 20 is the topmost offset bit for a 2MiB page; including it in the address mask would corrupt extracted physical addresses by one bit position"
+  },
+  {
+    "name": "bit21_clear",
+    "target_fn": "MASK_L2_PG_ADDR",
+    "type": "logical",
+    "code": "proof fn phi_5_bit21_clear()\n    ensures\n        MASK_L2_PG_ADDR_SPEC & (1usize << 21usize) == 0usize,\n{\n    axiom_max_phyaddr_width_facts();\n}",
+    "reason": "Bit 21 is the lowest address bit for an L2 page; if clear, the mask would fail to capture the least-significant physical address bit for 2MiB pages"
+  }
+]

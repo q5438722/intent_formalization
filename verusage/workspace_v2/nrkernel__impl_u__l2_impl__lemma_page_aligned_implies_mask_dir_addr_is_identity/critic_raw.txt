@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: page_aligned_mask_dir_identity
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is a correct and desirable property fully verified by `by (bit_vector)` reasoning. Page-aligned addresses within the physical address space should be identity under the directory address mask — this is the intended design.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: mask_dir_addr_equals_mask_addr
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `MASK_DIR_ADDR_SPEC` is defined as `MASK_ADDR`, so this is a definitional equality. Correct by construction.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: max_phyaddr_width_range
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `MAX_PHYADDR_WIDTH` is `external_body` with implementation value 52, but the axiom only guarantees `32 <= MAX_PHYADDR_WIDTH <= 52`. The verifier treats it as opaque, creating a gap where proofs cannot rely on the concrete value.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: max_phyaddr_positive
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `MAX_PHYADDR = (1 << width) - 1` with `width >= 32` gives at least `2^32 - 1 > 0`. This is a correct arithmetic consequence verified through bitvector reasoning, not a spec gap.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: `MAX_PHYADDR_WIDTH` as `external_body` with a weaker axiom than its concrete implementation value creates a specification gap. The other three are false positives — a correctly verified bitvector property, a definitional equality, and a correct arithmetic consequence.
+===END_SUMMARY===

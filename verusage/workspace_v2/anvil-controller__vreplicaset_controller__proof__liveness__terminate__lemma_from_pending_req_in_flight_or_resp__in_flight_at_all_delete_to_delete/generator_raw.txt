@@ -1,0 +1,88 @@
+===PHI_START===
+NAME: unmarshal_local_state_can_fail
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_unmarshal_local_state_can_fail(v: Value)
+    requires
+        VReplicaSetReconcileState::unmarshal(v) is Err,
+    ensures
+        true,
+{
+}
+```
+REASON: unmarshal is uninterpreted with no totality axiom, so at_step_closure and unwrap_local_state_closure call .unwrap() on potentially-Err results — any predicate using these closures has undefined behavior on non-unmarshallable local states
+===PHI_END===
+
+===PHI_START===
+NAME: at_step_closure_vacuous_on_bad_state
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_at_step_closure_vacuous_on_bad_state(v: Value, step: VReplicaSetRecStepView)
+    requires
+        VReplicaSetReconcileState::unmarshal(v) is Err,
+    ensures
+        at_step_closure(step)(v) == at_step_closure(VReplicaSetRecStepView::Init)(v),
+{
+}
+```
+REASON: when unmarshal fails, unwrap() produces an arbitrary value, so at_step_closure cannot distinguish any two steps on corrupt local state — all reconcile step predicates collapse to the same truth value
+===PHI_END===
+
+===PHI_START===
+NAME: has_pending_req_no_contains_key_guard
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_has_pending_req_no_contains_key_guard(controller_id: int, s: ClusterState, key: ObjectRef)
+    requires
+        !s.ongoing_reconciles(controller_id).contains_key(key),
+    ensures
+        !Cluster::at_expected_reconcile_states(controller_id, key, at_step_closure(VReplicaSetRecStepView::Init))(s),
+{
+}
+```
+REASON: at_expected_reconcile_states guards on contains_key, but has_pending_req_msg does not — if these predicates are composed in contexts where the guard is missing, map indexing on absent keys yields arbitrary values
+===PHI_END===
+
+===PHI_START===
+NAME: pending_req_state_vacuous_when_no_pending
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_pending_req_state_vacuous_when_no_pending(controller_id: int, key: ObjectRef, s: ClusterState)
+    requires
+        s.ongoing_reconciles(controller_id).contains_key(key),
+        s.ongoing_reconciles(controller_id)[key].pending_req_msg is None,
+    ensures
+        Cluster::pending_req_in_flight_or_resp_in_flight_at_reconcile_state(
+            controller_id, key, |_s: ReconcileLocalState| true
+        )(s),
+{
+}
+```
+REASON: pending_req_in_flight_or_resp_in_flight_at_reconcile_state is vacuously true when pending_req_msg is None (has_pending_req_msg fails), so any reconcile state without a pending request trivially satisfies the invariant regardless of actual in-flight message status
+===PHI_END===
+
+===PHI_START===
+NAME: object_ref_ignores_uid
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_object_ref_ignores_uid(v1: VReplicaSetView, v2: VReplicaSetView)
+    requires
+        v1.metadata.name is Some,
+        v2.metadata.name is Some,
+        v1.metadata.namespace is Some,
+        v2.metadata.namespace is Some,
+        v1.metadata.name == v2.metadata.name,
+        v1.metadata.namespace == v2.metadata.namespace,
+        v1.metadata.uid != v2.metadata.uid,
+    ensures
+        v1.object_ref() == v2.object_ref(),
+{
+}
+```
+REASON: object_ref uses only kind/name/namespace and ignores uid, so a deleted-and-recreated VReplicaSet with a new uid maps to the same ObjectRef — the liveness lemma's ongoing_reconciles keyed by object_ref could conflate old and new instances
+===PHI_END===

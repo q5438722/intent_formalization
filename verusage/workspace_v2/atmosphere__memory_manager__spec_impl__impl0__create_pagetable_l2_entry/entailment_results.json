@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize2pa_mem_valid_unconditional",
+    "type": "logical",
+    "code": "proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body unconditionally ensures MEM_valid(ret) for ANY input \u2014 arbitrary usize values produce \"valid\" physical addresses without proof",
+    "entailed": false,
+    "verus_output": "on/verusage/workspace_v2/atmosphere__memory_manager__spec_impl__impl0__create_pagetable_l2_entry/phi_1_usize2pa_mem_valid_unconditional.rs:1178:9\n     |\n1176 | proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n     |       --------------------------------------------------- at the end of the function body\n1177 |     ensures\n1178 |         MEM_valid(usize2pa(v)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 40 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "zero_entry_is_empty",
+    "type": "behavioral",
+    "code": "proof fn phi_2_zero_entry_is_empty()\n    ensures\n        usize2page_entry(0usize).is_empty(),\n{\n}",
+    "reason": "The external_body on usize2page_entry ensures all fields are false/zero when v==0, combined with spec_usize2pa(0)==0, making is_empty() trivially true \u2014 but this relies on two independent external_body claims agreeing",
+    "entailed": false,
+    "verus_output": "chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__memory_manager__spec_impl__impl0__create_pagetable_l2_entry/phi_2_zero_entry_is_empty.rs:1178:9\n     |\n1176 | proof fn phi_2_zero_entry_is_empty()\n     |       ------------------------------ at the end of the function body\n1177 |     ensures\n1178 |         usize2page_entry(0usize).is_empty(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 40 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_closure_includes_l4_table",
+    "type": "logical",
+    "code": "proof fn phi_3_page_closure_includes_l4_table(pt: PageTable, p: PageMapPtr)\n    requires\n        pt.l4_table@.dom().contains(p),\n    ensures\n        pt.page_closure().contains(p),\n{\n}",
+    "reason": "page_closure unconditionally absorbs all l4_table domain pointers \u2014 if l4_table domain overlaps with l3/l2/l1 domains, page_closure silently merges them with no disjointness check",
+    "entailed": true,
+    "verus_output": "able.rs:67:10\n   |\n67 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__memory_manager__spec_impl__impl0__create_pagetable_l2_entry/phi_3_page_closure_includes_l4_table.rs:76:10\n   |\n76 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 40 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "is_empty_allows_nonempty_kernel_entries",
+    "type": "boundary",
+    "code": "proof fn phi_4_is_empty_allows_nonempty_kernel_entries(pt: PageTable, i: L4Index)\n    requires\n        pt.is_empty(),\n        0 <= i < pt.kernel_l4_end,\n    ensures\n        pt.l4_table@[pt.cr3].value()[i].perm.present || !pt.l4_table@[pt.cr3].value()[i].perm.present,\n{\n}",
+    "reason": "is_empty only constrains indices >= kernel_l4_end \u2014 kernel region L4 entries are completely unconstrained, allowing present entries with arbitrary mappings in a supposedly \"empty\" page table",
+    "entailed": true,
+    "verus_output": "7:10\n   |\n67 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__memory_manager__spec_impl__impl0__create_pagetable_l2_entry/phi_4_is_empty_allows_nonempty_kernel_entries.rs:76:10\n   |\n76 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 40 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "resolve_l4_ignores_kernel_region_present",
+    "type": "behavioral",
+    "code": "proof fn phi_5_resolve_l4_ignores_kernel_region_present(pt: PageTable, l4i: L4Index)\n    requires\n        0 <= l4i < pt.kernel_l4_end,\n    ensures\n        pt.spec_resolve_mapping_l4(l4i) == Some(pt.l4_table@[pt.cr3].value()[l4i]),\n{\n}",
+    "reason": "spec_resolve_mapping_l4 returns Some for ALL kernel-region indices (l4i < kernel_l4_end) regardless of the present bit \u2014 a non-present kernel entry is still treated as a valid mapping, bypassing the present-bit check",
+    "entailed": true,
+    "verus_output": ":10\n   |\n67 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__memory_manager__spec_impl__impl0__create_pagetable_l2_entry/phi_5_resolve_l4_ignores_kernel_region_present.rs:76:10\n   |\n76 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 40 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

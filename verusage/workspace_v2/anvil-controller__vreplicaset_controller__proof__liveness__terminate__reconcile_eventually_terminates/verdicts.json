@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "unmarshal_ignores_state_validation",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is standard Kubernetes design. Unmarshalling is pure deserialization; state validation is performed separately at admission time by the API server, not during parsing."
+  },
+  {
+    "phi": "update_key_ignores_obj_namespace",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`UpdateRequest::key()` derives namespace from `self.namespace` rather than `self.obj.metadata.namespace`. If these diverge, the object is stored under a key inconsistent with its own metadata, which could cause silent misrouting of updates."
+  },
+  {
+    "phi": "marshal_spec_not_injective",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This candidate merely demonstrates that `marshal_spec` being `uninterp` means Verus doesn't *assert* injectivity \u2014 but neither does it assert non-injectivity. The precondition `s1 != s2 && marshal_spec(s1) == marshal_spec(s2)` is satisfiable only in the SMT solver's abstract model; the ensures is trivially `true`. This proves nothing about an actual spec gap."
+  },
+  {
+    "phi": "object_ref_ignores_uid",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This mirrors Kubernetes' actual design where resource identity is (kind, namespace, name). UID distinguishes incarnations but is intentionally excluded from the lookup key \u2014 the API server and all controllers use this same identity model."
+  }
+]

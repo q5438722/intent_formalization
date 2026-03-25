@@ -1,0 +1,47 @@
+[
+  {
+    "name": "insert_unmap_preserves_unique",
+    "type": "behavioral",
+    "code": "proof fn phi_1_insert_unmap_preserves_unique(thread_state: Map<nat, ThreadState>, id: nat, vaddr: nat, pte: Option<PTE>)\n    requires\n        inflight_maps_unique(thread_state),\n    ensures\n        inflight_maps_unique(thread_state.insert(id, ThreadState::Unmap { vaddr, pte })),\n{\n    insert_non_map_preserves_unique(thread_state, id, ThreadState::Unmap { vaddr, pte });\n}",
+    "reason": "Inserting an Unmap that replaces an existing Map entry silently drops the uniqueness constraint for that Map \u2014 the old Map is removed and replaced by Unmap without checking if another thread had a duplicate",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "insert_idle_over_map_preserves_unique",
+    "type": "behavioral",
+    "code": "proof fn phi_2_insert_idle_over_map_preserves_unique(thread_state: Map<nat, ThreadState>, id: nat, vaddr: nat, pte: PTE)\n    requires\n        inflight_maps_unique(thread_state),\n        thread_state.contains_pair(id, ThreadState::Map { vaddr, pte }),\n    ensures\n        inflight_maps_unique(thread_state.insert(id, ThreadState::Idle)),\n{\n    insert_non_map_preserves_unique(thread_state, id, ThreadState::Idle);\n}",
+    "reason": "Overwriting a Map entry with Idle preserves uniqueness \u2014 tests that removing an in-flight map by going Idle doesn't break the invariant even if the map was the only thing preventing a duplicate",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "if_map_then_unique_vacuous_for_non_map",
+    "type": "logical",
+    "code": "proof fn phi_3_if_map_then_unique_vacuous_for_non_map(thread_state: Map<nat, ThreadState>, id: nat)\n    requires\n        thread_state.contains_key(id),\n        !(thread_state[id] is Map),\n    ensures\n        if_map_then_unique(thread_state, id),\n{\n}",
+    "reason": "`if_map_then_unique` is vacuously true for non-Map entries \u2014 the uniqueness check provides no protection for Unmap or Idle thread states",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "inflight_maps_unique_empty",
+    "type": "boundary",
+    "code": "proof fn phi_4_inflight_maps_unique_empty()\n    ensures\n        inflight_maps_unique(Map::empty()),\n{\n}",
+    "reason": "The empty thread state trivially satisfies uniqueness \u2014 the universal quantifier over an empty domain is vacuously true",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "uniqueness_value_equality_not_frame_overlap",
+    "type": "logical",
+    "code": "proof fn phi_5_uniqueness_value_equality_not_frame_overlap(v1: nat, v2: nat, frame: MemRegion, flags: Flags)\n    requires\n        v1 != v2,\n        frame.size > 0,\n    ensures\n        ({\n            let pte = PTE { frame: frame, flags: flags };\n            let ts = Map::empty()\n                .insert(0nat, ThreadState::Map { vaddr: v1, pte: pte })\n                .insert(1nat, ThreadState::Map { vaddr: v2, pte: pte });\n            inflight_maps_unique(ts)\n        }),\n{\n}",
+    "reason": "Two inflight maps with identical PTEs (same physical frame) but different vaddrs pass uniqueness because `if_map_then_unique` compares full `ThreadState` values including vaddr \u2014 allows double-mapping the same physical frame concurrently",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,52 @@
+[
+  {
+    "name": "map_entry_addr_always_zero",
+    "target_fn": "page_entry_to_map_entry",
+    "type": "behavioral",
+    "reason": "If provable, the conversion always loses the physical address, making all mappings point to address 0",
+    "entailed": false,
+    "verified": 20,
+    "errors": 1,
+    "output_tail": "------------------------------------------ at the end of the function body\n1207 |     ensures\n1208 |         spec_page_entry_to_map_entry(&p).addr == 0,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 46 warnings emitted\n\n"
+  },
+  {
+    "name": "map_entry_write_always_false",
+    "target_fn": "page_entry_to_map_entry",
+    "type": "boundary",
+    "reason": "If provable, write permission is never propagated to MapEntry, silently making all pages read-only",
+    "entailed": false,
+    "verified": 20,
+    "errors": 1,
+    "output_tail": "-------------------------------- at the end of the function body\n1207 |     ensures\n1208 |         spec_page_entry_to_map_entry(&p).write == false,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 46 warnings emitted\n\n"
+  },
+  {
+    "name": "map_entry_xd_equals_write",
+    "target_fn": "page_entry_to_map_entry",
+    "type": "logical",
+    "reason": "If provable, execute-disable and write are always conflated, preventing independent writable-but-executable or read-only-non-executable pages",
+    "entailed": false,
+    "verified": 20,
+    "errors": 1,
+    "output_tail": "08 |         spec_page_entry_to_map_entry(&p).execute_disable == spec_page_entry_to_map_entry(&p).write,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 46 warnings emitted\n\n"
+  },
+  {
+    "name": "l1_lookup_always_none",
+    "target_fn": "get_entry_l1",
+    "type": "behavioral",
+    "reason": "If provable, no 4K page can ever be mapped through L1, rendering the entire 4K mapping layer vacuous",
+    "entailed": false,
+    "verified": 20,
+    "errors": 1,
+    "output_tail": "----------------------- at the end of the function body\n...\n1215 |         pt.spec_resolve_mapping_4k_l1(l4i, l3i, l2i, l1i).is_None(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 47 warnings emitted\n\n"
+  },
+  {
+    "name": "l1_mapping_always_readonly",
+    "target_fn": "get_entry_l1",
+    "type": "logical",
+    "reason": "If provable, all resolved 4K mappings are forced read-only, meaning writable user pages can never exist at 4K granularity",
+    "entailed": false,
+    "verified": 20,
+    "errors": 1,
+    "output_tail": "------- at the end of the function body\n...\n1216 |         pt.mapping_4k()[spec_index2va((l4i, l3i, l2i, l1i))].write == false,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 47 warnings emitted\n\n"
+  }
+]

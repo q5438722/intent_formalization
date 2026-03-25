@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: bitand_rounding_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `bitand_with_mask_gives_rounding` is `external_body` trusting the bitwise-arithmetic equivalence `x & !sub(y,1) == (x/y)*y` for power-of-two `y` without proof. This is the key lemma enabling the fast power-of-two path in `align_down`, and any error would make the bitwise branch unsound.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: mul_mod_right_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `mul_mod_right` is `external_body` trusting `(a * b) % b == 0` without proof. While mathematically correct, this is a fundamental arithmetic property that should be provable via nonlinear_arith, and `align_down` depends on it to establish the `res % y == 0` postcondition.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: align_down_y_equals_1
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Aligning down to 1 returning `x` unchanged is correct and expected — every integer is a multiple of 1. This is a valid boundary case, not a spec gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: mul_mod_right_negative_divisor
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `mul_mod_right` only requires `b != 0`, allowing negative divisors. While `align_down` only calls it with positive `y`, the axiom's over-broad precondition trusts the property for all negative `b` without verification — for Verus Euclidean division this happens to be correct, but it's an unnecessarily broad trust assumption.
+===VERDICT_END===
+
+===SUMMARY===
+Three true positives identify external_body trust gaps: `bitand_with_mask_gives_rounding` trusts the bitwise rounding equivalence for the fast power-of-two path, `mul_mod_right` trusts a fundamental modular arithmetic property used to establish the alignment postcondition, and `mul_mod_right`'s acceptance of negative divisors is an over-broad trust assumption beyond what `align_down` needs. One false positive: alignment to 1 returning `x` is correct expected behavior.
+===END_SUMMARY===

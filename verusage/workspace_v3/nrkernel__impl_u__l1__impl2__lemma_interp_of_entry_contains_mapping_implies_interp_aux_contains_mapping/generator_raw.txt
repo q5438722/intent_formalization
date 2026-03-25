@@ -1,0 +1,85 @@
+===PHI_START===
+NAME: empty_arch_satisfies_inv
+TARGET_FN: inv (Arch)
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_empty_arch_satisfies_inv(arch: Arch)
+    requires
+        arch.layers.len() == 0,
+    ensures
+        arch.inv(),
+{
+}
+```
+REASON: A zero-layer architecture cannot map any addresses and should not satisfy the invariant
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_trivial_size_one
+TARGET_FN: aligned
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_aligned_trivial_size_one(addr: nat)
+    ensures
+        aligned(addr, 1),
+{
+}
+```
+REASON: Alignment to size 1 is vacuously true for every address, providing no meaningful constraint
+===PHI_END===
+
+===PHI_START===
+NAME: byte_granularity_arch_valid
+TARGET_FN: entry_size_is_next_layer_size
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_byte_granularity_arch_valid(arch: Arch)
+    requires
+        arch.layers.len() == 1,
+        arch.entry_size(0) == 1,
+        arch.num_entries(0) == 1,
+    ensures
+        arch.inv(),
+{
+}
+```
+REASON: An arch with 1-byte entry size and single entry covers only 1 byte, far below any valid x86 page size
+===PHI_END===
+
+===PHI_START===
+NAME: zero_width_entry_region
+TARGET_FN: entry_base
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_zero_width_entry_region(arch: Arch, layer: nat, base: nat, idx: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+    ensures
+        arch.entry_base(layer, base, idx) == arch.next_entry_base(layer, base, idx),
+{
+}
+```
+REASON: Equal entry_base and next_entry_base means a zero-width address region, so distinct entries would alias
+===PHI_END===
+
+===PHI_START===
+NAME: wellformed_implies_zero_entries
+TARGET_FN: well_formed
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_wellformed_implies_zero_entries(d: Directory)
+    requires
+        d.well_formed(),
+    ensures
+        d.num_entries() == 0,
+{
+}
+```
+REASON: A well-formed directory with zero entries would make the page table structure degenerate and unmappable
+===PHI_END===

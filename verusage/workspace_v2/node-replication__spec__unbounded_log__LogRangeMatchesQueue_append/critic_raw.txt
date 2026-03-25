@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: log_range_empty_queue_end
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: When `logIndexLower == logIndexUpper`, the spec directly requires `queueIndex == queue.len()`. With `queueIndex == 0`, this gives `queue.len() == 0`. This is the intended base case of the recursive matching — an empty log range means all local entries have been matched.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: append_preserves_existing_entries
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is a direct instantiation of the fully verified `LogRangeMatchesQueue_append` lemma at index 0. The lemma is proved by induction with no external_body — this is a correct and expected consequence.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: dispatch_trait_trusted
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The φ only tests that a struct literal has the expected field values (`entry.node_id == node_id`), which is trivially true by construction. The `#[verus::trusted]` on `Dispatch` means implementations aren't verified, but this φ doesn't expose any actual unsoundness — it's just struct field access.
+===VERDICT_END===
+
+===SUMMARY===
+All three candidates are false positives. The empty log range forcing queue exhaustion is the intended base case of `LogRangeMatchesQueue`. The append lemma instantiation is a correct consequence of the fully verified proof. The Dispatch trait test only exercises trivial struct construction, not any actual trust gap from `#[verus::trusted]`.
+===END_SUMMARY===

@@ -1,0 +1,120 @@
+===PHI_START===
+NAME: length_increases_after_set
+TARGET_FN: set
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_length_increases_after_set<K: KeyTrait + VerusClone>(pre: Seq<K>, post: Seq<K>, i: int, k: K)
+    requires
+        sorted(pre),
+        pre.no_duplicates(),
+        0 <= i < pre.len(),
+        i > 0 ==> pre[i - 1].cmp_spec(k).lt(),
+        i < pre.len() - 1 ==> k.cmp_spec(pre[i + 1]).lt(),
+        sorted(post),
+        post.no_duplicates(),
+        post == pre.update(i, k),
+    ensures
+        post.len() > pre.len(),
+{
+}
+```
+REASON: set should preserve length; if the spec entails a length increase the ensures is wrong
+===PHI_END===
+
+===PHI_START===
+NAME: frame_violation_other_index
+TARGET_FN: set
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_frame_violation_other_index<K: KeyTrait + VerusClone>(pre: Seq<K>, post: Seq<K>, i: int, j: int, k: K)
+    requires
+        sorted(pre),
+        pre.no_duplicates(),
+        0 <= i < pre.len(),
+        i > 0 ==> pre[i - 1].cmp_spec(k).lt(),
+        i < pre.len() - 1 ==> k.cmp_spec(pre[i + 1]).lt(),
+        sorted(post),
+        post.no_duplicates(),
+        post == pre.update(i, k),
+        0 <= j < pre.len(),
+        j != i,
+    ensures
+        post[j] != pre[j],
+{
+}
+```
+REASON: Elements at untouched indices must be preserved; a frame violation means the update spec is too weak
+===PHI_END===
+
+===PHI_START===
+NAME: target_element_not_k
+TARGET_FN: set
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_target_element_not_k<K: KeyTrait + VerusClone>(pre: Seq<K>, post: Seq<K>, i: int, k: K)
+    requires
+        sorted(pre),
+        pre.no_duplicates(),
+        0 <= i < pre.len(),
+        i > 0 ==> pre[i - 1].cmp_spec(k).lt(),
+        i < pre.len() - 1 ==> k.cmp_spec(pre[i + 1]).lt(),
+        sorted(post),
+        post.no_duplicates(),
+        post == pre.update(i, k),
+    ensures
+        post[i] != k,
+{
+}
+```
+REASON: After set the element at index i must equal k; if the spec allows otherwise the update semantics are broken
+===PHI_END===
+
+===PHI_START===
+NAME: single_element_vacuous
+TARGET_FN: set
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_single_element_vacuous<K: KeyTrait + VerusClone>(pre: Seq<K>, post: Seq<K>, k: K)
+    requires
+        sorted(pre),
+        pre.no_duplicates(),
+        pre.len() == 1,
+        sorted(post),
+        post.no_duplicates(),
+        post == pre.update(0int, k),
+    ensures
+        false,
+{
+}
+```
+REASON: A single-element vec is a valid boundary case for set at index 0; if the spec is vacuously satisfiable here the preconditions are inconsistent
+===PHI_END===
+
+===PHI_START===
+NAME: sortedness_broken_in_result
+TARGET_FN: set
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_sortedness_broken_in_result<K: KeyTrait + VerusClone>(pre: Seq<K>, post: Seq<K>, i: int, k: K)
+    requires
+        sorted(pre),
+        pre.no_duplicates(),
+        pre.len() >= 2,
+        0 <= i < pre.len(),
+        i > 0 ==> pre[i - 1].cmp_spec(k).lt(),
+        i < pre.len() - 1 ==> k.cmp_spec(pre[i + 1]).lt(),
+        sorted(post),
+        post.no_duplicates(),
+        post == pre.update(i, k),
+    ensures
+        exists |m: int, n: int| 0 <= m < n < post.len() && !post[m].cmp_spec(post[n]).lt(),
+{
+}
+```
+REASON: The post-state must be strictly sorted; if the spec entails the existence of an unsorted pair then valid() is not truly maintained
+===PHI_END===

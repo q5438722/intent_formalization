@@ -1,0 +1,52 @@
+[
+  {
+    "name": "aligned_zero_size",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "reason": "If aligned(addr, 0) is provable, the spec fails to guard against zero-size alignment (division by zero)",
+    "entailed": false,
+    "verified": 13,
+    "errors": 1,
+    "output_tail": "s:1069:9\n     |\n1067 | proof fn phi_1_aligned_zero_size()\n     |       ---------------------------- at the end of the function body\n1068 |     ensures\n1069 |         aligned(42, 0),\n     |         ^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n"
+  },
+  {
+    "name": "upper_vaddr_equals_base",
+    "target_fn": "upper_vaddr",
+    "type": "behavioral",
+    "reason": "If upper_vaddr equals base under inv, the mapped address range is zero-sized, meaning no virtual addresses are covered",
+    "entailed": false,
+    "verified": 13,
+    "errors": 1,
+    "output_tail": " ------------------------------------------------------------------- at the end of the function body\n...\n1072 |         arch.upper_vaddr(layer, base) == base,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n"
+  },
+  {
+    "name": "entry_base_collision",
+    "target_fn": "entry_base",
+    "type": "logical",
+    "reason": "If distinct indices yield the same entry base, page table entries would collide and the translation structure is unsound",
+    "entailed": false,
+    "verified": 13,
+    "errors": 1,
+    "output_tail": "---------- at the end of the function body\n...\n1075 |         arch.entry_base(layer, base, i) == arch.entry_base(layer, base, j),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n"
+  },
+  {
+    "name": "entry_size_hierarchy_inversion",
+    "target_fn": "entry_size_is_next_layer_size",
+    "type": "logical",
+    "reason": "If a child layer's entry size is >= its parent's, the hierarchical page table decomposition is broken",
+    "entailed": false,
+    "verified": 13,
+    "errors": 1,
+    "output_tail": "------------------------------------ at the end of the function body\n...\n1072 |         arch.entry_size((i + 1) as nat) >= arch.entry_size(i),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n"
+  },
+  {
+    "name": "inv_allows_zero_num_entries",
+    "target_fn": "inv",
+    "type": "boundary",
+    "reason": "If inv permits a layer with zero entries, the architecture admits degenerate empty layers that cannot map any addresses",
+    "entailed": false,
+    "verified": 13,
+    "errors": 1,
+    "output_tail": "ries(arch: Arch, i: nat)\n     |       -------------------------------------------------------- at the end of the function body\n...\n1072 |         arch.num_entries(i) == 0,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 2 warnings emitted\n\n"
+  }
+]

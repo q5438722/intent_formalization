@@ -1,0 +1,48 @@
+Looking at the `aligned` spec function:
+
+```rust
+pub open spec(checked) fn aligned(addr: nat, size: nat) -> bool {
+    addr % size == 0
+}
+```
+
+The key is the `spec(checked)` annotation — when arithmetic checks fail (e.g., division by zero), Verus leaves the result unconstrained/arbitrary.
+
+===VERDICT_START===
+PHI: aligned_zero_size_vacuous
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The function is `spec(checked)`, so `42 % 0` triggers a division-by-zero check failure, making the result unconstrained in the SMT solver. This allows the solver to satisfy `aligned(42, 0)` vacuously. The spec should either require `size > 0` or explicitly return `false` when `size == 0`.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: aligned_odd_to_even
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `3 % 2 == 1 != 0`, so `aligned(3, 2)` is definitively false under standard nat modular arithmetic. The divisor is non-zero, so `spec(checked)` imposes no ambiguity. This is not provable and does not reveal a spec issue.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: aligned_implies_zero_addr
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `aligned(addr, 4096)` means `addr % 4096 == 0`, which holds for infinitely many nonzero values (4096, 8192, …). The ensures clause `addr == 0` contradicts these counterexamples and is not provable. The spec is correct here.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: aligned_sum_off_by_one
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: If `a % s == 0` and `b % s == 0` then `(a+b) % s == 0`, but `(a+b+1) % s == 1` since `s > 1`. The SMT solver has a concrete counterexample (a=0, b=0, s=2), so this is not provable. The modular arithmetic spec is sound.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: aligned_cross_size
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Alignment to 2 does not imply alignment to 3 — `addr=4` is a concrete counterexample (`4%2==0` but `4%3==1`). Standard nat modular arithmetic handles coprime sizes correctly. Not provable.
+===VERDICT_END===
+
+===SUMMARY===
+Of the five candidate properties, only `aligned_zero_size_vacuous` is a true positive. The `aligned` function uses `spec(checked)` semantics, meaning that when `size == 0` the division-by-zero check fails and the result becomes unconstrained in the SMT solver, allowing any address to appear "aligned to 0." This is a genuine spec gap — a `requires size > 0` guard or an explicit `size == 0 ==> false` clause is needed. The remaining four properties (φ2–φ5) are false positives: they test standard modular arithmetic identities that the `addr % size == 0` definition handles correctly when the divisor is non-zero, and none are actually provable.
+===END_SUMMARY===

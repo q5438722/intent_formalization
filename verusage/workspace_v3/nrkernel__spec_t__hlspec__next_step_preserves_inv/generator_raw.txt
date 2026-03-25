@@ -1,0 +1,83 @@
+===PHI_START===
+NAME: aligned_zero_size
+TARGET_FN: aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_aligned_zero_size(addr: nat)
+    ensures
+        aligned(addr, 0),
+{
+}
+```
+REASON: If aligned(addr, 0) is provable for all addr, then any code relying on aligned as a meaningful divisibility check is unsound when size is zero
+===PHI_END===
+
+===PHI_START===
+NAME: inv_allows_empty_arch
+TARGET_FN: inv
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_inv_allows_empty_arch()
+    ensures
+        (Arch { layers: Seq::<ArchLayer>::empty() }).inv(),
+{
+}
+```
+REASON: A zero-layer architecture is degenerate and meaningless; if inv() accepts it, downstream code assuming at least one layer may be unsound
+===PHI_END===
+
+===PHI_START===
+NAME: upper_vaddr_collapses_to_base
+TARGET_FN: upper_vaddr
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_upper_vaddr_collapses_to_base(arch: Arch, layer: nat, base: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+    ensures
+        arch.upper_vaddr(layer, base) == base,
+{
+}
+```
+REASON: If upper_vaddr equals base, the address range for a layer is empty, breaking all bounds checks that rely on upper_vaddr as an exclusive upper bound
+===PHI_END===
+
+===PHI_START===
+NAME: entry_base_not_strictly_monotone
+TARGET_FN: entry_base
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_entry_base_not_strictly_monotone(arch: Arch, layer: nat, base: nat, idx: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+    ensures
+        arch.entry_base(layer, base, idx + 1) <= arch.entry_base(layer, base, idx),
+{
+}
+```
+REASON: If a higher index yields a lower-or-equal entry base, page table entries would overlap or go backwards, corrupting the address space layout
+===PHI_END===
+
+===PHI_START===
+NAME: entry_size_increases_at_deeper_layer
+TARGET_FN: entry_size_is_next_layer_size
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_entry_size_increases_at_deeper_layer(arch: Arch, i: nat)
+    requires
+        arch.inv(),
+        i + 1 < arch.layers.len(),
+    ensures
+        arch.entry_size(i) < arch.entry_size((i + 1) as nat),
+{
+}
+```
+REASON: If a parent layer's entry size is smaller than its child's, the hierarchical decomposition is inverted and page table walks would be inconsistent
+===PHI_END===

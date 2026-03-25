@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: insert_implies_interp_aux_insert_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `lemma_interp_of_entry_insert_implies_interp_aux_insert` is `external_body` with `unimplemented!()` body — the inductive proof that inserting a mapping into one entry's interpretation propagates correctly through `interp_aux`'s `union_prefer_right` chain is trusted without proof.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: insert_overwrites_existing_key
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is a direct consequence of the same external_body axiom already captured by φ1, combined with standard `Map::insert` semantics. The commented-out precondition `!self.interp_aux(i).contains_key(base)` was removed intentionally — `Map::insert` overwrites by definition.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: update_preserves_other_entries
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `update` replaces only index `j` in the entries sequence via `Seq::update`, so `entries[k as int]` is unchanged for `k != j`. Since `entry_base(k)` depends on `base_vaddr` and `layer` (both preserved by `update`), `interp_of_entry(k)` is trivially equal. Correct by open spec unfolding.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: insert_interp_implies_insert_interp_public
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Direct downstream consequence of the external_body axiom already captured by φ1. The public wrapper `lemma_interp_of_entry_insert_implies_interp_insert` just calls the external_body with `i=0` — no new trust assumption.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: inv_no_base_vaddr_alignment
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The commented-out `aligned(self.base_vaddr, self.entry_size() * self.num_entries())` in `well_formed()` means `inv()` accepts any `base_vaddr`, including misaligned values like 7. On real x86 page tables, directory base addresses must be aligned to entry boundaries.
+===VERDICT_END===
+
+===SUMMARY===
+Two true positives: `lemma_interp_of_entry_insert_implies_interp_aux_insert` is an `external_body` axiom trusting the insert propagation through `interp_aux` without proof, and the commented-out alignment constraint allows directories with misaligned `base_vaddr` values to satisfy `inv()`. The other three are false positives — a redundant consequence of the same external_body, a trivial open spec unfolding for `update`, and a verified wrapper.
+===END_SUMMARY===

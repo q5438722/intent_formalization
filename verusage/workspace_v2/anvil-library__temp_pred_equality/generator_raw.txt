@@ -1,0 +1,89 @@
+===PHI_START===
+NAME: implies_apply_closure_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_implies_apply_closure_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>)
+    requires
+        p.implies(q).satisfied_by(ex),
+        p.satisfied_by(ex),
+    ensures
+        q.satisfied_by(ex),
+{
+    implies_apply::<int>(ex, p, q);
+}
+```
+REASON: implies_apply is external_body bridging p.implies(q).satisfied_by(ex) through TempPred::new closure wrapping to modus ponens — resolves closure identity mismatch without proof
+===PHI_END===
+
+===PHI_START===
+NAME: implies_contraposition_closure_bridge
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_implies_contraposition_closure_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>)
+    requires
+        p.implies(q).satisfied_by(ex),
+        not(q).satisfied_by(ex),
+    ensures
+        not(p).satisfied_by(ex),
+{
+    implies_contraposition_apply::<int>(ex, p, q);
+}
+```
+REASON: implies_contraposition_apply is external_body bridging p.implies(q) and not(q) — each wrapped in distinct TempPred::new closures — to not(p) without verifying closure identity
+===PHI_END===
+
+===PHI_START===
+NAME: mutual_entailment_derives_false_if_distinct
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_mutual_entailment_derives_false_if_distinct(p: TempPred<int>, q: TempPred<int>)
+    requires
+        p.entails(q),
+        q.entails(p),
+        p !== q,
+    ensures
+        false,
+{
+    temp_pred_equality::<int>(p, q);
+}
+```
+REASON: temp_pred_equality forces p == q from mutual entailment — if two preds are intensionally distinct but semantically equivalent this derives false
+===PHI_END===
+
+===PHI_START===
+NAME: extensional_equality_of_spec_fn
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_extensional_equality_of_spec_fn(f: spec_fn(Execution<int>) -> bool, g: spec_fn(Execution<int>) -> bool)
+    requires
+        forall |ex: Execution<int>| f(ex) ==> g(ex),
+        forall |ex: Execution<int>| g(ex) ==> f(ex),
+    ensures
+        f == g,
+{
+    let p = TempPred::<int> { pred: f };
+    let q = TempPred::<int> { pred: g };
+    temp_pred_equality::<int>(p, q);
+}
+```
+REASON: the two external_body axioms together allow deriving intensional equality of arbitrary spec_fn(Execution) -> bool from pointwise equivalence — collapsing all extensionally equal functions to intensionally equal
+===PHI_END===
+
+===PHI_START===
+NAME: not_not_equals_self
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_not_not_equals_self(p: TempPred<int>)
+    ensures
+        not(not(p)) == p,
+{
+    temp_pred_equality::<int>(not(not(p)), p);
+}
+```
+REASON: not(not(p)) wraps p in two layers of TempPred::new closures (!(!x)) — forced equal to p via the closure bridge axioms despite structural distinctness
+===PHI_END===

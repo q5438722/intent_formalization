@@ -1,0 +1,85 @@
+===PHI_START===
+NAME: result_exceeds_input
+TARGET_FN: align_to_usize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_result_exceeds_input(a: usize, b: usize)
+    requires
+        b > 0,
+    ensures
+        align_to_usize(a, b) > a,
+{
+}
+```
+REASON: Alignment-down should never produce a value larger than the original input
+===PHI_END===
+
+===PHI_START===
+NAME: unaligned_input_unchanged
+TARGET_FN: align_to_usize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_unaligned_input_unchanged(a: usize, b: usize)
+    requires
+        b > 1,
+        a % b != 0,
+    ensures
+        align_to_usize(a, b) == a,
+{
+}
+```
+REASON: If an unaligned value is returned unchanged, the function fails its core purpose of aligning down
+===PHI_END===
+
+===PHI_START===
+NAME: result_not_aligned
+TARGET_FN: align_to_usize
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_result_not_aligned(a: usize, b: usize)
+    requires
+        b > 0,
+    ensures
+        align_to_usize(a, b) % b != 0,
+{
+}
+```
+REASON: The result of align_to_usize must always be a multiple of b; if not, the alignment is broken
+===PHI_END===
+
+===PHI_START===
+NAME: different_granularity_equal
+TARGET_FN: align_to_usize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_different_granularity_equal(a: usize)
+    requires
+        a < 0x1_0000_0000usize,
+    ensures
+        align_to_usize(a, L1_ENTRY_SIZE) == align_to_usize(a, L2_ENTRY_SIZE),
+{
+}
+```
+REASON: Coarser and finer alignment granularities collapsing to the same value would indicate the spec conflates page sizes
+===PHI_END===
+
+===PHI_START===
+NAME: gap_exceeds_alignment
+TARGET_FN: align_to_usize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_gap_exceeds_alignment(a: usize, b: usize)
+    requires
+        b > 0,
+    ensures
+        sub(a, align_to_usize(a, b)) >= b,
+{
+}
+```
+REASON: The rounding-down gap must always be strictly less than b; a gap >= b means the result skipped past a valid aligned address
+===PHI_END===

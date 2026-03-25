@@ -1,0 +1,17 @@
+===VERDICT_START===
+PHI: inv_allows_empty_arch
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The `inv()` predicate uses `layers.len() <= X86_NUM_LAYERS` and a universally quantified constraint over layers—both vacuously satisfied when `layers` is empty. A valid x86 MMU page table architecture must have at least one layer, so the invariant is too weak; it should require `self.layers.len() > 0`.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: entry_size_is_next_layer_size_vacuous_beyond_bounds
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `entry_size_is_next_layer_size` is a helper spec used only under the guard `i < self.layers.len()` inside `inv()`. Its vacuous truth for out-of-bounds indices is standard implication behavior and has no impact on soundness—callers already enforce bounds via `inv()`.
+===VERDICT_END===
+
+===SUMMARY===
+One genuine spec weakness was found: the `inv()` predicate admits an empty `Arch` (zero layers), which is not a meaningful MMU architecture. Adding a `self.layers.len() > 0` conjunct would close this gap. The other candidate (vacuous truth of `entry_size_is_next_layer_size` beyond bounds) is benign—it's only ever used under a bounds guard within `inv()` and poses no real specification risk.
+===END_SUMMARY===

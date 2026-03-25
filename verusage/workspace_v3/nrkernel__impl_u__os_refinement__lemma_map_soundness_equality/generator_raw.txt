@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: aligned_zero_size
+TARGET_FN: aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_aligned_zero_size()
+    ensures
+        aligned(42, 0),
+{
+}
+```
+REASON: aligned with size=0 should not be satisfiable (division by zero), indicating a missing precondition
+===PHI_END===
+
+===PHI_START===
+NAME: upper_vaddr_no_progress
+TARGET_FN: upper_vaddr
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_upper_vaddr_no_progress(arch: Arch, layer: nat, base: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+    ensures
+        arch.upper_vaddr(layer, base) <= base,
+{
+}
+```
+REASON: upper_vaddr should always exceed base under inv(), otherwise the layer maps a zero-size address range
+===PHI_END===
+
+===PHI_START===
+NAME: entry_base_non_monotonic
+TARGET_FN: entry_base
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_entry_base_non_monotonic(arch: Arch, layer: nat, base: nat, idx: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+        idx < arch.num_entries(layer),
+    ensures
+        arch.entry_base(layer, base, idx + 1) <= arch.entry_base(layer, base, idx),
+{
+}
+```
+REASON: entry_base must be strictly monotonic in idx; non-monotonicity would cause overlapping page table entries
+===PHI_END===
+
+===PHI_START===
+NAME: inv_allows_empty_arch
+TARGET_FN: inv
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_inv_allows_empty_arch(arch: Arch)
+    requires
+        arch.inv(),
+    ensures
+        arch.layers.len() == 0,
+{
+}
+```
+REASON: inv() should require at least one layer; an empty architecture cannot perform any address translation
+===PHI_END===
+
+===PHI_START===
+NAME: deeper_layer_larger_entries
+TARGET_FN: entry_size_is_next_layer_size
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_deeper_layer_larger_entries(arch: Arch, i: nat)
+    requires
+        arch.inv(),
+        i + 1 < arch.layers.len(),
+    ensures
+        arch.entry_size((i + 1) as nat) > arch.entry_size(i),
+{
+}
+```
+REASON: in a valid page table hierarchy, deeper layers must have smaller-or-equal entry sizes; larger would invert the address decomposition
+===PHI_END===

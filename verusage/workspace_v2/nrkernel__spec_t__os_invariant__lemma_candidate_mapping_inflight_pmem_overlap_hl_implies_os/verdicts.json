@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "rl3_interp_external_body_view_chain",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`rl3::State::interp` is `external_body` `closed spec` \u2014 the equality `s@.pt_mem"
+  },
+  {
+    "phi": "overlap_not_symmetric",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`overlap` splits on `region1.base <= region2.base`. When swapped, the other branch applies. Case analysis: if `r1.base <= r2.base` and overlap holds (either `r1.base == r2.base` or `r2.base < r1.base + r1.size`), then for `overlap(r2, r1)` we're in the else branch (`r2.base >= r1.base` doesn't hold if `r2.base < r1.base`, but in this case we had `r1.base <= r2.base`). The symmetry follows from correct case splitting in both directions."
+  },
+  {
+    "phi": "overlap_zero_size_region",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "With `base1 != base2` and `size: 0`, WLOG `base1 < base2`: the first branch checks `base1 == base2` (false) or `base2 < base1 + 0 = base1` (false since `base1 < base2`). Similarly for `base1 > base2`. Non-overlap is correct for distinct-base zero-size regions."
+  },
+  {
+    "phi": "candidate_mapping_in_bounds_allows_overflow",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`base + pte.frame.size < upper_vaddr` with nat arithmetic (no overflow) directly implies both `base < upper_vaddr` (since `pte.frame.size >= 0`) and `pte.frame.size < upper_vaddr` (since `base >= 0`). This is correct \u2014 the sum bound implies individual bounds over naturals."
+  },
+  {
+    "phi": "arch_entry_size_layer0_equals_l0",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`x86_arch_spec` is defined with layer 0 having `entry_size: L0_ENTRY_SIZE as nat`. `entry_size(0)` returns `self.layers[0].entry_size` which is exactly `L0_ENTRY_SIZE as nat`. Correct by construction."
+  }
+]

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "pigeonhole_missing_external_body",
+    "type": "logical",
+    "code": "proof fn phi_1_pigeonhole_missing_external_body(m: Map<nat, nat>, missing: nat, len: nat)\n    requires\n        forall |i: nat| (0 <= i < len <==> m.dom().contains(i)),\n        forall |i: nat| (#[trigger] m.dom().contains(i) ==> (\n            0 <= m[i] < len && m[i] != missing\n        )),\n        0 <= missing < len,\n    ensures ({\n        let (i, j) = pigeonhole_missing_idx_implies_double(m, missing, len);\n        i != j && m.dom().contains(i) && m.dom().contains(j) && m[i] == m[j]\n    }),\n{\n    let _ = pigeonhole_missing_idx_implies_double(m, missing, len);\n}",
+    "reason": "`pigeonhole_missing_idx_implies_double` is `external_body` \u2014 the entire pigeonhole principle is trusted without proof",
+    "entailed": false,
+    "verus_output": "ction `phi_1_pigeonhole_missing_external_body::pigeonhole_missing_idx_implies_double` with mode proof\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__pigeonhole__pigeonhole_too_many_elements_implies_double/phi_1_pigeonhole_missing_external_body.rs:57:22\n   |\n57 |         let (i, j) = pigeonhole_missing_idx_implies_double(m, missing, len);\n   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pigeonhole_len_0",
+    "type": "boundary",
+    "code": "proof fn phi_2_pigeonhole_len_0(m: Map<nat, nat>)\n    requires\n        forall |i: nat| (0 <= i < 1 <==> m.dom().contains(i)),\n        forall |i: nat| #[trigger] m.dom().contains(i) ==> 0 <= m[i] < 0,\n    ensures ({\n        let (i, j) = pigeonhole_too_many_elements_implies_double(m, 0);\n        i != j && m[i] == m[j]\n    }),\n{\n    let _ = pigeonhole_too_many_elements_implies_double(m, 0);\n}",
+    "reason": "With `len == 0`, we need `m[0] < 0` for `nat` which is impossible \u2014 the precondition is vacuously false, so the lemma proves anything",
+    "entailed": false,
+    "verus_output": "error: cannot call function `phi_2_pigeonhole_len_0::pigeonhole_too_many_elements_implies_double` with mode proof\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__pigeonhole__pigeonhole_too_many_elements_implies_double/phi_2_pigeonhole_len_0.rs:54:22\n   |\n54 |         let (i, j) = pigeonhole_too_many_elements_implies_double(m, 0);\n   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pigeonhole_dup_in_range",
+    "type": "behavioral",
+    "code": "proof fn phi_3_pigeonhole_dup_in_range(m: Map<nat, nat>, len: nat)\n    requires\n        forall |i: nat| (0 <= i < len + 1 <==> m.dom().contains(i)),\n        forall |i: nat| #[trigger] m.dom().contains(i) ==> 0 <= m[i] < len,\n    ensures ({\n        let (i, j) = pigeonhole_too_many_elements_implies_double(m, len);\n        0 <= i < len + 1 && 0 <= j < len + 1\n    }),\n{\n    let (i, j) = pigeonhole_too_many_elements_implies_double(m, len);\n}",
+    "reason": "Both duplicate indices are in `[0, len+1)` \u2014 follows from `m.dom().contains(i/j)` and the domain biconditional, but the ensures doesn't state this explicitly",
+    "entailed": false,
+    "verus_output": "r: cannot call function `phi_3_pigeonhole_dup_in_range::pigeonhole_too_many_elements_implies_double` with mode proof\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__pigeonhole__pigeonhole_too_many_elements_implies_double/phi_3_pigeonhole_dup_in_range.rs:54:22\n   |\n54 |         let (i, j) = pigeonhole_too_many_elements_implies_double(m, len);\n   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pigeonhole_dup_value_range",
+    "type": "behavioral",
+    "code": "proof fn phi_4_pigeonhole_dup_value_range(m: Map<nat, nat>, len: nat)\n    requires\n        forall |i: nat| (0 <= i < len + 1 <==> m.dom().contains(i)),\n        forall |i: nat| #[trigger] m.dom().contains(i) ==> 0 <= m[i] < len,\n    ensures ({\n        let (i, j) = pigeonhole_too_many_elements_implies_double(m, len);\n        0 <= m[i] < len\n    }),\n{\n    let (i, j) = pigeonhole_too_many_elements_implies_double(m, len);\n}",
+    "reason": "The duplicated value is within `[0, len)` \u2014 follows from the precondition on `m`'s values, confirming the collision is among valid target values",
+    "entailed": false,
+    "verus_output": "not call function `phi_4_pigeonhole_dup_value_range::pigeonhole_too_many_elements_implies_double` with mode proof\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__pigeonhole__pigeonhole_too_many_elements_implies_double/phi_4_pigeonhole_dup_value_range.rs:54:22\n   |\n54 |         let (i, j) = pigeonhole_too_many_elements_implies_double(m, len);\n   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pigeonhole_missing_returns_not_missing",
+    "type": "behavioral",
+    "code": "proof fn phi_5_pigeonhole_missing_returns_not_missing(m: Map<nat, nat>, missing: nat, len: nat)\n    requires\n        forall |i: nat| (0 <= i < len <==> m.dom().contains(i)),\n        forall |i: nat| (#[trigger] m.dom().contains(i) ==> (\n            0 <= m[i] < len && m[i] != missing\n        )),\n        0 <= missing < len,\n    ensures ({\n        let (i, j) = pigeonhole_missing_idx_implies_double(m, missing, len);\n        m[i] != missing && m[j] != missing\n    }),\n{\n    let (i, j) = pigeonhole_missing_idx_implies_double(m, missing, len);\n}",
+    "reason": "The duplicate value avoids the missing index \u2014 follows from the precondition but confirms the external_body-trusted pigeonhole correctly respects the exclusion",
+    "entailed": false,
+    "verus_output": "_pigeonhole_missing_returns_not_missing::pigeonhole_missing_idx_implies_double` with mode proof\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/memory-allocator__pigeonhole__pigeonhole_too_many_elements_implies_double/phi_5_pigeonhole_missing_returns_not_missing.rs:57:22\n   |\n57 |         let (i, j) = pigeonhole_missing_idx_implies_double(m, missing, len);\n   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

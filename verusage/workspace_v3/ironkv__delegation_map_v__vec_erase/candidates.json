@@ -1,0 +1,37 @@
+[
+  {
+    "name": "length_unchanged_after_erase",
+    "target_fn": "vec_erase",
+    "type": "behavioral",
+    "code": "proof fn phi_1_length_unchanged_after_erase(old_v: Seq<int>, v: Seq<int>, start: int, end: int)\n    requires\n        0 <= start <= end <= old_v.len(),\n        start < end,\n        v == old_v.subrange(0, start) + old_v.subrange(end, old_v.len()),\n    ensures\n        v.len() == old_v.len(),\n{\n}",
+    "reason": "Erasing a non-empty range must reduce length; unchanged length means elements were not actually removed"
+  },
+  {
+    "name": "full_erase_leaves_elements",
+    "target_fn": "vec_erase",
+    "type": "boundary",
+    "code": "proof fn phi_2_full_erase_leaves_elements(old_v: Seq<int>, v: Seq<int>)\n    requires\n        old_v.len() > 0,\n        v == old_v.subrange(0, 0) + old_v.subrange(old_v.len(), old_v.len()),\n    ensures\n        v.len() > 0,\n{\n}",
+    "reason": "Erasing all elements (start=0, end=len) must yield an empty vector; non-empty result means spec is too weak"
+  },
+  {
+    "name": "any_erase_empties_vector",
+    "target_fn": "vec_erase",
+    "type": "logical",
+    "code": "proof fn phi_3_any_erase_empties_vector(old_v: Seq<int>, v: Seq<int>, start: int, end: int)\n    requires\n        0 <= start <= end <= old_v.len(),\n        old_v.len() > end,\n        v == old_v.subrange(0, start) + old_v.subrange(end, old_v.len()),\n    ensures\n        v.len() == 0,\n{\n}",
+    "reason": "When elements remain after the erased range, result must be non-empty; emptiness means spec lost surviving elements"
+  },
+  {
+    "name": "erased_element_still_present",
+    "target_fn": "vec_erase",
+    "type": "behavioral",
+    "code": "proof fn phi_4_erased_element_still_present(old_v: Seq<int>, v: Seq<int>, start: int, end: int)\n    requires\n        0 <= start < end <= old_v.len(),\n        end < old_v.len(),\n        v == old_v.subrange(0, start) + old_v.subrange(end, old_v.len()),\n    ensures\n        v[start] == old_v[start],\n{\n}",
+    "reason": "After erasing [start,end), position start should hold old_v[end], not old_v[start]; equality means the erased element persists"
+  },
+  {
+    "name": "noop_erase_changes_length",
+    "target_fn": "vec_erase",
+    "type": "boundary",
+    "code": "proof fn phi_5_noop_erase_changes_length(old_v: Seq<int>, v: Seq<int>, start: int)\n    requires\n        0 <= start <= old_v.len(),\n        v == old_v.subrange(0, start) + old_v.subrange(start, old_v.len()),\n    ensures\n        v.len() != old_v.len(),\n{\n}",
+    "reason": "Erasing an empty range (start==end) must be a no-op; a length change means the spec incorrectly modifies the vector"
+  }
+]

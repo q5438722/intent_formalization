@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: init_free_list_loses_all_nodes
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is a desirable property. When `wf()` holds and `sll@.len() == 0` (value_list_len == 0), then `free_list_len + value_list_len == N` directly gives `free_list_len == N`. This is exactly the expected conservation invariant — no nodes are leaked.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: set_value_preserves_all_ghost_fields
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures clause is literally `true`, which is trivially valid for any proof fn. Moreover, inspecting set_value's actual ensures, it explicitly preserves `spec_seq@`, `value_list@`, `free_list@`, and all head/tail/len fields. The flagged concern is factually wrong.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: unique_uses_len_not_spec_len
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures clause `P || !P` is a tautology. While the observation about `unique()` using `self.len()` (which equals `value_list_len`) is noted, under `wf()` the `spec_seq_wf()` invariant ensures `spec_seq@.len() == value_list_len`, so there is no mismatch. Without `wf()`, out-of-bounds access is undefined but not exploitable.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: set_next_does_not_constrain_new_value
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures clause is `true`, making this trivially valid and proving nothing about the spec. The observation about unconstrained values is a design choice — `set_next`/`set_prev` are low-level internal helpers; callers (like `init`) are responsible for maintaining structural invariants.
+===VERDICT_END===
+
+===SUMMARY===
+All four candidates are false positives. Two (`set_value_preserves_all_ghost_fields` and `set_next_does_not_constrain_new_value`) have trivially true ensures clauses that prove nothing. One (`unique_uses_len_not_spec_len`) has a tautological ensures. The remaining one (`init_free_list_loses_all_nodes`) is a correct and desirable conservation property that follows directly from the `wf()` invariant.
+===END_SUMMARY===

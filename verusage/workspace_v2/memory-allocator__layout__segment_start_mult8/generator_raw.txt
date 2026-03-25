@@ -1,0 +1,82 @@
+===PHI_START===
+NAME: segment_start_mult_segment_size
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_segment_start_mult_segment_size(segment_id: SegmentId)
+    ensures
+        segment_start(segment_id) % SEGMENT_SIZE as int == 0,
+{
+    assert(SEGMENT_SIZE == 33554432) by (compute);
+}
+```
+REASON: Every segment starts at a SEGMENT_SIZE-aligned address — this is a consequence of `id * SEGMENT_SIZE`, but means segments are always naturally aligned which may over-constrain valid segment placements
+===PHI_END===
+
+===PHI_START===
+NAME: segment_start_zero_for_id_zero
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_segment_start_zero_for_id_zero(segment_id: SegmentId)
+    requires
+        segment_id.id == 0,
+    ensures
+        segment_start(segment_id) == 0,
+{
+}
+```
+REASON: Segment ID 0 maps to address 0 (null) — `is_block_ptr1` typically requires `segment_start < ptr`, but address 0 is conventionally invalid/null, yet it's a valid segment start
+===PHI_END===
+
+===PHI_START===
+NAME: segment_start_no_overlap_guarantee
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_segment_start_no_overlap_guarantee(s1: SegmentId, s2: SegmentId)
+    requires
+        s1.id != s2.id,
+    ensures
+        segment_start(s1) != segment_start(s2),
+{
+    assert(SEGMENT_SIZE == 33554432) by (compute);
+    assert(SEGMENT_SIZE > 0);
+}
+```
+REASON: Distinct segment IDs always map to distinct start addresses — but two `SegmentId`s with different `provenance` or `uniq` but same `id` would share the same start address while being semantically different segments
+===PHI_END===
+
+===PHI_START===
+NAME: segment_start_unbounded
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_segment_start_unbounded(segment_id: SegmentId)
+    requires
+        segment_id.id == 1000000000,
+    ensures
+        segment_start(segment_id) == 1000000000 * SEGMENT_SIZE as int,
+        segment_start(segment_id) > usize::MAX as int,
+{
+    assert(SEGMENT_SIZE == 33554432) by (compute);
+    assert(1000000000 * 33554432 > 18446744073709551615int);
+}
+```
+REASON: `segment_id.id` is unbounded `nat` — large IDs produce start addresses exceeding `usize::MAX`, making physical addressing impossible; no constraint prevents this
+===PHI_END===
+
+===PHI_START===
+NAME: segment_start_nonneg
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_segment_start_nonneg(segment_id: SegmentId)
+    ensures
+        segment_start(segment_id) >= 0,
+{
+    assert(SEGMENT_SIZE == 33554432) by (compute);
+}
+```
+REASON: Segment start is always non-negative since `id: nat` and `SEGMENT_SIZE > 0` — but this means negative addresses are unreachable, which is correct for userspace but might miss kernel-space memory layouts
+===PHI_END===

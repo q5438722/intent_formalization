@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: pow2_negative_is_one
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `pow2` returning 1 for all negative exponents is mathematically non-standard (2^(-n) should be fractional). While the function is only used with non-negative arguments in this file, the definition silently masks errors if ever called with negative values.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: mul_assoc_smuggles_commutativity
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The lemma `(x*y)*z == y*(x*z)` is a true arithmetic identity and is used correctly within this file (specifically in `pow2_adds` to rewrite `(pow2(e-1) * 2) * pow2(e2)` into `2 * (pow2(e-1) * pow2(e2))`). The name is slightly misleading but the property itself is mathematically correct and the spec is not unsound.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: pow2_strict_monotone_gap
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `pow2(0) == pow2(-1) == pow2(-100) == 1` means pow2 is not injective for non-positive inputs. The monotonicity property in `pow2_properties` carefully restricts to `0 <= e1 < e2`, but callers unaware of this could incorrectly assume pow2 is strictly monotone everywhere, leading to unsound reasoning near the non-positive boundary.
+===VERDICT_END===
+
+===SUMMARY===
+Two true positives identify the same underlying issue from different angles: `pow2` collapses all non-positive inputs to 1, which is mathematically non-standard and creates a non-injective, non-monotone flat region. The `mul_assoc` naming concern is a false positive — the property is arithmetically correct and used appropriately despite the slightly misleading name.
+===END_SUMMARY===

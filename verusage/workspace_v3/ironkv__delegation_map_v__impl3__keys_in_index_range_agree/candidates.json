@@ -1,0 +1,37 @@
+[
+  {
+    "name": "is_lt_greater_returns_true",
+    "target_fn": "is_lt",
+    "type": "behavioral",
+    "code": "proof fn phi_1_is_lt_greater_returns_true()\n    ensures\n        Ordering::Greater.lt(),\n{\n}",
+    "reason": "If Greater is considered less-than, all ordering comparisons would be corrupted"
+  },
+  {
+    "name": "is_lt_equal_returns_true",
+    "target_fn": "is_lt",
+    "type": "behavioral",
+    "code": "proof fn phi_2_is_lt_equal_returns_true()\n    ensures\n        Ordering::Equal.lt(),\n{\n}",
+    "reason": "If Equal is considered less-than, sorted invariants and deduplication logic would silently break"
+  },
+  {
+    "name": "agree_always_true",
+    "target_fn": "keys_in_index_range_agree",
+    "type": "behavioral",
+    "code": "proof fn phi_3_agree_always_true<K: KeyTrait + VerusClone>(m: StrictlyOrderedMap<K>, lo: usize, hi: usize, v: ID)\n    requires\n        m.valid(),\n        0 <= lo <= hi < m.keys@.len(),\n    ensures\n        forall |i: int| #![auto] lo <= i <= hi ==> m@[m.keys@[i]]@ == v@,\n{\n}",
+    "reason": "If agreement holds for any v, the map is trivial and the function never returns false in ret.0"
+  },
+  {
+    "name": "almost_never_holds",
+    "target_fn": "keys_in_index_range_agree",
+    "type": "logical",
+    "code": "proof fn phi_4_almost_never_holds<K: KeyTrait + VerusClone>(m: StrictlyOrderedMap<K>, lo: usize, hi: usize, v: ID)\n    requires\n        m.valid(),\n        0 <= lo <= hi < m.keys@.len(),\n        !(forall |i: int| #![auto] lo <= i <= hi ==> m@[m.keys@[i]]@ == v@),\n    ensures\n        !(m@[m.keys@[hi as int]]@ != v@ && (forall |i: int| #![auto] lo <= i < hi ==> m@[m.keys@[i]]@ == v@)),\n{\n}",
+    "reason": "If the almost-agree case is unreachable, ret.1 is meaningless and callers relying on it would have dead logic"
+  },
+  {
+    "name": "singleton_range_always_agrees",
+    "target_fn": "keys_in_index_range_agree",
+    "type": "boundary",
+    "code": "proof fn phi_5_singleton_range_always_agrees<K: KeyTrait + VerusClone>(m: StrictlyOrderedMap<K>, lo: usize, v: ID)\n    requires\n        m.valid(),\n        0 <= lo < m.keys@.len(),\n    ensures\n        m@[m.keys@[lo as int]]@ == v@,\n{\n}",
+    "reason": "If a single-element range always agrees with any value, the map collapses to a constant and ret.0 is trivially true for lo==hi"
+  }
+]

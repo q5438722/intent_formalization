@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "container_map_4k_not_subset_allocated",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The visible `wf()` sub-specs (`page_array_wf`, `free_pages_4k_wf`, `allocated_pages_4k_wf`, `mapped_pages_4k_wf`, `merged_pages_wf`) never mention `container_map_4k`. Since `container_map_4k` is a `Ghost` field with no constraining predicate in `wf()`, containers can claim pages in any state \u2014 free, mapped, or non-existent."
+  },
+  {
+    "phi": "container_map_2m_not_subset_allocated",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Same systematic gap \u2014 `container_map_2m` is never constrained by any visible `wf()` sub-predicate. No relationship between container ownership and allocation state is enforced for 2M pages."
+  },
+  {
+    "phi": "container_map_1g_not_subset_allocated",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Same pattern \u2014 `container_map_1g` is unconstrained by `wf()`. The container ownership tracking for 1G pages is completely decoupled from the allocation state machine."
+  },
+  {
+    "phi": "mapped_page_no_mappings_tracked",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`mapped_pages_4k_wf` links the mapped set to `PageState::Mapped4k` in the page array but never requires `mappings@` to be non-empty. A page can be in Mapped4k state with zero virtual address mappings recorded, which is semantically inconsistent \u2014 a \"mapped\" page should have at least one mapping."
+  },
+  {
+    "phi": "merged_2m_parent_could_be_unavailable",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`merged_pages_wf` explicitly lists `Unavailable2m` as a valid parent state for `Merged2m` pages. This is intentional \u2014 \"unavailable\" 2M pages represent reserved/hardware-claimed regions where the sub-pages are merged into the 2M granule but not available for allocation. The state is not contradictory; it represents a valid hardware reservation scenario."
+  }
+]

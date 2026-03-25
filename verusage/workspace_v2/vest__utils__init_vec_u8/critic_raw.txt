@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: init_vec_all_zeros
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This proof adds `forall|i| res[i] == 0` as a *requires*, not deriving it from the ensures. It doesn't demonstrate a spec gap — it just proves a tautology from its own precondition. The candidate doesn't actually test whether the ensures is too weak.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: init_vec_missing_zero_guarantee
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures clause only guarantees `res@.len() == n`, not that elements are zero. The implementation pushes 0 every iteration and even asserts it, but this information is lost at the function boundary. Callers cannot prove `v@[0] == 0`. This is a real spec weakness — the postcondition is strictly weaker than the implementation behavior.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: init_vec_length_zero
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures is `true` — this proves nothing. It's a vacuous proof that doesn't test any property of the spec.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: init_vec_length_exact
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures is `true` — another vacuous proof. It doesn't actually test whether the length is exact or anything else about the spec.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: init_vec_weak_ensures
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: This correctly identifies that the ensures clause is too weak. The commented-out `assert(v@[0] == 0)` cannot be proven from the spec alone. However, the candidate as written only asserts `v@.len() == 5` (which succeeds), with the actual gap described only in comments. The spec weakness is real but the candidate doesn't mechanically demonstrate it.
+===VERDICT_END===
+
+===SUMMARY===
+One clear true positive: `init_vec_missing_zero_guarantee` correctly identifies that the postcondition only guarantees length, not zero-initialization, despite the implementation always pushing 0. `init_vec_weak_ensures` identifies the same gap in comments but doesn't mechanically prove it. Three false positives: `init_vec_all_zeros` assumes its conclusion in the requires, and `init_vec_length_zero`/`init_vec_length_exact` have vacuous `ensures true` clauses that test nothing. The core spec gap is that `init_vec_u8` should have `forall|i| 0 <= i < n ==> res@[i] == 0` in its ensures but doesn't.
+===END_SUMMARY===

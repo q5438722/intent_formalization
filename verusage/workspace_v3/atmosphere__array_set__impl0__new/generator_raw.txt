@@ -1,0 +1,92 @@
+===PHI_START===
+NAME: new_contains_zero
+TARGET_FN: new
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_new_contains_zero<const N: usize>(ret: ArraySet<N>)
+    requires
+        ret.wf(),
+        ret@ == Set::<usize>::empty(),
+        N > 0,
+    ensures
+        ret@.contains(0usize),
+{
+}
+```
+REASON: An empty set should not contain element 0; if provable, the spec fails to exclude membership.
+===PHI_END===
+
+===PHI_START===
+NAME: new_len_nonzero
+TARGET_FN: new
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_new_len_nonzero<const N: usize>(ret: ArraySet<N>)
+    requires
+        ret.wf(),
+        ret@ == Set::<usize>::empty(),
+    ensures
+        ret.len > 0,
+{
+}
+```
+REASON: A freshly constructed empty ArraySet must have len == 0; positive len would violate the invariant.
+===PHI_END===
+
+===PHI_START===
+NAME: new_set_nonempty
+TARGET_FN: new
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_new_set_nonempty<const N: usize>(ret: ArraySet<N>)
+    requires
+        ret.wf(),
+        ret@ == Set::<usize>::empty(),
+    ensures
+        ret@.len() > 0,
+{
+}
+```
+REASON: The empty set has cardinality 0; a positive cardinality would mean the spec is inconsistent.
+===PHI_END===
+
+===PHI_START===
+NAME: new_data_element_true
+TARGET_FN: new
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_new_data_element_true<const N: usize>(ret: ArraySet<N>)
+    requires
+        ret.wf(),
+        ret@ == Set::<usize>::empty(),
+        N > 0,
+    ensures
+        ret.data@[0] == true,
+{
+}
+```
+REASON: All backing-array entries should be false for an empty set; a true entry implies a phantom member.
+===PHI_END===
+
+===PHI_START===
+NAME: new_contains_arbitrary
+TARGET_FN: new
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_new_contains_arbitrary<const N: usize>(ret: ArraySet<N>, x: usize)
+    requires
+        ret.wf(),
+        ret@ == Set::<usize>::empty(),
+        0 <= x < N,
+    ensures
+        ret@.contains(x),
+{
+}
+```
+REASON: No valid index should be a member of the empty set; if provable, the wf/emptiness specs are too weak.
+===PHI_END===

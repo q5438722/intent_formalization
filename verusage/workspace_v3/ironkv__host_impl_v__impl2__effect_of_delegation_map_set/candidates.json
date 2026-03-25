@@ -1,0 +1,37 @@
+[
+  {
+    "name": "get_conflates_distinct_keys",
+    "target_fn": "get",
+    "type": "behavioral",
+    "code": "proof fn phi_1_get_conflates_distinct_keys(ki1: KeyIterator<CKey>, ki2: KeyIterator<CKey>)\n    requires\n        !ki1.is_end_spec(),\n        !ki2.is_end_spec(),\n        ki1.lt_spec(ki2),\n    ensures\n        *ki1.get_spec() == *ki2.get_spec(),\n{\n}",
+    "reason": "If get returns the same value for two strictly-ordered iterators, it fails to distinguish distinct keys."
+  },
+  {
+    "name": "get_reconstructs_to_end",
+    "target_fn": "get",
+    "type": "boundary",
+    "code": "proof fn phi_2_get_reconstructs_to_end(ki: KeyIterator<CKey>)\n    requires\n        !ki.is_end_spec(),\n    ensures\n        KeyIterator::new_spec(*ki.get_spec()).is_end_spec(),\n{\n}",
+    "reason": "A key retrieved via get, when wrapped back into an iterator, should never appear ended."
+  },
+  {
+    "name": "new_get_not_identity",
+    "target_fn": "get",
+    "type": "logical",
+    "code": "proof fn phi_3_new_get_not_identity(k: CKey)\n    requires\n        !KeyIterator::<CKey>::new_spec(k).is_end_spec(),\n    ensures\n        *KeyIterator::<CKey>::new_spec(k).get_spec() != k,\n{\n}",
+    "reason": "get on an iterator freshly built from key k must return k; otherwise the spec breaks the new/get round-trip."
+  },
+  {
+    "name": "get_reverses_order",
+    "target_fn": "get",
+    "type": "logical",
+    "code": "proof fn phi_4_get_reverses_order(ki1: KeyIterator<CKey>, ki2: KeyIterator<CKey>)\n    requires\n        !ki1.is_end_spec(),\n        !ki2.is_end_spec(),\n        ki1.lt_spec(ki2),\n    ensures\n        (*ki2.get_spec()).cmp_spec(*ki1.get_spec()).lt(),\n{\n}",
+    "reason": "If ki1 < ki2 in iterator ordering, their retrieved keys must preserve that order, not reverse it."
+  },
+  {
+    "name": "get_between_always_includes",
+    "target_fn": "get",
+    "type": "boundary",
+    "code": "proof fn phi_5_get_between_always_includes(lo: KeyIterator<CKey>, hi: KeyIterator<CKey>, ki: KeyIterator<CKey>)\n    requires\n        !ki.is_end_spec(),\n        !lo.is_end_spec(),\n        lo.lt_spec(hi),\n        ki.lt_spec(lo),\n    ensures\n        KeyIterator::between(lo, KeyIterator::new_spec(*ki.get_spec()), hi),\n{\n}",
+    "reason": "A key from an iterator strictly before lo should not land between lo and hi; would mean get ignores ordering."
+  }
+]

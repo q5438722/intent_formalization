@@ -1,0 +1,97 @@
+===PHI_START===
+NAME: lemma_entry_base_support_nat_mul_commutative_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_lemma_entry_base_support_nat_mul_commutative_external_body(a: nat, b: nat)
+    requires
+        true,
+    ensures
+        nat_mul(a, b) == a * b,
+        nat_mul(a, b) == nat_mul(b, a),
+{
+    lemma_entry_base_from_index_support(1, 0, 1);
+}
+```
+REASON: `lemma_entry_base_from_index_support` is `external_body` — arithmetic identities `nat_mul(a,b) == a*b` and commutativity are trusted without proof and universally quantified with no guard on the trigger variables
+===PHI_END===
+
+===PHI_START===
+NAME: lemma_entry_base_from_index_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_lemma_entry_base_from_index_external_body(base: nat, idx: nat, entry_size: nat)
+    requires
+        0 < entry_size,
+    ensures
+        entry_base_from_index(base, idx, entry_size) < next_entry_base_from_index(base, idx, entry_size),
+        forall|idx2: nat| idx < idx2 ==> next_entry_base_from_index(base, idx, entry_size) <= entry_base_from_index(base, idx2, entry_size),
+{
+    lemma_entry_base_from_index(base, idx, entry_size);
+}
+```
+REASON: `lemma_entry_base_from_index` is `external_body` — strict ordering and gap-free properties of entry base addresses are trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: lemma_new_seq_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_lemma_new_seq_external_body(i: nat)
+    requires
+        true,
+    ensures
+        new_seq(i, NodeEntry::Invalid).len() == i,
+        forall|j: nat| j < i ==> new_seq(i, NodeEntry::Invalid).index(j as int) === NodeEntry::Invalid,
+{
+    lemma_new_seq::<NodeEntry>(i, NodeEntry::Invalid);
+}
+```
+REASON: `lemma_new_seq` is `external_body` — the length and element-equality properties of the recursive `new_seq` constructor are trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: new_empty_dir_misaligned_base
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_new_empty_dir_misaligned_base(arch: Arch, entries: Seq<NodeEntry>, layer: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+        layer + 1 < arch.layers.len(),
+        entries.len() == arch.num_entries(layer),
+        forall|i: nat| i < entries.len() ==> entries[i as int] is Invalid,
+    ensures
+        (Directory { entries, layer, base_vaddr: 7, arch }).inv(),
+        (Directory { entries, layer, base_vaddr: 7, arch }).new_empty_dir(0).inv(),
+{
+    let d = Directory { entries, layer, base_vaddr: 7, arch };
+    lemma_entry_base_from_index(7, 0, d.entry_size());
+    lemma_entry_base_from_index_support(7, 0, d.entry_size());
+    lemma_new_seq::<NodeEntry>(arch.num_entries((layer + 1) as nat), NodeEntry::Invalid);
+}
+```
+REASON: Commented-out alignment in `well_formed` allows `base_vaddr: 7`, and `new_empty_dir` inherits this misaligned base — subdirectory also has misaligned base_vaddr
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_divisibility_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_aligned_divisibility_external_body(base: nat, entry_size: nat, a: nat)
+    requires
+        0 < entry_size,
+        a > 0,
+        aligned(base, nat_mul(entry_size, a)),
+    ensures
+        aligned(base, entry_size),
+{
+    lemma_entry_base_from_index_support(base, 0, entry_size);
+}
+```
+REASON: `lemma_entry_base_from_index_support` trusts that alignment by a multiple implies alignment by the factor — a correct arithmetic fact but unproven via external_body
+===PHI_END===

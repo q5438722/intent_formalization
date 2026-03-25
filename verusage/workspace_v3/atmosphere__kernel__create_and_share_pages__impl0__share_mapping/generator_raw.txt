@@ -1,0 +1,127 @@
+===PHI_START===
+NAME: same_proc_loses_src_mapping
+TARGET_FN: share_mapping
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_same_proc_loses_src_mapping(
+    old_addr_space: Map<VAddr, MapEntry>,
+    new_addr_space: Map<VAddr, MapEntry>,
+    src_va: VAddr,
+    target_va: VAddr,
+    entry: MapEntry,
+)
+    requires
+        old_addr_space.dom().contains(src_va),
+        old_addr_space[src_va].addr == entry.addr,
+        old_addr_space.dom().contains(target_va) == false,
+        src_va != target_va,
+        new_addr_space =~= old_addr_space.insert(target_va, entry),
+    ensures
+        new_addr_space.dom().contains(src_va) == false,
+{
+}
+```
+REASON: If sharing within the same process causes the pre-existing source VA mapping to vanish, the source loses access to its own page
+===PHI_END===
+
+===PHI_START===
+NAME: target_as_empty_after_share
+TARGET_FN: share_mapping
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_target_as_empty_after_share(
+    old_addr_space: Map<VAddr, MapEntry>,
+    new_addr_space: Map<VAddr, MapEntry>,
+    target_va: VAddr,
+    entry: MapEntry,
+)
+    requires
+        va_4k_valid(target_va),
+        old_addr_space.dom().contains(target_va) == false,
+        new_addr_space =~= old_addr_space.insert(target_va, entry),
+    ensures
+        new_addr_space =~= Map::<VAddr, MapEntry>::empty(),
+{
+}
+```
+REASON: If the target address space becomes empty after inserting a shared mapping, all previously existing mappings of the target process are destroyed
+===PHI_END===
+
+===PHI_START===
+NAME: other_page_mapping_affected
+TARGET_FN: share_mapping
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_other_page_mapping_affected(
+    old_pm: Map<PagePtr, Set<(ProcPtr, VAddr)>>,
+    new_pm: Map<PagePtr, Set<(ProcPtr, VAddr)>>,
+    entry_addr: PagePtr,
+    other_page: PagePtr,
+    target_proc_ptr: ProcPtr,
+    target_va: VAddr,
+)
+    requires
+        old_pm.dom().contains(entry_addr),
+        old_pm.dom().contains(other_page),
+        other_page != entry_addr,
+        new_pm.dom() =~= old_pm.dom(),
+        forall|page_ptr: PagePtr|
+            #![trigger new_pm[page_ptr]]
+            old_pm.dom().contains(page_ptr) && page_ptr != entry_addr
+                ==> old_pm[page_ptr] =~= new_pm[page_ptr],
+        new_pm[entry_addr] =~= old_pm[entry_addr].insert((target_proc_ptr, target_va)),
+    ensures
+        new_pm[other_page] != old_pm[other_page],
+{
+}
+```
+REASON: If sharing a mapping mutates the reverse-mapping set of an unrelated physical page, page tracking is corrupted and could lead to use-after-free
+===PHI_END===
+
+===PHI_START===
+NAME: shared_entry_gains_write
+TARGET_FN: share_mapping
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_shared_entry_gains_write(
+    old_addr_space: Map<VAddr, MapEntry>,
+    new_addr_space: Map<VAddr, MapEntry>,
+    target_va: VAddr,
+    entry: MapEntry,
+)
+    requires
+        old_addr_space.dom().contains(target_va) == false,
+        entry.write == false,
+        new_addr_space =~= old_addr_space.insert(target_va, entry),
+    ensures
+        new_addr_space[target_va].write == true,
+{
+}
+```
+REASON: If a read-only shared mapping is silently promoted to writable, the target process gains unauthorized write access to the shared page
+===PHI_END===
+
+===PHI_START===
+NAME: refcount_double_increment
+TARGET_FN: share_mapping
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_refcount_double_increment(
+    old_refcount: usize,
+    new_refcount: usize,
+)
+    requires
+        old_refcount <= usize::MAX - 1,
+        old_refcount + 1 == new_refcount,
+    ensures
+        new_refcount >= old_refcount + 2,
+{
+}
+```
+REASON: If the reference counter increases by two or more for a single share operation, the page can never be fully freed, causing a permanent memory leak
+===PHI_END===

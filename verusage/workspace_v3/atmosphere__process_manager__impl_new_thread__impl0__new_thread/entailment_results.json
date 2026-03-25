@@ -1,0 +1,52 @@
+[
+  {
+    "name": "ret_not_page_ptr",
+    "target_fn": "new_thread",
+    "type": "logical",
+    "reason": "The spec should pin ret == page_ptr via the set algebra (page_closure grows by page_ptr, only thread_dom changes by ret), so proving ret != page_ptr would indicate an inconsistency.",
+    "entailed": false,
+    "verified": 23,
+    "errors": 1,
+    "output_tail": "|     proc_ptr: ProcPtr,\n1765 | |     page_ptr: PagePtr,\n1766 | |     ret: ThreadPtr,\n1767 | | )\n     | |_- at the end of the function body\n...\n1779 |           ret != page_ptr,\n     |           ^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 23 warnings emitted\n\n"
+  },
+  {
+    "name": "proc_thread_count_unchanged",
+    "target_fn": "new_thread",
+    "type": "boundary",
+    "reason": "Adding a thread should increase the owning proc's thread count; if the spec entails it stays the same, the postcondition is missing a thread-list-growth guarantee.",
+    "entailed": false,
+    "verified": 23,
+    "errors": 1,
+    "output_tail": "   new_pm.get_proc(proc_ptr).owned_threads.len() == old_pm.get_proc(proc_ptr).owned_threads.len(),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 23 warnings emitted\n\n"
+  },
+  {
+    "name": "ret_in_old_page_closure",
+    "target_fn": "new_thread",
+    "type": "behavioral",
+    "reason": "The returned pointer must be fresh (not in the old page closure); if the spec entails it was already present, it would alias an existing container/proc/thread/endpoint page.",
+    "entailed": false,
+    "verified": 23,
+    "errors": 1,
+    "output_tail": "ge_ptr: PagePtr,\n1766 | |     ret: ThreadPtr,\n1767 | | )\n     | |_- at the end of the function body\n...\n1779 |           old_pm.page_closure().contains(ret),\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 23 warnings emitted\n\n"
+  },
+  {
+    "name": "owning_container_procs_grew",
+    "target_fn": "new_thread",
+    "type": "boundary",
+    "reason": "new_thread adds a thread, not a process; the owning container's proc list should not grow, so proving it did would reveal the spec allows a spurious proc-list mutation.",
+    "entailed": false,
+    "verified": 23,
+    "errors": 1,
+    "output_tail": " | |             > old_pm.get_container(old_pm.get_proc(proc_ptr).owning_container).owned_procs@.len(),\n     | |_________________________________________________________________________________________________^ failed this postcondition\n\nerror: aborting due to 1 previous error; 23 warnings emitted\n\n"
+  },
+  {
+    "name": "existing_thread_owner_changed",
+    "target_fn": "new_thread",
+    "type": "logical",
+    "reason": "Existing threads should be unmodified by new_thread; if the spec entails an existing thread's owning_proc can change, there is a missing frame condition on the thread permissions.",
+    "entailed": false,
+    "verified": 23,
+    "errors": 1,
+    "output_tail": "the function body\n...\n1782 |           new_pm.get_thread(t_ptr).owning_proc != old_pm.get_thread(t_ptr).owning_proc,\n     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 23 warnings emitted\n\n"
+  }
+]

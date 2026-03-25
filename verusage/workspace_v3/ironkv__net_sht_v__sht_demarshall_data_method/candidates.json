@@ -1,0 +1,37 @@
+[
+  {
+    "name": "to_vec_always_empty",
+    "target_fn": "to_vec",
+    "type": "behavioral",
+    "code": "proof fn phi_1_to_vec_always_empty(h: CKeyHashMap)\n    requires\n        h.is_marshalable(),\n    ensures\n        h.spec_to_vec()@.len() == 0,\n{\n}",
+    "reason": "If entailed, to_vec ignores all hashmap contents and always returns an empty vector"
+  },
+  {
+    "name": "to_vec_length_at_most_one",
+    "target_fn": "to_vec",
+    "type": "boundary",
+    "code": "proof fn phi_2_to_vec_length_at_most_one(h: CKeyHashMap)\n    requires\n        h.is_marshalable(),\n    ensures\n        h.spec_to_vec()@.len() <= 1,\n{\n}",
+    "reason": "If entailed, to_vec can never faithfully represent a hashmap with more than one entry"
+  },
+  {
+    "name": "to_vec_serialize_constant",
+    "target_fn": "to_vec",
+    "type": "logical",
+    "code": "proof fn phi_3_to_vec_serialize_constant(h1: CKeyHashMap, h2: CKeyHashMap)\n    requires\n        h1.is_marshalable(),\n        h2.is_marshalable(),\n    ensures\n        h1.spec_to_vec().ghost_serialize() == h2.spec_to_vec().ghost_serialize(),\n{\n}",
+    "reason": "If entailed, serialization of to_vec is identical for all hashmaps, destroying injectivity"
+  },
+  {
+    "name": "to_vec_all_view_equal",
+    "target_fn": "to_vec",
+    "type": "behavioral",
+    "code": "proof fn phi_4_to_vec_all_view_equal(h1: CKeyHashMap, h2: CKeyHashMap)\n    requires\n        h1.is_marshalable(),\n        h2.is_marshalable(),\n    ensures\n        h1.spec_to_vec().view_equal(&h2.spec_to_vec()),\n{\n}",
+    "reason": "If entailed, to_vec produces view-equal results for any two hashmaps, collapsing all maps to one value"
+  },
+  {
+    "name": "to_vec_serialize_len_too_small",
+    "target_fn": "to_vec",
+    "type": "boundary",
+    "code": "proof fn phi_5_to_vec_serialize_len_too_small(h: CKeyHashMap)\n    requires\n        h.is_marshalable(),\n    ensures\n        h.spec_to_vec().ghost_serialize().len() <= 8,\n{\n}",
+    "reason": "If entailed, serialized to_vec output is at most 8 bytes (a single usize length prefix), meaning element data is never serialized"
+  }
+]

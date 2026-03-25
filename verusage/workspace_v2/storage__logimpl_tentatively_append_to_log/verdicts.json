@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "lemma_tentatively_append_external_body_invariant",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`lemma_tentatively_append` is `external_body` with `unimplemented!()` body. It asserts that writing bytes to the log area and updating info/state preserves `info_consistent_with_log_area` \u2014 a complex invariant involving circular buffer arithmetic, persistent memory byte state, and flush semantics. This entire proof is trusted without verification."
+  },
+  {
+    "phi": "subregion_start_len_external_body",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`start()` and `len()` return `nat` values (non-negative integers). The ensures `sub.start() + sub.len() >= sub.start()` is trivially true since `sub.len()` is a `nat` (\u2265 0). This holds regardless of the external_body implementations \u2014 it's a consequence of natural number arithmetic."
+  },
+  {
+    "phi": "write_preserves_length",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`write` is defined via `self.state.map(...)` which preserves sequence length by the vstd `map` axiom. The resulting state sequence has the same length as the input, so `view.write(...).len() == view.len()`. Correct by construction."
+  },
+  {
+    "phi": "write_within_range_has_outstanding",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "For `k` in range `[addr, addr + bytes.len())`, the map closure returns `pre_byte.write(bytes[k - addr])` which sets `outstanding_write: Some(bytes[k - addr])`. This follows directly from the definitions of `PersistentMemoryRegionView::write` and `PersistentMemoryByte::write`."
+  }
+]

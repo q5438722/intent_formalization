@@ -1,0 +1,85 @@
+===PHI_START===
+NAME: clone_key_always_zero
+TARGET_FN: SHTKey::clone (inherent)
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_clone_key_always_zero(k: SHTKey, out: SHTKey)
+    requires
+        out == k,
+    ensures
+        out.ukey == 0,
+{
+}
+```
+REASON: If entailed, clone would collapse all keys to zero, destroying key identity
+===PHI_END===
+
+===PHI_START===
+NAME: ack_clone_empties_unacked
+TARGET_FN: CAckState::clone_up_to_view
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_ack_clone_empties_unacked(pre: CAckState, post: CAckState)
+    requires
+        post@ == pre@,
+    ensures
+        post.un_acked@.len() == 0,
+{
+}
+```
+REASON: If entailed, view-equality would force the un_acked list to always be empty after clone, losing pending messages
+===PHI_END===
+
+===PHI_START===
+NAME: range_clone_collapses_lo_hi
+TARGET_FN: KeyRange::clone (VerusClone impl)
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_range_clone_collapses_lo_hi(kr: KeyRange<AbstractKey>, out: KeyRange<AbstractKey>)
+    requires
+        out == kr,
+    ensures
+        out.lo == out.hi,
+{
+}
+```
+REASON: If entailed, the clone spec would force every key range to be empty, making sharding impossible
+===PHI_END===
+
+===PHI_START===
+NAME: ack_clone_resets_seqno
+TARGET_FN: CAckState::clone_up_to_view
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_ack_clone_resets_seqno(pre: CAckState, post: CAckState)
+    requires
+        post@ == pre@,
+    ensures
+        post.num_packets_acked == 0,
+{
+}
+```
+REASON: If entailed, view-equality would force the ack counter to zero, losing acknowledgement progress
+===PHI_END===
+
+===PHI_START===
+NAME: iter_clone_loses_some
+TARGET_FN: KeyIterator::clone (VerusClone impl)
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_iter_clone_loses_some(k: SHTKey, ki: KeyIterator<AbstractKey>, out: KeyIterator<AbstractKey>)
+    requires
+        ki.k == Some(k),
+        out == ki,
+    ensures
+        out.k is None,
+{
+}
+```
+REASON: If entailed, cloning a valid iterator would lose its key, breaking iteration over key ranges
+===PHI_END===

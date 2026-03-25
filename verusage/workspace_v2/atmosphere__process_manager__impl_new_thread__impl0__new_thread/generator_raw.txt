@@ -1,0 +1,102 @@
+===PHI_START===
+NAME: owned_threads_shared_across_containers
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_owned_threads_shared_across_containers(pm: ProcessManager, c1: ContainerPtr, c2: ContainerPtr, t: ThreadPtr)
+    requires
+        pm.container_perms_wf(),
+        pm.container_tree_wf(),
+        pm.container_dom().contains(c1),
+        pm.container_dom().contains(c2),
+        c1 != c2,
+        pm.get_container(c1).owned_threads@.contains(t),
+    ensures
+        !pm.get_container(c2).owned_threads@.contains(t),
+{
+}
+```
+REASON: The `owned_threads` Ghost field has no cross-container disjointness constraint — two distinct containers could claim ownership of the same thread simultaneously
+===PHI_END===
+
+===PHI_START===
+NAME: owned_endpoints_shared_across_containers
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_owned_endpoints_shared_across_containers(pm: ProcessManager, c1: ContainerPtr, c2: ContainerPtr, e: EndpointPtr)
+    requires
+        pm.container_perms_wf(),
+        pm.container_tree_wf(),
+        pm.container_dom().contains(c1),
+        pm.container_dom().contains(c2),
+        c1 != c2,
+        pm.get_container(c1).owned_endpoints@.contains(e),
+    ensures
+        !pm.get_container(c2).owned_endpoints@.contains(e),
+{
+}
+```
+REASON: The `owned_endpoints` Ghost field lacks any disjointness predicate across containers, allowing the same endpoint to appear in multiple containers' ownership sets
+===PHI_END===
+
+===PHI_START===
+NAME: thread_running_cpu_container_mismatch
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_thread_running_cpu_container_mismatch(pm: ProcessManager, t_ptr: ThreadPtr, cpu_i: CpuId)
+    requires
+        pm.cpus_wf(),
+        pm.threads_cpu_wf(),
+        pm.container_perms_wf(),
+        pm.container_cpu_wf(),
+        pm.thread_dom().contains(t_ptr),
+        pm.get_thread(t_ptr).state == ThreadState::RUNNING,
+        pm.get_thread(t_ptr).running_cpu == Some(cpu_i),
+        0 <= cpu_i < NUM_CPUS,
+    ensures
+        pm.cpu_list@[cpu_i as int].owning_container == pm.get_thread(t_ptr).owning_container,
+{
+}
+```
+REASON: A running thread's owning_container should match its CPU's owning_container — if this isn't entailed, a thread could run on a CPU belonging to a different container, breaking isolation
+===PHI_END===
+
+===PHI_START===
+NAME: no_root_process_allows_owned_threads
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_no_root_process_allows_owned_threads(pm: ProcessManager, c_ptr: ContainerPtr)
+    requires
+        pm.container_perms_wf(),
+        pm.process_trees_wf(),
+        pm.container_dom().contains(c_ptr),
+        pm.get_container(c_ptr).root_process.is_None(),
+    ensures
+        pm.get_container(c_ptr).owned_threads@ =~= Set::<ThreadPtr>::empty(),
+{
+}
+```
+REASON: A container with no root process and zero owned_procs should not own any threads — but `process_trees_wf` only constrains `owned_procs.len() == 0`, leaving `owned_threads` Ghost field unconstrained
+===PHI_END===
+
+===PHI_START===
+NAME: get_proc_container_dom_without_full_wf
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_get_proc_container_dom_without_full_wf(pm: ProcessManager, proc_ptr: ProcPtr)
+    requires
+        pm.proc_perms_wf(),
+        pm.process_fields_wf(),
+        pm.proc_dom().contains(proc_ptr),
+        !pm.wf(),
+    ensures
+        pm.container_dom().contains(pm.get_proc(proc_ptr).owning_container),
+{
+}
+```
+REASON: `get_proc` external_body ensures `self.wf() ==> container_dom.contains(ret.owning_container)` — with only `proc_perms_wf + process_fields_wf` (not full wf), the container_dom membership is NOT guaranteed, yet SMT might derive it from leaked constraints
+===PHI_END===

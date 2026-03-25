@@ -1,0 +1,81 @@
+===PHI_START===
+NAME: zero_len_io_mmap_allowed
+TARGET_FN: syscall_io_mmap
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_zero_len_io_mmap_allowed(va_range: VaRange4K)
+    requires
+        va_range.wf(),
+        va_range.len == 0,
+    ensures
+        va_range.len * 4 < usize::MAX,
+{
+}
+```
+REASON: Zero-length VA ranges satisfy all preconditions, allowing syscall_io_mmap to perform vacuous no-op allocations
+===PHI_END===
+
+===PHI_START===
+NAME: null_paddr_mem_valid
+TARGET_FN: syscall_io_mmap
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_null_paddr_mem_valid()
+    ensures
+        MEM_valid(0usize),
+{
+}
+```
+REASON: If null physical address 0 passes MEM_valid, IO mmap could create page mappings to the null address without detection
+===PHI_END===
+
+===PHI_START===
+NAME: zero_raw_entry_is_empty
+TARGET_FN: syscall_io_mmap
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_zero_raw_entry_is_empty()
+    ensures
+        spec_usize2page_entry(0usize).is_empty(),
+{
+}
+```
+REASON: If zero-valued raw entries are always empty, uninitialized page table memory silently passes as valid empty entries during IO mapping
+===PHI_END===
+
+===PHI_START===
+NAME: zero_quota_bypasses_check
+TARGET_FN: syscall_io_mmap
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_zero_quota_bypasses_check(quota: usize, va_range: VaRange4K)
+    requires
+        va_range.wf(),
+        va_range.len == 0,
+        quota == 0,
+    ensures
+        !(quota < va_range.len * 4),
+{
+}
+```
+REASON: A container with zero remaining quota can pass the quota check via a zero-length range, bypassing resource accounting in syscall_io_mmap
+===PHI_END===
+
+===PHI_START===
+NAME: usize2pa_always_valid
+TARGET_FN: syscall_io_mmap
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_usize2pa_always_valid(v: usize)
+    ensures
+        MEM_valid(spec_usize2pa(v)),
+{
+}
+```
+REASON: If usize2pa produces a MEM_valid address for ANY input, garbage or attacker-controlled values fed through the IO mmap path are silently masked to valid addresses
+===PHI_END===

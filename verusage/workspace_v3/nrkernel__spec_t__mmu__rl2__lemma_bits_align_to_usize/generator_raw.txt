@@ -1,0 +1,92 @@
+===PHI_START===
+NAME: result_always_zero
+TARGET_FN: align_to_usize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_result_always_zero(a: usize, b: usize)
+    requires
+        b > 0,
+        a >= a % b,
+    ensures
+        align_to_usize(a, b) == 0usize,
+{
+}
+```
+REASON: Alignment collapsing every address to zero would destroy all address information
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_input_changes
+TARGET_FN: align_to_usize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_aligned_input_changes(a: usize, b: usize)
+    requires
+        b > 0,
+        a % b == 0,
+        a > 0,
+    ensures
+        align_to_usize(a, b) != a,
+{
+}
+```
+REASON: Already-aligned addresses must be fixed points; changing them violates idempotency
+===PHI_END===
+
+===PHI_START===
+NAME: result_exceeds_input
+TARGET_FN: align_to_usize
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_result_exceeds_input(a: usize, b: usize)
+    requires
+        b > 0,
+        a >= a % b,
+        a > 0,
+    ensures
+        align_to_usize(a, b) > a,
+{
+}
+```
+REASON: Downward alignment must never produce a value larger than the original address
+===PHI_END===
+
+===PHI_START===
+NAME: alignment_not_multiple
+TARGET_FN: align_to_usize
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_alignment_not_multiple(a: usize, b: usize)
+    requires
+        b > 0,
+        a >= a % b,
+    ensures
+        align_to_usize(a, b) % b != 0usize,
+{
+}
+```
+REASON: The fundamental invariant of alignment is that the result is a multiple of the alignment size
+===PHI_END===
+
+===PHI_START===
+NAME: off_by_one_subtraction
+TARGET_FN: align_to_usize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_off_by_one_subtraction(a: usize, b: usize)
+    requires
+        b > 0,
+        a >= b,
+        a % b != 0,
+    ensures
+        align_to_usize(a, b) == sub(a, b),
+{
+}
+```
+REASON: Subtracting the full alignment size instead of just the remainder would be an off-by-one bug
+===PHI_END===

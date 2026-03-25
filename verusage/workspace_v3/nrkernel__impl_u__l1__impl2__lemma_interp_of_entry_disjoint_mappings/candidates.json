@@ -1,0 +1,37 @@
+[
+  {
+    "name": "aligned_zero_size",
+    "target_fn": "aligned",
+    "type": "behavioral",
+    "code": "proof fn phi_1_aligned_zero_size()\n    ensures\n        aligned(1, 0),\n{\n}",
+    "reason": "Size-zero alignment should not hold for nonzero addresses; indicates missing guard on size > 0"
+  },
+  {
+    "name": "arch_inv_empty_layers",
+    "target_fn": "Arch::inv",
+    "type": "boundary",
+    "code": "proof fn phi_2_arch_inv_empty_layers(a: Arch)\n    requires\n        a.layers.len() == 0,\n    ensures\n        a.inv(),\n{\n}",
+    "reason": "An architecture with zero layers maps nothing and should not satisfy the invariant"
+  },
+  {
+    "name": "nonstandard_entry_size_last_layer",
+    "target_fn": "entry_size_is_next_layer_size",
+    "type": "boundary",
+    "code": "proof fn phi_3_nonstandard_entry_size_last_layer(a: Arch)\n    requires\n        a.inv(),\n        a.layers.len() == 1,\n        a.entry_size(0) == 7,\n    ensures\n        a.entry_size_is_next_layer_size(0),\n{\n}",
+    "reason": "A non-power-of-two entry size (7 bytes) should not pass the layer-size consistency check"
+  },
+  {
+    "name": "wellformed_unaligned_base",
+    "target_fn": "Directory::well_formed",
+    "type": "logical",
+    "code": "proof fn phi_4_wellformed_unaligned_base(d: Directory)\n    requires\n        d.arch.inv(),\n        d.arch.layers.len() > 0,\n        d.arch.entry_size(0) > 1,\n        d.layer == 0,\n        d.entries.len() == d.arch.num_entries(0),\n        d.base_vaddr == 1,\n    ensures\n        d.well_formed(),\n{\n}",
+    "reason": "A directory with base_vaddr=1 (unaligned) should not be well-formed; alignment check is commented out"
+  },
+  {
+    "name": "entry_base_equals_next_entry_base",
+    "target_fn": "Arch::next_entry_base",
+    "type": "behavioral",
+    "code": "proof fn phi_5_entry_base_equals_next_entry_base(a: Arch, layer: nat, base: nat, idx: nat)\n    requires\n        a.inv(),\n        layer < a.layers.len(),\n    ensures\n        a.entry_base(layer, base, idx) == a.next_entry_base(layer, base, idx),\n{\n}",
+    "reason": "Consecutive entry bases being equal would collapse distinct entries into zero-width regions"
+  }
+]

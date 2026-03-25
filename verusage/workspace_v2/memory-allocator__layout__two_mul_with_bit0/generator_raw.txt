@@ -1,0 +1,88 @@
+===PHI_START===
+NAME: two_mul_bit0_negative_y
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_two_mul_bit0_negative_y(x1: int)
+    ensures
+        (2 * x1) / (2 * (-1)) == x1 / (-1),
+{
+    two_mul_with_bit0(x1, -1);
+}
+```
+REASON: The lemma accepts negative `y1` — for `y1 = -1`, Verus Euclidean division `x1 / (-1)` may differ from expected truncation division semantics
+===PHI_END===
+
+===PHI_START===
+NAME: two_mul_bit0_negative_both
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_two_mul_bit0_negative_both(x1: int, y1: int)
+    requires
+        y1 < 0,
+        x1 < 0,
+    ensures
+        (2 * x1) / (2 * y1) == x1 / y1,
+{
+    two_mul_with_bit0(x1, y1);
+}
+```
+REASON: Both arguments negative — Euclidean division for negative divisor is non-trivial and the lemma applies without restriction
+===PHI_END===
+
+===PHI_START===
+NAME: two_mul_bit0_zero_x
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_two_mul_bit0_zero_x(y1: int)
+    requires
+        y1 != 0,
+    ensures
+        0 / (2 * y1) == 0 / y1,
+        0 / (2 * y1) == 0,
+{
+    two_mul_with_bit0(0, y1);
+}
+```
+REASON: With `x1 == 0`, both sides are trivially 0 — degenerate case where the scaling property provides no useful information
+===PHI_END===
+
+===PHI_START===
+NAME: two_mul_bit0_chain
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_two_mul_bit0_chain(x1: int, y1: int)
+    requires
+        y1 != 0,
+    ensures
+        (4 * x1) / (4 * y1) == x1 / y1,
+{
+    two_mul_with_bit0(2 * x1, 2 * y1);
+    assert(2 * (2 * x1) == 4 * x1) by(nonlinear_arith);
+    assert(2 * (2 * y1) == 4 * y1) by(nonlinear_arith);
+    two_mul_with_bit0(x1, y1);
+}
+```
+REASON: The lemma can be chained to derive `(2^n * x) / (2^n * y) == x / y` for any power of 2 — this is correct but shows the lemma's power extends to arbitrary even scaling factors
+===PHI_END===
+
+===PHI_START===
+NAME: nonlinear_arith_step_unsound
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_nonlinear_arith_step_unsound(x1: int, y1: int)
+    requires
+        y1 != 0,
+    ensures
+        (2 * x1) / (2 * y1) == ((2 * x1) / 2) / y1,
+{
+    assert((2 * x1) / (2 * y1) == ((2 * x1) / 2) / y1) by(nonlinear_arith)
+        requires y1 != 0;
+}
+```
+REASON: The intermediate step `(2*x)/(2*y) == ((2*x)/2)/y` uses `nonlinear_arith` to assert a division-associativity property — this relies on Verus's Euclidean division semantics and the Z3 nonlinear arithmetic solver's correctness
+===PHI_END===

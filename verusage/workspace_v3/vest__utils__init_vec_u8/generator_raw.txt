@@ -1,0 +1,86 @@
+Here are 5 candidate undesirable properties for `init_vec_u8`:
+
+===PHI_START===
+NAME: non_zero_element_allowed
+TARGET_FN: init_vec_u8
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_non_zero_element_allowed(n: usize, res: Seq<u8>)
+    requires
+        res.len() == n,
+    ensures
+        n > 0 ==> res[0] != 0u8,
+{
+}
+```
+REASON: Undesirable if spec entails first element is non-zero, since init should produce zeros
+===PHI_END===
+
+===PHI_START===
+NAME: all_elements_one
+TARGET_FN: init_vec_u8
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_all_elements_one(n: usize, res: Seq<u8>)
+    requires
+        res.len() == n,
+    ensures
+        forall|i: int| 0 <= i < res.len() ==> res[i] == 1u8,
+{
+}
+```
+REASON: Undesirable if spec entails all elements equal 1, since the function fills with 0
+===PHI_END===
+
+===PHI_START===
+NAME: length_always_zero
+TARGET_FN: init_vec_u8
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_length_always_zero(n: usize, res: Seq<u8>)
+    requires
+        res.len() == n,
+    ensures
+        res.len() == 0,
+{
+}
+```
+REASON: Undesirable if spec entails result is always empty regardless of n
+===PHI_END===
+
+===PHI_START===
+NAME: length_off_by_one
+TARGET_FN: init_vec_u8
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_length_off_by_one(n: usize, res: Seq<u8>)
+    requires
+        res.len() == n,
+    ensures
+        res.len() == n + 1,
+{
+}
+```
+REASON: Undesirable if spec entails result has one extra element (off-by-one in length)
+===PHI_END===
+
+===PHI_START===
+NAME: elements_unconstrained
+TARGET_FN: init_vec_u8
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_elements_unconstrained(n: usize, res: Seq<u8>)
+    requires
+        res.len() == n,
+    ensures
+        n >= 2 ==> res[0] != res[1int],
+{
+}
+```
+REASON: Undesirable if spec entails distinct adjacent elements, since all should be uniformly 0
+===PHI_END===

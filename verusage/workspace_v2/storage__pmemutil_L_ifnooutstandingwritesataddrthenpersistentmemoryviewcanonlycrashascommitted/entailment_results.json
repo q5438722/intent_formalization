@@ -1,0 +1,47 @@
+[
+  {
+    "name": "committed_length_equals_state_length",
+    "type": "behavioral",
+    "code": "proof fn phi_1_committed_length_equals_state_length(view: PersistentMemoryRegionView)\n    ensures\n        view.committed().len() == view.len(),\n{\n}",
+    "reason": "`committed()` uses `map` which should preserve length \u2014 if it didn't, indexing into `committed()` would be out of bounds",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "can_crash_as_committed_when_no_writes",
+    "type": "behavioral",
+    "code": "proof fn phi_2_can_crash_as_committed_when_no_writes(view: PersistentMemoryRegionView)\n    requires\n        forall|k: int| 0 <= k < view.len() ==> (#[trigger] view.state[k].outstanding_write).is_none(),\n    ensures\n        view.can_crash_as(view.committed()),\n{\n}",
+    "reason": "When no outstanding writes exist, the committed state should be a valid crash state \u2014 if `can_crash_as` rejected the committed view, no valid crash state would exist",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "chunk_size_divides_addr_range",
+    "type": "boundary",
+    "code": "proof fn phi_3_chunk_size_divides_addr_range(a: int, b: int)\n    requires\n        a >= 0,\n        b >= 0,\n        a / const_persistence_chunk_size() == b / const_persistence_chunk_size(),\n        a != b,\n    ensures\n        (a - b).abs() < const_persistence_chunk_size(),\n{\n}",
+    "reason": "Two addresses in the same chunk should be within chunk_size of each other \u2014 if the chunk calculation allowed distant addresses in the same chunk, crash atomicity would span too large a range",
+    "entailed": false,
+    "verus_output": "ruct `vstd::prelude::int` in the current scope\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/storage__pmemutil_L_ifnooutstandingwritesataddrthenpersistentmemoryviewcanonlycrashascommitted/phi_3_chunk_size_divides_addr_range.rs:106:17\n    |\n106 |         (a - b).abs() < const_persistence_chunk_size(),\n    |                 ^^^ method not found in `vstd::prelude::int`\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0599`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "crash_state_allows_mixed_chunks",
+    "type": "behavioral",
+    "code": "proof fn phi_4_crash_state_allows_mixed_chunks(b0: PersistentMemoryByte, b1: PersistentMemoryByte)\n    requires\n        b0.outstanding_write == Some(42u8),\n        b0.state_at_last_flush == 0u8,\n        b1.outstanding_write == Some(99u8),\n        b1.state_at_last_flush == 0u8,\n    ensures\n        ({\n            let view = PersistentMemoryRegionView { state: seq![b0, b1, b1, b1, b1, b1, b1, b1, b0, b1, b1, b1, b1, b1, b1, b1] };\n            let s = seq![0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 42u8, 99u8, 99u8, 99u8, 99u8, 99u8, 99u8, 99u8];\n            view.can_crash_as(s)\n        }),\n{\n}",
+    "reason": "Different chunks can independently choose between flushed and committed states \u2014 one chunk crashes as committed while another crashes as flushed; if the crash model forced all-or-nothing across chunks, it would be too strong",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "flush_byte_with_outstanding_ignores_old",
+    "type": "behavioral",
+    "code": "proof fn phi_5_flush_byte_with_outstanding_ignores_old(old_val: u8, new_val: u8)\n    requires\n        old_val != new_val,\n    ensures\n        (PersistentMemoryByte { state_at_last_flush: old_val, outstanding_write: Some(new_val) }).flush_byte() == new_val,\n{\n}",
+    "reason": "`flush_byte` with an outstanding write should return the new value, not the old \u2014 if it returned the old value, flushing would be a no-op and writes would never persist",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

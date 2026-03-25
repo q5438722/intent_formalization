@@ -1,0 +1,47 @@
+[
+  {
+    "name": "unmarshal_marshal_roundtrip",
+    "type": "logical",
+    "code": "proof fn phi_1_unmarshal_marshal_roundtrip<T: ResourceView>(o: T)\n    requires\n        T::unmarshal_spec(T::marshal_spec(o.spec())) is Ok,\n        T::unmarshal_status(T::marshal_status(o.status())) is Ok,\n    ensures\n        T::unmarshal(o.marshal()) is Ok,\n        T::unmarshal(o.marshal())->Ok_0.metadata() == o.metadata(),\n{\n}",
+    "reason": "marshal_spec/unmarshal_spec are uninterpreted with no roundtrip axiom \u2014 if this is entailed, it reveals the spec accidentally assumes marshalling preserves metadata identity without an explicit axiom",
+    "entailed": false,
+    "verus_output": "ctor_does_not_delete_vrs_pods/phi_1_unmarshal_marshal_roundtrip.rs:4696:9\n     |\n4690 | proof fn phi_1_unmarshal_marshal_roundtrip<T: ResourceView>(o: T)\n     |       ----------------------------------------------------------- at the end of the function body\n...\n4696 |         T::unmarshal(o.marshal())->Ok_0.metadata() == o.metadata(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 2 previous errors; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "unmarshal_spec_status_independent",
+    "type": "logical",
+    "code": "proof fn phi_2_unmarshal_spec_status_independent<T: ResourceView>(v1: Value, v2: Value)\n    requires\n        T::unmarshal_spec(v1) is Ok,\n        T::unmarshal_status(v2) is Ok,\n    ensures\n        T::unmarshal(DynamicObjectView {\n            kind: T::kind(),\n            metadata: ObjectMetaView::default(),\n            spec: v1,\n            status: v2,\n        }) is Ok,\n{\n}",
+    "reason": "unmarshal checks spec and status independently \u2014 any combination of individually-valid spec and status values produces a valid object, which may not hold if there are cross-field invariants",
+    "entailed": false,
+    "verus_output": "alue, v2: Value)\n     |         --------------------------------------------------------------------------------- at the end of the function body\n...\n4695 | /         T::unmarshal(DynamicObjectView {\n4696 | |             kind: T::kind(),\n4697 | |             metadata: ObjectMetaView::default(),\n4698 | |             spec: v1,\n4699 | |             status: v2,\n4700 | |         }) is Ok,\n     | |________________^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "allocator_ids_never_collide",
+    "type": "behavioral",
+    "code": "proof fn phi_3_allocator_ids_never_collide(a: ReconcileIdAllocator)\n    requires\n        true,\n    ensures\n        a.allocate().1 != a.allocate().0.allocate().1,\n{\n}",
+    "reason": "allocate returns the current counter then increments \u2014 successive allocations yield different IDs, but this relies on nat not wrapping; if entailed it confirms the spec assumes unbounded allocation without modeling resource exhaustion",
+    "entailed": true,
+    "verus_output": "d - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__helper_invariants__proof__lemma_eventually_always_garbage_collector_does_not_delete_vrs_pods/phi_3_allocator_ids_never_collide.rs:329:1\n    |\n329 | / #[is_variant]\n330 | | pub enum BuiltinControllersStep {\n331 | |     RunGarbageCollector,\n332 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "update_key_kind_from_obj_not_request",
+    "type": "behavioral",
+    "code": "proof fn phi_4_update_key_kind_from_obj_not_request(req: UpdateRequest, kind1: Kind, kind2: Kind)\n    requires\n        req.obj.kind == kind1,\n        kind1 != kind2,\n    ensures\n        req.key().kind != kind2,\n        req.key().kind == req.obj.kind,\n        req.key().name == req.name,\n        req.key().namespace == req.namespace,\n{\n}",
+    "reason": "UpdateRequest::key takes kind from self.obj.kind rather than having an independent kind field \u2014 a malformed request with mismatched obj.kind could target a different resource type than intended",
+    "entailed": true,
+    "verus_output": "->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__helper_invariants__proof__lemma_eventually_always_garbage_collector_does_not_delete_vrs_pods/phi_4_update_key_kind_from_obj_not_request.rs:329:1\n    |\n329 | / #[is_variant]\n330 | | pub enum BuiltinControllersStep {\n331 | |     RunGarbageCollector,\n332 | | }\n    | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "object_ref_ignores_uid",
+    "type": "logical",
+    "code": "proof fn phi_5_object_ref_ignores_uid<T: ResourceView>(o1: T, o2: T)\n    requires\n        o1.metadata().name == o2.metadata().name,\n        o1.metadata().namespace == o2.metadata().namespace,\n        o1.metadata().uid != o2.metadata().uid,\n        o1.metadata().name is Some,\n        o1.metadata().namespace is Some,\n        T::kind() == T::kind(),\n    ensures\n        o1.object_ref() == o2.object_ref(),\n{\n}",
+    "reason": "object_ref is (kind, name, namespace) with no uid \u2014 two distinct resource incarnations with different uids produce identical ObjectRefs, conflating their identity throughout the spec",
+    "entailed": false,
+    "verus_output": "ts__proof__lemma_eventually_always_garbage_collector_does_not_delete_vrs_pods/phi_5_object_ref_ignores_uid.rs:4699:9\n     |\n4690 | proof fn phi_5_object_ref_ignores_uid<T: ResourceView>(o1: T, o2: T)\n     |       -------------------------------------------------------------- at the end of the function body\n...\n4699 |         o1.object_ref() == o2.object_ref(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

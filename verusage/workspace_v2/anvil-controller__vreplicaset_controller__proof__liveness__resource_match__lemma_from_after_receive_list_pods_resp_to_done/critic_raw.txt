@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: kernel_mem_end_l4_allows_user_at_zero
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `KERNEL_MEM_END_L4INDEX == 1` is an intentional design constant. On x86-64, the L4 index 0 covers virtual addresses 0x0000_0000_0000_0000–0x0000_007F_FFFF_FFFF, which is indeed the low canonical user range, but this microkernel explicitly reserves only index 0 for kernel entries — this is a deliberate non-standard layout choice, not a spec gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: page_index2ptr_overflow
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `NUM_PAGES = 2 * 1024 * 1024 = 2^21`, so max `i * 4096 = 2^21 * 4096 = 2^33 ≈ 8GB`, which fits comfortably in a 64-bit `usize`. The `as usize` cast in the spec is a no-op on the target platform, and Verus's arithmetic model correctly handles this range.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: unmarshal_skips_state_validation
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Unmarshal is intentionally a parsing/deserialization step separate from validation. In Kubernetes, state validation is performed at admission time, not during unmarshalling — this separation is by design.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: create_key_namespace_diverges
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `CreateRequest::key()` derives namespace from `self.namespace` rather than `self.obj.metadata.namespace`. If these diverge, the object is stored under a key that disagrees with the object's own metadata, potentially placing the object in the wrong namespace.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: object_ref_ignores_uid
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `ObjectRef` is intentionally defined as (kind, name, namespace) — this is Kubernetes's standard resource identification scheme. UID is a separate identity concept used for ownership tracking and garbage collection, not for resource lookup keys.
+===VERDICT_END===
+
+===SUMMARY===
+Of the 5 candidates across the two files, 1 is a true positive: `create_key_namespace_diverges` highlights that `CreateRequest::key()` uses `self.namespace` instead of `self.obj.metadata.namespace`, allowing key-object namespace mismatches. The remaining 4 are false positives: `kernel_mem_end_l4_allows_user_at_zero` reflects an intentional kernel memory layout; `page_index2ptr_overflow` is safe because the arithmetic fits in 64-bit usize; `unmarshal_skips_state_validation` reflects the deliberate Kubernetes separation of parsing from admission validation; and `object_ref_ignores_uid` matches Kubernetes's standard (kind, name, namespace) identification scheme.
+===END_SUMMARY===

@@ -1,0 +1,30 @@
+[
+  {
+    "name": "host_model_next_delegate",
+    "code": "fn host_model_next_delegate(&mut self) -> (sent_packets: Vec<CPacket>)\n        requires\n            old(self).next_delegate_preconditions(),\n        ensures\n            self.next_delegate_postconditions(*old(self), sent_packets@),\n    {\n        let sent_packets = vec![];\n        proof { self.delegation_map.valid_implies_complete(); };\n        let cpacket: &CPacket = &self.received_packet.as_ref().unwrap();\n        let ghost pkt: Packet = cpacket@;\n        let ghost pre = *self;\n        proof {\n            assert_sets_equal!(abstractify_seq_of_cpackets_to_set_of_sht_packets(sent_packets@),\n                               Set::<Packet>::empty());\n            assert_sets_equal!(abstractify_seq_of_cpackets_to_set_of_sht_packets(sent_packets@),\n                               extract_packets_from_lsht_packets(\n                                   abstractify_outbound_packets_to_seq_of_lsht_packets(\n                                       sent_packets@)));\n        };\n        match &cpacket.msg {\n            CSingleMessage::Message{m, seqno, ..} => {\n                match m {\n                    CMessage::Delegate{range, h} => {\n                        let marshalable: bool = m.is_message_marshallable();\n                        if (!marshalable) {\n                            self.received_packet = None;\n                            assert (Self::host_ignoring_unparseable(\n                                pre@, self@, abstractify_seq_of_cpackets_to_set_of_sht_packets(sent_packets@)));\n                            return sent_packets;\n                        }\n                        else if !endpoints_contain(&self.constants.host_ids, &cpacket.src) {\n                            self.received_packet = None;\n                            assert (next_delegate(pre@, self@, pre.received_packet.unwrap()@,\n                                                  abstractify_seq_of_cpackets_to_set_of_sht_packets(sent_packets@)));\n                            return sent_packets;\n                        }\n                        else {\n                            self.delegation_map.set(&range.lo, &range.hi, &self.constants.me);\n                            assert (valid_hashtable(h@));\n                            self.h.bulk_update(&range, &h);\n                            self.received_packet = None;\n                            self.num_delegations = self.num_delegations + 1;\n                            proof {\n                                Self::effect_of_delegation_map_set(pre.delegation_map, self.delegation_map,\n                                                                   &range.lo, &range.hi, &self.constants.me);\n                                Self::effect_of_hashmap_bulk_update(pre.h, self.h, &range, *h);\n                            }\n                            assert (next_delegate(pre@, self@, pre.received_packet.unwrap()@,\n                                                  abstractify_seq_of_cpackets_to_set_of_sht_packets(sent_packets@)));\n                            return sent_packets;\n                        }\n                    },\n                    _ => { assert(false); unreached() },\n                }\n            },\n            _ => { assert(false); unreached() },\n        };\n        assert(false); unreached()\n    }"
+  },
+  {
+    "name": "to_vec",
+    "code": "#[verifier(external_body)]\n    #[verifier(when_used_as_spec(spec_to_vec))]\n    pub fn to_vec(&self) -> (res: Vec<CKeyKV>)\n      ensures res == self.spec_to_vec()\n    {\n        unimplemented!()\n    }"
+  },
+  {
+    "name": "bulk_update_domain",
+    "code": "pub open spec(checked) fn bulk_update_domain(h: Hashtable, kr: KeyRange<AbstractKey>, u: Hashtable) -> Set<AbstractKey>\n{\n    Set::<AbstractKey>::new(|k| (h.dom().contains(k) || u.dom().contains(k))\n                                && (kr.contains(k) ==> u.dom().contains(k)))\n}"
+  },
+  {
+    "name": "valid_optional_value",
+    "code": "pub open spec(checked) fn valid_optional_value(ov: Option<AbstractValue>) -> bool\n{\n    match ov {\n        None => true,\n        Some(value) => valid_value(value),\n    }\n}"
+  },
+  {
+    "name": "next_delegate",
+    "code": "pub open spec(checked) fn next_delegate(pre: AbstractHostState, post: AbstractHostState, pkt: Packet, out: Set<Packet>) -> bool\n    recommends\n        pkt.msg is Message,\n        pre.delegation_map.is_complete(),\n{\n    &&& pkt.msg.arrow_Message_m() is Delegate\n    &&& if pre.constants.host_ids.contains(pkt.src) {\n            let m = pkt.msg.arrow_Message_m();\n            &&& post.delegation_map == pre.delegation_map.update(m.arrow_Delegate_range(), pre.constants.me)\n            &&& post.h == bulk_update_hashtable(pre.h, m.arrow_Delegate_range(), m.arrow_Delegate_h())\n            &&& post.num_delegations == pre.num_delegations + 1\n        }\n        else  {\n            &&& post.delegation_map == pre.delegation_map\n            &&& post.h == pre.h\n            &&& post.num_delegations == pre.num_delegations\n        }\n    &&& SingleDelivery::<Message>::send_no_message(pre.sd, post.sd)\n    &&& SingleDelivery::<Message>::receive_no_message(pre.sd, post.sd)\n    &&& out == Set::<Packet>::empty()\n    &&& post.received_requests == pre.received_requests\n}"
+  },
+  {
+    "name": "receive_no_message",
+    "code": "pub open spec(checked) fn receive_no_message(pre: Self, post: Self) -> bool\n    {\n        post.receive_state == pre.receive_state\n    }"
+  },
+  {
+    "name": "send_no_message",
+    "code": "pub open spec(checked) fn send_no_message(pre: Self, post: Self) -> bool\n    {\n        post.send_state == pre.send_state\n    }"
+  }
+]

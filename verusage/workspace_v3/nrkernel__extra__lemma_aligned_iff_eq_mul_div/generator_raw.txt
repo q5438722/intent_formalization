@@ -1,0 +1,89 @@
+===PHI_START===
+NAME: aligned_implies_double_aligned
+TARGET_FN: aligned
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_aligned_implies_double_aligned(addr: nat, size: nat)
+    requires
+        size > 0,
+        aligned(addr, size),
+    ensures
+        aligned(addr, 2 * size),
+{
+}
+```
+REASON: Alignment to size does not imply alignment to double the size (e.g., 4 is 4-aligned but not 8-aligned)
+===PHI_END===
+
+===PHI_START===
+NAME: odd_aligned_to_even
+TARGET_FN: aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_odd_aligned_to_even()
+    ensures
+        aligned(1, 2),
+{
+}
+```
+REASON: 1 is not 2-aligned (1 % 2 == 1), so the spec must not entail this
+===PHI_END===
+
+===PHI_START===
+NAME: alignment_symmetric
+TARGET_FN: aligned
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_alignment_symmetric(a: nat, b: nat)
+    requires
+        a > 0,
+        b > 0,
+        aligned(a, b),
+    ensures
+        aligned(b, a),
+{
+}
+```
+REASON: Alignment is not symmetric (e.g., aligned(4,2) holds but aligned(2,4) does not)
+===PHI_END===
+
+===PHI_START===
+NAME: successor_preserves_alignment
+TARGET_FN: aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_successor_preserves_alignment(addr: nat, size: nat)
+    requires
+        size > 1,
+        aligned(addr, size),
+    ensures
+        aligned(addr + 1, size),
+{
+}
+```
+REASON: Adding 1 to an aligned address breaks alignment for any size > 1
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_to_sum_of_divisors
+TARGET_FN: aligned
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_aligned_to_sum_of_divisors(a: nat, b: nat, c: nat)
+    requires
+        b > 0,
+        c > 0,
+        aligned(a, b),
+        aligned(a, c),
+    ensures
+        aligned(a, b + c),
+{
+}
+```
+REASON: Alignment to b and c individually does not imply alignment to b+c (e.g., 6 is aligned to 2 and 3 but not to 5)
+===PHI_END===

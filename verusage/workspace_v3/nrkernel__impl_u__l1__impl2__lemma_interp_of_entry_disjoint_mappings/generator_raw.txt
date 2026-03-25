@@ -1,0 +1,90 @@
+===PHI_START===
+NAME: aligned_zero_size
+TARGET_FN: aligned
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_aligned_zero_size()
+    ensures
+        aligned(1, 0),
+{
+}
+```
+REASON: Size-zero alignment should not hold for nonzero addresses; indicates missing guard on size > 0
+===PHI_END===
+
+===PHI_START===
+NAME: arch_inv_empty_layers
+TARGET_FN: Arch::inv
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_arch_inv_empty_layers(a: Arch)
+    requires
+        a.layers.len() == 0,
+    ensures
+        a.inv(),
+{
+}
+```
+REASON: An architecture with zero layers maps nothing and should not satisfy the invariant
+===PHI_END===
+
+===PHI_START===
+NAME: nonstandard_entry_size_last_layer
+TARGET_FN: entry_size_is_next_layer_size
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_nonstandard_entry_size_last_layer(a: Arch)
+    requires
+        a.inv(),
+        a.layers.len() == 1,
+        a.entry_size(0) == 7,
+    ensures
+        a.entry_size_is_next_layer_size(0),
+{
+}
+```
+REASON: A non-power-of-two entry size (7 bytes) should not pass the layer-size consistency check
+===PHI_END===
+
+===PHI_START===
+NAME: wellformed_unaligned_base
+TARGET_FN: Directory::well_formed
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_wellformed_unaligned_base(d: Directory)
+    requires
+        d.arch.inv(),
+        d.arch.layers.len() > 0,
+        d.arch.entry_size(0) > 1,
+        d.layer == 0,
+        d.entries.len() == d.arch.num_entries(0),
+        d.base_vaddr == 1,
+    ensures
+        d.well_formed(),
+{
+}
+```
+REASON: A directory with base_vaddr=1 (unaligned) should not be well-formed; alignment check is commented out
+===PHI_END===
+
+===PHI_START===
+NAME: entry_base_equals_next_entry_base
+TARGET_FN: Arch::next_entry_base
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_entry_base_equals_next_entry_base(a: Arch, layer: nat, base: nat, idx: nat)
+    requires
+        a.inv(),
+        layer < a.layers.len(),
+    ensures
+        a.entry_base(layer, base, idx) == a.next_entry_base(layer, base, idx),
+{
+}
+```
+REASON: Consecutive entry bases being equal would collapse distinct entries into zero-width regions
+===PHI_END===

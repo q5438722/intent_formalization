@@ -1,0 +1,83 @@
+===PHI_START===
+NAME: empty_arch_satisfies_inv
+TARGET_FN: Arch::inv
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_empty_arch_satisfies_inv()
+    ensures
+        (Arch { layers: seq![] }).inv(),
+{
+}
+```
+REASON: An architecture with zero layers should not satisfy inv, as it represents no valid page table structure
+===PHI_END===
+
+===PHI_START===
+NAME: entry_base_zero_neq_base
+TARGET_FN: Arch::entry_base
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_entry_base_zero_neq_base(arch: Arch, layer: nat, base: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+    ensures
+        arch.entry_base(layer, base, 0) != base,
+{
+}
+```
+REASON: The base address of the first entry (idx=0) should equal the directory base; inequality would mean a gap or offset error
+===PHI_END===
+
+===PHI_START===
+NAME: update_changes_layer
+TARGET_FN: Directory::update
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_update_changes_layer(d: Directory, n: nat, e: NodeEntry)
+    requires
+        d.inv(),
+        n < d.num_entries(),
+    ensures
+        d.update(n, e).layer != d.layer,
+{
+}
+```
+REASON: Updating a single entry should preserve the directory's layer; a change would corrupt the tree structure
+===PHI_END===
+
+===PHI_START===
+NAME: degenerate_arch_satisfies_inv
+TARGET_FN: Arch::inv
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_degenerate_arch_satisfies_inv()
+    ensures
+        (Arch { layers: seq![ArchLayer { entry_size: 1 as nat, num_entries: 1 as nat }] }).inv(),
+{
+}
+```
+REASON: An architecture with entry_size=1 byte and a single entry per layer is nonsensical for page tables and should be rejected by inv
+===PHI_END===
+
+===PHI_START===
+NAME: all_invalid_implies_nonempty_interp
+TARGET_FN: Directory::interp
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_all_invalid_implies_nonempty_interp(d: Directory)
+    requires
+        d.inv(),
+        forall|i: nat| i < d.entries.len() ==> d.entries[i as int] is Invalid,
+    ensures
+        exists|k: nat| d.interp().contains_key(k),
+{
+}
+```
+REASON: A directory whose entries are all Invalid should have an empty interpretation; a non-empty map would mean phantom mappings
+===PHI_END===

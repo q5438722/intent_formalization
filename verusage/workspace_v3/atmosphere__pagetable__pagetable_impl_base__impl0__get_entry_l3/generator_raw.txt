@@ -1,0 +1,102 @@
+===PHI_START===
+NAME: always_none
+TARGET_FN: get_entry_l3
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_always_none(pt: PageTable, target_l4i: L4Index, target_l3i: L3Index, l4_entry: PageEntry)
+    requires
+        pt.wf(),
+        pt.kernel_l4_end <= target_l4i < 512,
+        0 <= target_l3i < 512,
+        pt.spec_resolve_mapping_l4(target_l4i) =~= Some(l4_entry),
+    ensures
+        pt.spec_resolve_mapping_l3(target_l4i, target_l3i).is_None(),
+{
+}
+```
+REASON: If L3 resolution always returns None, the function is vacuous and no L3/L2/L1 page walks can ever succeed
+===PHI_END===
+
+===PHI_START===
+NAME: first_l3_index_none
+TARGET_FN: get_entry_l3
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_first_l3_index_none(pt: PageTable, target_l4i: L4Index, l4_entry: PageEntry)
+    requires
+        pt.wf(),
+        pt.kernel_l4_end <= target_l4i < 512,
+        pt.spec_resolve_mapping_l4(target_l4i) =~= Some(l4_entry),
+    ensures
+        pt.spec_resolve_mapping_l3(target_l4i, 0usize).is_None(),
+{
+}
+```
+REASON: If the first L3 index always resolves to None, boundary entries at index 0 are unreachable
+===PHI_END===
+
+===PHI_START===
+NAME: some_implies_ps_set
+TARGET_FN: get_entry_l3
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_some_implies_ps_set(pt: PageTable, target_l4i: L4Index, target_l3i: L3Index, l4_entry: PageEntry)
+    requires
+        pt.wf(),
+        pt.kernel_l4_end <= target_l4i < 512,
+        0 <= target_l3i < 512,
+        pt.spec_resolve_mapping_l4(target_l4i) =~= Some(l4_entry),
+        pt.spec_resolve_mapping_l3(target_l4i, target_l3i).is_Some(),
+    ensures
+        pt.spec_resolve_mapping_l3(target_l4i, target_l3i).unwrap().perm.ps == true,
+{
+}
+```
+REASON: The function returns Some only when ps is false; if the spec entails ps is true for Some results, the ensures are contradictory
+===PHI_END===
+
+===PHI_START===
+NAME: l3_index_irrelevant
+TARGET_FN: get_entry_l3
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_l3_index_irrelevant(pt: PageTable, target_l4i: L4Index, l3a: L3Index, l3b: L3Index, l4_entry: PageEntry)
+    requires
+        pt.wf(),
+        pt.kernel_l4_end <= target_l4i < 512,
+        0 <= l3a < 512,
+        0 <= l3b < 512,
+        l3a != l3b,
+        pt.spec_resolve_mapping_l4(target_l4i) =~= Some(l4_entry),
+    ensures
+        pt.spec_resolve_mapping_l3(target_l4i, l3a) =~= pt.spec_resolve_mapping_l3(target_l4i, l3b),
+{
+}
+```
+REASON: If the L3 index has no effect on the result, the page table cannot distinguish different L3 entries within the same L4 slot
+===PHI_END===
+
+===PHI_START===
+NAME: some_addr_zero
+TARGET_FN: get_entry_l3
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_some_addr_zero(pt: PageTable, target_l4i: L4Index, target_l3i: L3Index, l4_entry: PageEntry)
+    requires
+        pt.wf(),
+        pt.kernel_l4_end <= target_l4i < 512,
+        0 <= target_l3i < 512,
+        pt.spec_resolve_mapping_l4(target_l4i) =~= Some(l4_entry),
+        pt.spec_resolve_mapping_l3(target_l4i, target_l3i).is_Some(),
+    ensures
+        pt.spec_resolve_mapping_l3(target_l4i, target_l3i).unwrap().addr == 0,
+{
+}
+```
+REASON: A resolved present L3 entry with a null physical address would point to invalid memory, making lower-level walks unsound
+===PHI_END===

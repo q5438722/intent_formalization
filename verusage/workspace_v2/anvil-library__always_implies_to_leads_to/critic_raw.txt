@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: execution_equality_forces_fn_equality
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: The external_body axiom forces intensional `spec_fn` equality from pointwise agreement. This is the core soundness assumption — unverified, and it collapses the extensional/intensional distinction that Verus normally maintains for closures.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: leads_to_from_trivial_implies
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: p leads_to p is a standard theorem in TLA-style temporal logic — every state property trivially leads to itself (it already holds, so "eventually" is satisfied at offset 0). This is expected and desirable, not a spec gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: always_unfold_intensional_bridge
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The external_body `always_unfold` bridges the intensional gap between the `forall` quantifier embedded inside `always`'s `TempPred::new` closure and a bare `forall` in the ensures. This is an unverified trust assumption, though semantically correct.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: implies_apply_closure_bridge
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The external_body `implies_apply` bridges the gap between `p.implies(q).satisfied_by(ex)` — which evaluates a fresh closure from `TempPred::new` — and the direct modus ponens conclusion. This is a separate unverified intensional bridge axiom.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: leads_to_vacuous_under_false_spec
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: A false antecedent entailing anything is standard logic (ex falso quodlibet). This is not a spec gap — it's a fundamental property of implication that applies to every entailment-based framework.
+===VERDICT_END===
+
+===SUMMARY===
+Three true positives identified. φ1 is the most critical: `execution_equality` forces intensional spec_fn equality from extensional equivalence, an unverified external_body assumption. φ3 and φ4 identify two additional independent external_body axioms (`always_unfold` and `implies_apply`) that each bridge their own intensional closure gaps. φ2 and φ5 are false positives — p leads_to p is a standard temporal logic theorem, and false-spec vacuous entailment is basic logic.
+===END_SUMMARY===

@@ -1,0 +1,93 @@
+===PHI_START===
+NAME: inv_allows_empty_arch
+TARGET_FN: Arch::inv
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_inv_allows_empty_arch(arch: Arch)
+    requires
+        arch.layers.len() == 0,
+    ensures
+        arch.inv(),
+{
+}
+```
+REASON: An architecture with zero layers is degenerate and should not satisfy the well-formedness invariant
+===PHI_END===
+
+===PHI_START===
+NAME: entry_base_ignores_index
+TARGET_FN: Arch::entry_base
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_entry_base_ignores_index(arch: Arch, layer: nat, base: nat, idx: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+        0 < idx,
+        idx < arch.num_entries(layer),
+    ensures
+        arch.entry_base(layer, base, idx) == base,
+{
+}
+```
+REASON: If entry_base returns the same value regardless of index, all entries would map to the same address causing total overlap
+===PHI_END===
+
+===PHI_START===
+NAME: inv_page_size_mismatch
+TARGET_FN: Directory::pages_match_entry_size
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_inv_page_size_mismatch(dir: Directory, i: nat)
+    requires
+        dir.inv(),
+        i < dir.entries.len(),
+        dir.entries[i as int] is Page,
+    ensures
+        dir.entries[i as int]->Page_0.frame.size != dir.entry_size(),
+{
+}
+```
+REASON: If page frame sizes are allowed to differ from the layer's entry size under inv, address translation would map incorrect regions
+===PHI_END===
+
+===PHI_START===
+NAME: inv_entry_size_zero
+TARGET_FN: Arch::entry_size
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_inv_entry_size_zero(arch: Arch, layer: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+    ensures
+        arch.entry_size(layer) == 0,
+{
+}
+```
+REASON: Zero-sized entries would collapse the entire address space and break entry_base monotonicity and page mapping
+===PHI_END===
+
+===PHI_START===
+NAME: subdir_base_equals_parent_base
+TARGET_FN: Directory::directories_are_in_next_layer
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_subdir_base_equals_parent_base(dir: Directory, i: nat)
+    requires
+        dir.inv(),
+        i < dir.entries.len(),
+        dir.entries[i as int] is Directory,
+        0 < i,
+    ensures
+        dir.entries[i as int]->Directory_0.base_vaddr == dir.base_vaddr,
+{
+}
+```
+REASON: If non-zero-index subdirectories share the parent's base_vaddr, their mapped regions would overlap with index-0's region
+===PHI_END===

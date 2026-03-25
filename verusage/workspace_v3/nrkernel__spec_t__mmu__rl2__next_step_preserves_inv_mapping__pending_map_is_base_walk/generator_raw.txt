@@ -1,0 +1,85 @@
+===PHI_START===
+NAME: align_exceeds_input
+TARGET_FN: align_to_usize
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_align_exceeds_input(a: usize, b: usize)
+    requires
+        b > 0,
+    ensures
+        align_to_usize(a, b) > a,
+{
+}
+```
+REASON: Downward alignment must never produce a value greater than the original address
+===PHI_END===
+
+===PHI_START===
+NAME: align_zero_nonzero
+TARGET_FN: align_to_usize
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_align_zero_nonzero(b: usize)
+    requires
+        b > 0,
+    ensures
+        align_to_usize(0usize, b) != 0usize,
+{
+}
+```
+REASON: Aligning zero to any positive granularity must still yield zero
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_not_fixpoint
+TARGET_FN: align_to_usize
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_aligned_not_fixpoint(addr: usize, size: usize)
+    requires
+        size > 0,
+        aligned(addr as nat, size as nat),
+    ensures
+        align_to_usize(addr, size) != addr,
+{
+}
+```
+REASON: An already-aligned address must be a fixpoint of align_to_usize; disagreement indicates inconsistent specs
+===PHI_END===
+
+===PHI_START===
+NAME: align_result_not_aligned
+TARGET_FN: aligned
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_align_result_not_aligned(a: usize, b: usize)
+    requires
+        b > 0,
+    ensures
+        !aligned(align_to_usize(a, b) as nat, b as nat),
+{
+}
+```
+REASON: The output of align_to_usize must itself satisfy the aligned predicate for the same granularity
+===PHI_END===
+
+===PHI_START===
+NAME: aligned_zero_divisor
+TARGET_FN: aligned
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_aligned_zero_divisor(addr: nat)
+    requires
+        addr > 0,
+    ensures
+        aligned(addr, 0),
+{
+}
+```
+REASON: Alignment to size zero is undefined; a nonzero address should never be considered 0-aligned
+===PHI_END===

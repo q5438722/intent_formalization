@@ -1,0 +1,52 @@
+[
+  {
+    "name": "roundtrip_ptr_to_index_to_ptr_fails",
+    "target_fn": "page_ptr2page_index",
+    "type": "behavioral",
+    "reason": "If ptr\u2192index\u2192ptr is not the identity on aligned pointers, the two conversions are inconsistent and page lookups would silently corrupt addresses.",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": "         page_ptr_valid(ptr),\n    |         ------------------- recommendation not met\n...\n693 |         spec_page_index2page_ptr(spec_page_ptr2page_index(ptr)) != ptr,\n    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  },
+  {
+    "name": "roundtrip_index_to_ptr_to_index_fails",
+    "target_fn": "page_index2page_ptr",
+    "type": "behavioral",
+    "reason": "If index\u2192ptr\u2192index is not the identity for valid indices, page array indexing after a pointer round-trip would access the wrong page entry.",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": "---------------------------- at the end of the function body\n...\n693 |         spec_page_ptr2page_index(spec_page_index2page_ptr(i)) != i,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  },
+  {
+    "name": "index2ptr_breaks_alignment",
+    "target_fn": "page_index2page_ptr",
+    "type": "logical",
+    "reason": "If index-to-pointer conversion produces non-4k-aligned addresses, the result violates the precondition of page_ptr2page_index and cannot be used as a valid page pointer.",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": "ize)\n    |       --------------------------------------------- at the end of the function body\n...\n693 |         spec_page_index2page_ptr(i) % 0x1000 != 0,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  },
+  {
+    "name": "zero_ptr_maps_to_nonzero_index",
+    "target_fn": "page_ptr2page_index",
+    "type": "boundary",
+    "reason": "If the zero address (trivially aligned) does not map to index 0, the base-case correspondence between the page array and physical memory is broken.",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": "ndex()\n    |       ----------------------------------------- at the end of the function body\n...\n693 |         spec_page_ptr2page_index(0usize) != 0usize,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  },
+  {
+    "name": "ptr2index_non_injective",
+    "target_fn": "page_ptr2page_index",
+    "type": "logical",
+    "reason": "If two distinct aligned pointers map to the same index, the page array cannot distinguish them, causing aliasing bugs where operations on one page silently affect another.",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": "     page_ptr_valid(ptr),\n    |         ------------------- recommendation not met\n...\n695 |         spec_page_ptr2page_index(p1) == spec_page_ptr2page_index(p2),\n    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  }
+]

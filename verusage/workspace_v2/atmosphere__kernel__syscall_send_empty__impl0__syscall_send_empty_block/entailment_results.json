@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize2pa_mem_valid_unconditional",
+    "type": "logical",
+    "code": "proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body unconditionally ensures MEM_valid(ret) for ANY input \u2014 arbitrary usize values produce \"valid\" physical addresses without proof",
+    "entailed": false,
+    "verus_output": "on/verusage/workspace_v2/atmosphere__kernel__syscall_send_empty__impl0__syscall_send_empty_block/phi_1_usize2pa_mem_valid_unconditional.rs:2668:9\n     |\n2666 | proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n     |       --------------------------------------------------- at the end of the function body\n2667 |     ensures\n2668 |         MEM_valid(usize2pa(v)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 29 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "sll_len_without_wf_returns_value_list_len",
+    "type": "logical",
+    "code": "proof fn phi_2_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    ensures\n        sll.len() == sll.value_list_len,\n{\n}",
+    "reason": "StaticLinkedList::len's external_body unconditionally ensures l == self.value_list_len without requiring wf() \u2014 the raw field is exposed regardless of internal consistency",
+    "entailed": false,
+    "verus_output": "_returns_value_list_len.rs:2668:9\n     |\n2666 | proof fn phi_2_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n     |       -------------------------------------------------------------------------------------------------- at the end of the function body\n2667 |     ensures\n2668 |         sll.len() == sll.value_list_len,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 29 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "container_map_4k_double_ownership",
+    "type": "logical",
+    "code": "proof fn phi_3_container_map_4k_double_ownership(\n    pa: PageAllocator,\n    c1: ContainerPtr,\n    c2: ContainerPtr,\n    p: PagePtr,\n)\n    requires\n        c1 != c2,\n        pa.container_map_4k@.dom().contains(c1),\n        pa.container_map_4k@.dom().contains(c2),\n        pa.container_map_4k@[c1].contains(p),\n        pa.container_map_4k@[c2].contains(p),\n    ensures\n        false,\n{\n}",
+    "reason": "container_map_4k Ghost field has no disjointness constraint \u2014 if two distinct containers both contain the same page, the spec should derive a contradiction but cannot",
+    "entailed": false,
+    "verus_output": "__syscall_send_empty__impl0__syscall_send_empty_block/phi_3_container_map_4k_double_ownership.rs:2679:9\n     |\n2666 |   proof fn phi_3_container_map_4k_double_ownership(\n     |  _______-\n2667 | |     pa: PageAllocator,\n2668 | |     c1: ContainerPtr,\n2669 | |     c2: ContainerPtr,\n2670 | |     p: PagePtr,\n2671 | | )\n     | |_- at the end of the function body\n...\n2679 |           false,\n     |           ^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 29 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "is_empty_vacuous_with_kernel_l4_end_512",
+    "type": "boundary",
+    "code": "proof fn phi_4_is_empty_vacuous_with_kernel_l4_end_512(pt: PageTable, i: L4Index)\n    requires\n        pt.is_empty(),\n        pt.kernel_l4_end == 512,\n        0 <= i < 512,\n    ensures\n        pt.l4_table@[pt.cr3].value()[i].perm.present || !pt.l4_table@[pt.cr3].value()[i].perm.present,\n{\n}",
+    "reason": "When kernel_l4_end == 512 the forall in is_empty is vacuously satisfied \u2014 L4 entries can have present == true since no index satisfies `512 <= i < 512`",
+    "entailed": true,
+    "verus_output": " |\n192 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__kernel__syscall_send_empty__impl0__syscall_send_empty_block/phi_4_is_empty_vacuous_with_kernel_l4_end_512.rs:201:10\n    |\n201 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: 29 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "container_map_2m_double_ownership",
+    "type": "logical",
+    "code": "proof fn phi_5_container_map_2m_double_ownership(\n    pa: PageAllocator,\n    c1: ContainerPtr,\n    c2: ContainerPtr,\n    p: PagePtr,\n)\n    requires\n        c1 != c2,\n        pa.container_map_2m@.dom().contains(c1),\n        pa.container_map_2m@.dom().contains(c2),\n        pa.container_map_2m@[c1].contains(p),\n        pa.container_map_2m@[c2].contains(p),\n    ensures\n        false,\n{\n}",
+    "reason": "Same unconstrained Ghost field pattern as container_map_4k \u2014 container_map_2m has no disjointness invariant preventing two containers from owning the same 2M page",
+    "entailed": false,
+    "verus_output": "__syscall_send_empty__impl0__syscall_send_empty_block/phi_5_container_map_2m_double_ownership.rs:2679:9\n     |\n2666 |   proof fn phi_5_container_map_2m_double_ownership(\n     |  _______-\n2667 | |     pa: PageAllocator,\n2668 | |     c1: ContainerPtr,\n2669 | |     c2: ContainerPtr,\n2670 | |     p: PagePtr,\n2671 | | )\n     | |_- at the end of the function body\n...\n2679 |           false,\n     |           ^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 29 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

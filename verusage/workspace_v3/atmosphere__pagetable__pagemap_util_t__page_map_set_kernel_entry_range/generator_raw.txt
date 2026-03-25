@@ -1,0 +1,141 @@
+===PHI_START===
+NAME: set_no_requires_is_noop
+TARGET_FN: page_map_set_no_requires
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_set_no_requires_is_noop(
+    old_page_map: PageMap,
+    new_page_map: PageMap,
+    index: usize,
+    value: PageEntry,
+)
+    requires
+        old_page_map.wf(),
+        0 <= index < 512,
+        new_page_map.wf(),
+        forall|i: usize| #![trigger new_page_map.spec_index(i)]
+            0 <= i < 512 && i != index ==> new_page_map.spec_index(i) =~= old_page_map.spec_index(i),
+        new_page_map.spec_index(index) =~= value,
+    ensures
+        new_page_map.spec_index(index) =~= old_page_map.spec_index(index),
+{
+}
+```
+REASON: If verified, the set operation is a no-op — the written entry always equals the old entry regardless of the value argument, meaning the spec fails to constrain the write.
+===PHI_END===
+
+===PHI_START===
+NAME: kernel_range_preserves_all
+TARGET_FN: page_map_set_kernel_entry_range
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_kernel_range_preserves_all(
+    kernel_entries: Seq<usize>,
+    old_page_map: PageMap,
+    new_page_map: PageMap,
+)
+    requires
+        old_page_map.wf(),
+        kernel_entries.len() == KERNEL_MEM_END_L4INDEX as int,
+        new_page_map.wf(),
+        forall|i: usize| #![trigger new_page_map.spec_index(i)]
+            KERNEL_MEM_END_L4INDEX <= i < 512 ==> new_page_map.spec_index(i) =~= old_page_map.spec_index(i),
+        forall|i: usize| #![trigger new_page_map.spec_index(i)]
+            0 <= i < KERNEL_MEM_END_L4INDEX ==> new_page_map.spec_index(i) =~= usize2page_entry(kernel_entries[i as int]),
+    ensures
+        forall|i: usize| #![trigger new_page_map.spec_index(i)]
+            0 <= i < KERNEL_MEM_END_L4INDEX ==> new_page_map.spec_index(i) =~= old_page_map.spec_index(i),
+{
+}
+```
+REASON: If verified, kernel entries are never actually written — the function is a no-op for the kernel range, meaning the spec doesn't distinguish old from new entries.
+===PHI_END===
+
+===PHI_START===
+NAME: set_modifies_other_entries
+TARGET_FN: page_map_set_no_requires
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_set_modifies_other_entries(
+    old_page_map: PageMap,
+    new_page_map: PageMap,
+    index: usize,
+    j: usize,
+    value: PageEntry,
+)
+    requires
+        old_page_map.wf(),
+        0 <= index < 512,
+        0 <= j < 512,
+        j != index,
+        new_page_map.wf(),
+        forall|i: usize| #![trigger new_page_map.spec_index(i)]
+            0 <= i < 512 && i != index ==> new_page_map.spec_index(i) =~= old_page_map.spec_index(i),
+        new_page_map.spec_index(index) =~= value,
+    ensures
+        !(new_page_map.spec_index(j) =~= old_page_map.spec_index(j)),
+{
+}
+```
+REASON: If verified, writing at one index corrupts a different index, violating the frame/non-interference property of the page map set operation.
+===PHI_END===
+
+===PHI_START===
+NAME: kernel_range_corrupts_above
+TARGET_FN: page_map_set_kernel_entry_range
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_kernel_range_corrupts_above(
+    kernel_entries: Seq<usize>,
+    old_page_map: PageMap,
+    new_page_map: PageMap,
+    j: usize,
+)
+    requires
+        old_page_map.wf(),
+        kernel_entries.len() == KERNEL_MEM_END_L4INDEX as int,
+        new_page_map.wf(),
+        KERNEL_MEM_END_L4INDEX <= j < 512,
+        forall|i: usize| #![trigger new_page_map.spec_index(i)]
+            KERNEL_MEM_END_L4INDEX <= i < 512 ==> new_page_map.spec_index(i) =~= old_page_map.spec_index(i),
+        forall|i: usize| #![trigger new_page_map.spec_index(i)]
+            0 <= i < KERNEL_MEM_END_L4INDEX ==> new_page_map.spec_index(i) =~= usize2page_entry(kernel_entries[i as int]),
+    ensures
+        !(new_page_map.spec_index(j) =~= old_page_map.spec_index(j)),
+{
+}
+```
+REASON: If verified, setting kernel entries in [0, KERNEL_MEM_END_L4INDEX) also corrupts entries at or above that boundary, breaking isolation of the non-kernel region.
+===PHI_END===
+
+===PHI_START===
+NAME: set_drops_present_bit
+TARGET_FN: page_map_set_no_requires
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_set_drops_present_bit(
+    old_page_map: PageMap,
+    new_page_map: PageMap,
+    index: usize,
+    value: PageEntry,
+)
+    requires
+        old_page_map.wf(),
+        0 <= index < 512,
+        value.perm.present == true,
+        new_page_map.wf(),
+        forall|i: usize| #![trigger new_page_map.spec_index(i)]
+            0 <= i < 512 && i != index ==> new_page_map.spec_index(i) =~= old_page_map.spec_index(i),
+        new_page_map.spec_index(index) =~= value,
+    ensures
+        new_page_map.spec_index(index).perm.present == false,
+{
+}
+```
+REASON: If verified, writing a present page entry silently clears its present bit, meaning the spec loses permission information and mapped pages would appear unmapped.
+===PHI_END===

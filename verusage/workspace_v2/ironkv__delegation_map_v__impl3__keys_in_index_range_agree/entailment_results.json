@@ -1,0 +1,47 @@
+[
+  {
+    "name": "values_agree_vacuous_empty_range",
+    "type": "boundary",
+    "code": "proof fn phi_1_values_agree_vacuous_empty_range(som: StrictlyOrderedMap<SHTKey>, v: ID, i: usize)\n    requires\n        som.valid(),\n        0 <= i < som.keys@.len(),\n    ensures\n        forall |j: int| #![auto] i <= j <= i ==> som.vals@[j]@ == v@ ==> som.vals@[i]@ == v@,\n{\n}",
+    "reason": "When lo == hi, `values_agree` checks only a single element but returns a universal quantifier result \u2014 callers may assume a range was validated when only one element was checked",
+    "entailed": false,
+    "verus_output": "(som: StrictlyOrderedMap<SHTKey>, v: ID, i: usize)\n    |                                                                         ^^^^^^ not found in this scope\n    |\nhelp: you might be missing a type parameter\n    |\n136 | proof fn phi_1_values_agree_vacuous_empty_range<SHTKey>(som: StrictlyOrderedMap<SHTKey>, v: ID, i: usize)\n    |                                                ++++++++\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0425`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "delegation_map_ghost_unconstrained",
+    "type": "logical",
+    "code": "proof fn phi_2_delegation_map_ghost_unconstrained(dm1: DelegationMap<SHTKey>, dm2: DelegationMap<SHTKey>)\n    requires\n        dm1.lows@ == dm2.lows@,\n    ensures\n        dm1.m@ == dm2.m@ || dm1.m@ != dm2.m@,\n{\n}",
+    "reason": "`DelegationMap`'s ghost field `m` has no invariant linking it to `lows` \u2014 two delegation maps with identical `lows` can have completely different abstract maps, making the ghost field semantically disconnected from the implementation",
+    "entailed": false,
+    "verus_output": "onMap<SHTKey>)\n    |                                                                                                  ^^^^^^ not found in this scope\n    |\nhelp: you might be missing a type parameter\n    |\n136 | proof fn phi_2_delegation_map_ghost_unconstrained<SHTKey>(dm1: DelegationMap<SHTKey>, dm2: DelegationMap<SHTKey>)\n    |                                                  ++++++++\n\nerror: aborting due to 2 previous errors\n\nFor more information about this error, try `rustc --explain E0425`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "sorted_no_transitivity_requirement",
+    "type": "logical",
+    "code": "proof fn phi_3_sorted_no_transitivity_requirement(a: SHTKey, b: SHTKey, c: SHTKey)\n    requires\n        a.cmp_spec(b).lt(),\n        b.cmp_spec(c).lt(),\n    ensures\n        a.cmp_spec(c).lt() || !a.cmp_spec(c).lt(),\n{\n}",
+    "reason": "`cmp_spec` is an uninterpreted spec function with no axioms requiring transitivity, antisymmetry, or totality \u2014 `sorted` relies on `cmp_spec` being a strict total order but this is never enforced, so the sorted invariant may be vacuously satisfiable or inconsistent",
+    "entailed": false,
+    "verus_output": "cope\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__delegation_map_v__impl3__keys_in_index_range_agree/phi_3_sorted_no_transitivity_requirement.rs:136:76\n    |\n136 | proof fn phi_3_sorted_no_transitivity_requirement(a: SHTKey, b: SHTKey, c: SHTKey)\n    |                                                                            ^^^^^^ not found in this scope\n\nerror: aborting due to 3 previous errors\n\nFor more information about this error, try `rustc --explain E0425`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "map_valid_ghost_desync",
+    "type": "logical",
+    "code": "proof fn phi_4_map_valid_ghost_desync(som: StrictlyOrderedMap<SHTKey>, k: SHTKey)\n    requires\n        som.valid(),\n        som@.contains_key(k),\n    ensures\n        som.keys@.contains(k),\n{\n}",
+    "reason": "`map_valid` asserts `self.m@.dom() == self.keys@.to_set()` \u2014 but since `m` is a `Ghost<Map>` and `valid` is a closed spec, the ghost map's domain is trusted to equal the keys set without runtime enforcement, so external_body functions like `values_agree` could silently violate this invariant",
+    "entailed": false,
+    "verus_output": "Key` in this scope\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__delegation_map_v__impl3__keys_in_index_range_agree/phi_4_map_valid_ghost_desync.rs:136:75\n    |\n136 | proof fn phi_4_map_valid_ghost_desync(som: StrictlyOrderedMap<SHTKey>, k: SHTKey)\n    |                                                                           ^^^^^^ not found in this scope\n\nerror: aborting due to 2 previous errors\n\nFor more information about this error, try `rustc --explain E0425`.\n",
+    "timed_out": false
+  },
+  {
+    "name": "values_agree_external_body_unsound",
+    "type": "logical",
+    "code": "proof fn phi_5_values_agree_external_body_unsound(som: StrictlyOrderedMap<SHTKey>, lo: usize, hi: usize, v1: ID, v2: ID)\n    requires\n        som.valid(),\n        0 <= lo <= hi,\n        hi < som.keys@.len(),\n        lo < hi,\n        v1@ != v2@,\n    ensures\n        (forall |i: int| #![auto] lo <= i <= hi ==> som.vals@[i]@ == v1@) ==>\n        (forall |i: int| #![auto] lo <= i <= hi ==> som.vals@[i]@ == v2@) ==>\n        false,\n{\n}",
+    "reason": "`values_agree` is external_body and trusted to correctly check value agreement \u2014 if the implementation returns wrong results, `keys_in_index_range_agree` propagates the error to the abstract map level, but no proof verifies the implementation matches the spec",
+    "entailed": false,
+    "verus_output": " usize, v1: ID, v2: ID)\n    |                                                                           ^^^^^^ not found in this scope\n    |\nhelp: you might be missing a type parameter\n    |\n136 | proof fn phi_5_values_agree_external_body_unsound<SHTKey>(som: StrictlyOrderedMap<SHTKey>, lo: usize, hi: usize, v1: ID, v2: ID)\n    |                                                  ++++++++\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0425`.\n",
+    "timed_out": false
+  }
+]

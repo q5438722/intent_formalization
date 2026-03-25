@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "view_only_contains_valid_walks",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`is_base_pt_walk` uses `self.pt_walk(vaddr).result() matches WalkResult::Valid { vbase, pte }` which is a pattern match that only succeeds when the result is the `Valid` variant. This directly implies `result() is Valid` by Verus match semantics."
+  },
+  {
+    "phi": "lemma_pt_walk_complete_always_true",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "While `pt_walk` does set `complete: true` in all visible branches, the proof relies on the `external_body` `lemma_pt_walk` rather than unfolding the open spec. The `complete` field being always true is provable from the open definition alone, but the fact that this proof goes through the external_body path confirms an unverified trust assumption is being used."
+  },
+  {
+    "phi": "is_base_pt_walk_vaddr_bounded",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`is_base_pt_walk` explicitly includes `vaddr < MAX_BASE` as its first conjunct. The ensures directly follows from unfolding this definition."
+  },
+  {
+    "phi": "walk_vaddr_preserved_in_result",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`pt_walk` constructs `Walk { vaddr, ... }` in every branch of the match, using the input `vaddr` parameter. The Walk struct stores it directly, so `.vaddr == va` by construction."
+  }
+]

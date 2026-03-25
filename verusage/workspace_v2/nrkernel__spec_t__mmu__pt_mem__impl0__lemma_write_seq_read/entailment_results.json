@@ -1,0 +1,47 @@
+[
+  {
+    "name": "write_seq_read_unique_key",
+    "type": "behavioral",
+    "code": "proof fn phi_1_write_seq_read_unique_key(pt: PTMem, addr: usize, v1: usize, v2: usize)\n    requires\n        v1 != v2,\n    ensures\n        pt.write_seq(seq![(addr, v1)]).mem[addr] == v1,\n{\n    pt.lemma_write_seq_read(seq![(addr, v1)], 0);\n}",
+    "reason": "Tests that a single-element write_seq correctly stores the value \u2014 basic sanity check of the lemma",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "write_seq_read_requires_uniqueness",
+    "type": "logical",
+    "code": "proof fn phi_2_write_seq_read_requires_uniqueness(pt: PTMem, addr: usize, v1: usize, v2: usize)\n    requires\n        v1 != v2,\n    ensures\n        pt.write_seq(seq![(addr, v1), (addr, v2)]).mem[addr] == v2,\n{\n}",
+    "reason": "With duplicate keys, `lemma_write_seq_read` can't be applied (uniqueness precondition fails) \u2014 but fold_left still gives last-write-wins, testing that the spec is consistent even without the lemma",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "write_seq_read_does_not_require_domain",
+    "type": "boundary",
+    "code": "proof fn phi_3_write_seq_read_does_not_require_domain(pt: PTMem, addr: usize, value: usize)\n    requires\n        !pt.mem.contains_key(addr),\n    ensures\n        pt.write_seq(seq![(addr, value)]).mem.contains_key(addr),\n        pt.write_seq(seq![(addr, value)]).mem[addr] == value,\n{\n    pt.lemma_write_seq_read(seq![(addr, value)], 0);\n}",
+    "reason": "`lemma_write_seq_read` has no precondition requiring the address to be in the original domain \u2014 writes can target arbitrary addresses outside allocated page table memory",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "write_seq_drop_last_preserves_earlier",
+    "type": "behavioral",
+    "code": "proof fn phi_4_write_seq_drop_last_preserves_earlier(pt: PTMem, a1: usize, v1: usize, a2: usize, v2: usize)\n    requires\n        a1 != a2,\n    ensures\n        pt.write_seq(seq![(a1, v1), (a2, v2)]).mem[a1] == v1,\n{\n    pt.lemma_write_seq_read(seq![(a1, v1), (a2, v2)], 0);\n}",
+    "reason": "Earlier writes to distinct addresses survive later writes \u2014 tests that the inductive case correctly preserves non-overwritten entries",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "write_seq_empty_no_effect",
+    "type": "boundary",
+    "code": "proof fn phi_5_write_seq_empty_no_effect(pt: PTMem)\n    ensures\n        pt.write_seq(Seq::<(usize, usize)>::empty()) === pt,\n{\n}",
+    "reason": "Empty write_seq is identity \u2014 tests fold_left base case",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

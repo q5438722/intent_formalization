@@ -1,128 +1,63 @@
-# Summary: Verus Specification Tests for `remove_helper7`
+# Test Summary: `remove_helper7` Specification Consistency
 
-## File Under Test
-
-`slinkedlist__spec_impl_u__impl2__remove_helper7.rs` — Implements `remove_helper7` for `StaticLinkedList<T, N>`, which removes a middle node (neither head nor tail) from a doubly-linked list backed by a fixed-size array. The removed node is appended to the free list.
-
-**Preconditions**: list is well-formed (`wf()`), value exists, index matches, list has >1 element, free list is non-empty, node is not head or tail.
-
-**Postconditions**: list remains well-formed, length decreases by 1, uniqueness preserved, view equals old view minus removed value, return value equals ghost value, node references preserved for remaining elements.
+**Target**: `slinkedlist__spec_impl_u__impl2__remove_helper7.rs`
+**Function**: `remove_helper7(&mut self, remove_index: SLLIndex, v: Ghost<T>) -> T`
+**Purpose**: Removes a **middle** element (neither head nor tail) from a static linked list.
 
 ---
 
-## Correctness Results
+## Results Overview
 
-All tests **PASS** (verification successful).
+| Test Category         | Total | Failed (as expected) | Passed (spec weakness) |
+|----------------------|-------|---------------------|----------------------|
+| Boundary Tests        | 6     | 6                   | 0                    |
+| Behavioral Mutation   | 5     | 5                   | 0                    |
+| Logical Tests         | 5     | 5                   | 0                    |
+| **Total**             | **16**| **16**              | **0**                |
 
-| Test | Description | Expected | Actual |
-|------|-------------|----------|--------|
-| `test_wf_preserved` | Assert `wf()` after removal | PASS | ✅ PASS |
-| `test_unique_preserved` | Assert `unique()` after removal | PASS | ✅ PASS |
-| `test_ret_equals_v` | Assert `ret == v@` | PASS | ✅ PASS |
-| `test_view_remove` | Assert `sll@ =~= old_view.remove_value(ret)` | PASS | ✅ PASS |
-| `test_len_decreases` | Assert length decreases by exactly 1 | PASS | ✅ PASS |
-| `test_node_refs_preserved` | Assert node refs unchanged for remaining elements | PASS | ✅ PASS |
-| `test_all_postconditions` | Assert all postconditions together | PASS | ✅ PASS |
-| `test_min_n` | Same test with N=3 (minimum valid) | PASS | ✅ PASS |
-| `test_large_n` | Same test with N=1000 | PASS | ✅ PASS |
-| `test_generic_type` | Same test with `i32` instead of `u64` | PASS | ✅ PASS |
-
-**Verus output**: `11 verified, 0 errors`
+**Conclusion**: All 16 adversarial tests were correctly rejected by the specification. No specification weaknesses were detected.
 
 ---
 
-## Completeness Results
+## Boundary Tests (6/6 failed ✅)
 
-### Round 1: Precondition Violations
+| Test | Violated Precondition | Result |
+|------|----------------------|--------|
+| `test_boundary_missing_wf` | `wf()` not provided | `precondition not satisfied` ✅ |
+| `test_boundary_value_not_contained` | `!self@.contains(v@)` | `precondition not satisfied` ✅ |
+| `test_boundary_single_element` | `value_list_len == 1` | `precondition not satisfied` ✅ |
+| `test_boundary_empty_free_list` | `free_list_len == 0` | `precondition not satisfied` ✅ |
+| `test_boundary_removing_tail` | `value_list_tail == remove_index` | `precondition not satisfied` ✅ |
+| `test_boundary_removing_head` | `value_list_head == remove_index` | `precondition not satisfied` ✅ |
 
-All tests **FAIL** as expected (verification errors).
+## Behavioral Mutation Tests (5/5 failed ✅)
 
-| Test | What it tests | Expected | Actual |
-|------|---------------|----------|--------|
-| `test_missing_wf` | Omit `wf()` precondition | FAIL | ✅ FAIL |
-| `test_missing_contains` | Omit `contains(v@)` precondition | FAIL | ✅ FAIL |
-| `test_missing_index_match` | Omit `get_node_ref(v@) == remove_index` | FAIL | ✅ FAIL |
-| `test_value_list_len_eq_1` | Set `value_list_len == 1` (violates `!= 1`) | FAIL | ✅ FAIL |
-| `test_free_list_len_eq_0` | Set `free_list_len == 0` (violates `!= 0`) | FAIL | ✅ FAIL |
-| `test_is_tail` | Set `value_list_tail == remove_index` | FAIL | ✅ FAIL |
-| `test_is_head` | Set `value_list_head == remove_index` | FAIL | ✅ FAIL |
+| Test | Mutated Postcondition | Result |
+|------|----------------------|--------|
+| `test_mutation_length_unchanged` | `len() == old_len` (should be `-1`) | `postcondition not satisfied` ✅ |
+| `test_mutation_length_decreases_by_two` | `len() == old_len - 2` (should be `-1`) | `postcondition not satisfied` ✅ |
+| `test_mutation_wrong_return_value` | `ret != v@` (should be `==`) | `postcondition not satisfied` ✅ |
+| `test_mutation_seq_unchanged` | `self@ =~= old@` (should remove value) | `postcondition not satisfied` ✅ |
+| `test_mutation_element_still_contained` | `self@.contains(ret)` (removed value should be absent) | `assertion failed` ✅ |
 
-**Verus output**: `1 verified, 7 errors`
+## Logical Tests (5/5 failed ✅)
 
-### Round 2: Overly Strong Postconditions
-
-All tests **FAIL** as expected.
-
-| Test | What it tests | Expected | Actual |
-|------|---------------|----------|--------|
-| `test_len_decreases_by_2` | Assert length decreases by 2 | FAIL | ✅ FAIL |
-| `test_len_unchanged` | Assert length stays the same | FAIL | ✅ FAIL |
-| `test_len_zero` | Assert length becomes 0 | FAIL | ✅ FAIL |
-| `test_view_unchanged` | Assert view is unchanged | FAIL | ✅ FAIL |
-| `test_view_push_instead_of_remove` | Assert view = old.push(ret) | FAIL | ✅ FAIL |
-| `test_len_increases` | Assert length increases by 1 | FAIL | ✅ FAIL |
-
-**Verus output**: `1 verified, 6 errors`
-
-### Round 3: Negated/Contradicted Postconditions
-
-All tests **FAIL** as expected.
-
-| Test | What it tests | Expected | Actual |
-|------|---------------|----------|--------|
-| `test_not_wf` | Assert `!wf()` after removal | FAIL | ✅ FAIL |
-| `test_not_unique` | Assert `!unique()` after removal | FAIL | ✅ FAIL |
-| `test_ret_not_v` | Assert `ret != v@` | FAIL | ✅ FAIL |
-| `test_view_not_remove` | Assert view ≠ old.remove_value(ret) | FAIL | ✅ FAIL |
-| `test_removed_still_contains` | Assert removed value still in list | FAIL | ✅ FAIL |
-| `test_len_increased` | Assert length increased | FAIL | ✅ FAIL |
-
-**Verus output**: `1 verified, 6 errors`
-
-### Round 4: Wrong Specific Values
-
-All tests **FAIL** as expected.
-
-| Test | What it tests | Expected | Actual |
-|------|---------------|----------|--------|
-| `test_ret_always_zero` | Assert ret == 0 (with v@ != 0) | FAIL | ✅ FAIL |
-| `test_ret_always_42` | Assert ret == 42 (with v@ != 42) | FAIL | ✅ FAIL |
-| `test_len_always_5` | Assert len always 5 after removal | FAIL | ✅ FAIL |
-| `test_view_len_zero` | Assert view length is 0 | FAIL | ✅ FAIL |
-| `test_removed_node_ref_neg1` | Assert node ref for removed value is -1 | FAIL | ✅ FAIL |
-| `test_remove_index_always_zero` | Assert remove_index == 0 (with != 0) | FAIL | ✅ FAIL |
-
-**Verus output**: `1 verified, 6 errors`
-
-### Round 5: Cross-Function Misuse & Edge Cases
-
-All tests **FAIL** as expected.
-
-| Test | What it tests | Expected | Actual |
-|------|---------------|----------|--------|
-| `test_double_remove` | Call remove_helper7 twice with same value | FAIL | ✅ FAIL |
-| `test_head_unchanged_after_remove` | Assert free_list_len unchanged | FAIL | ✅ FAIL |
-| `test_list_empty_after_remove` | Assert list is empty after removal | FAIL | ✅ FAIL |
-| `test_value_list_len_unchanged` | Assert value_list_len unchanged | FAIL | ✅ FAIL |
-| `test_false_after_remove` | Assert false after valid removal | FAIL | ✅ FAIL |
-| `test_wrong_len_relationship` | Assert value_list_len increased | FAIL | ✅ FAIL |
-
-**Verus output**: `1 verified, 6 errors`
+| Test | Unentailed Property | Result |
+|------|---------------------|--------|
+| `test_logical_remove_index_is_zero` | `remove_index == 0` (index is arbitrary) | `assertion failed` ✅ |
+| `test_logical_free_list_len_unchanged` | `free_list_len` unchanged (should increase) | `assertion failed` ✅ |
+| `test_logical_removed_leq_new_first` | `ret <= self@[0]` (no ordering invariant) | `assertion failed` ✅ |
+| `test_logical_head_unchanged` | `value_list_head` unchanged (not in postconditions) | `assertion failed` ✅ |
+| `test_logical_stronger_length_bound` | `len() >= 3` (old could be 3 → new is 2) | `assertion failed` ✅ |
 
 ---
 
-## Overall Assessment
+## Specification Strength Assessment
 
-### Correctness: ✅ PASS
-All 10 correctness tests verify successfully. The postconditions of `remove_helper7` are correct — the function body satisfies the specification for all valid inputs.
+The `remove_helper7` specification is **well-constrained** for its intended use case:
 
-### Completeness: ✅ PASS
-All 31 completeness tests fail as expected. The specification is tight enough to reject:
-- Missing preconditions (7/7 detected)
-- Overly strong postconditions (6/6 detected)
-- Negated postconditions (6/6 detected)
-- Wrong specific values (6/6 detected)
-- Cross-function misuse and edge cases (6/6 detected)
+1. **Preconditions** correctly guard all edge cases: non-well-formed lists, missing values, single-element lists, empty free lists, head/tail removal attempts.
+2. **Postconditions** precisely capture the behavioral contract: length decreases by exactly 1, return value matches input, spec sequence reflects removal, and node references are preserved.
+3. **No unintended entailments** were detected: the spec does not leak internal structure details (free list size, head pointer changes, ordering) through its public contract.
 
-### Spec Gaps Found: None
-No spec gaps were identified. The `remove_helper7` specification is both correct and complete for the tested properties.
+**Notable insight**: The preconditions `value_list_head != remove_index ∧ value_list_tail != remove_index` implicitly guarantee the list has ≥3 elements (since a 2-element list has every element as either head or tail). This means `len() >= 2` after removal is actually entailed, but `len() >= 3` is correctly rejected.

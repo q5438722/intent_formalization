@@ -1,0 +1,85 @@
+===PHI_START===
+NAME: always_unfold_extensional_gap
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_always_unfold_extensional_gap(ex: Execution<int>, p: TempPred<int>, i: nat)
+    requires
+        always(p).satisfied_by(ex),
+    ensures
+        p.satisfied_by(ex.suffix(i)),
+{
+    always_unfold::<int>(ex, p);
+}
+```
+REASON: always_unfold is external_body bridging an intensional closure gap — the forall inside always's TempPred::new closure vs the bare forall in the ensures are intensionally distinct, and this axiom papers over that without proof
+===PHI_END===
+
+===PHI_START===
+NAME: always_and_reverse_not_proven
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_always_and_reverse_not_proven(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>)
+    requires
+        always(p).satisfied_by(ex),
+        always(q).satisfied_by(ex),
+    ensures
+        always(p.and(q)).satisfied_by(ex),
+{
+    always_unfold::<int>(ex, p);
+    always_unfold::<int>(ex, q);
+}
+```
+REASON: the converse of always_distributed_by_and (always(p) ∧ always(q) → always(p∧q)) relies on always_unfold to extract the quantifiers, then re-wrapping into a new closure — if this verifies, the external_body axiom is strong enough to close intensional gaps in both directions
+===PHI_END===
+
+===PHI_START===
+NAME: always_suffix_shift
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_always_suffix_shift(ex: Execution<int>, p: TempPred<int>, k: nat)
+    requires
+        always(p).satisfied_by(ex),
+    ensures
+        always(p).satisfied_by(ex.suffix(k)),
+{
+    always_unfold::<int>(ex, p);
+}
+```
+REASON: always(p) on ex should imply always(p) on any suffix, but proving this requires re-packing quantified suffix facts into the always closure on a shifted execution — if always_unfold is powerful enough to close this, it may be overly strong
+===PHI_END===
+
+===PHI_START===
+NAME: always_vacuous_on_false
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_always_vacuous_on_false()
+    ensures
+        valid(always(TempPred::<int>::new(|ex: Execution<int>| false)).implies(
+            TempPred::<int>::new(|ex: Execution<int>| false)
+        )),
+{
+}
+```
+REASON: always(false) trivially implies anything including false itself — but if valid(always(false).implies(q)) holds for arbitrary q via explosion, the spec framework could silently derive any property from an inconsistent always assumption
+===PHI_END===
+
+===PHI_START===
+NAME: suffix_suffix_composition
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_suffix_suffix_composition(ex: Execution<int>, p: TempPred<int>, i: nat, j: nat)
+    requires
+        always(p).satisfied_by(ex),
+    ensures
+        p.satisfied_by(ex.suffix(i).suffix(j)),
+{
+    always_unfold::<int>(ex, p);
+}
+```
+REASON: ex.suffix(i).suffix(j) creates a doubly-nested closure (|k| (|m| nat_to_state(m+i))(k+j)) that should equal ex.suffix(i+j) but is intensionally distinct — if always_unfold is strong enough to prove p holds on this double-suffix without an explicit composition lemma, the axiom may be unsoundly collapsing closure identities
+===PHI_END===

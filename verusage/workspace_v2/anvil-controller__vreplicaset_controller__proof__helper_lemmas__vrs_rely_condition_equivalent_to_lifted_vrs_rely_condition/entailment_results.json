@@ -1,0 +1,47 @@
+[
+  {
+    "name": "update_key_obj_kind_mismatch",
+    "type": "behavioral",
+    "code": "proof fn phi_1_update_key_obj_kind_mismatch(req: UpdateRequest, req2: UpdateStatusRequest)\n    requires\n        req.obj.kind != req2.obj.kind,\n        req.namespace == req2.namespace,\n        req.name == req2.name,\n    ensures\n        req.key() != req2.key(),\n{\n}",
+    "reason": "both key() methods pull kind from self.obj.kind \u2014 an update and update-status for the same name/namespace but different obj kinds produce different keys, meaning a status update could target a different key than the corresponding object update",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "rely_create_vacuous_for_non_pod",
+    "type": "boundary",
+    "code": "proof fn phi_2_rely_create_vacuous_for_non_pod(req: CreateRequest, s: ClusterState)\n    requires\n        req.obj.kind != Kind::PodKind,\n    ensures\n        vrs_rely_create_req(req)(s),\n{\n}",
+    "reason": "vrs_rely_create_req guards everything behind req.obj.kind == PodKind \u2014 for non-Pod creates the rely is vacuously true, meaning other controllers can create arbitrary non-Pod resources with VRS owner references unchecked",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "rely_update_allows_unowned_pod_update",
+    "type": "behavioral",
+    "code": "proof fn phi_3_rely_update_allows_unowned_pod_update(req: UpdateRequest, s: ClusterState)\n    requires\n        req.obj.kind == Kind::PodKind,\n        req.obj.metadata.resource_version is Some,\n        !s.resources().contains_key(req.key()),\n    ensures\n        vrs_rely_update_req(req)(s),\n{\n}",
+    "reason": "the update rely checks properties of the etcd object at req.key() but guards them behind s.resources().contains_key \u2014 if the key doesn't exist in etcd, the entire anti-interference check is bypassed, allowing arbitrary pod updates to pass the rely",
+    "entailed": false,
+    "verus_output": "_vrs_rely_condition_equivalent_to_lifted_vrs_rely_condition/phi_3_rely_update_allows_unowned_pod_update.rs:904:9\n    |\n898 | proof fn phi_3_rely_update_allows_unowned_pod_update(req: UpdateRequest, s: ClusterState)\n    |       ----------------------------------------------------------------------------------- at the end of the function body\n...\n904 |         vrs_rely_update_req(req)(s),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "controller_owner_ref_ignores_uid_in_rely",
+    "type": "logical",
+    "code": "proof fn phi_4_controller_owner_ref_ignores_uid_in_rely(req: CreateRequest, vrs1: VReplicaSetView, vrs2: VReplicaSetView, s: ClusterState)\n    requires\n        vrs1.metadata.name == vrs2.metadata.name,\n        vrs1.metadata.uid != vrs2.metadata.uid,\n        vrs_rely_create_req(req)(s),\n        req.obj.kind == Kind::PodKind,\n        req.obj.metadata.owner_references is Some,\n        req.obj.metadata.owner_references->0.contains(vrs1.controller_owner_ref()),\n    ensures\n        !req.obj.metadata.owner_references->0.contains(vrs2.controller_owner_ref()),\n{\n}",
+    "reason": "controller_owner_ref includes uid so two VRSs with the same name but different uids produce different owner refs \u2014 the rely blocks one but not the other, yet the rely's existential quantifier over VReplicaSetView should arguably block both since they share the same name",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "is_controller_id_ignores_object_ref",
+    "type": "logical",
+    "code": "proof fn phi_5_is_controller_id_ignores_object_ref(id: int, ref1: ObjectRef, ref2: ObjectRef)\n    requires\n        ref1 != ref2,\n    ensures\n        HostId::Controller(id, ref1).is_controller_id(id) == HostId::Controller(id, ref2).is_controller_id(id),\n{\n}",
+    "reason": "is_controller_id only checks the integer id and ignores the ObjectRef \u2014 two controller hosts with the same id but different ObjectRefs are considered the same controller, which could conflate messages from different reconcile loops",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

@@ -1,0 +1,119 @@
+===PHI_START===
+NAME: all_addrs_writable
+TARGET_FN: new_with_condition
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_all_addrs_writable<Perm: CheckPermission<Seq<u8>>>(
+    region_view: PersistentMemoryRegionView,
+    perm: &Perm,
+    start: u64,
+    len: nat,
+    is_writable_absolute_addr_fn: spec_fn(int) -> bool,
+    condition: spec_fn(Seq<u8>) -> bool,
+)
+    requires
+        condition_sufficient_to_create_wrpm_subregion(region_view, perm, start, len, is_writable_absolute_addr_fn, condition),
+    ensures
+        forall |addr: int| 0 <= addr < region_view.len() ==> #[trigger] is_writable_absolute_addr_fn(addr),
+{
+}
+```
+REASON: If entailed, the writable-address predicate is vacuous and every address becomes writable, defeating the write-restriction mechanism entirely.
+===PHI_END===
+
+===PHI_START===
+NAME: len_forced_zero
+TARGET_FN: new_with_condition
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_len_forced_zero<Perm: CheckPermission<Seq<u8>>>(
+    region_view: PersistentMemoryRegionView,
+    perm: &Perm,
+    start: u64,
+    len: nat,
+    is_writable_absolute_addr_fn: spec_fn(int) -> bool,
+    condition: spec_fn(Seq<u8>) -> bool,
+)
+    requires
+        condition_sufficient_to_create_wrpm_subregion(region_view, perm, start, len, is_writable_absolute_addr_fn, condition),
+    ensures
+        len == 0,
+{
+}
+```
+REASON: If entailed, only zero-length subregions can ever be created, rendering the subregion abstraction useless.
+===PHI_END===
+
+===PHI_START===
+NAME: subregion_spans_full_region
+TARGET_FN: new_with_condition
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_subregion_spans_full_region<Perm: CheckPermission<Seq<u8>>>(
+    region_view: PersistentMemoryRegionView,
+    perm: &Perm,
+    start: u64,
+    len: nat,
+    is_writable_absolute_addr_fn: spec_fn(int) -> bool,
+    condition: spec_fn(Seq<u8>) -> bool,
+)
+    requires
+        condition_sufficient_to_create_wrpm_subregion(region_view, perm, start, len, is_writable_absolute_addr_fn, condition),
+    ensures
+        len == region_view.len() && start == 0u64,
+{
+}
+```
+REASON: If entailed, subregions must always cover the entire memory region, preventing any partial-region isolation.
+===PHI_END===
+
+===PHI_START===
+NAME: perm_allows_all_states
+TARGET_FN: new_with_condition
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_perm_allows_all_states<Perm: CheckPermission<Seq<u8>>>(
+    region_view: PersistentMemoryRegionView,
+    perm: &Perm,
+    start: u64,
+    len: nat,
+    is_writable_absolute_addr_fn: spec_fn(int) -> bool,
+    condition: spec_fn(Seq<u8>) -> bool,
+)
+    requires
+        condition_sufficient_to_create_wrpm_subregion(region_view, perm, start, len, is_writable_absolute_addr_fn, condition),
+    ensures
+        forall |s: Seq<u8>| s.len() == region_view.len() ==> #[trigger] perm.check_permission(s),
+{
+}
+```
+REASON: If entailed, the permission check is vacuous—every possible memory state is permitted—eliminating all crash-safety guarantees.
+===PHI_END===
+
+===PHI_START===
+NAME: no_outstanding_writes
+TARGET_FN: new_with_condition
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_no_outstanding_writes<Perm: CheckPermission<Seq<u8>>>(
+    region_view: PersistentMemoryRegionView,
+    perm: &Perm,
+    start: u64,
+    len: nat,
+    is_writable_absolute_addr_fn: spec_fn(int) -> bool,
+    condition: spec_fn(Seq<u8>) -> bool,
+)
+    requires
+        condition_sufficient_to_create_wrpm_subregion(region_view, perm, start, len, is_writable_absolute_addr_fn, condition),
+    ensures
+        forall |i: int| 0 <= i < region_view.len() ==> (#[trigger] region_view.state[i]).outstanding_write is None,
+{
+}
+```
+REASON: If entailed, the spec forbids any pending writes in the region, making crash behavior trivially deterministic and the persistence model overly restrictive.
+===PHI_END===

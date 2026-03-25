@@ -1,0 +1,47 @@
+[
+  {
+    "name": "tla_exists_proved_by_witness_closure_bridge",
+    "type": "logical",
+    "code": "proof fn phi_1_tla_exists_proved_by_witness_closure_bridge(ex: Execution<int>, a_to_p: spec_fn(int) -> TempPred<int>, witness_a: int)\n    requires\n        a_to_p(witness_a).satisfied_by(ex),\n    ensures\n        tla_exists(a_to_p).satisfied_by(ex),\n{\n    tla_exists_proved_by_witness::<int, int>(ex, a_to_p, witness_a);\n}",
+    "reason": "tla_exists_proved_by_witness is external_body bridging a_to_p(witness).satisfied_by(ex) to tla_exists's TempPred::new closure-wrapped existential \u2014 resolves closure identity gap without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "temp_pred_equality_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_2_temp_pred_equality_intensional_bridge(p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.entails(q),\n        q.entails(p),\n    ensures\n        p == q,\n{\n    temp_pred_equality::<int>(p, q);\n}",
+    "reason": "temp_pred_equality is external_body forcing intensional equality from mutual entailment \u2014 structurally distinct closures collapsed to equal without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "mutual_entailment_derives_false_if_distinct",
+    "type": "logical",
+    "code": "proof fn phi_3_mutual_entailment_derives_false_if_distinct(p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.entails(q),\n        q.entails(p),\n        p !== q,\n    ensures\n        false,\n{\n    temp_pred_equality::<int>(p, q);\n}",
+    "reason": "temp_pred_equality forces p == q from mutual entailment \u2014 if two preds are intensionally distinct but semantically equivalent this derives false",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "tla_exists_or_equality_bridge",
+    "type": "logical",
+    "code": "proof fn phi_4_tla_exists_or_equality_bridge(a_to_p: spec_fn(int) -> TempPred<int>, q: TempPred<int>)\n    ensures\n        tla_exists(|a: int| a_to_p(a).or(q)) == tla_exists(a_to_p).or(q),\n{\n    tla_exists_or_equality::<int, int>(a_to_p, q);\n}",
+    "reason": "tla_exists_or_equality forces intensional equality between tla_exists(|a| p(a).or(q)) and tla_exists(p).or(q) \u2014 structurally distinct nested closures collapsed via both external_body axioms",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "arbitrary_witness_in_else_branch",
+    "type": "boundary",
+    "code": "proof fn phi_5_arbitrary_witness_in_else_branch(ex: Execution<int>, a_to_p: spec_fn(int) -> TempPred<int>, q: TempPred<int>)\n    requires\n        q.satisfied_by(ex),\n        !tla_exists(a_to_p).satisfied_by(ex),\n    ensures\n        tla_exists(|a: int| a_to_p(a).or(q)).satisfied_by(ex),\n{\n    tla_exists_or_equality::<int, int>(a_to_p, q);\n}",
+    "reason": "when q holds but no witness for a_to_p exists, tla_exists_or_equality still guarantees tla_exists(|a| p(a).or(q)) \u2014 the proof uses arbitrary() as witness, relying on the or-branch being true regardless of which a is chosen, but the existential introduction through the closure bridge is unverified",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

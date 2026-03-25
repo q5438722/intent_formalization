@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: view_equal_symmetric_usize_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `usize::lemma_view_equal_symmetric` is `external_body` when `self@ === other@` is trivially symmetric by definition of `===`. This is an unnecessary trusted assumption.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: view_equal_symmetric_vec_u8_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: Same issue — `Vec<u8>::lemma_view_equal_symmetric` is `external_body` when `self@ === other@` is trivially symmetric. Unnecessarily trusted.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: view_equal_implies_equal_usize
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: For primitive types like usize, `view_equal` collapsing to `==` is expected and correct. The `view_equal` abstraction exists for compound types (like `Vec<T>`) where structural equality may differ from view equality; primitives are the base case.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: trait_symmetry_no_preconditions
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is just the contrapositive of φ1 (symmetry). The trait-level lemma having no preconditions is correct — symmetry of an equivalence relation should hold unconditionally. The real concern (external_body trust) is already captured by φ1/φ2.
+===VERDICT_END===
+
+===SUMMARY===
+Two true positives identify the same pattern: `usize` and `Vec<u8>` implementations of `lemma_view_equal_symmetric` are unnecessarily `external_body` when symmetry of `===` is trivially provable by SMT. The remaining two are false positives — `view_equal` collapsing to equality for primitives is the expected base case, and the contrapositive of symmetry holding unconditionally is correct behavior, not a separate issue from the external_body concern.
+===END_SUMMARY===

@@ -1,0 +1,73 @@
+===PHI_START===
+NAME: set_fold_empty_returns_zero
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_set_fold_empty_returns_zero<B>(zero: B, f: spec_fn(B, int) -> B)
+    ensures
+        set_fold(Set::<int>::empty(), zero, f) == zero,
+{
+}
+```
+REASON: If folding an empty set didn't return the zero element, the base case would inject phantom values
+===PHI_END===
+
+===PHI_START===
+NAME: set_fold_infinite_returns_zero
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_set_fold_infinite_returns_zero(s: Set<int>, zero: int, f: spec_fn(int, int) -> int)
+    requires
+        !s.finite(),
+    ensures
+        set_fold(s, zero, f) == zero,
+{
+}
+```
+REASON: Folding an infinite set silently returns `zero` instead of being undefined — callers may not realize they get the identity element for non-finite sets
+===PHI_END===
+
+===PHI_START===
+NAME: map_fold_empty_is_empty
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_map_fold_empty_is_empty<B>(f: spec_fn(int) -> B)
+    ensures
+        map_fold(Set::<int>::empty(), f) == Set::<B>::empty(),
+{
+}
+```
+REASON: Mapping over an empty set should produce empty — if it didn't, map_fold would fabricate elements from nothing
+===PHI_END===
+
+===PHI_START===
+NAME: set_fold_singleton_applies_f
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_set_fold_singleton_applies_f(x: int, zero: int, f: spec_fn(int, int) -> int)
+    ensures
+        set_fold(set![x], zero, f) == f(zero, x),
+{
+    assert(set![x].remove(x) =~= Set::<int>::empty());
+}
+```
+REASON: Folding a singleton should apply f exactly once to (zero, element) — any other result means set_fold mishandles the base-to-single-element transition
+===PHI_END===
+
+===PHI_START===
+NAME: set_fold_order_dependent_non_commutative
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_set_fold_order_dependent_non_commutative()
+    ensures
+        set_fold(set![1int, 2int], 0int, |acc: int, a: int| acc * 10 + a) ==
+        set_fold(set![1int, 2int], 0int, |acc: int, a: int| acc * 10 + a),
+{
+}
+```
+REASON: set_fold uses `s.choose()` which is deterministic but unspecified — for non-commutative f the result is well-defined but unpredictable, yet the spec provides no commutativity requirement
+===PHI_END===

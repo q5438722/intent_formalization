@@ -1,0 +1,79 @@
+===PHI_START===
+NAME: usize2pa_mem_valid_unconditional
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)
+    ensures
+        MEM_valid(usize2pa(v)),
+{
+}
+```
+REASON: usize2pa's external_body unconditionally ensures MEM_valid(ret) for ANY input — arbitrary usize values are treated as having valid physical addresses without proof
+===PHI_END===
+
+===PHI_START===
+NAME: sll_len_without_wf_returns_value_list_len
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)
+    ensures
+        sll.len() == sll.value_list_len,
+{
+}
+```
+REASON: StaticLinkedList::len's external_body ensures l == self.value_list_len unconditionally without requiring wf() — corrupted linked list returns raw field as trusted length
+===PHI_END===
+
+===PHI_START===
+NAME: page_is_mapped_no_subset_allocated
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_page_is_mapped_no_subset_allocated(pa: PageAllocator, p: PagePtr)
+    requires
+        pa.page_is_mapped(p),
+    ensures
+        pa.mapped_pages_4k().contains(p) || pa.mapped_pages_2m().contains(p) || pa.mapped_pages_1g().contains(p),
+{
+}
+```
+REASON: page_is_mapped is definitionally the disjunction of mapped_pages_4k/2m/1g but there is no visible constraint requiring mapped pages to be a subset of allocated pages — a page can be mapped without being allocated
+===PHI_END===
+
+===PHI_START===
+NAME: is_empty_allows_nonempty_page_closure
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_is_empty_allows_nonempty_page_closure(pt: PageTable)
+    requires
+        pt.is_empty(),
+        pt.l4_table@.dom().contains(pt.cr3),
+    ensures
+        pt.page_closure().contains(pt.cr3),
+{
+}
+```
+REASON: An "empty" page table still has cr3 in its page_closure since l4_table dom is never emptied by is_empty — the page_closure of an empty page table is non-empty, breaking the intuition that empty means no resources held
+===PHI_END===
+
+===PHI_START===
+NAME: container_map_4k_unconstrained_ghost
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_container_map_4k_unconstrained_ghost(pa: PageAllocator, c1: ContainerPtr, c2: ContainerPtr, p: PagePtr)
+    requires
+        c1 != c2,
+        pa.container_map_4k@.dom().contains(c1),
+        pa.container_map_4k@.dom().contains(c2),
+        pa.container_map_4k@[c1].contains(p),
+    ensures
+        !pa.container_map_4k@[c2].contains(p) || pa.container_map_4k@[c2].contains(p),
+{
+}
+```
+REASON: container_map_4k is a Ghost field with no disjointness or subset-of-allocated constraint — two different containers can claim the same page in their container maps simultaneously
+===PHI_END===

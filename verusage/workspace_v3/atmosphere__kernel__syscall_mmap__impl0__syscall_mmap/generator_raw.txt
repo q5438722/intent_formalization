@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: success_is_error
+TARGET_FN: is_error
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_success_is_error()
+    ensures
+        RetValueType::Success.spec_is_error() == true,
+{
+}
+```
+REASON: Success return value would be incorrectly classified as an error, causing all callers to treat successful operations as failures
+===PHI_END===
+
+===PHI_START===
+NAME: quota_error_missed
+TARGET_FN: is_error
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_quota_error_missed()
+    ensures
+        RetValueType::ErrorNoQuota.spec_is_error() == false,
+{
+}
+```
+REASON: Quota exhaustion errors would go undetected, allowing callers to proceed as if allocation succeeded
+===PHI_END===
+
+===PHI_START===
+NAME: mmap_always_returns_quota_error
+TARGET_FN: syscall_mmap
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_mmap_always_returns_quota_error(os: OS, os_new: OS, thread_ptr: ThreadPtr, va_range: VaRange4K, ret: SyscallReturnStruct)
+    requires
+        os.total_wf(),
+        os.thread_dom().contains(thread_ptr),
+        va_range.wf(),
+        va_range.len * 4 < usize::MAX,
+        syscall_mmap_spec(os, os_new, thread_ptr, va_range, ret),
+    ensures
+        ret =~= SyscallReturnStruct::NoSwitchNew(RetValueType::ErrorNoQuota),
+{
+}
+```
+REASON: mmap would unconditionally fail with ErrorNoQuota regardless of actual quota availability, making memory mapping impossible
+===PHI_END===
+
+===PHI_START===
+NAME: else_not_error
+TARGET_FN: is_error
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_else_not_error()
+    ensures
+        RetValueType::Else.spec_is_error() == false,
+{
+}
+```
+REASON: The catch-all error variant would be silently treated as success, hiding unexpected failure modes from callers
+===PHI_END===
+
+===PHI_START===
+NAME: mmap_breaks_invariant
+TARGET_FN: syscall_mmap
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_mmap_breaks_invariant(os: OS, os_new: OS, thread_ptr: ThreadPtr, va_range: VaRange4K, ret: SyscallReturnStruct)
+    requires
+        os.total_wf(),
+        os.thread_dom().contains(thread_ptr),
+        va_range.wf(),
+        va_range.len * 4 < usize::MAX,
+        syscall_mmap_spec(os, os_new, thread_ptr, va_range, ret),
+    ensures
+        !os_new.total_wf(),
+{
+}
+```
+REASON: mmap would destroy the system's global well-formedness invariant, leaving the OS in an inconsistent state after any mapping call
+===PHI_END===

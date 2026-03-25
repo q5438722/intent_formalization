@@ -1,0 +1,47 @@
+[
+  {
+    "name": "sll_len_without_wf_returns_value_list_len",
+    "type": "logical",
+    "code": "proof fn phi_1_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    ensures\n        sll.len() == sll.value_list_len,\n{\n}",
+    "reason": "StaticLinkedList::len's external_body unconditionally ensures l == self.value_list_len without requiring wf() \u2014 the raw field is exposed even for malformed lists",
+    "entailed": false,
+    "verus_output": "_returns_value_list_len.rs:1243:9\n     |\n1241 | proof fn phi_1_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n     |       -------------------------------------------------------------------------------------------------- at the end of the function body\n1242 |     ensures\n1243 |         sll.len() == sll.value_list_len,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 18 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "get_thread_leaks_container_scheduler_wf",
+    "type": "logical",
+    "code": "proof fn phi_2_get_thread_leaks_container_scheduler_wf(pm: ProcessManager, t_ptr: ThreadPtr)\n    requires\n        pm.wf(),\n        pm.thread_dom().contains(t_ptr),\n    ensures\n        pm.get_container(pm.get_thread(t_ptr).owning_container).scheduler.wf(),\n        pm.get_container(pm.get_thread(t_ptr).owning_container).owned_procs.wf(),\n        pm.get_container(pm.get_thread(t_ptr).owning_container).children.wf(),\n{\n}",
+    "reason": "get_thread's external_body ensures wf() of three separate container SLL fields independently \u2014 these should follow from container_fields_wf but are redundantly trusted via external_body, creating a second source of truth",
+    "entailed": false,
+    "verus_output": "  |\n1241 | proof fn phi_2_get_thread_leaks_container_scheduler_wf(pm: ProcessManager, t_ptr: ThreadPtr)\n     |       -------------------------------------------------------------------------------------- at the end of the function body\n...\n1248 |         pm.get_container(pm.get_thread(t_ptr).owning_container).children.wf(),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 18 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "get_proc_owned_threads_wf_without_full_wf",
+    "type": "logical",
+    "code": "proof fn phi_3_get_proc_owned_threads_wf_without_full_wf(pm: ProcessManager, proc_ptr: ProcPtr)\n    requires\n        pm.proc_perms_wf(),\n        pm.process_fields_wf(),\n        pm.proc_dom().contains(proc_ptr),\n    ensures\n        pm.get_proc(proc_ptr).owned_threads.wf(),\n{\n}",
+    "reason": "get_proc's external_body ensures owned_threads.wf() unconditionally (not guarded by self.wf()) \u2014 this trusted guarantee bypasses the process_fields_wf invariant and could mask inconsistencies",
+    "entailed": true,
+    "verus_output": "_Some`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__spec_proof__impl2__proc_tree_root_inv/phi_3_get_proc_owned_threads_wf_without_full_wf.rs:641:58\n    |\n641 |             && self.process_perms@[p_ptr_j].value().ioid.is_Some()\n    |                                                          ^^^^^^^\n\nwarning: 18 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "container_cpu_biconditional_ownership",
+    "type": "behavioral",
+    "code": "proof fn phi_4_container_cpu_biconditional_ownership(pm: ProcessManager, c_ptr: ContainerPtr, cpu_i: CpuId)\n    requires\n        pm.wf(),\n        pm.container_dom().contains(c_ptr),\n        pm.get_container(c_ptr).owned_cpus@.contains(cpu_i),\n    ensures\n        0 <= cpu_i < NUM_CPUS,\n        pm.cpu_list@[cpu_i as int].owning_container == c_ptr,\n{\n}",
+    "reason": "container_cpu_wf establishes a biconditional between cpu_list[i].owning_container and container.owned_cpus \u2014 but owned_cpus is an ArraySet with closed wf(), so the constraint chain depends entirely on trusted external_body specs",
+    "entailed": true,
+    "verus_output": "::is_Some`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__spec_proof__impl2__proc_tree_root_inv/phi_4_container_cpu_biconditional_ownership.rs:641:58\n    |\n641 |             && self.process_perms@[p_ptr_j].value().ioid.is_Some()\n    |                                                          ^^^^^^^\n\nwarning: 18 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "process_trees_empty_procs_when_no_root",
+    "type": "behavioral",
+    "code": "proof fn phi_5_process_trees_empty_procs_when_no_root(pm: ProcessManager, c_ptr: ContainerPtr)\n    requires\n        pm.wf(),\n        pm.container_dom().contains(c_ptr),\n        pm.get_container(c_ptr).root_process.is_None(),\n    ensures\n        pm.get_container(c_ptr).owned_procs@.len() == 0,\n{\n}",
+    "reason": "process_trees_wf forces owned_procs to be empty when root_process is None, but owned_threads and owned_endpoints are completely unconstrained \u2014 a container with no processes can still claim to own threads and endpoints",
+    "entailed": true,
+    "verus_output": "tionAdditionalFns::is_None`: is_Variant is deprecated - use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n    --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__spec_proof__impl2__proc_tree_root_inv/phi_5_process_trees_empty_procs_when_no_root.rs:1245:46\n     |\n1245 |         pm.get_container(c_ptr).root_process.is_None(),\n     |                                              ^^^^^^^\n\nwarning: 19 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

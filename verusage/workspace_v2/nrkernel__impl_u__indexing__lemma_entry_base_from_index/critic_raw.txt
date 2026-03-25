@@ -1,0 +1,38 @@
+===VERDICT_START===
+PHI: mod_add_zero_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `mod_add_zero` is `external_body` with `unimplemented!()` body — closure of alignment (divisibility) under addition is a correct mathematical fact but trusted without proof. Used in the alignment proofs for both `entry_base_from_index` and `next_entry_base_from_index`.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: aligned_transitive_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `aligned_transitive` is `external_body` with `unimplemented!()` body — divisibility transitivity is trusted without proof. Used to derive that `idx * entry_size` aligned to `entry_size` implies alignment to any `n` that divides `entry_size`.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: mult_less_mono_both1_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `mult_less_mono_both1` is `external_body` with `unimplemented!()` body — multiplication monotonicity with mixed strict/non-strict bounds is trusted without proof. Used to prove index monotonicity of `entry_base_from_index`.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: entry_base_aligned_from_base_aligned
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is a verified consequence of the lemma's ensures clause. The trust gaps are already captured by φ1 and φ2; this adds no new unverified assumption.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: next_entry_base_no_gap
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `base + (idx+1)*entry_size == base + idx*entry_size + entry_size` is basic algebra proved by `nonlinear_arith`. No external_body dependency for this property.
+===VERDICT_END===
+
+===SUMMARY===
+Three true positives: `mod_add_zero`, `aligned_transitive`, and `mult_less_mono_both1` are all `external_body` axioms trusting correct but unproven mathematical facts (alignment additivity, divisibility transitivity, and multiplication monotonicity). The other two are false positives — downstream consequences of the verified lemma with no new trust gaps beyond those already identified.
+===END_SUMMARY===

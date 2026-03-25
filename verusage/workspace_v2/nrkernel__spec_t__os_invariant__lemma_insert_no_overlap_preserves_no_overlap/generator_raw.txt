@@ -1,0 +1,89 @@
+===PHI_START===
+NAME: inflight_vmem_region_size_zero_on_failed_unmap
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_inflight_vmem_region_size_zero_on_failed_unmap(pt: Map<nat, PTE>, ult_id: nat, vaddr: nat)
+    ensures
+        os::inflight_vmem_region(pt, os::CoreState::UnmapOpDone { ult_id, vaddr, result: Err(()) }).size == 0,
+{
+}
+```
+REASON: A failed unmap (Err result) produces a zero-size inflight region — this means failed unmaps never block other operations via overlap, even though they're still in a non-Idle state occupying the core
+===PHI_END===
+
+===PHI_START===
+NAME: pte_size_unmap_waiting_depends_on_pt
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_pte_size_unmap_waiting_depends_on_pt(vaddr: nat, ult_id: nat, pt1: Map<nat, PTE>, pt2: Map<nat, PTE>, pte: PTE)
+    requires
+        pt1.contains_key(vaddr),
+        pt1[vaddr] == pte,
+        !pt2.contains_key(vaddr),
+    ensures
+        os::CoreState::UnmapWaiting { ult_id, vaddr }.pte_size(pt1) == pte.frame.size,
+        os::CoreState::UnmapWaiting { ult_id, vaddr }.pte_size(pt2) == 0,
+{
+}
+```
+REASON: `UnmapWaiting` and early `UnmapExecuting` compute pte_size from the current pt map — if pt changes between when the unmap started and when size is queried, the inflight region size changes, potentially allowing overlapping operations to slip through
+===PHI_END===
+
+===PHI_START===
+NAME: no_overlap_vmem_allows_idle_duplicates
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_no_overlap_vmem_allows_idle_duplicates(core1: Core, core2: Core, pt: Map<nat, PTE>)
+    requires
+        core1 != core2,
+    ensures
+        no_overlap_vmem_values(
+            map![core1 => os::CoreState::Idle, core2 => os::CoreState::Idle],
+            pt,
+        ),
+{
+}
+```
+REASON: `no_overlap_vmem_values` vacuously holds when all cores are Idle — tests that the invariant doesn't accidentally require something of Idle states; if it did, initial states couldn't satisfy it
+===PHI_END===
+
+===PHI_START===
+NAME: unique_corestates_ignores_idle
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_unique_corestates_ignores_idle(core1: Core, core2: Core)
+    requires
+        core1 != core2,
+    ensures
+        unique_CoreStates(map![core1 => os::CoreState::Idle, core2 => os::CoreState::Idle]),
+{
+}
+```
+REASON: `unique_CoreStates` skips Idle states — two cores can both be Idle without violating uniqueness; tests that the `!map[core].is_idle()` guard works correctly
+===PHI_END===
+
+===PHI_START===
+NAME: candidate_overlaps_inflight_zero_size_unmap_err
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_candidate_overlaps_inflight_zero_size_unmap_err(pt: Map<nat, PTE>, vaddr: nat, base: nat, size: nat)
+    requires
+        base != vaddr,
+        size > 0,
+    ensures
+        !os::candidate_mapping_overlaps_inflight_vmem(
+            pt,
+            set![os::CoreState::UnmapOpDone { ult_id: 0, vaddr, result: Err(()) }],
+            base,
+            size,
+        ),
+{
+}
+```
+REASON: A failed UnmapOpDone has zero-size inflight region — it never blocks any candidate mapping at a different base, effectively making the core invisible to overlap checks while still being non-Idle and occupying the core state
+===PHI_END===

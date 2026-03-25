@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "block_ptr_within_segment",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is exactly what `is_block_ptr1` specifies \u2014 the block start pointer must be within (segment_start, segment_start + SEGMENT_SIZE]. The concern about block end not being checked is a separate issue, but this property itself is correct and expected."
+  },
+  {
+    "phi": "block_end_exceeds_slice",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "The ensures is just `true` so it trivially holds, but the observation is valid: `is_block_ptr1` only constrains the block's start address within the slice range, not `ptr + block_size`. A block near the end of a slice could extend past the slice boundary without violating the spec. This is a real spec weakness \u2014 the block containment invariant is incomplete."
+  },
+  {
+    "phi": "slice_idx_not_linked_to_page_idx",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`is_block_ptr1` constrains `slice_idx` to `[0, SLICES_PER_SEGMENT]` and checks the block is within the slice, but never requires `slice_idx >= page_id.idx`. A block claiming to be on page 5 could have `slice_idx == 0`, which is physically impossible since a page's slices must start at or after the page index. This is a missing constraint."
+  },
+  {
+    "phi": "segment_id_nat_allows_overflow",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "While `segment_id.id` is unbounded `nat`, this \u03c6 only tests `block_start` computation which is pure math on `int` (no overflow). The actual concern about exceeding `usize::MAX` is already handled by `is_block_ptr1`'s constraint `segment_start(...) + SEGMENT_SIZE < usize::MAX`, which would reject such large IDs."
+  },
+  {
+    "phi": "page_idx_unbounded",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`page_start` computes `segment_start + SLICE_SIZE * idx` with no bound on `idx`. While `is_block_ptr1` constrains `slice_idx <= SLICES_PER_SEGMENT`, it never bounds `page_id.idx`. A page with `idx=1000` would place the page start beyond the segment, and the spec doesn't prevent this directly \u2014 the indirect constraint via `ptr == block_start` and the segment range check may catch some cases but doesn't systematically enforce `page_id.idx < SLICES_PER_SEGMENT`."
+  }
+]

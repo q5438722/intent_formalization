@@ -1,0 +1,47 @@
+[
+  {
+    "name": "flatten_empty_is_empty",
+    "type": "boundary",
+    "code": "proof fn phi_1_flatten_empty_is_empty()\n    ensures\n        flatten_set_seq::<int>(seq![]) == Set::<int>::empty(),\n{\n}",
+    "reason": "If flattening an empty sequence produced a non-empty set, the fold_left base case would be unsound",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "flatten_singleton_equals_element",
+    "type": "boundary",
+    "code": "proof fn phi_2_flatten_singleton_equals_element(s: Set<int>)\n    ensures\n        flatten_set_seq(seq![s]) == s,\n{\n}",
+    "reason": "If flattening a singleton sequence didn't equal the contained set, the fold_left would be incorrectly accumulating",
+    "entailed": false,
+    "verus_output": "--> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__verus_extra__lemma_flatten_set_seq_spec/phi_2_flatten_singleton_equals_element.rs:51:9\n   |\n49 | proof fn phi_2_flatten_singleton_equals_element(s: Set<int>)\n   |       ------------------------------------------------------ at the end of the function body\n50 |     ensures\n51 |         flatten_set_seq(seq![s]) == s,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "flatten_order_independent",
+    "type": "behavioral",
+    "code": "proof fn phi_3_flatten_order_independent(s1: Set<int>, s2: Set<int>)\n    ensures\n        flatten_set_seq(seq![s1, s2]) == flatten_set_seq(seq![s2, s1]),\n{\n    lemma_flatten_set_seq_spec(seq![s1, s2]);\n    lemma_flatten_set_seq_spec(seq![s2, s1]);\n    assert(flatten_set_seq(seq![s1, s2]) =~= flatten_set_seq(seq![s2, s1]));\n}",
+    "reason": "If flatten depended on ordering, the set union semantics would be broken \u2014 `fold_left` with union should be commutative",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "flatten_duplicate_sets_idempotent",
+    "type": "logical",
+    "code": "proof fn phi_4_flatten_duplicate_sets_idempotent(s: Set<int>)\n    ensures\n        flatten_set_seq(seq![s, s]) == s,\n{\n    lemma_flatten_set_seq_spec(seq![s, s]);\n    lemma_flatten_set_seq_spec(seq![s]);\n    assert(flatten_set_seq(seq![s, s]) =~= s);\n}",
+    "reason": "If duplicating a set in the sequence enlarged the result, union idempotency would be violated",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "flatten_subset_of_append",
+    "type": "logical",
+    "code": "proof fn phi_5_flatten_subset_of_append(sets: Seq<Set<int>>, extra: Set<int>)\n    ensures\n        flatten_set_seq(sets).subset_of(flatten_set_seq(sets.push(extra))),\n{\n    lemma_flatten_set_seq_spec(sets);\n    lemma_flatten_set_seq_spec(sets.push(extra));\n    assert forall |x: int| flatten_set_seq(sets).contains(x) implies flatten_set_seq(sets.push(extra)).contains(x) by {\n        let i = choose |i: int| 0 <= i < sets.len() && sets[i].contains(x);\n        assert(sets.push(extra)[i].contains(x));\n    }\n}",
+    "reason": "If appending a set could shrink the flattened result, the union-based fold_left would be losing elements",
+    "entailed": true,
+    "verus_output": "ng SMT theorem prover to instantiate quantifiers;\n      the theorem prover instantiates a quantifier whenever some expression matches the\n      pattern specified by one of the quantifier's triggers.)\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__verus_extra__lemma_flatten_set_seq_spec/phi_5_flatten_subset_of_append.rs:55:5\n   |\n55 |     assert forall |x: int| flatten_set_seq(sets).contains(x) implies flatten_set_seq(sets.push(extra)).contains(x) by {\n   |     ^^^^^^\n\n",
+    "timed_out": false
+  }
+]

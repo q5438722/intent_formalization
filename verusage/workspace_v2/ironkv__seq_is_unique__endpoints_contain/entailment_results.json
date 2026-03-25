@@ -1,0 +1,47 @@
+[
+  {
+    "name": "do_end_points_match_external_body_unimplemented",
+    "type": "logical",
+    "code": "proof fn phi_1_do_end_points_match_external_body_unimplemented(e1: EndPoint, e2: EndPoint)\n    requires\n        e1.id@ =~= e2.id@,\n    ensures\n        e1@ == e2@,\n{\n}",
+    "reason": "`do_end_points_match` is `external_body` with `unimplemented!()` \u2014 the exec body panics at runtime while the ensures clause (`eq == (e1@ == e2@)`) is trusted without verification",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "abstractify_empty_is_empty",
+    "type": "boundary",
+    "code": "proof fn phi_2_abstractify_empty_is_empty()\n    ensures\n        abstractify_end_points(Vec::new()) =~= Seq::<AbstractEndPoint>::empty(),\n{\n}",
+    "reason": "If an empty vector of endpoints doesn't abstractify to an empty sequence, the mapping function would be unsound for the base case",
+    "entailed": false,
+    "verus_output": "error: cannot call function `alloc::vec::impl&%0::new` with mode exec\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__seq_is_unique__endpoints_contain/phi_2_abstractify_empty_is_empty.rs:63:32\n   |\n63 |         abstractify_end_points(Vec::new()) =~= Seq::<AbstractEndPoint>::empty(),\n   |                                ^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "abstractify_preserves_length",
+    "type": "behavioral",
+    "code": "proof fn phi_3_abstractify_preserves_length(endpoints: Vec<EndPoint>)\n    ensures\n        abstractify_end_points(endpoints).len() == endpoints@.len(),\n{\n}",
+    "reason": "If abstractification changed the length, it would violate the bijection between concrete and abstract endpoint sequences, breaking the containment check in `endpoints_contain`",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "endpoints_contain_false_for_absent",
+    "type": "behavioral",
+    "code": "proof fn phi_4_endpoints_contain_false_for_absent(endpoints: Vec<EndPoint>, ep: EndPoint)\n    requires\n        endpoints@.len() > 0,\n        forall|i: int| 0 <= i < endpoints@.len() ==> endpoints@[i]@.id != ep@.id,\n    ensures\n        !abstractify_end_points(endpoints).contains(ep@),\n{\n    assert forall|i: int| 0 <= i < abstractify_end_points(endpoints).len() implies abstractify_end_points(endpoints)[i] != ep@ by {\n        assert(abstractify_end_points(endpoints)[i] == endpoints@[i]@);\n    }\n}",
+    "reason": "If distinct concrete IDs could abstractify to equal abstract endpoints, the containment check would have false positives \u2014 indicating the view function or AbstractEndPoint equality is too coarse",
+    "entailed": true,
+    "verus_output": "e quantifiers;\n      the theorem prover instantiates a quantifier whenever some expression matches the\n      pattern specified by one of the quantifier's triggers.)\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__seq_is_unique__endpoints_contain/phi_4_endpoints_contain_false_for_absent.rs:64:9\n   |\n64 |         forall|i: int| 0 <= i < endpoints@.len() ==> endpoints@[i]@.id != ep@.id,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "view_preserves_id_identity",
+    "type": "logical",
+    "code": "proof fn phi_5_view_preserves_id_identity(e1: EndPoint, e2: EndPoint)\n    requires\n        e1@.id =~= e2@.id,\n    ensures\n        e1@ == e2@,\n{\n}",
+    "reason": "If two endpoints with extensionally equal id sequences had different abstract views, the `do_end_points_match` ensures clause would be inconsistent with structural equality of `AbstractEndPoint`",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

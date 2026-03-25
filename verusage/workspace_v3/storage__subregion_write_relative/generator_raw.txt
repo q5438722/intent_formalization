@@ -1,0 +1,119 @@
+===PHI_START===
+NAME: write_immediately_persists
+TARGET_FN: write_relative
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_write_immediately_persists(
+    view: PersistentMemoryRegionView,
+    addr: int,
+    bytes: Seq<u8>,
+)
+    requires
+        0 <= addr,
+        bytes.len() > 0,
+        addr + bytes.len() <= view.len(),
+        view.no_outstanding_writes_in_range(addr, addr + bytes.len()),
+        view.state[addr].state_at_last_flush != bytes[0 as int],
+    ensures
+        view.write(addr, bytes).state[addr].state_at_last_flush == bytes[0 as int],
+{
+}
+```
+REASON: write should only set outstanding_write, not immediately update state_at_last_flush (that requires a flush)
+===PHI_END===
+
+===PHI_START===
+NAME: empty_write_alters_view
+TARGET_FN: write_relative
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_empty_write_alters_view(
+    view: PersistentMemoryRegionView,
+    addr: int,
+)
+    requires
+        0 <= addr,
+        addr <= view.len(),
+        view.len() > 0,
+    ensures
+        view.write(addr, Seq::<u8>::empty()) =~= view ==> false,
+{
+}
+```
+REASON: Writing zero bytes should be a no-op; if it changes the view, the write spec is unsound
+===PHI_END===
+
+===PHI_START===
+NAME: write_changes_view_len
+TARGET_FN: write_relative
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_write_changes_view_len(
+    view: PersistentMemoryRegionView,
+    addr: int,
+    bytes: Seq<u8>,
+)
+    requires
+        0 <= addr,
+        bytes.len() > 0,
+        addr + bytes.len() <= view.len(),
+        view.no_outstanding_writes_in_range(addr, addr + bytes.len()),
+    ensures
+        view.write(addr, bytes).len() != view.len(),
+{
+}
+```
+REASON: Write should preserve region length; a length change would corrupt the memory region abstraction
+===PHI_END===
+
+===PHI_START===
+NAME: write_clobbers_adjacent_byte
+TARGET_FN: write_relative
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_write_clobbers_adjacent_byte(
+    view: PersistentMemoryRegionView,
+    addr: int,
+    bytes: Seq<u8>,
+)
+    requires
+        0 <= addr,
+        addr > 0,
+        bytes.len() > 0,
+        addr + bytes.len() <= view.len(),
+        view.no_outstanding_writes_in_range(addr, addr + bytes.len()),
+    ensures
+        view.write(addr, bytes).state[addr - 1] != view.state[addr - 1],
+{
+}
+```
+REASON: Write must not modify bytes outside the target range; clobbering an adjacent byte violates memory isolation
+===PHI_END===
+
+===PHI_START===
+NAME: write_drops_outstanding
+TARGET_FN: write_relative
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_write_drops_outstanding(
+    view: PersistentMemoryRegionView,
+    addr: int,
+    bytes: Seq<u8>,
+)
+    requires
+        0 <= addr,
+        bytes.len() > 0,
+        addr + bytes.len() <= view.len(),
+        view.no_outstanding_writes_in_range(addr, addr + bytes.len()),
+    ensures
+        (view.write(addr, bytes).state[addr].outstanding_write).is_none(),
+{
+}
+```
+REASON: After writing byte b at addr, outstanding_write must be Some(b); if it is None the write was silently lost
+===PHI_END===

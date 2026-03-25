@@ -1,0 +1,108 @@
+Here are 5 candidate undesirable properties for `check_io_space_va_range_free`:
+
+===PHI_START===
+NAME: always_free
+TARGET_FN: check_io_space_va_range_free
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_always_free(os: &OS, target_proc_ptr: ProcPtr, va_range: &VaRange4K)
+    requires
+        os.wf(),
+        os.proc_dom().contains(target_proc_ptr),
+        os.get_proc(target_proc_ptr).ioid.is_Some(),
+        va_range.wf(),
+    ensures
+        os.io_space_range_free(target_proc_ptr, va_range) == true,
+{
+}
+```
+REASON: If the IO-space range is always reported free, actual conflicts are silently ignored and double-mapping becomes possible
+===PHI_END===
+
+===PHI_START===
+NAME: never_free_nonempty
+TARGET_FN: check_io_space_va_range_free
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_never_free_nonempty(os: &OS, target_proc_ptr: ProcPtr, va_range: &VaRange4K)
+    requires
+        os.wf(),
+        os.proc_dom().contains(target_proc_ptr),
+        os.get_proc(target_proc_ptr).ioid.is_Some(),
+        va_range.wf(),
+        va_range.len > 0,
+    ensures
+        os.io_space_range_free(target_proc_ptr, va_range) == false,
+{
+}
+```
+REASON: If no non-empty range is ever considered free, IO-space mapping is impossible and the check is vacuously blocking
+===PHI_END===
+
+===PHI_START===
+NAME: proc_independent
+TARGET_FN: check_io_space_va_range_free
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_proc_independent(os: &OS, p1: ProcPtr, p2: ProcPtr, va_range: &VaRange4K)
+    requires
+        os.wf(),
+        os.proc_dom().contains(p1),
+        os.proc_dom().contains(p2),
+        os.get_proc(p1).ioid.is_Some(),
+        os.get_proc(p2).ioid.is_Some(),
+        p1 != p2,
+        va_range.wf(),
+    ensures
+        os.io_space_range_free(p1, va_range) == os.io_space_range_free(p2, va_range),
+{
+}
+```
+REASON: If the result is identical for distinct processes, per-process IO-space isolation is violated
+===PHI_END===
+
+===PHI_START===
+NAME: free_implies_entire_io_space_empty
+TARGET_FN: check_io_space_va_range_free
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_free_implies_entire_io_space_empty(os: &OS, target_proc_ptr: ProcPtr, va_range: &VaRange4K)
+    requires
+        os.wf(),
+        os.proc_dom().contains(target_proc_ptr),
+        os.get_proc(target_proc_ptr).ioid.is_Some(),
+        va_range.wf(),
+        va_range.len > 0,
+        os.io_space_range_free(target_proc_ptr, va_range),
+    ensures
+        os.get_io_space(target_proc_ptr) =~= Map::<VAddr, MapEntry>::empty(),
+{
+}
+```
+REASON: If range-free implies the entire IO space is empty, existing legitimate IO mappings outside the range are impossible
+===PHI_END===
+
+===PHI_START===
+NAME: zero_len_not_free
+TARGET_FN: check_io_space_va_range_free
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_zero_len_not_free(os: &OS, target_proc_ptr: ProcPtr, va_range: &VaRange4K)
+    requires
+        os.wf(),
+        os.proc_dom().contains(target_proc_ptr),
+        os.get_proc(target_proc_ptr).ioid.is_Some(),
+        va_range.wf(),
+        va_range.len == 0,
+    ensures
+        os.io_space_range_free(target_proc_ptr, va_range) == false,
+{
+}
+```
+REASON: A zero-length range has no addresses to conflict, so it should be vacuously free; reporting it as not-free breaks the base case
+===PHI_END===

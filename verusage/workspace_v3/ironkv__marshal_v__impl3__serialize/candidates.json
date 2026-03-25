@@ -1,0 +1,37 @@
+[
+  {
+    "name": "none_serialize_empty",
+    "target_fn": "serialize",
+    "type": "behavioral",
+    "code": "proof fn phi_1_none_serialize_empty(pre_data: Seq<u8>, post_data: Seq<u8>)\n    requires\n        Option::<u64>::None.is_marshalable(),\n        post_data.len() >= pre_data.len(),\n        post_data.subrange(0, pre_data.len() as int) == pre_data,\n        post_data.subrange(pre_data.len() as int, post_data.len() as int) == Option::<u64>::None.ghost_serialize(),\n    ensures\n        post_data.len() == pre_data.len(),\n{\n}",
+    "reason": "Serializing None should append a tag byte, so output length must grow \u2014 being equal would mean nothing was written."
+  },
+  {
+    "name": "some_none_same_serialization",
+    "target_fn": "serialize",
+    "type": "logical",
+    "code": "proof fn phi_2_some_none_same_serialization(v: u64)\n    requires\n        v.is_marshalable(),\n        Option::Some(v).is_marshalable(),\n        Option::<u64>::None.is_marshalable(),\n    ensures\n        Option::Some(v).ghost_serialize() == Option::<u64>::None.ghost_serialize(),\n{\n}",
+    "reason": "Some(v) and None must serialize differently to be distinguishable; equal serialization would break round-trip decoding."
+  },
+  {
+    "name": "some_tag_byte_is_zero",
+    "target_fn": "serialize",
+    "type": "boundary",
+    "code": "proof fn phi_3_some_tag_byte_is_zero(v: u64)\n    requires\n        v.is_marshalable(),\n        Option::Some(v).is_marshalable(),\n    ensures\n        Option::Some(v).ghost_serialize().first() == 0u8,\n{\n}",
+    "reason": "The Some variant should use tag byte 1, not 0; tag 0 is reserved for None and would make them indistinguishable."
+  },
+  {
+    "name": "serialize_length_at_most_one",
+    "target_fn": "serialize",
+    "type": "behavioral",
+    "code": "proof fn phi_4_serialize_length_at_most_one(v: u64)\n    requires\n        v.is_marshalable(),\n        Option::Some(v).is_marshalable(),\n    ensures\n        Option::Some(v).ghost_serialize().len() <= 1,\n{\n}",
+    "reason": "Some(v) serialization must include both the tag byte and v's payload; length \u2264 1 would mean the inner value is lost."
+  },
+  {
+    "name": "data_prefix_corrupted",
+    "target_fn": "serialize",
+    "type": "logical",
+    "code": "proof fn phi_5_data_prefix_corrupted(pre_data: Seq<u8>, post_data: Seq<u8>, v: u64)\n    requires\n        pre_data.len() > 0,\n        Option::Some(v).is_marshalable(),\n        post_data.len() >= pre_data.len(),\n        post_data.subrange(0, pre_data.len() as int) == pre_data,\n        post_data.subrange(pre_data.len() as int, post_data.len() as int) == Option::Some(v).ghost_serialize(),\n    ensures\n        post_data.first() != pre_data.first(),\n{\n}",
+    "reason": "The spec guarantees the original data prefix is preserved; if the first byte differs, serialize has corrupted pre-existing data."
+  }
+]

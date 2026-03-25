@@ -1,0 +1,52 @@
+[
+  {
+    "name": "arch_inv_vacuous_empty",
+    "target_fn": "inv (Arch)",
+    "type": "boundary",
+    "reason": "An arch with zero layers should not satisfy inv, as it represents no meaningful page-table structure",
+    "entailed": true,
+    "verified": 11,
+    "errors": 0,
+    "output_tail": "verification results:: 11 verified, 0 errors\n\n"
+  },
+  {
+    "name": "entry_base_collision",
+    "target_fn": "entry_base (Arch)",
+    "type": "behavioral",
+    "reason": "Consecutive entry bases being equal would mean distinct indices map overlapping address regions",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": "------ at the end of the function body\n...\n275 |         arch.entry_base(layer, base, i) == arch.entry_base(layer, base, (i + 1) as nat),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "dir_inv_wrong_page_size",
+    "target_fn": "pages_match_entry_size",
+    "type": "logical",
+    "reason": "If a page frame size can differ from the layer's entry size under inv, address translation would be incorrect",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": "-------------------------------------------- at the end of the function body\n...\n275 |         dir.entries[i as int]->Page_0.frame.size != dir.entry_size(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "well_formed_allows_empty",
+    "target_fn": "well_formed",
+    "type": "boundary",
+    "reason": "A well-formed directory with zero entries would make the page table level degenerate and break address space coverage",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": " | proof fn phi_4_well_formed_allows_empty(dir: Directory)\n    |       ------------------------------------------------- at the end of the function body\n...\n273 |         dir.entries.len() == 0,\n    |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "interp_page_mapping_lost",
+    "target_fn": "interp",
+    "type": "behavioral",
+    "reason": "A page mapping present in an entry's interpretation but absent from the directory's full interpretation would silently drop valid mappings",
+    "entailed": false,
+    "verified": 10,
+    "errors": 1,
+    "output_tail": "rectory, j: nat, va: nat)\n    |       ------------------------------------------------------------------ at the end of the function body\n...\n276 |         !dir.interp().contains_key(va),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

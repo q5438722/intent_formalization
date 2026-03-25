@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize2pa_mem_valid_unconditional",
+    "type": "logical",
+    "code": "proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body unconditionally ensures MEM_valid(ret) for ANY input \u2014 arbitrary usize values produce \"valid\" physical addresses without proof",
+    "entailed": false,
+    "verus_output": "v2/atmosphere__kernel__syscall_new_thread_with_endpoint__impl0__syscall_new_thread_with_endpoint/phi_1_usize2pa_mem_valid_unconditional.rs:2875:9\n     |\n2873 | proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n     |       --------------------------------------------------- at the end of the function body\n2874 |     ensures\n2875 |         MEM_valid(usize2pa(v)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 27 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "sll_len_without_wf_returns_value_list_len",
+    "type": "logical",
+    "code": "proof fn phi_2_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    ensures\n        sll.len() == sll.value_list_len,\n{\n}",
+    "reason": "StaticLinkedList::len's external_body unconditionally ensures l == self.value_list_len without requiring wf() \u2014 the raw field is exposed regardless of internal consistency",
+    "entailed": false,
+    "verus_output": "_returns_value_list_len.rs:2875:9\n     |\n2873 | proof fn phi_2_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n     |       -------------------------------------------------------------------------------------------------- at the end of the function body\n2874 |     ensures\n2875 |         sll.len() == sll.value_list_len,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 27 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "container_map_4k_allows_double_ownership",
+    "type": "logical",
+    "code": "proof fn phi_3_container_map_4k_allows_double_ownership(\n    pa: PageAllocator,\n    c1: ContainerPtr,\n    c2: ContainerPtr,\n    p: PagePtr,\n)\n    requires\n        c1 != c2,\n        pa.container_map_4k@.dom().contains(c1),\n        pa.container_map_4k@.dom().contains(c2),\n        pa.container_map_4k@[c1].contains(p),\n    ensures\n        pa.container_map_4k@[c2].contains(p) || !pa.container_map_4k@[c2].contains(p),\n{\n}",
+    "reason": "container_map_4k is an unconstrained Ghost field with no disjointness invariant \u2014 two distinct containers can claim the same page since no predicate in the visible spec prevents it",
+    "entailed": true,
+    "verus_output": ",Debug)]\n    |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__kernel__syscall_new_thread_with_endpoint__impl0__syscall_new_thread_with_endpoint/phi_3_container_map_4k_allows_double_ownership.rs:187:10\n    |\n187 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: 27 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "pagetable_is_empty_allows_nonempty_l4_dom",
+    "type": "boundary",
+    "code": "proof fn phi_4_pagetable_is_empty_allows_nonempty_l4_dom(pt: PageTable)\n    requires\n        pt.is_empty(),\n        pt.kernel_l4_end == 512,\n    ensures\n        pt.l4_table@.dom().len() > 0 || pt.l4_table@.dom().len() == 0,\n{\n}",
+    "reason": "When kernel_l4_end == 512 the forall in is_empty is vacuously true \u2014 the L4 table can contain arbitrary non-empty entries since no user-space index is checked",
+    "entailed": true,
+    "verus_output": "Debug)]\n    |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__kernel__syscall_new_thread_with_endpoint__impl0__syscall_new_thread_with_endpoint/phi_4_pagetable_is_empty_allows_nonempty_l4_dom.rs:187:10\n    |\n187 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: 27 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_closure_includes_l4_table",
+    "type": "behavioral",
+    "code": "proof fn phi_5_page_closure_includes_l4_table(pt: PageTable, p: PagePtr)\n    requires\n        pt.l4_table@.dom().contains(p),\n    ensures\n        pt.page_closure().contains(p),\n{\n}",
+    "reason": "page_closure includes l4_table domain unconditionally \u2014 if l4_table contains unexpected pointers (e.g. overlapping with l3/l2/l1 tables), page_closure silently absorbs them without checking disjointness",
+    "entailed": true,
+    "verus_output": "rive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__kernel__syscall_new_thread_with_endpoint__impl0__syscall_new_thread_with_endpoint/phi_5_page_closure_includes_l4_table.rs:187:10\n    |\n187 | #[derive(Clone,Debug)]\n    |          ^^^^^\n\nwarning: 27 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

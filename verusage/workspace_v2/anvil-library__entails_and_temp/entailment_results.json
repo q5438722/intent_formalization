@@ -1,0 +1,47 @@
+[
+  {
+    "name": "implies_apply_closure_bridge",
+    "type": "logical",
+    "code": "proof fn phi_1_implies_apply_closure_bridge(ex: Execution<int>, p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.satisfied_by(ex),\n        (p.pred)(ex) ==> (q.pred)(ex),\n    ensures\n        q.satisfied_by(ex),\n{\n    implies_apply::<int>(ex, p, q);\n}",
+    "reason": "implies_apply is external_body bridging p.implies(q).satisfied_by(ex) through TempPred::new closure wrapping and direct implication \u2014 silently resolves closure identity mismatch",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "entails_and_infinite_chain",
+    "type": "logical",
+    "code": "proof fn phi_2_entails_and_infinite_chain(spec: TempPred<int>, p: TempPred<int>, q: TempPred<int>, r: TempPred<int>)\n    requires\n        spec.entails(p),\n        spec.entails(q),\n        spec.entails(r),\n    ensures\n        spec.entails(p.and(q).and(r)),\n{\n    entails_and_temp::<int>(spec, p, q);\n    entails_and_temp::<int>(spec, p.and(q), r);\n}",
+    "reason": "entails_and_temp composes unboundedly \u2014 chaining it builds arbitrarily deep nested and-closures, each requiring implies_apply to resolve a fresh intensional closure gap",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "entails_and_self_idempotent",
+    "type": "boundary",
+    "code": "proof fn phi_3_entails_and_self_idempotent(spec: TempPred<int>, p: TempPred<int>)\n    requires\n        spec.entails(p),\n    ensures\n        spec.entails(p.and(p)),\n{\n    entails_and_temp::<int>(spec, p, p);\n}",
+    "reason": "p.and(p) creates a new closure intensionally distinct from p \u2014 if the spec entails p.and(p), the framework silently equates redundant conjunctions through the external_body axiom without proving idempotence",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "valid_implies_entails_anything",
+    "type": "boundary",
+    "code": "proof fn phi_4_valid_implies_entails_anything(p: TempPred<int>, spec: TempPred<int>)\n    requires\n        valid(p),\n    ensures\n        spec.entails(p),\n{\n    assert forall |ex| #[trigger] spec.satisfied_by(ex) implies p.satisfied_by(ex) by {\n        implies_apply::<int>(ex, spec, p);\n    };\n}",
+    "reason": "if valid(p) holds then any spec vacuously entails p \u2014 implies_apply bridges the closure gap so valid properties are entailed by everything, collapsing the distinction between validity and entailment",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "entails_false_spec_vacuous",
+    "type": "boundary",
+    "code": "proof fn phi_5_entails_false_spec_vacuous(p: TempPred<int>, q: TempPred<int>)\n    ensures\n        TempPred::<int>::new(|ex: Execution<int>| false).entails(p.and(q)),\n{\n}",
+    "reason": "an unsatisfiable spec vacuously entails any conjunction \u2014 entails_and_temp propagates this without checking satisfiability, potentially hiding specification errors",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

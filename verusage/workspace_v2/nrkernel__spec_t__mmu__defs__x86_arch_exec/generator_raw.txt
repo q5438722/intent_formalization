@@ -1,0 +1,72 @@
+===PHI_START===
+NAME: l0_entry_size_overflow_check
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_l0_entry_size_overflow_check()
+    ensures
+        L0_ENTRY_SIZE as nat == 512 * 512 * 512 * 4096,
+{
+}
+```
+REASON: `L0_ENTRY_SIZE = 512 * 512 * L2_ENTRY_SIZE = 512^3 * 4096 = 549755813888` which exceeds `usize::MAX` on 32-bit but fits in 64-bit — tests that the constant computation doesn't overflow given `size_of usize == 8`
+===PHI_END===
+
+===PHI_START===
+NAME: arch_layers_all_same_num_entries
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_arch_layers_all_same_num_entries()
+    ensures
+        forall|i: int, j: int| 0 <= i < 4 && 0 <= j < 4 ==>
+            x86_arch_spec.layers[i].num_entries == x86_arch_spec.layers[j].num_entries,
+{
+}
+```
+REASON: All four layers have identical `num_entries` (512) — if different layers should have different fan-outs, this uniformity could mask a missing architectural constraint
+===PHI_END===
+
+===PHI_START===
+NAME: arch_exec_view_roundtrip_layer_count
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_arch_exec_view_roundtrip_layer_count()
+    ensures
+        x86_arch_exec()@.layers.len() == 4,
+{
+}
+```
+REASON: The `ArchExec` uses a fixed `[ArchLayerExec; 4]` array — the view always has exactly 4 layers, preventing architectures with fewer page table levels (e.g., 3-level for 32-bit PAE)
+===PHI_END===
+
+===PHI_START===
+NAME: entry_sizes_strictly_decreasing
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_entry_sizes_strictly_decreasing()
+    ensures
+        x86_arch_spec.layers[0].entry_size > x86_arch_spec.layers[1].entry_size,
+        x86_arch_spec.layers[1].entry_size > x86_arch_spec.layers[2].entry_size,
+        x86_arch_spec.layers[2].entry_size > x86_arch_spec.layers[3].entry_size,
+{
+}
+```
+REASON: Entry sizes are strictly decreasing from L0 to L3 — tests that the layer ordering matches the expected top-down hierarchy (L0=512G, L1=1G, L2=2M, L3=4K)
+===PHI_END===
+
+===PHI_START===
+NAME: arch_exec_fixed_size_array
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_arch_exec_fixed_size_array(ae: ArchExec)
+    ensures
+        ae@.layers.len() == 4,
+{
+}
+```
+REASON: `ArchExec` uses `[ArchLayerExec; 4]` so every `ArchExec` instance always has exactly 4 layers — prevents representing 5-level paging (LA57) or non-standard page table depths
+===PHI_END===

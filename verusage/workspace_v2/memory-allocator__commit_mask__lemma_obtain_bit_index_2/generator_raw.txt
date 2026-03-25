@@ -1,0 +1,87 @@
+===PHI_START===
+NAME: obtain_bit_index_1_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_obtain_bit_index_1_external_body(a: usize) -> (b: usize)
+    requires
+        a != 0,
+    ensures
+        b < 64,
+        is_bit_set(a, b),
+{
+    lemma_obtain_bit_index_1(a)
+}
+```
+REASON: `lemma_obtain_bit_index_1` is `external_body` — the existence of a set bit in a nonzero usize is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: not_all_ones_has_zero_bit
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_not_all_ones_has_zero_bit(a: usize) -> (b: usize)
+    requires
+        a != !0usize,
+    ensures
+        b < 64,
+        !is_bit_set(a, b),
+{
+    lemma_obtain_bit_index_2(a)
+}
+```
+REASON: Any non-`!0` usize has a clear bit below 64 — this depends on the external_body `lemma_obtain_bit_index_1` being correct; if that axiom is wrong, this derived property is also wrong
+===PHI_END===
+
+===PHI_START===
+NAME: zero_has_zero_bit
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_zero_has_zero_bit() -> (b: usize)
+    ensures
+        b < 64,
+        !is_bit_set(0usize, b),
+{
+    lemma_obtain_bit_index_2(0usize)
+}
+```
+REASON: Zero is not `!0usize`, so `lemma_obtain_bit_index_2` applies — but the result depends on the external_body axiom correctly finding a set bit in `!0usize` (which is all ones)
+===PHI_END===
+
+===PHI_START===
+NAME: is_bit_set_definition_match
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_is_bit_set_definition_match(a: usize, b: usize)
+    requires
+        b < 64,
+        a & (1usize << b) == (1usize << b),
+    ensures
+        is_bit_set(a, b),
+{
+    reveal(is_bit_set);
+}
+```
+REASON: The spec fn `is_bit_set` is defined as `a & (1usize << b) == (1usize << b)` but for `b >= 64` the shift wraps — the spec has no `b < 64` guard in its definition, so `is_bit_set(a, 64)` has wrapped semantics
+===PHI_END===
+
+===PHI_START===
+NAME: is_bit_set_wrap_at_64
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_is_bit_set_wrap_at_64(a: usize)
+    requires
+        is_bit_set(a, 0),
+    ensures
+        is_bit_set(a, 64),
+{
+    reveal(is_bit_set);
+    assert(1usize << 64 == 1usize << 0) by (bit_vector);
+}
+```
+REASON: `1usize << 64` wraps to `1usize << 0` on 64-bit, so `is_bit_set(a, 64) == is_bit_set(a, 0)` — the spec fn conflates bit 0 and "bit 64" due to missing bounds check
+===PHI_END===

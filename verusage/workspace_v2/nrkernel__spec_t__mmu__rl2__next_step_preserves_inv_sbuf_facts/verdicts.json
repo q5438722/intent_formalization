@@ -1,0 +1,26 @@
+[
+  {
+    "phi": "pde_layer0_never_page",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "In `PDE::view`, layer 0 always produces `GPDE::Directory` when P bit is set and `all_mb0_bits_are_zero()` holds \u2014 the code has `if self.layer == 0 { GPDE::Directory { ... } }`. There is no Page branch for layer 0. This is correct by construction of the PDE view function."
+  },
+  {
+    "phi": "pde_layer3_never_directory",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "In `PDE::view`, layer 3 always produces `GPDE::Page` when P bit is set and `all_mb0_bits_are_zero()` holds \u2014 the code for layer 3 has only the Page variant. This is correct by construction matching x86-64 semantics where PT entries are always leaf pages."
+  },
+  {
+    "phi": "walk_result_vbase_leq_vaddr",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "`align_to_usize(a, b) = sub(a, a % b) = a - (a % b)`. Since `a % b >= 0`, the result is `<= a`. For path lengths 2-4, `vbase = align_to_usize(vaddr, entry_size) <= vaddr`. This is correct by the definition of downward alignment."
+  },
+  {
+    "phi": "walk_result_size_matches_depth",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "For `path.len() == 4`, `Walk::result` selects the branch `(align_to_usize(self.vaddr, L3_ENTRY_SIZE), path[3].1->Page_addr, L3_ENTRY_SIZE)`, and the PTE frame size is set to `L3_ENTRY_SIZE = 4096`. This is correct by construction \u2014 4-level walks map to 4KB pages."
+  }
+]

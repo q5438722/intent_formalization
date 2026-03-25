@@ -1,0 +1,52 @@
+[
+  {
+    "name": "empty_vec_not_marshalable",
+    "target_fn": "_is_marshalable",
+    "type": "behavioral",
+    "reason": "An empty vector should trivially be marshalable; if the spec says otherwise, element iteration or base-case logic is wrong",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "\n    |\n234 | proof fn phi_1_empty_vec_not_marshalable(v: Vec<u64>)\n    |       ----------------------------------------------- at the end of the function body\n...\n238 |         !v.is_marshalable(),\n    |         ^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "non_marshalable_element_ignored",
+    "target_fn": "_is_marshalable",
+    "type": "behavioral",
+    "reason": "A vector containing a non-marshalable element must not be marshalable; if entailed, the per-element check is vacuous",
+    "entailed": true,
+    "verified": 3,
+    "errors": 0,
+    "output_tail": "verification results:: 3 verified, 0 errors\n\n"
+  },
+  {
+    "name": "marshalable_serialization_exceeds_max",
+    "target_fn": "_is_marshalable",
+    "type": "logical",
+    "reason": "A marshalable vector's serialized size must fit in usize::MAX; exceeding it contradicts the size-bound invariant",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "max(v: Vec<u64>)\n    |       ----------------------------------------------------------- at the end of the function body\n...\n238 |         v.ghost_serialize().len() > usize::MAX,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "huge_vec_always_marshalable",
+    "target_fn": "_is_marshalable",
+    "type": "boundary",
+    "reason": "A Vec<u64> with length exceeding usize::MAX/8 would serialize to more than usize::MAX bytes; being marshalable would mean overflow is undetected",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "   |\n234 | proof fn phi_4_huge_vec_always_marshalable(v: Vec<u64>)\n    |       ------------------------------------------------- at the end of the function body\n...\n238 |         v.is_marshalable(),\n    |         ^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "marshalable_implies_element_not_marshalable",
+    "target_fn": "_is_marshalable",
+    "type": "logical",
+    "reason": "If a vector is marshalable then every element must individually be marshalable; the negation would indicate the forall quantifier in the spec is inverted",
+    "entailed": false,
+    "verified": 2,
+    "errors": 1,
+    "output_tail": "halable(v: Vec<usize>, i: int)\n    |       --------------------------------------------------------------------------- at the end of the function body\n...\n239 |         !v@[i].is_marshalable(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

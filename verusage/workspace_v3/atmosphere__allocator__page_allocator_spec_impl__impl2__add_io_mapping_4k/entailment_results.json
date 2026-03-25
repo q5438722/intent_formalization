@@ -1,0 +1,52 @@
+[
+  {
+    "name": "spurious_io_mapping_on_target",
+    "target_fn": "add_io_mapping_4k",
+    "type": "behavioral",
+    "reason": "If provable, add_io_mapping_4k's postcondition allows fabricating IO mappings beyond the one explicitly inserted.",
+    "entailed": false,
+    "verified": 8,
+    "errors": 1,
+    "output_tail": " at the end of the function body\n...\n1050 |         new_alloc.page_io_mappings(target_ptr).contains((rogue_ioid, rogue_va)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  },
+  {
+    "name": "regular_mappings_destroyed",
+    "target_fn": "add_io_mapping_4k",
+    "type": "logical",
+    "reason": "If provable, adding an IO mapping could silently wipe out all regular (non-IO) virtual mappings for the target page.",
+    "entailed": false,
+    "verified": 8,
+    "errors": 1,
+    "output_tail": "-------------------------------------------------- at the end of the function body\n...\n1049 |         new_alloc.page_mappings(target_ptr).len() == 0,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  },
+  {
+    "name": "set_ref_count_corrupts_other_pages",
+    "target_fn": "set_ref_count",
+    "type": "boundary",
+    "reason": "If provable, set_ref_count's frame condition is vacuous and modifying one index silently corrupts another page's state.",
+    "entailed": false,
+    "verified": 8,
+    "errors": 1,
+    "output_tail": "t the end of the function body\n...\n1050 |         new_alloc.page_array@[other].state != old_alloc.page_array@[other].state,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  },
+  {
+    "name": "set_io_mapping_corrupts_regular_mappings",
+    "target_fn": "set_io_mapping",
+    "type": "logical",
+    "reason": "If provable, set_io_mapping's postcondition that preserves regular mappings is inconsistent, allowing silent data loss.",
+    "entailed": false,
+    "verified": 8,
+    "errors": 1,
+    "output_tail": "------------------------------ at the end of the function body\n...\n1048 |         new_alloc.page_array@[index as int].mappings@.len() == 0,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  },
+  {
+    "name": "free_page_removed_from_list",
+    "target_fn": "add_io_mapping_4k",
+    "type": "boundary",
+    "reason": "If provable, add_io_mapping_4k's postcondition allows free pages to vanish from the free list, breaking memory safety.",
+    "entailed": false,
+    "verified": 8,
+    "errors": 1,
+    "output_tail": "------------------------------------------------------------------ at the end of the function body\n...\n1049 |         !new_alloc.free_pages_4k().contains(p),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 4 warnings emitted\n\n"
+  }
+]

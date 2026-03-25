@@ -1,0 +1,86 @@
+===PHI_START===
+NAME: two_mul_bit1_negative_y
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_two_mul_bit1_negative_y(x1: int)
+    ensures
+        (2 * x1 + 1) / (2 * (-1)) == x1 / (-1),
+{
+    two_mul_with_bit1(x1, -1);
+}
+```
+REASON: The lemma accepts negative `y1` — for `y1 = -1`, `(2*x+1)/(-2)` equals `x/(-1)` under Euclidean division, which may differ from truncation division expectations
+===PHI_END===
+
+===PHI_START===
+NAME: two_mul_bit1_negative_x
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_two_mul_bit1_negative_x(y1: int)
+    requires
+        y1 != 0,
+    ensures
+        (2 * (-1) + 1) / (2 * y1) == (-1) / y1,
+{
+    two_mul_with_bit1(-1, y1);
+}
+```
+REASON: With `x1 = -1`, `(2*(-1)+1) = -1` and `-1 / (2*y1)` should equal `(-1) / y1` — for Euclidean division with positive `y1`, both are -1, but the equality is non-obvious
+===PHI_END===
+
+===PHI_START===
+NAME: div_assoc_odd_step
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_div_assoc_odd_step(x1: int, y1: int)
+    requires
+        y1 != 0,
+    ensures
+        (2 * x1 + 1) / (2 * y1) == ((2 * x1 + 1) / 2) / y1,
+{
+    assert((2 * x1 + 1) / (2 * y1) == ((2 * x1 + 1) / 2) / y1) by(nonlinear_arith)
+        requires y1 != 0;
+}
+```
+REASON: The intermediate division-associativity step `(2k+1)/(2y) == ((2k+1)/2)/y` is asserted via `nonlinear_arith` — relies on Z3's handling of Euclidean division which could be incorrect for edge cases
+===PHI_END===
+
+===PHI_START===
+NAME: odd_div_2_floors
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_odd_div_2_floors(x1: int)
+    ensures
+        (2 * x1 + 1) / 2 == x1,
+{
+}
+```
+REASON: `(2*x+1)/2 == x` under Euclidean division — for negative `x1`, `(2*(-3)+1)/2 = -5/2` under Euclidean division gives `-3`, which equals `x1`; this is correct but the floor-toward-negative-infinity behavior may surprise
+===PHI_END===
+
+===PHI_START===
+NAME: two_mul_bit1_chain_to_4
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_two_mul_bit1_chain_to_4(x1: int, y1: int)
+    requires
+        y1 != 0,
+    ensures
+        (4 * x1 + 1) / (4 * y1) == x1 / y1,
+{
+    two_mul_with_bit1(2 * x1, 2 * y1);
+    assert(2 * (2 * x1) + 1 == 4 * x1 + 1) by(nonlinear_arith);
+    assert(2 * (2 * y1) == 4 * y1) by(nonlinear_arith);
+    two_mul_with_bit1(x1, y1);
+    assert((2 * x1) / (2 * y1) == x1 / y1);
+    // need: (2*(2*x1) + 1) / (2*(2*y1)) == (2*x1) / (2*y1)
+    // which is what the first call gives
+}
+```
+REASON: Chaining the lemma yields `(4x+1)/(4y) == x/y` — combining two applications, the `+1` remainder propagates through two levels of halving
+===PHI_END===

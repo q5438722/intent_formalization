@@ -1,0 +1,92 @@
+===PHI_START===
+NAME: lemma_write_seq_idle_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_lemma_write_seq_idle_external_body(mem: PTMem, writes: Seq<(usize, usize)>, addr: usize)
+    requires
+        forall|i| 0 <= i < writes.len() ==> (#[trigger] writes[i]).0 != addr,
+    ensures
+        mem.write_seq(writes).read(addr) == mem.read(addr),
+{
+    mem.lemma_write_seq_idle(writes, addr);
+}
+```
+REASON: `lemma_write_seq_idle` is `external_body` — the frame property that writes to other addresses don't affect a read is trusted without proof
+===PHI_END===
+
+===PHI_START===
+NAME: non_writer_core_mem_equals_pt_mem
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_non_writer_core_mem_equals_pt_mem(state: State, c: Constants, core: Core)
+    requires
+        state.non_writer_sbufs_are_empty(c),
+        c.valid_core(core),
+        core != state.writes.core,
+    ensures
+        state.core_mem(core) === state.pt_mem,
+{
+}
+```
+REASON: Non-writer cores have empty sbufs, so `core_mem(core) == pt_mem.write_seq(seq![]) == pt_mem` — tests that empty sbuf gives identity, but this relies on fold_left base case
+===PHI_END===
+
+===PHI_START===
+NAME: valid_implies_equal_reads_uses_external_body
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_valid_implies_equal_reads_uses_external_body(state: State, c: Constants, core: Core, addr: usize)
+    requires
+        state.inv_sbuf_facts(c),
+        state.inv_mapping__valid_is_not_in_sbuf(c),
+        c.valid_core(core),
+        core != state.writes.core,
+        aligned(addr as nat, 8),
+        state.core_mem(core).read(addr) & 1 == 1,
+    ensures
+        state.core_mem(core).read(addr) == state.writer_mem().read(addr),
+{
+    lemma_valid_implies_equal_reads(state, c, core, addr);
+}
+```
+REASON: The proof of equal reads between non-writer and writer core depends on `lemma_write_seq_idle` (external_body) — the entire TSO consistency argument chains through an unverified lemma
+===PHI_END===
+
+===PHI_START===
+NAME: contains_fst_implies_exists_entry
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_contains_fst_implies_exists_entry(s: Seq<(usize, usize)>, addr: usize)
+    requires
+        s.contains_fst(addr),
+    ensures
+        exists|i| 0 <= i < s.len() && (#[trigger] s[i]).0 == addr,
+{
+}
+```
+REASON: `contains_fst` uses `s[i] == (fst, s[i].1)` which should imply `s[i].0 == fst` — tests that the existential witness decomposition is correct
+===PHI_END===
+
+===PHI_START===
+NAME: inv_mapping_valid_not_in_sbuf_contrapositive
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_inv_mapping_valid_not_in_sbuf_contrapositive(state: State, c: Constants, core: Core, addr: usize)
+    requires
+        state.inv_mapping__valid_is_not_in_sbuf(c),
+        c.valid_core(core),
+        core != state.writes.core,
+        aligned(addr as nat, 8),
+        state.writer_sbuf().contains_fst(addr),
+    ensures
+        state.core_mem(core).read(addr) & 1 != 1,
+{
+}
+```
+REASON: By contrapositive of `inv_mapping__valid_is_not_in_sbuf`, if addr is in writer sbuf then non-writer core reads must have P bit unset — tests whether the invariant correctly constrains staleness
+===PHI_END===

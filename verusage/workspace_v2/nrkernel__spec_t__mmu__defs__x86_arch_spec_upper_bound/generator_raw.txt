@@ -1,0 +1,71 @@
+===PHI_START===
+NAME: arch_inv_allows_single_layer
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_arch_inv_allows_single_layer()
+    ensures
+        (Arch { layers: seq![ArchLayer { entry_size: 4096, num_entries: 512 }] }).inv(),
+{
+}
+```
+REASON: `Arch::inv` allows architectures with only 1 layer — `entry_size_is_next_layer_size` is vacuously true when there's no next layer, permitting degenerate single-level page tables
+===PHI_END===
+
+===PHI_START===
+NAME: arch_inv_allows_empty_layers
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_arch_inv_allows_empty_layers()
+    ensures
+        (Arch { layers: seq![] }).inv(),
+{
+}
+```
+REASON: `Arch::inv` allows an architecture with zero layers — the forall over an empty domain is vacuously true, resulting in a page table with no levels
+===PHI_END===
+
+===PHI_START===
+NAME: upper_vaddr_not_canonical
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_upper_vaddr_not_canonical()
+    ensures
+        x86_arch_spec.upper_vaddr(0, 0) > (1usize << 48) as nat,
+{
+    x86_arch_spec_upper_bound();
+}
+```
+REASON: `upper_vaddr` computes to 256TB (512^2 * 1G = 2^48) which equals the 48-bit canonical address boundary — addresses at or above this are non-canonical on x86-64 without LA57
+===PHI_END===
+
+===PHI_START===
+NAME: entry_size_is_next_layer_vacuous_at_last
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_entry_size_is_next_layer_vacuous_at_last()
+    ensures
+        x86_arch_spec.entry_size_is_next_layer_size(3),
+{
+}
+```
+REASON: `entry_size_is_next_layer_size` at the last layer (i=3) is vacuously true — no constraint on the leaf layer's entry size relationship, allowing arbitrary leaf sizes
+===PHI_END===
+
+===PHI_START===
+NAME: max_base_equals_upper_vaddr
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_max_base_equals_upper_vaddr()
+    ensures
+        MAX_BASE == x86_arch_spec.upper_vaddr(0, 0),
+{
+    x86_arch_spec_upper_bound();
+}
+```
+REASON: `MAX_BASE` is defined as `X86_MAX_ENTRY_SIZE * 512` which equals `upper_vaddr(0, 0)` — if these should represent different bounds (e.g., physical vs virtual), their equality could mask a missing distinction
+===PHI_END===

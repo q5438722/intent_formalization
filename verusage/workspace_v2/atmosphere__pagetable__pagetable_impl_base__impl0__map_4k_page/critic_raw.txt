@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: page_closure_no_cross_level_disjointness
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The spec allows `cr3` to appear in both `l4_table@.dom()` and `l3_tables@.dom()` simultaneously — `wf_l4` constrains `l4_table@.dom()` to `{cr3}` and `wf_l3` has no exclusion of `cr3` from `l3_tables@.dom()`. This means the same physical page could serve as both L4 and L3 table, which is a real cross-level disjointness gap. The `page_closure` set union would count this page once (sets are idempotent), but the aliasing itself is a soundness concern.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: user_only_no_l1_constraint
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures clause `p.user || !p.user` is a tautology that holds for any boolean value. This PHI proves nothing about the spec — it would verify regardless of whether `user_only` constrains L1 entries or not. The observation about a potential L1 gap may be interesting, but this PHI does not demonstrate it.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: wf_l4_kernel_region_unconstrained
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures clause `ps || !ps` is a tautology. Moreover, kernel-region L4 entries being unconstrained by `wf_l4` is intentional — the kernel region is shared across address spaces and managed separately. The spec deliberately only constrains user-space entries (indices >= `kernel_l4_end`).
+===VERDICT_END===
+
+===SUMMARY===
+One true positive was found: the lack of cross-level disjointness between page table level domains (L4/L3/L2/L1) allows the same physical page pointer to appear at multiple levels simultaneously, which could lead to aliasing where a single page serves as both an L4 and L3 table. The other two candidates are false positives — both use tautological ensures clauses (P ∨ ¬P) that prove nothing about the spec, regardless of whether the underlying observations about L1 user-bit constraints or kernel-region constraints have merit.
+===END_SUMMARY===

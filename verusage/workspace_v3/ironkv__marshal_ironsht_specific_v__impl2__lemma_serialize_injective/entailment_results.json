@@ -1,0 +1,52 @@
+[
+  {
+    "name": "to_vec_always_empty",
+    "target_fn": "to_vec",
+    "type": "behavioral",
+    "reason": "If marshalability forces to_vec to be empty, the hashmap can never faithfully represent any key-value data",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "\n    |\n374 | proof fn phi_1_to_vec_always_empty(m: CKeyHashMap)\n    |       -------------------------------------------- at the end of the function body\n...\n378 |         m.to_vec()@.len() == 0,\n    |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "to_vec_at_most_one_entry",
+    "target_fn": "to_vec",
+    "type": "boundary",
+    "reason": "If the size bound or sorted-keys constraint accidentally limits to_vec to at most one element, the map is trivially degenerate",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": " | proof fn phi_2_to_vec_at_most_one_entry(m: CKeyHashMap)\n    |       ------------------------------------------------- at the end of the function body\n...\n378 |         m.to_vec()@.len() <= 1,\n    |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "to_vec_serialize_collision",
+    "target_fn": "to_vec",
+    "type": "logical",
+    "reason": "If distinct maps serialize identically via to_vec, deserialization cannot recover the original map, breaking injectivity",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "---------------------------------------- at the end of the function body\n...\n380 |         m1.to_vec().ghost_serialize() == m2.to_vec().ghost_serialize(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "to_vec_values_always_empty",
+    "target_fn": "to_vec",
+    "type": "behavioral",
+    "reason": "If the spec forces all values to be empty byte vectors, the hashmap cannot store any meaningful payload data",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "always_empty(m: CKeyHashMap, i: int)\n    |       ----------------------------------------------------------- at the end of the function body\n...\n379 |         m.to_vec()@[i].v@.len() == 0,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "sorted_keys_forces_all_equal",
+    "target_fn": "to_vec",
+    "type": "logical",
+    "reason": "If spec_sorted_keys combined with marshalability collapses all keys to the same value, the map can hold at most one logical entry",
+    "entailed": false,
+    "verified": 1,
+    "errors": 1,
+    "output_tail": "   --------------------------------------------------------------------- at the end of the function body\n...\n380 |         m.to_vec()@[i].k.ukey == m.to_vec()@[j].k.ukey,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  }
+]

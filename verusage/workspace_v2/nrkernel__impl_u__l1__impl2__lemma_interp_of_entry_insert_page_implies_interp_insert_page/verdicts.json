@@ -1,0 +1,32 @@
+[
+  {
+    "phi": "insert_page_implies_interp_aux_insert_external_body",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`lemma_interp_of_entry_insert_implies_interp_aux_insert` is `external_body` with `unimplemented!()` body \u2014 the inductive proof that inserting a mapping into one entry's interpretation propagates correctly through the `interp_aux` union chain is trusted without proof."
+  },
+  {
+    "phi": "page_insert_overwrites_existing_mapping",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "Direct consequence of the same external_body axiom captured by \u03c61 combined with standard `Map::insert` semantics. The commented-out precondition was intentionally removed \u2014 `Map::insert` overwrites by definition, and the axiom correctly models this."
+  },
+  {
+    "phi": "page_insert_base_not_entry_base",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "This is correct by open spec unfolding: `NodeEntry::Page(pte).interp(entry_base(j))` returns `map![entry_base(j) => pte]`, so the singleton map trivially contains `entry_base(j)`. The `base` parameter in the insert lemma is separate from this \u2014 no spec gap here."
+  },
+  {
+    "phi": "inv_no_base_vaddr_alignment",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "reasoning": "The commented-out `aligned(self.base_vaddr, self.entry_size() * self.num_entries())` in `well_formed()` means `inv()` accepts any `base_vaddr` including misaligned values like 7. On real x86 page tables, directory base virtual addresses must be aligned to entry boundaries."
+  },
+  {
+    "phi": "page_frame_base_unconstrained",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "reasoning": "`inv()` via `pages_match_entry_size` constrains `frame.size == entry_size()` but has no constraint on `frame.base`. The commented-out `self.frames_aligned()` suggests frame alignment was intended but disabled \u2014 any arbitrary physical address is accepted as a valid page frame base."
+  }
+]

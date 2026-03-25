@@ -1,0 +1,74 @@
+===PHI_START===
+NAME: map_injective_preserves_no_dup
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_map_injective_preserves_no_dup(s: Seq<int>, map: spec_fn(int) -> int)
+    requires
+        s.no_duplicates(),
+        forall |x: int, y: int| x != y ==> map(x) != map(y),
+    ensures
+        s.map_values(map).no_duplicates(),
+{
+}
+```
+REASON: injective map should preserve no_duplicates — tests the converse direction not proven by the lemma
+===PHI_END===
+
+===PHI_START===
+NAME: empty_seq_no_duplicates
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_empty_seq_no_duplicates(map: spec_fn(int) -> int)
+    ensures
+        Seq::<int>::empty().map_values(map).no_duplicates(),
+{
+}
+```
+REASON: empty sequence trivially has no duplicates — boundary test for vacuous quantifier handling
+===PHI_END===
+
+===PHI_START===
+NAME: singleton_no_duplicates
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_singleton_no_duplicates(v: int, map: spec_fn(int) -> int)
+    ensures
+        seq![v].map_values(map).no_duplicates(),
+{
+}
+```
+REASON: singleton mapped sequence trivially has no duplicates — tests minimal nontrivial case
+===PHI_END===
+
+===PHI_START===
+NAME: mapped_len_equals_original_len
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_mapped_len_equals_original_len(s: Seq<int>, map: spec_fn(int) -> int)
+    ensures
+        s.map_values(map).len() == s.len(),
+{
+}
+```
+REASON: map_values should preserve length — if it doesn't, the index-based proof in the lemma could be reasoning over misaligned indices
+===PHI_END===
+
+===PHI_START===
+NAME: non_injective_map_loses_no_dup
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_non_injective_map_loses_no_dup(v1: int, v2: int)
+    requires
+        v1 != v2,
+    ensures
+        !seq![v1, v2].map_values(|x: int| 0int).no_duplicates(),
+{
+}
+```
+REASON: constant map on distinct elements should produce duplicates — if this fails, map_values or no_duplicates is broken
+===PHI_END===

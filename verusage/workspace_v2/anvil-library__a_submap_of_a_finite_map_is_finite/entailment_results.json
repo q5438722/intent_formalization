@@ -1,0 +1,47 @@
+[
+  {
+    "name": "submap_dom_subset",
+    "type": "logical",
+    "code": "proof fn phi_1_submap_dom_subset(m1: Map<int, int>, m2: Map<int, int>)\n    requires\n        m1.submap_of(m2),\n    ensures\n        m1.dom().subset_of(m2.dom()),\n{\n}",
+    "reason": "tests whether submap_of implies domain subset \u2014 if this holds trivially via SMT it's expected, but confirms the semantic foundation the lemma relies on",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "finite_submap_cardinality_bound",
+    "type": "boundary",
+    "code": "proof fn phi_2_finite_submap_cardinality_bound(m1: Map<int, int>, m2: Map<int, int>)\n    requires\n        m1.submap_of(m2),\n        m2.dom().finite(),\n    ensures\n        m1.dom().len() <= m2.dom().len(),\n{\n    a_submap_of_a_finite_map_is_finite(m1, m2);\n}",
+    "reason": "if the spec is too weak, cardinality ordering might not follow from finiteness alone \u2014 tests whether submap + finite propagates to cardinality bound",
+    "entailed": false,
+    "verus_output": "verusage/workspace_v2/anvil-library__a_submap_of_a_finite_map_is_finite/phi_2_finite_submap_cardinality_bound.rs:24:9\n   |\n19 | proof fn phi_2_finite_submap_cardinality_bound(m1: Map<int, int>, m2: Map<int, int>)\n   |       ------------------------------------------------------------------------------ at the end of the function body\n...\n24 |         m1.dom().len() <= m2.dom().len(),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "empty_map_submap_of_any",
+    "type": "boundary",
+    "code": "proof fn phi_3_empty_map_submap_of_any(m: Map<int, int>)\n    ensures\n        Map::<int, int>::empty().submap_of(m),\n{\n}",
+    "reason": "tests whether empty map is universally a submap \u2014 if submap_of is incorrectly axiomatized this could fail or be vacuously exploitable",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "submap_value_agreement",
+    "type": "behavioral",
+    "code": "proof fn phi_4_submap_value_agreement(m1: Map<int, int>, m2: Map<int, int>, k: int)\n    requires\n        m1.submap_of(m2),\n        m1.contains_key(k),\n    ensures\n        m2[k] == m1[k],\n{\n}",
+    "reason": "submap_of should enforce value agreement on shared keys \u2014 if it only constrains domains without value equality, the spec would be too weak",
+    "entailed": false,
+    "verus_output": "ed\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-library__a_submap_of_a_finite_map_is_finite/phi_4_submap_value_agreement.rs:24:9\n   |\n19 | proof fn phi_4_submap_value_agreement(m1: Map<int, int>, m2: Map<int, int>, k: int)\n   |       ----------------------------------------------------------------------------- at the end of the function body\n...\n24 |         m2[k] == m1[k],\n   |         ^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "submap_antisymmetry_implies_equality",
+    "type": "logical",
+    "code": "proof fn phi_5_submap_antisymmetry_implies_equality(m1: Map<int, int>, m2: Map<int, int>)\n    requires\n        m1.submap_of(m2),\n        m2.submap_of(m1),\n    ensures\n        m1 === m2,\n{\n}",
+    "reason": "mutual submap should imply extensional equality \u2014 if submap_of is too weak (e.g., only domain containment without value agreement), this would fail",
+    "entailed": false,
+    "verus_output": "hentianyu/intent_formalization/verusage/workspace_v2/anvil-library__a_submap_of_a_finite_map_is_finite/phi_5_submap_antisymmetry_implies_equality.rs:24:9\n   |\n19 | proof fn phi_5_submap_antisymmetry_implies_equality(m1: Map<int, int>, m2: Map<int, int>)\n   |       ----------------------------------------------------------------------------------- at the end of the function body\n...\n24 |         m1 === m2,\n   |         ^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

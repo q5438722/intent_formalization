@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: lemma_condition_sufficient_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `lemma_condition_sufficient_to_create_wrpm_subregion` is `external_body` with `unimplemented!()`. It asserts that given a sufficient condition, any alternative region view differing only in writable addresses has all its crash states satisfying the permission. The proof requires constructing a crash state for the original view from the alternative's crash state — this non-trivial reasoning is entirely trusted.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: condition_implies_perm_for_current_crashes
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `condition_sufficient_to_create_wrpm_subregion` includes `forall |crash_state| region_view.can_crash_as(crash_state) ==> condition(crash_state)` and `forall |crash_state| condition(crash_state) ==> perm.check_permission(crash_state)`. Chaining these two implications directly yields the ensures. Correct by definition.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: memories_differ_transitive
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: For any address satisfying the antecedent (outside writable range), `m1[addr] == m2[addr]` and `m2[addr] == m3[addr]`, so `m1[addr] == m3[addr]` by transitivity of equality. Correct.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: get_subregion_view_nested
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Nested subranges compose: `subrange(start1, start1+len1).subrange(start2, start2+len2)` equals `subrange(start1+start2, start1+start2+len2)` by the vstd subrange-of-subrange axiom. The proof uses extensional equality to establish this. Correct.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: `lemma_condition_sufficient_to_create_wrpm_subregion` is `external_body`, trusting the core permission transfer argument (constructing a crash state for the original view from an alternative view's crash state) without verification. Three false positives confirm correct properties: condition-to-permission chaining by definition, transitivity of equality for memory-differ, and subrange composition for nested subregion views.
+===END_SUMMARY===

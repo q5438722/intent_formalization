@@ -1,0 +1,91 @@
+===PHI_START===
+NAME: entry_base_zero_idx_not_base
+TARGET_FN: entry_base (Arch)
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_entry_base_zero_idx_not_base(arch: Arch, layer: nat, base: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+    ensures
+        arch.entry_base(layer, base, 0) != base,
+{
+}
+```
+REASON: entry_base at index 0 should equal the base address; if this proves, the address calculation is fundamentally broken
+===PHI_END===
+
+===PHI_START===
+NAME: entry_base_not_strictly_increasing
+TARGET_FN: entry_base (Arch)
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_entry_base_not_strictly_increasing(arch: Arch, layer: nat, base: nat, i: nat)
+    requires
+        arch.inv(),
+        layer < arch.layers.len(),
+        i + 1 < arch.num_entries(layer),
+    ensures
+        arch.entry_base(layer, base, (i + 1) as nat) <= arch.entry_base(layer, base, i),
+{
+}
+```
+REASON: consecutive entry bases must be strictly increasing for entries to map disjoint regions; provability implies overlapping or reversed address layout
+===PHI_END===
+
+===PHI_START===
+NAME: inv_page_forced_zero_size
+TARGET_FN: pages_match_entry_size
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_inv_page_forced_zero_size(d: Directory, i: nat)
+    requires
+        d.inv(),
+        i < d.entries.len(),
+        d.entries[i as int] is Page,
+    ensures
+        d.entries[i as int]->Page_0.frame.size == 0,
+{
+}
+```
+REASON: under inv, page frame sizes must equal entry_size which is positive; if this proves, the invariant erroneously forces zero-size frames
+===PHI_END===
+
+===PHI_START===
+NAME: empty_dir_has_mapping
+TARGET_FN: interp
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_empty_dir_has_mapping(d: Directory)
+    requires
+        d.inv(),
+        d.empty(),
+    ensures
+        exists|k: nat| d.interp().dom().contains(k),
+{
+}
+```
+REASON: an empty directory should have no mappings; provability means the interp of an all-Invalid directory is non-empty, violating the empty semantics
+===PHI_END===
+
+===PHI_START===
+NAME: child_entry_size_exceeds_parent
+TARGET_FN: entry_size_is_next_layer_size
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_child_entry_size_exceeds_parent(arch: Arch, i: nat)
+    requires
+        arch.inv(),
+        i + 1 < arch.layers.len(),
+    ensures
+        arch.entry_size((i + 1) as nat) > arch.entry_size(i),
+{
+}
+```
+REASON: parent layer entries cover larger regions than children (entry_size(i) = entry_size(i+1) * num_entries(i+1)); provability means the size hierarchy is inverted
+===PHI_END===

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "fold_left_push_empty",
+    "type": "boundary",
+    "code": "proof fn phi_1_fold_left_push_empty()\n    ensures\n        Seq::<int>::empty().push(42).fold_left(0int, |acc: int, x: int| acc + x) == 42,\n{\n    lemma_fold_left_push(Seq::<int>::empty(), 42, 0int, |acc: int, x: int| acc + x);\n}",
+    "reason": "Tests fold_left_push with empty sequence \u2014 base case where `s.fold_left(b, f) == b` so result should be `f(b, a)`",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "fold_left_push_non_commutative",
+    "type": "logical",
+    "code": "proof fn phi_2_fold_left_push_non_commutative()\n    ensures\n        seq![1int, 2].push(3).fold_left(0int, |acc: int, x: int| acc - x) == ((0 - 1) - 2) - 3,\n{\n    lemma_fold_left_push(seq![1int, 2], 3, 0int, |acc: int, x: int| acc - x);\n}",
+    "reason": "Tests with non-commutative subtraction \u2014 fold_left is left-associative, so push should apply `f` to the accumulated result",
+    "entailed": false,
+    "verus_output": "mem__lemma_fold_left_push/phi_2_fold_left_push_non_commutative.rs:20:9\n   |\n18 | proof fn phi_2_fold_left_push_non_commutative()\n   |       ----------------------------------------- at the end of the function body\n19 |     ensures\n20 |         seq![1int, 2].push(3).fold_left(0int, |acc: int, x: int| acc - x) == ((0 - 1) - 2) - 3,\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "fold_left_push_ignores_order",
+    "type": "logical",
+    "code": "proof fn phi_3_fold_left_push_ignores_order(a: int, b: int)\n    requires\n        a != b,\n    ensures\n        seq![a].push(b).fold_left(0int, |acc: int, x: int| acc - x)\n            != seq![b].push(a).fold_left(0int, |acc: int, x: int| acc - x),\n{\n    lemma_fold_left_push(seq![a], b, 0int, |acc: int, x: int| acc - x);\n    lemma_fold_left_push(seq![b], a, 0int, |acc: int, x: int| acc - x);\n}",
+    "reason": "Subtraction is non-commutative, so `[a, b]` and `[b, a]` should give different results \u2014 if this verifies, it confirms fold_left respects order, but `(0 - a) - b == (0 - b) - a` is actually `-(a+b)` which IS equal, making this vacuously false",
+    "entailed": false,
+    "verus_output": "es_order.rs:22:9\n   |\n18 |   proof fn phi_3_fold_left_push_ignores_order(a: int, b: int)\n   |         ----------------------------------------------------- at the end of the function body\n...\n22 | /         seq![a].push(b).fold_left(0int, |acc: int, x: int| acc - x)\n23 | |             != seq![b].push(a).fold_left(0int, |acc: int, x: int| acc - x),\n   | |__________________________________________________________________________^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "fold_left_push_concat_equivalence",
+    "type": "behavioral",
+    "code": "proof fn phi_4_fold_left_push_concat_equivalence(s: Seq<int>, a: int, b: int)\n    ensures\n        s.push(a).push(b).fold_left(0int, |acc: int, x: int| acc + x)\n            == s.fold_left(0int, |acc: int, x: int| acc + x) + a + b,\n{\n    lemma_fold_left_push(s.push(a), b, 0int, |acc: int, x: int| acc + x);\n    lemma_fold_left_push(s, a, 0int, |acc: int, x: int| acc + x);\n}",
+    "reason": "Double push should decompose into accumulated sum plus both elements \u2014 tests that repeated application of the lemma composes correctly",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "fold_left_push_closure_mismatch",
+    "type": "logical",
+    "code": "proof fn phi_5_fold_left_push_closure_mismatch()\n    ensures\n        seq![1int].push(2).fold_left(10int, |acc: int, x: int| x)\n            == (|acc: int, x: int| x)(seq![1int].fold_left(10int, |acc: int, x: int| x), 2),\n{\n    lemma_fold_left_push(seq![1int], 2, 10int, |acc: int, x: int| x);\n}",
+    "reason": "With `f = |acc, x| x` (ignores accumulator), fold_left always returns the last element \u2014 the lemma should confirm `f(f(10, 1), 2) == 2`, testing a degenerate closure that discards history",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

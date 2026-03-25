@@ -1,0 +1,81 @@
+===PHI_START===
+NAME: flatten_empty_is_empty
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_flatten_empty_is_empty()
+    ensures
+        flatten_set_seq::<int>(seq![]) == Set::<int>::empty(),
+{
+}
+```
+REASON: If flattening an empty sequence produced a non-empty set, the fold_left base case would be unsound
+===PHI_END===
+
+===PHI_START===
+NAME: flatten_singleton_equals_element
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_flatten_singleton_equals_element(s: Set<int>)
+    ensures
+        flatten_set_seq(seq![s]) == s,
+{
+}
+```
+REASON: If flattening a singleton sequence didn't equal the contained set, the fold_left would be incorrectly accumulating
+===PHI_END===
+
+===PHI_START===
+NAME: flatten_order_independent
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_flatten_order_independent(s1: Set<int>, s2: Set<int>)
+    ensures
+        flatten_set_seq(seq![s1, s2]) == flatten_set_seq(seq![s2, s1]),
+{
+    lemma_flatten_set_seq_spec(seq![s1, s2]);
+    lemma_flatten_set_seq_spec(seq![s2, s1]);
+    assert(flatten_set_seq(seq![s1, s2]) =~= flatten_set_seq(seq![s2, s1]));
+}
+```
+REASON: If flatten depended on ordering, the set union semantics would be broken — `fold_left` with union should be commutative
+===PHI_END===
+
+===PHI_START===
+NAME: flatten_duplicate_sets_idempotent
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_flatten_duplicate_sets_idempotent(s: Set<int>)
+    ensures
+        flatten_set_seq(seq![s, s]) == s,
+{
+    lemma_flatten_set_seq_spec(seq![s, s]);
+    lemma_flatten_set_seq_spec(seq![s]);
+    assert(flatten_set_seq(seq![s, s]) =~= s);
+}
+```
+REASON: If duplicating a set in the sequence enlarged the result, union idempotency would be violated
+===PHI_END===
+
+===PHI_START===
+NAME: flatten_subset_of_append
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_flatten_subset_of_append(sets: Seq<Set<int>>, extra: Set<int>)
+    ensures
+        flatten_set_seq(sets).subset_of(flatten_set_seq(sets.push(extra))),
+{
+    lemma_flatten_set_seq_spec(sets);
+    lemma_flatten_set_seq_spec(sets.push(extra));
+    assert forall |x: int| flatten_set_seq(sets).contains(x) implies flatten_set_seq(sets.push(extra)).contains(x) by {
+        let i = choose |i: int| 0 <= i < sets.len() && sets[i].contains(x);
+        assert(sets.push(extra)[i].contains(x));
+    }
+}
+```
+REASON: If appending a set could shrink the flattened result, the union-based fold_left would be losing elements
+===PHI_END===

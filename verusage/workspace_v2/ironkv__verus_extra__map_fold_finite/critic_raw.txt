@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: set_fold_empty_returns_zero
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Direct definitional consequence — `s.len() == 0` branch returns `zero`. Standard base case.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: set_fold_infinite_returns_zero
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: Folding an infinite set silently returns `zero` with no indication of failure. This is a design choice that could mask bugs — callers passing an infinite set get a valid-looking result instead of an obviously wrong one.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: map_fold_empty_is_empty
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Direct consequence of `set_fold` returning `Set::empty()` (the zero) on an empty input set. Expected behavior.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: set_fold_order_dependent_non_commutative
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures is a trivial tautology (`x == x`). It proves nothing about order-dependence or commutativity.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: `set_fold` silently returns `zero` for infinite sets, which could mask bugs where callers accidentally pass non-finite sets and receive the identity element as if the fold succeeded. The remaining three are false positives — empty-set base cases are definitionally correct, and the order-dependence candidate is a self-equality tautology.
+===END_SUMMARY===

@@ -1,0 +1,72 @@
+===PHI_START===
+NAME: sbin_bounds_negative_size_unchecked
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_sbin_bounds_negative_size_unchecked()
+    ensures
+        property_sbin_bounds(0) || !property_sbin_bounds(0),
+{
+}
+```
+REASON: `property_sbin_bounds` casts `size as u64` without a non-negativity or range check — for size=0, `u64_leading_zeros(0)` is 64, making `b = 63 - 64` underflow as u8, so the property may fail or produce nonsensical results at boundary
+===PHI_END===
+
+===PHI_START===
+NAME: pow2_negative_is_one
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_pow2_negative_is_one(e: int)
+    requires
+        e < 0,
+    ensures
+        pow2(e) == 1,
+{
+}
+```
+REASON: `pow2` returns 1 for all negative exponents — mathematically 2^(-n) is a fraction, so callers accidentally passing negative values get silently wrong results
+===PHI_END===
+
+===PHI_START===
+NAME: sbin_bounds_size_8_fails
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_sbin_bounds_size_8_fails()
+    ensures
+        !property_sbin_bounds(4),
+{
+}
+```
+REASON: For small sizes like 4, `u64_leading_zeros(4) == 61`, so `b = 63 - 61 = 2`, and `(2 << 2) | ((4 >> 0) & 0x03) = 8 | 0 = 8 >= 4` should hold — but if it doesn't, the property excludes valid small sizes from the sbin computation
+===PHI_END===
+
+===PHI_START===
+NAME: check_sbin_bounds_vacuous_empty_range
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_check_sbin_bounds_vacuous_empty_range()
+    ensures
+        check_sbin_bounds(100, 50),
+{
+}
+```
+REASON: `check_sbin_bounds` is vacuously true when `size_start >= size_end` — callers who accidentally swap arguments get a trivially true result, masking missing coverage
+===PHI_END===
+
+===PHI_START===
+NAME: shift_is_div_zero_identity
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_shift_is_div_zero_identity(x: u64)
+    ensures
+        x >> 0u64 == x as nat,
+{
+    shift_is_div(x, 0);
+}
+```
+REASON: Right-shifting by 0 is trivially the identity — but `shift_is_div` is used to justify bit-manipulation in `property_sbin_bounds`; if the shift amount in the sbin formula can be 0 (when `b == 2`), the shift `b - 2 = 0` extracts no useful bits, potentially misclassifying sizes into wrong bins
+===PHI_END===

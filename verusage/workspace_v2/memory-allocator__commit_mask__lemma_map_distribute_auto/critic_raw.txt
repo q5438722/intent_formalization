@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: map_distribute_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `lemma_map_distribute` is `external_body` — the distributivity of `map` over `union` is a mathematically true property, but it is trusted without proof. Since `is_bit_set`-style bugs have shown external_body axioms can be subtly wrong, this unverified assumption represents a real trust gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: map_union_empty_left
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is a direct consequence of map distributivity plus the standard set axiom that `Set::empty().union(s) == s` and `Set::empty().map(f) == Set::empty()`. The property `∅ ∪ s).map(f) == s.map(f)` is mathematically correct and expected.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: map_self_union_idempotent
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: `s.union(s) == s` is a fundamental set identity (union idempotence), and `s.union(s).map(f) == s.map(f)` follows trivially. This is a correct mathematical property, not a spec gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: auto_trigger_unbounded_instantiation
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The property `s1.union(s2).union(s3).map(f) == s1.map(f).union(s2.map(f)).union(s3.map(f))` is a correct associative application of distributivity. Trigger-based instantiation concerns are solver performance issues, not soundness gaps — the entailed property itself is mathematically correct.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: `lemma_map_distribute` is an `external_body` axiom trusting set map distributivity over union without proof. While the property is mathematically true, the lack of verification means any subtle mismatch between the axiom and Verus's internal set representation would go undetected. The other three candidates are false positives — they are correct mathematical consequences of distributivity combined with standard set identities (empty set, union idempotence, associativity).
+===END_SUMMARY===

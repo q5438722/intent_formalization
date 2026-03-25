@@ -1,0 +1,47 @@
+[
+  {
+    "name": "append_other_preserves_queue",
+    "type": "behavioral",
+    "code": "proof fn phi_1_append_other_preserves_queue<DT: Dispatch>(\n    queue: Seq<ReqId>,\n    log: Map<LogIdx, LogEntry<DT>>,\n    nodeId: NodeId,\n    updates: Map<ReqId, UpdateState<DT>>,\n    new_updates: Map<ReqId, UpdateState<DT>>,\n    new_rid: ReqId,\n    log_entry: LogEntry<DT>,\n    logUpper: LogIdx,\n)\n    requires\n        LogContainsEntriesUpToHere(log, logUpper),\n        log_entry.node_id != nodeId,\n        new_updates.contains_key(new_rid),\n        new_updates[new_rid] === (UpdateState::Placed { op: log_entry.op, idx: logUpper }),\n        !queue.contains(new_rid),\n        forall |rid| #[trigger] updates.contains_key(rid) && rid != new_rid ==> new_updates.contains_key(rid) && new_updates[rid] === updates[rid],\n        LogRangeMatchesQueue(queue, log, 0, 0, logUpper, nodeId, updates),\n    ensures ({\n        let new_log = log.insert(logUpper, log_entry);\n        LogRangeMatchesQueue(queue, new_log, 0, 0, logUpper, nodeId, new_updates)\n    }),\n{\n    LogRangeMatchesQueue_append_other(queue, log, log.insert(logUpper, log_entry), 0, 0, logUpper, logUpper, nodeId, updates, new_updates, new_rid, log_entry);\n}",
+    "reason": "Appending a remote entry preserves the existing queue match unchanged \u2014 tests that the append_other lemma correctly maintains the invariant when a different node's entry is added",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "log_range_empty_implies_queue_end",
+    "type": "boundary",
+    "code": "proof fn phi_2_log_range_empty_implies_queue_end<DT: Dispatch>(\n    queue: Seq<ReqId>,\n    log: Map<LogIdx, LogEntry<DT>>,\n    nodeId: NodeId,\n    updates: Map<ReqId, UpdateState<DT>>,\n    idx: LogIdx,\n    queueIndex: nat,\n)\n    requires\n        queueIndex <= queue.len(),\n        LogRangeMatchesQueue(queue, log, queueIndex, idx, idx, nodeId, updates),\n    ensures\n        queueIndex == queue.len(),\n{\n}",
+    "reason": "An empty log range forces the queue to be exhausted at `queueIndex` \u2014 tests the base case constraint",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "log_range_local_entry_placed_state",
+    "type": "behavioral",
+    "code": "proof fn phi_3_log_range_local_entry_placed_state<DT: Dispatch>(\n    queue: Seq<ReqId>,\n    log: Map<LogIdx, LogEntry<DT>>,\n    nodeId: NodeId,\n    updates: Map<ReqId, UpdateState<DT>>,\n    logIdx: LogIdx,\n)\n    requires\n        LogContainsEntriesUpToHere(log, logIdx + 1),\n        log[logIdx].node_id == nodeId,\n        LogRangeMatchesQueue(queue, log, 0, logIdx, logIdx + 1, nodeId, updates),\n    ensures\n        queue.len() >= 1,\n        updates.contains_key(queue[0]),\n        updates[queue[0]] is Placed,\n{\n}",
+    "reason": "A single local log entry requires at least one queue element in Placed state \u2014 tests that the matching correctly links log entries to update states",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "log_range_remote_skip",
+    "type": "behavioral",
+    "code": "proof fn phi_4_log_range_remote_skip<DT: Dispatch>(\n    queue: Seq<ReqId>,\n    log: Map<LogIdx, LogEntry<DT>>,\n    nodeId: NodeId,\n    updates: Map<ReqId, UpdateState<DT>>,\n    remoteId: NodeId,\n    logIdx: LogIdx,\n)\n    requires\n        LogContainsEntriesUpToHere(log, logIdx + 1),\n        log[logIdx].node_id == remoteId,\n        remoteId != nodeId,\n        LogRangeMatchesQueue(queue, log, 0, logIdx, logIdx + 1, nodeId, updates),\n    ensures\n        queue.len() == 0,\n{\n}",
+    "reason": "A single remote log entry doesn't consume any queue element \u2014 tests that remote entries are skipped",
+    "entailed": false,
+    "verus_output": "__unbounded_log__LogRangeMatchesQueue_append_other/phi_4_log_range_remote_skip.rs:206:9\n    |\n192 |   proof fn phi_4_log_range_remote_skip<DT: Dispatch>(\n    |  _______-\n193 | |     queue: Seq<ReqId>,\n194 | |     log: Map<LogIdx, LogEntry<DT>>,\n195 | |     nodeId: NodeId,\n...   |\n198 | |     logIdx: LogIdx,\n199 | | )\n    | |_- at the end of the function body\n...\n206 |           queue.len() == 0,\n    |           ^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "update_state_placed_idx_matches_log",
+    "type": "logical",
+    "code": "proof fn phi_5_update_state_placed_idx_matches_log<DT: Dispatch>(\n    queue: Seq<ReqId>,\n    log: Map<LogIdx, LogEntry<DT>>,\n    nodeId: NodeId,\n    updates: Map<ReqId, UpdateState<DT>>,\n    logIdx: LogIdx,\n)\n    requires\n        LogContainsEntriesUpToHere(log, logIdx + 1),\n        log[logIdx].node_id == nodeId,\n        LogRangeMatchesQueue(queue, log, 0, logIdx, logIdx + 1, nodeId, updates),\n    ensures\n        updates[queue[0]].arrow_Placed_idx() == logIdx,\n{\n}",
+    "reason": "The Placed index in the update state must match the log index \u2014 tests that the spec correctly links the update's log position to the actual log entry",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

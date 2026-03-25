@@ -1,0 +1,47 @@
+[
+  {
+    "name": "hashmap_insert_non_injective_key",
+    "type": "logical",
+    "code": "proof fn phi_1_hashmap_insert_non_injective_key(e1: EndPoint, e2: EndPoint, v1: u64, v2: u64)\n    requires\n        e1@ == e2@,\n        v1 != v2,\n    ensures\n        ({\n            let mut m = HashMap::<u64>::new();\n            m.insert(&e1, v1);\n            m.insert(&e2, v2);\n            m@.len() == 1\n        }),\n{\n}",
+    "reason": "Two distinct `EndPoint` values with the same abstract view map to the same key in the abstract `Map<AbstractEndPoint, V>`, but the underlying `collections::HashMap<EndPoint, V>` could store them separately \u2014 the ensures on `insert` forces abstract deduplication without verifying the concrete implementation agrees",
+    "entailed": false,
+    "verus_output": "error: cannot call function `phi_1_hashmap_insert_non_injective_key::HashMap::new` with mode exec\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__single_delivery_state_v__impl3__un_acked_messages_extend/phi_1_hashmap_insert_non_injective_key.rs:910:25\n    |\n910 |             let mut m = HashMap::<u64>::new();\n    |                         ^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "ckeyhasmap_view_spec_to_vec_unrelated",
+    "type": "logical",
+    "code": "proof fn phi_2_ckeyhasmap_view_spec_to_vec_unrelated(m: CKeyHashMap)\n    ensures\n        m.view().dom().len() >= 0,\n        m.spec_to_vec()@.len() >= 0,\n{\n}",
+    "reason": "`CKeyHashMap::view` and `spec_to_vec` are both uninterpreted with no connecting axiom \u2014 the abstract map contents are completely unconstrained relative to the vector serialization, allowing inconsistent abstract states",
+    "entailed": true,
+    "verus_output": "verification results:: 5 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "csendstate_abstractable_trigger_mismatch",
+    "type": "logical",
+    "code": "proof fn phi_3_csendstate_abstractable_trigger_mismatch(s: CSendState, ep: EndPoint)\n    requires\n        s.abstractable(),\n        s.epmap@.contains_key(ep@),\n    ensures\n        ep.abstractable(),\n{\n}",
+    "reason": "`CSendState::abstractable` quantifies over `ep: EndPoint` with trigger `self@.contains_key(ep@)` but `self@` is `SendState<Message>` (mapped values) while `self.epmap@` is `Map<AbstractEndPoint, CAckState>` \u2014 the trigger references the derived map rather than the source, potentially mismatching domains",
+    "entailed": false,
+    "verus_output": "verusage/workspace_v2/ironkv__single_delivery_state_v__impl3__un_acked_messages_extend/phi_3_csendstate_abstractable_trigger_mismatch.rs:909:9\n    |\n904 | proof fn phi_3_csendstate_abstractable_trigger_mismatch(s: CSendState, ep: EndPoint)\n    |       ------------------------------------------------------------------------------ at the end of the function body\n...\n909 |         ep.abstractable(),\n    |         ^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "cmessage_delegate_abstractable_unchecked_hashmap",
+    "type": "logical",
+    "code": "proof fn phi_4_cmessage_delegate_abstractable_unchecked_hashmap(range: KeyRange<CKey>, h: CKeyHashMap)\n    requires\n        CMessage::Delegate { range, h }.abstractable(),\n    ensures\n        true,\n{\n}",
+    "reason": "`CMessage::abstractable` for `Delegate` falls through to `_ => true` without checking whether `CKeyHashMap` is abstractable \u2014 any `Delegate` message is considered abstractable regardless of its hashmap contents",
+    "entailed": false,
+    "verus_output": "error: struct literals are not allowed here; try surrounding the struct literal with parentheses\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/ironkv__single_delivery_state_v__impl3__un_acked_messages_extend/phi_4_cmessage_delegate_abstractable_unchecked_hashmap.rs:906:9\n    |\n906 |         CMessage::Delegate { range, h }.abstractable(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "un_acked_list_sequential_empty_vacuous",
+    "type": "boundary",
+    "code": "proof fn phi_5_un_acked_list_sequential_empty_vacuous()\n    ensures\n        CAckState::un_acked_list_sequential(seq![]),\n        CAckState::un_acked_list_valid(seq![]),\n{\n}",
+    "reason": "An empty un_acked list vacuously satisfies both `un_acked_list_sequential` and `un_acked_list_valid` (including the `un_acked_valid` quantifier), meaning empty lists bypass all message validity checks",
+    "entailed": true,
+    "verus_output": "verification results:: 5 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

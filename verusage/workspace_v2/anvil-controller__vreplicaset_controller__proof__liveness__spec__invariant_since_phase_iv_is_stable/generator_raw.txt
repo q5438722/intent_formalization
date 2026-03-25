@@ -1,0 +1,106 @@
+===PHI_START===
+NAME: gc_invariant_allows_non_delete_mutations
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_gc_invariant_allows_non_delete_mutations(vrs: VReplicaSetView, s: ClusterState, msg: Message)
+    requires
+        garbage_collector_does_not_delete_vrs_pods(vrs)(s),
+        s.in_flight().contains(msg),
+        msg.src.is_BuiltinController(),
+        msg.dst.is_APIServer(),
+        msg.content.is_update_request(),
+    ensures
+        true,
+{
+}
+```
+REASON: the garbage collector invariant only constrains delete requests — the builtin controller can freely send update requests that modify or remove owner references on VRS-owned pods, bypassing the protection entirely
+===PHI_END===
+
+===PHI_START===
+NAME: gc_invariant_vacuous_for_non_builtin
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_gc_invariant_vacuous_for_non_builtin(vrs: VReplicaSetView, s: ClusterState, msg: Message)
+    requires
+        garbage_collector_does_not_delete_vrs_pods(vrs)(s),
+        s.in_flight().contains(msg),
+        msg.src.is_PodMonkey(),
+        msg.dst.is_APIServer(),
+        msg.content.is_delete_request(),
+        msg.content.get_delete_request().key.kind == PodView::kind(),
+    ensures
+        true,
+{
+}
+```
+REASON: the invariant only restricts messages from BuiltinController — PodMonkey or other sources can freely delete VRS-owned pods without any constraint
+===PHI_END===
+
+===PHI_START===
+NAME: controller_owner_ref_ignores_namespace
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_controller_owner_ref_ignores_namespace(v1: VReplicaSetView, v2: VReplicaSetView)
+    requires
+        v1.metadata.name is Some,
+        v2.metadata.name is Some,
+        v1.metadata.uid is Some,
+        v2.metadata.uid is Some,
+        v1.metadata.name->0 == v2.metadata.name->0,
+        v1.metadata.uid->0 == v2.metadata.uid->0,
+        v1.metadata.namespace != v2.metadata.namespace,
+    ensures
+        v1.controller_owner_ref() == v2.controller_owner_ref(),
+{
+}
+```
+REASON: controller_owner_ref uses only name and uid but not namespace — two VReplicaSets in different namespaces with the same name and uid produce identical owner references, conflating cross-namespace ownership
+===PHI_END===
+
+===PHI_START===
+NAME: owner_references_contains_ignores_none
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_owner_references_contains_ignores_none(owner_ref: OwnerReferenceView)
+    requires
+        true,
+    ensures
+        !(ObjectMetaView {
+            name: None,
+            generate_name: None,
+            namespace: None,
+            resource_version: None,
+            uid: None,
+            labels: None,
+            annotations: None,
+            owner_references: None,
+            finalizers: None,
+            deletion_timestamp: None,
+        }).owner_references_contains(owner_ref),
+{
+}
+```
+REASON: owner_references_contains returns false for None owner_references rather than failing — an object with missing owner_references silently appears unowned, which could cause the GC invariant to not protect pods whose metadata is incomplete
+===PHI_END===
+
+===PHI_START===
+NAME: always_p_is_stable_external_body_unsound
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_always_p_is_stable_external_body_unsound()
+    requires
+        true,
+    ensures
+        valid(stable(always(lift_state(|s: ClusterState| false)))),
+{
+    always_p_is_stable(lift_state(|s: ClusterState| false));
+}
+```
+REASON: always_p_is_stable has #[verifier::external_body] so its postcondition is assumed without proof — it can be instantiated with any predicate including falsehood, declaring that "always false" is stable
+===PHI_END===

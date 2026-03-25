@@ -1,0 +1,37 @@
+[
+  {
+    "name": "thread_not_removed",
+    "target_fn": "kernel_kill_thread",
+    "type": "behavioral",
+    "code": "proof fn phi_1_thread_not_removed(old_self: Os, new_self: Os, thread_ptr: ThreadPtr)\n    requires\n        old_self.wf(),\n        old_self.thread_dom().contains(thread_ptr),\n        new_self.wf(),\n        new_self.thread_dom() == old_self.thread_dom().remove(thread_ptr),\n    ensures\n        new_self.thread_dom().contains(thread_ptr),\n{\n}",
+    "reason": "The killed thread should be removed from the domain; if it persists, the kill had no effect on thread membership."
+  },
+  {
+    "name": "thread_dom_empty_after_kill",
+    "target_fn": "kernel_kill_thread",
+    "type": "boundary",
+    "code": "proof fn phi_2_thread_dom_empty_after_kill(old_self: Os, new_self: Os, thread_ptr: ThreadPtr)\n    requires\n        old_self.wf(),\n        old_self.thread_dom().contains(thread_ptr),\n        new_self.wf(),\n        new_self.thread_dom() == old_self.thread_dom().remove(thread_ptr),\n    ensures\n        new_self.thread_dom() =~= Set::<ThreadPtr>::empty(),\n{\n}",
+    "reason": "Killing a single thread should not empty the entire thread domain; if it does, the spec over-constrains removal."
+  },
+  {
+    "name": "other_thread_also_removed",
+    "target_fn": "kernel_kill_thread",
+    "type": "logical",
+    "code": "proof fn phi_3_other_thread_also_removed(old_self: Os, new_self: Os, thread_ptr: ThreadPtr, other_ptr: ThreadPtr)\n    requires\n        old_self.wf(),\n        old_self.thread_dom().contains(thread_ptr),\n        old_self.thread_dom().contains(other_ptr),\n        thread_ptr != other_ptr,\n        new_self.wf(),\n        new_self.thread_dom() == old_self.thread_dom().remove(thread_ptr),\n        threads_unchanged_except(old_self.proc_man, new_self.proc_man, set![]),\n    ensures\n        !new_self.thread_dom().contains(other_ptr),\n{\n}",
+    "reason": "Killing one thread must not silently remove a different thread from the domain; the spec should preserve all other threads."
+  },
+  {
+    "name": "owned_threads_always_empty",
+    "target_fn": "kernel_kill_thread",
+    "type": "behavioral",
+    "code": "proof fn phi_4_owned_threads_always_empty(old_self: Os, new_self: Os, thread_ptr: ThreadPtr)\n    requires\n        old_self.wf(),\n        old_self.thread_dom().contains(thread_ptr),\n        new_self.wf(),\n        new_self.get_proc(old_self.get_thread(thread_ptr).owning_proc).owned_threads@ ==\n            old_self.get_proc(old_self.get_thread(thread_ptr).owning_proc).owned_threads@.remove_value(thread_ptr),\n        new_self.get_proc(old_self.get_thread(thread_ptr).owning_proc).owned_threads.len() ==\n            old_self.get_proc(old_self.get_thread(thread_ptr).owning_proc).owned_threads.len() - 1,\n    ensures\n        new_self.get_proc(old_self.get_thread(thread_ptr).owning_proc).owned_threads@.len() == 0,\n{\n}",
+    "reason": "Killing one thread should only decrement the owning process's thread count by 1, not force it to zero regardless of how many threads the process owns."
+  },
+  {
+    "name": "threads_unchanged_empty_set_contradiction",
+    "target_fn": "kernel_kill_thread",
+    "type": "logical",
+    "code": "proof fn phi_5_threads_unchanged_empty_set_contradiction(old_self: Os, new_self: Os, thread_ptr: ThreadPtr)\n    requires\n        old_self.wf(),\n        old_self.thread_dom().contains(thread_ptr),\n        new_self.wf(),\n        new_self.thread_dom() == old_self.thread_dom().remove(thread_ptr),\n        threads_unchanged_except(old_self.proc_man, new_self.proc_man, set![]),\n        new_self.proc_dom() == old_self.proc_dom(),\n    ensures\n        false,\n{\n}",
+    "reason": "threads_unchanged_except with the empty set claims NO threads are excepted from the unchanged invariant, yet a thread was removed; if this derives false the spec postconditions are mutually contradictory."
+  }
+]

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "subregion_view_length",
+    "type": "behavioral",
+    "code": "proof fn phi_1_subregion_view_length<PMRegion: PersistentMemoryRegion>(\n    pm: &PMRegion,\n    start: u64,\n    len: nat,\n)\n    requires\n        pm.inv(),\n        start + len <= pm@.len() <= u64::MAX,\n    ensures\n        get_subregion_view(pm@, start as nat, len).len() == len,\n{\n}",
+    "reason": "The subregion view length should equal the requested length \u2014 if subrange produced a different length, all offset-based reasoning within the subregion would be broken",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "subregion_start_cast_roundtrip",
+    "type": "boundary",
+    "code": "proof fn phi_2_subregion_start_cast_roundtrip(start: u64)\n    ensures\n        (start as nat) as u64 == start,\n{\n}",
+    "reason": "The u64\u2192nat\u2192u64 roundtrip should be lossless \u2014 if the cast dropped high bits, the stored start_ field would not match the spec-level start()",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "subregion_view_byte_matches_region",
+    "type": "behavioral",
+    "code": "proof fn phi_3_subregion_view_byte_matches_region<PMRegion: PersistentMemoryRegion>(\n    pm: &PMRegion,\n    start: u64,\n    len: nat,\n    k: int,\n)\n    requires\n        pm.inv(),\n        start + len <= pm@.len() <= u64::MAX,\n        0 <= k < len,\n    ensures\n        get_subregion_view(pm@, start as nat, len).state[k] == pm@.state[start as int + k],\n{\n}",
+    "reason": "Subregion byte at relative offset k should equal the region byte at absolute offset start+k \u2014 if the indexing were misaligned, reads through the subregion would access wrong physical bytes",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "full_region_subregion_equals_region",
+    "type": "boundary",
+    "code": "proof fn phi_4_full_region_subregion_equals_region<PMRegion: PersistentMemoryRegion>(\n    pm: &PMRegion,\n)\n    requires\n        pm.inv(),\n        pm@.len() <= u64::MAX,\n    ensures\n        get_subregion_view(pm@, 0, pm@.len()) == pm@,\n{\n    assert(pm@.state.subrange(0, pm@.len() as int) =~= pm@.state);\n}",
+    "reason": "A subregion spanning the entire region should equal the original \u2014 if it didn't, creating a full-coverage subregion would lose or alter data",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "adjacent_subregions_partition",
+    "type": "logical",
+    "code": "proof fn phi_5_adjacent_subregions_partition<PMRegion: PersistentMemoryRegion>(\n    pm: &PMRegion,\n    start: u64,\n    len1: nat,\n    len2: nat,\n    k: int,\n)\n    requires\n        pm.inv(),\n        start + len1 + len2 <= pm@.len() <= u64::MAX,\n        0 <= k < len1,\n    ensures\n        get_subregion_view(pm@, start as nat, len1 + len2).state[k]\n            == get_subregion_view(pm@, start as nat, len1).state[k],\n{\n}",
+    "reason": "The first portion of a combined subregion should match a subregion of just that portion \u2014 if they disagreed, splitting a subregion into two adjacent pieces would produce inconsistent views",
+    "entailed": true,
+    "verus_output": "verification results:: 3 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

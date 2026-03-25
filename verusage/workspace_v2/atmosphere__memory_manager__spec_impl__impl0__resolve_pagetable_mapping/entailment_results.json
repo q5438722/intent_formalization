@@ -1,0 +1,47 @@
+[
+  {
+    "name": "usize2pa_mem_valid_unconditional",
+    "type": "logical",
+    "code": "proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n    ensures\n        MEM_valid(usize2pa(v)),\n{\n}",
+    "reason": "usize2pa's external_body ensures MEM_valid(ret) for ALL inputs \u2014 trusts without proof that masking any arbitrary usize yields a valid physical address",
+    "entailed": false,
+    "verus_output": "on/verusage/workspace_v2/atmosphere__memory_manager__spec_impl__impl0__resolve_pagetable_mapping/phi_1_usize2pa_mem_valid_unconditional.rs:1170:9\n     |\n1168 | proof fn phi_1_usize2pa_mem_valid_unconditional(v: usize)\n     |       --------------------------------------------------- at the end of the function body\n1169 |     ensures\n1170 |         MEM_valid(usize2pa(v)),\n     |         ^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 36 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "page_entry_to_map_entry_drops_present",
+    "type": "behavioral",
+    "code": "proof fn phi_2_page_entry_to_map_entry_drops_present(p: PageEntry)\n    requires\n        p.perm.present == false,\n        p.addr == 0x1000,\n        p.perm.write == true,\n        p.perm.execute_disable == false,\n    ensures\n        spec_page_entry_to_map_entry(&p).addr == 0x1000,\n        spec_page_entry_to_map_entry(&p).write == true,\n{\n}",
+    "reason": "spec_page_entry_to_map_entry silently discards the present bit, producing a MapEntry with valid addr/write from a non-present entry",
+    "entailed": true,
+    "verus_output": ":53:10\n   |\n53 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__memory_manager__spec_impl__impl0__resolve_pagetable_mapping/phi_2_page_entry_to_map_entry_drops_present.rs:62:10\n   |\n62 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 36 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "is_empty_l4_dom_unbounded",
+    "type": "logical",
+    "code": "proof fn phi_3_is_empty_l4_dom_unbounded(pt: PageTable, p: PageMapPtr)\n    requires\n        pt.is_empty(),\n        pt.l4_table@.dom().contains(pt.cr3),\n        pt.l4_table@.dom().contains(p),\n        p != pt.cr3,\n    ensures\n        pt.page_closure().contains(p),\n{\n}",
+    "reason": "is_empty never constrains l4_table's domain \u2014 an \"empty\" page table can have arbitrarily many stale L4 entries in page_closure beyond cr3",
+    "entailed": true,
+    "verus_output": "unbounded.rs:53:10\n   |\n53 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__memory_manager__spec_impl__impl0__resolve_pagetable_mapping/phi_3_is_empty_l4_dom_unbounded.rs:62:10\n   |\n62 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 36 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "resolve_l4_returns_non_present_kernel",
+    "type": "boundary",
+    "code": "proof fn phi_4_resolve_l4_returns_non_present_kernel(pt: PageTable, l4i: L4Index)\n    requires\n        0 <= l4i < pt.kernel_l4_end,\n        pt.l4_table@.dom().contains(pt.cr3),\n        pt.l4_table@[pt.cr3].value()[l4i].perm.present == false,\n    ensures\n        pt.spec_resolve_mapping_l4(l4i).is_Some(),\n        pt.spec_resolve_mapping_l4(l4i).unwrap().perm.present == false,\n{\n}",
+    "reason": "spec_resolve_mapping_l4 returns Some for kernel-range indices even when present==false \u2014 callers get a non-present PageEntry they may treat as a valid resolved mapping",
+    "entailed": true,
+    "verus_output": ":53:10\n   |\n53 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__memory_manager__spec_impl__impl0__resolve_pagetable_mapping/phi_4_resolve_l4_returns_non_present_kernel.rs:62:10\n   |\n62 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 37 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "resolve_1g_and_l3_mutual_exclusion_by_ps",
+    "type": "boundary",
+    "code": "proof fn phi_5_resolve_1g_and_l3_mutual_exclusion_by_ps(pt: PageTable, l4i: L4Index, l3i: L3Index)\n    requires\n        pt.kernel_l4_end <= l4i < 512,\n        0 <= l3i < 512,\n        pt.spec_resolve_mapping_l4(l4i).is_Some(),\n        pt.l3_tables@.dom().contains(pt.spec_resolve_mapping_l4(l4i).unwrap().addr),\n        pt.l3_tables@[pt.spec_resolve_mapping_l4(l4i).unwrap().addr].value()[l3i].perm.present,\n        pt.l3_tables@[pt.spec_resolve_mapping_l4(l4i).unwrap().addr].value()[l3i].perm.ps,\n    ensures\n        pt.spec_resolve_mapping_1g_l3(l4i, l3i).is_Some(),\n        pt.spec_resolve_mapping_l3(l4i, l3i).is_None(),\n{\n}",
+    "reason": "When ps==true at L3, the 1g path returns Some while the non-hugepage L3 path returns None \u2014 confirms mutual exclusion holds, but if the spec allowed both paths to return Some simultaneously that would be unsound",
+    "entailed": true,
+    "verus_output": ":10\n   |\n53 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__memory_manager__spec_impl__impl0__resolve_pagetable_mapping/phi_5_resolve_1g_and_l3_mutual_exclusion_by_ps.rs:62:10\n   |\n62 | #[derive(Clone,Debug)]\n   |          ^^^^^\n\nwarning: 39 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

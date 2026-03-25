@@ -1,0 +1,119 @@
+===PHI_START===
+NAME: erase_preserves_length
+TARGET_FN: erase
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_erase_preserves_length<K: KeyTrait + VerusClone>(
+    old_s: StrictlyOrderedVec<K>, new_s: StrictlyOrderedVec<K>, start: usize, end: usize,
+)
+    requires
+        old_s.valid(),
+        start <= end <= old_s@.len(),
+        start < end,
+        new_s.valid(),
+        new_s@ == old_s@.subrange(0, start as int) + old_s@.subrange(end as int, old_s@.len() as int),
+        old_s@.to_set() == new_s@.to_set() + old_s@.subrange(start as int, end as int).to_set(),
+    ensures
+        new_s@.len() == old_s@.len(),
+{
+}
+```
+REASON: Erase with start < end must shrink the sequence; unchanged length means elements were not removed.
+===PHI_END===
+
+===PHI_START===
+NAME: erase_all_leaves_nonempty
+TARGET_FN: erase
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_erase_all_leaves_nonempty<K: KeyTrait + VerusClone>(
+    old_s: StrictlyOrderedVec<K>, new_s: StrictlyOrderedVec<K>,
+)
+    requires
+        old_s.valid(),
+        old_s@.len() > 0,
+        new_s.valid(),
+        new_s@ == old_s@.subrange(0, 0 as int) + old_s@.subrange(old_s@.len() as int, old_s@.len() as int),
+        old_s@.to_set() == new_s@.to_set() + old_s@.subrange(0 as int, old_s@.len() as int).to_set(),
+    ensures
+        new_s@.len() > 0,
+{
+}
+```
+REASON: Erasing the entire range (start=0, end=len) on a non-empty vec must yield an empty result.
+===PHI_END===
+
+===PHI_START===
+NAME: erase_set_unchanged
+TARGET_FN: erase
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_erase_set_unchanged<K: KeyTrait + VerusClone>(
+    old_s: StrictlyOrderedVec<K>, new_s: StrictlyOrderedVec<K>, start: usize, end: usize,
+)
+    requires
+        old_s.valid(),
+        old_s@.no_duplicates(),
+        start <= end <= old_s@.len(),
+        start < end,
+        old_s@.len() > 0,
+        new_s.valid(),
+        new_s@ == old_s@.subrange(0, start as int) + old_s@.subrange(end as int, old_s@.len() as int),
+        old_s@.to_set() == new_s@.to_set() + old_s@.subrange(start as int, end as int).to_set(),
+    ensures
+        new_s@.to_set() =~= old_s@.to_set(),
+{
+}
+```
+REASON: With no-duplicate keys, erased elements must leave the set; an unchanged set means nothing was truly removed.
+===PHI_END===
+
+===PHI_START===
+NAME: erase_empties_with_prefix
+TARGET_FN: erase
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_erase_empties_with_prefix<K: KeyTrait + VerusClone>(
+    old_s: StrictlyOrderedVec<K>, new_s: StrictlyOrderedVec<K>, start: usize, end: usize,
+)
+    requires
+        old_s.valid(),
+        0 < start,
+        start <= end <= old_s@.len(),
+        new_s.valid(),
+        new_s@ == old_s@.subrange(0, start as int) + old_s@.subrange(end as int, old_s@.len() as int),
+        old_s@.to_set() == new_s@.to_set() + old_s@.subrange(start as int, end as int).to_set(),
+    ensures
+        new_s@.len() == 0,
+{
+}
+```
+REASON: When start > 0, prefix elements must survive; an empty result means erase destroyed unerased data.
+===PHI_END===
+
+===PHI_START===
+NAME: erase_single_noop
+TARGET_FN: erase
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_erase_single_noop<K: KeyTrait + VerusClone>(
+    old_s: StrictlyOrderedVec<K>, new_s: StrictlyOrderedVec<K>, start: usize,
+)
+    requires
+        old_s.valid(),
+        (start as int) + 1 <= old_s@.len(),
+        new_s.valid(),
+        new_s@ == old_s@.subrange(0, start as int) + old_s@.subrange(start as int + 1, old_s@.len() as int),
+        old_s@.to_set() == new_s@.to_set() + old_s@.subrange(start as int, start as int + 1).to_set(),
+    ensures
+        new_s@ =~= old_s@,
+{
+}
+```
+REASON: Erasing one element must change the sequence; a no-op erase means the element was silently kept.
+===PHI_END===

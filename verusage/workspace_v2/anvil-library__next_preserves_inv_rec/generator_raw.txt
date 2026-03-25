@@ -1,0 +1,89 @@
+===PHI_START===
+NAME: execution_equality_forces_fn_equality
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_execution_equality_forces_fn_equality(f: spec_fn(nat) -> int, g: spec_fn(nat) -> int)
+    requires
+        forall |i: nat| #[trigger] f(i) == g(i),
+    ensures
+        f == g,
+{
+    let ex1 = Execution { nat_to_state: f };
+    let ex2 = Execution { nat_to_state: g };
+    execution_equality::<int>(ex1, ex2);
+}
+```
+REASON: execution_equality forces intensional equality of spec_fn from pointwise extensional equivalence — structurally distinct closures collapsed to equal without proof
+===PHI_END===
+
+===PHI_START===
+NAME: suffix_zero_equals_self
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_suffix_zero_equals_self(ex: Execution<int>)
+    ensures
+        ex.suffix(0) == ex,
+{
+    execution_equality::<int>(ex, ex.suffix(0));
+}
+```
+REASON: suffix(0) produces a fresh closure |i| f(i + 0) which is intensionally distinct from f — execution_equality silently collapses this gap
+===PHI_END===
+
+===PHI_START===
+NAME: suffix_composition_equals_addition
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_suffix_composition_equals_addition(ex: Execution<int>, a: nat, b: nat)
+    ensures
+        ex.suffix(a).suffix(b) == ex.suffix(a + b),
+{
+    execution_equality::<int>(ex.suffix(a).suffix(b), ex.suffix(a + b));
+}
+```
+REASON: suffix(a).suffix(b) nests two closures |i| (|j| f(j+a))(i+b) while suffix(a+b) has |i| f(i+a+b) — execution_equality forces intensional equality of structurally distinct nested closures
+===PHI_END===
+
+===PHI_START===
+NAME: inv_preserved_for_all_indices
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_inv_preserved_for_all_indices(ex: Execution<int>, next: TempPred<int>, inv: TempPred<int>)
+    requires
+        inv.satisfied_by(ex),
+        forall |idx: nat| next.satisfied_by(#[trigger] ex.suffix(idx)),
+        forall |idx: nat| inv.satisfied_by(#[trigger] ex.suffix(idx)) && next.satisfied_by(ex.suffix(idx))
+            ==> inv.satisfied_by(ex.suffix(idx + 1)),
+    ensures
+        forall |i: nat| inv.satisfied_by(#[trigger] ex.suffix(i)),
+{
+    assert forall |i: nat| inv.satisfied_by(#[trigger] ex.suffix(i)) by {
+        next_preserves_inv_rec::<int>(ex, next, inv, i);
+    };
+}
+```
+REASON: next_preserves_inv_rec generalizes to a universal quantifier over all indices — if execution_equality is unsound, the entire inductive invariant preservation is compromised
+===PHI_END===
+
+===PHI_START===
+NAME: trivial_inv_any_execution
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_trivial_inv_any_execution(ex: Execution<int>, next: TempPred<int>, i: nat)
+    requires
+        forall |idx: nat| next.satisfied_by(#[trigger] ex.suffix(idx)),
+        forall |idx: nat| next.satisfied_by(#[trigger] ex.suffix(idx))
+            ==> next.satisfied_by(ex.suffix(idx + 1)),
+    ensures
+        next.satisfied_by(ex.suffix(i)),
+{
+    next_preserves_inv_rec::<int>(ex, next, next, i);
+}
+```
+REASON: instantiating inv=next makes the inductive step trivially true from the first premise alone — the lemma degenerates into reproving a premise, exercising execution_equality without meaningful invariant reasoning
+===PHI_END===

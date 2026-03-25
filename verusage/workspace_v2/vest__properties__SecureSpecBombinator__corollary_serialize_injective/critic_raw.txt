@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: serialize_parse_roundtrip_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `theorem_serialize_parse_roundtrip` is `external_body` with `unimplemented!()`. The fundamental serialize-parse roundtrip property — the cornerstone of combinator correctness — is entirely trusted without verification. Each concrete combinator inherits this axiom for free without proving it.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: serialize_injective_from_external_body
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This is a direct downstream consequence of the already-flagged `external_body` roundtrip theorem. The injectivity corollary's proof is verified (it calls the roundtrip lemma twice and the conclusion follows). The root issue is the roundtrip axiom, not this derived property. Duplicate of φ1.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: parse_result_length_unconstrained
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures that parse is `Some` and consumed length ≥ 0 both follow directly from instantiating the roundtrip theorem (consumed length equals `spec_serialize(v).len()` which is a `nat` cast to `int`, hence ≥ 0). This is a downstream consequence of the already-flagged external_body roundtrip, not an independent spec gap.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive: `theorem_serialize_parse_roundtrip` is `external_body` with `unimplemented!()`, meaning the fundamental correctness property of the combinator framework is an unverified trust assumption. The other two candidates are downstream consequences of this same axiom — injectivity is a verified corollary and the length non-negativity follows from sequence length semantics — so they are false positives as duplicates.
+===END_SUMMARY===

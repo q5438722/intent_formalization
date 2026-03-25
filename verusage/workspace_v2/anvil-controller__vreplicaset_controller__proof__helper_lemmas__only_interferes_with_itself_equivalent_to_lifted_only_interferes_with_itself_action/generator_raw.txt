@@ -1,0 +1,94 @@
+===PHI_START===
+NAME: create_key_namespace_disagrees_with_obj
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_create_key_namespace_disagrees_with_obj(req: CreateRequest)
+    requires
+        req.obj.metadata.namespace is Some,
+        req.namespace != req.obj.metadata.namespace->0,
+    ensures
+        req.key().namespace != req.obj.metadata.namespace->0,
+{
+}
+```
+REASON: CreateRequest::key uses self.namespace while the obj carries its own metadata.namespace — if these can differ, the key does not faithfully represent the object's actual namespace
+===PHI_END===
+
+===PHI_START===
+NAME: interference_check_ignores_uid
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_interference_check_ignores_uid(
+    req: GetThenDeleteRequest, vrs1: VReplicaSetView, vrs2: VReplicaSetView
+)
+    requires
+        vrs1.metadata.name == vrs2.metadata.name,
+        vrs1.metadata.namespace == vrs2.metadata.namespace,
+        vrs1.metadata.uid != vrs2.metadata.uid,
+        vrs_reconcile_get_then_delete_request_only_interferes_with_itself(req, vrs1)(arbitrary()),
+    ensures
+        vrs_reconcile_get_then_delete_request_only_interferes_with_itself(req, vrs2)(arbitrary()),
+{
+}
+```
+REASON: the interference predicate checks owner_ref.name and kind but not uid — two distinct VReplicaSets with the same name/namespace would satisfy each other's interference check, breaking isolation
+===PHI_END===
+
+===PHI_START===
+NAME: create_interference_ignores_uid
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_create_interference_ignores_uid(
+    req: CreateRequest, vrs1: VReplicaSetView, vrs2: VReplicaSetView, s: ClusterState
+)
+    requires
+        vrs1.metadata.name == vrs2.metadata.name,
+        vrs1.metadata.namespace == vrs2.metadata.namespace,
+        vrs1.metadata.uid != vrs2.metadata.uid,
+        vrs_reconcile_create_request_only_interferes_with_itself(req, vrs1)(s),
+    ensures
+        vrs_reconcile_create_request_only_interferes_with_itself(req, vrs2)(s),
+{
+}
+```
+REASON: like the delete case, create interference checks owner_ref.name but not uid — a recreated VRS with the same name but different uid would pass the check, allowing cross-instance interference
+===PHI_END===
+
+===PHI_START===
+NAME: lifted_action_trivially_holds_on_stuttering
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_lifted_action_trivially_holds_on_stuttering(controller_id: int, s: ClusterState)
+    requires
+        forall |vrs: VReplicaSetView| vrs_reconcile_request_only_interferes_with_itself(controller_id, vrs)(s),
+    ensures
+        lifted_vrs_reconcile_request_only_interferes_with_itself_action(controller_id).satisfied_by(
+            Execution { nat_to_state: |i: nat| s }
+        ),
+{
+}
+```
+REASON: lifted_vrs checks the state predicate on both s and s_prime independently — on a stuttering execution this is trivially satisfied, meaning the action formulation adds no transition-specific constraint beyond the state invariant
+===PHI_END===
+
+===PHI_START===
+NAME: object_ref_name_eq_ignores_uid
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_object_ref_name_eq_ignores_uid(vrs1: VReplicaSetView, vrs2: VReplicaSetView)
+    requires
+        vrs1.metadata.name == vrs2.metadata.name,
+        vrs1.metadata.namespace == vrs2.metadata.namespace,
+        vrs1.metadata.uid != vrs2.metadata.uid,
+    ensures
+        vrs1.object_ref() == vrs2.object_ref(),
+{
+}
+```
+REASON: object_ref is determined solely by kind/name/namespace and ignores uid — two distinct resources (different uid) with the same name produce identical ObjectRefs, which can conflate identities throughout the spec
+===PHI_END===

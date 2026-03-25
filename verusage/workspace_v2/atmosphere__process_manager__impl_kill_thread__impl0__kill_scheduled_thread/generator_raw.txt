@@ -1,0 +1,95 @@
+===PHI_START===
+NAME: sll_len_without_wf_returns_value_list_len
+TYPE: logical
+CODE:
+```verus
+proof fn phi_1_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)
+    requires
+        !sll.wf(),
+    ensures
+        sll.spec_len() == sll.value_list_len,
+{
+}
+```
+REASON: The external_body `len()` ensures `l == self.value_list_len` unconditionally (not guarded by `self.wf()`), so `spec_len` which maps to `len` returns `value_list_len` even without well-formedness — but `spec_len` is defined as `self@.len()` which reads from `spec_seq`, creating a potential inconsistency between the two definitions when wf doesn't hold
+===PHI_END===
+
+===PHI_START===
+NAME: owned_threads_shared_across_containers
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_owned_threads_shared_across_containers(pm: ProcessManager, c1: ContainerPtr, c2: ContainerPtr, t: ThreadPtr)
+    requires
+        pm.container_perms_wf(),
+        pm.container_tree_wf(),
+        pm.container_dom().contains(c1),
+        pm.container_dom().contains(c2),
+        c1 != c2,
+        pm.get_container(c1).owned_threads@.contains(t),
+    ensures
+        !pm.get_container(c2).owned_threads@.contains(t),
+{
+}
+```
+REASON: Neither `container_perms_wf` nor `container_tree_wf` constrains `owned_threads` disjointness across containers — two distinct containers can claim the same thread via their unconstrained Ghost fields
+===PHI_END===
+
+===PHI_START===
+NAME: owned_endpoints_shared_across_containers
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_owned_endpoints_shared_across_containers(pm: ProcessManager, c1: ContainerPtr, c2: ContainerPtr, e: EndpointPtr)
+    requires
+        pm.container_perms_wf(),
+        pm.container_tree_wf(),
+        pm.container_dom().contains(c1),
+        pm.container_dom().contains(c2),
+        c1 != c2,
+        pm.get_container(c1).owned_endpoints@.contains(e),
+    ensures
+        !pm.get_container(c2).owned_endpoints@.contains(e),
+{
+}
+```
+REASON: The `owned_endpoints` Ghost field on Container has no cross-container disjointness constraint in any well-formedness predicate, allowing two containers to simultaneously claim the same endpoint
+===PHI_END===
+
+===PHI_START===
+NAME: get_proc_leaks_container_dom_without_wf
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_get_proc_leaks_container_dom_without_wf(pm: ProcessManager, proc_ptr: ProcPtr)
+    requires
+        pm.proc_perms_wf(),
+        pm.process_fields_wf(),
+        pm.proc_dom().contains(proc_ptr),
+        !pm.wf(),
+    ensures
+        pm.container_dom().contains(pm.get_proc(proc_ptr).owning_container),
+{
+}
+```
+REASON: get_proc's external_body ensures `self.wf() ==> self.container_dom().contains(ret.owning_container)` guarded by wf, but the weaker preconditions (proc_perms_wf + process_fields_wf) may allow the SMT solver to derive the container_dom membership unconditionally from the implication when wf is false — the ensures should hold vacuously only if wf is genuinely needed
+===PHI_END===
+
+===PHI_START===
+NAME: container_cpu_wf_no_cpu_upper_bound
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_container_cpu_wf_no_cpu_upper_bound(pm: ProcessManager, c_ptr: ContainerPtr, cpu_i: CpuId)
+    requires
+        pm.container_perms_wf(),
+        pm.container_cpu_wf(),
+        pm.container_dom().contains(c_ptr),
+        pm.get_container(c_ptr).owned_cpus@.contains(cpu_i),
+    ensures
+        0 <= cpu_i < NUM_CPUS,
+{
+}
+```
+REASON: The reverse direction of `container_cpu_wf` (from container's owned_cpus to cpu_list) only triggers when `self.get_container(c_ptr).owned_cpus@.contains(cpu_i)` but the ensures clause requires `0 <= cpu_i < NUM_CPUS` — if the Ghost set contains an out-of-range CpuId, the spec may not catch it since the quantifier body starts from the trigger rather than bounding cpu_i first
+===PHI_END===

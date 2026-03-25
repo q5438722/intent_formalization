@@ -1,0 +1,24 @@
+Looking at this carefully, I need to analyze whether `proof_from_false()` can actually succeed given only `cm@ == Set::<int>::empty()` as a precondition.
+
+**Key observations:**
+
+1. `proof_from_false()` requires the precondition to be **unsatisfiable** (i.e., it needs `false` derivable from `cm@ == Set::<int>::empty()`).
+
+2. The `view()` function is `closed spec` (visible in-module), so the solver sees it expands to `Set::new(pred).map(f)`. By set extensionality, `cm@ == Set::empty()` gives us: `forall|a: int, b: usize| 0 <= a < 8 && b < 64 ==> !is_bit_set(cm.mask[a], b)`.
+
+3. But `is_bit_set` is **opaque** — the solver treats it as uninterpreted. No lemmas (`lemma_is_bit_set`, `lemma_view`) are invoked in the phi body. So the solver learns nothing about the relationship between `is_bit_set` results and actual `usize` values.
+
+4. The solver **cannot** derive `cm.mask[0] != 0` (or `== 0`) from opaque `is_bit_set` constraints — it has no axiom connecting `!is_bit_set(x, j)` for all `j` to `x == 0`. Therefore `false` is not derivable and `proof_from_false()` should **fail**.
+
+5. The precondition IS satisfiable: an all-zero mask does produce an empty view (as `create_empty` demonstrates using the trusted lemmas).
+
+===VERDICT_START===
+PHI: empty_mask_nonzero
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The phi uses `proof_from_false()`, which requires deriving `false` from `cm@ == Set::<int>::empty()`. Since `is_bit_set` is opaque and no lemmas are invoked, the solver cannot connect the abstract view emptiness to any concrete mask-word value, so it cannot derive a contradiction. The precondition is satisfiable (an all-zero mask yields an empty view, as `create_empty` proves using the trusted lemmas).
+===VERDICT_END===
+
+===SUMMARY===
+The single candidate property `empty_mask_nonzero` is a false positive. It attempts to derive `false` from the postcondition of `create_empty` (`self@ == Set::<int>::empty()`), which would indicate the spec is vacuously true. However, the `proof_from_false()` call cannot succeed because `is_bit_set` is opaque and the phi invokes no lemmas — the solver has no way to connect abstract view emptiness to concrete `usize` values, so no contradiction is derivable. The spec of `create_empty` is sound: it correctly ensures the abstract view is empty, and the implementation achieves this by zeroing all mask words and bridging to the abstraction via the trusted `lemma_is_bit_set` and `lemma_view`.
+===END_SUMMARY===

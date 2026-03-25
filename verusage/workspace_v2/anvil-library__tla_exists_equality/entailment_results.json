@@ -1,0 +1,47 @@
+[
+  {
+    "name": "temp_pred_equality_intensional_bridge",
+    "type": "logical",
+    "code": "proof fn phi_1_temp_pred_equality_intensional_bridge(p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.entails(q),\n        q.entails(p),\n    ensures\n        p == q,\n{\n    temp_pred_equality::<int>(p, q);\n}",
+    "reason": "temp_pred_equality is external_body forcing intensional equality from mutual entailment \u2014 structurally distinct closures collapsed to equal without proof",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "mutual_entailment_derives_false_if_distinct",
+    "type": "logical",
+    "code": "proof fn phi_2_mutual_entailment_derives_false_if_distinct(p: TempPred<int>, q: TempPred<int>)\n    requires\n        p.entails(q),\n        q.entails(p),\n        p !== q,\n    ensures\n        false,\n{\n    temp_pred_equality::<int>(p, q);\n}",
+    "reason": "temp_pred_equality forces p == q from mutual entailment \u2014 if two preds are intensionally distinct but semantically equivalent this derives false",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "tla_exists_equality_bridge",
+    "type": "logical",
+    "code": "proof fn phi_3_tla_exists_equality_bridge(f: spec_fn(int, int) -> bool)\n    ensures\n        lift_state(|t: int| exists |a: int| #[trigger] f(a, t)) == tla_exists(|a: int| lift_state(|t: int| f(a, t))),\n{\n    tla_exists_equality::<int, int>(f);\n}",
+    "reason": "tla_exists_equality forces intensional equality between lift_state(\u2203a.f(a,t)) and tla_exists(a => lift_state(f(a,\u00b7))) \u2014 structurally distinct nested closures collapsed via temp_pred_equality",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "lift_state_closure_identity",
+    "type": "boundary",
+    "code": "proof fn phi_4_lift_state_closure_identity(p: StatePred<int>, q: StatePred<int>)\n    requires\n        forall |t: int| p(t) == q(t),\n    ensures\n        lift_state(p) == lift_state(q),\n{\n    temp_pred_equality::<int>(lift_state(p), lift_state(q));\n}",
+    "reason": "temp_pred_equality collapses lift_state(p) == lift_state(q) from pointwise equivalence \u2014 forces intensional equality of spec_fn(T)->bool through the Execution wrapper without proof",
+    "entailed": false,
+    "verus_output": "error: Could not automatically infer triggers for this quantifier.  Use #[trigger] annotations to manually mark trigger terms instead.\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-library__tla_exists_equality/phi_4_lift_state_closure_identity.rs:99:9\n   |\n99 |         forall |t: int| p(t) == q(t),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "tla_exists_vacuous",
+    "type": "boundary",
+    "code": "proof fn phi_5_tla_exists_vacuous(f: spec_fn(int, int) -> bool)\n    requires\n        forall |a: int, t: int| !f(a, t),\n    ensures\n        lift_state(|t: int| exists |a: int| #[trigger] f(a, t)) == tla_exists(|a: int| lift_state(|t: int| f(a, t))),\n{\n    tla_exists_equality::<int, int>(f);\n}",
+    "reason": "even when f is universally false, tla_exists_equality forces structural equality between two TempPreds built from distinct empty-existential closures \u2014 the equality holds vacuously but the intensional collapse is still unverified",
+    "entailed": false,
+    "verus_output": "error: Could not automatically infer triggers for this quantifier.  Use #[trigger] annotations to manually mark trigger terms instead.\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-library__tla_exists_equality/phi_5_tla_exists_vacuous.rs:99:9\n   |\n99 |         forall |a: int, t: int| !f(a, t),\n   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  }
+]

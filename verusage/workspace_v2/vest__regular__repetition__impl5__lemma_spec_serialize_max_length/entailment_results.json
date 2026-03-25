@@ -1,0 +1,47 @@
+[
+  {
+    "name": "serialize_empty_is_empty",
+    "type": "boundary",
+    "code": "proof fn phi_1_serialize_empty_is_empty<C: SecureSpecCombinator>(c: &RepeatN<C>)\n    ensures\n        c.spec_serialize(Seq::<C::Type>::empty()) == Seq::<u8>::empty(),\n{\n}",
+    "reason": "Serializing an empty sequence should produce empty bytes \u2014 if fold_left injected phantom data for zero elements, downstream combinators would be corrupted",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "serialize_ignores_count_field",
+    "type": "logical",
+    "code": "proof fn phi_2_serialize_ignores_count_field<C: SecureSpecCombinator>(c: &C, vs: Seq<C::Type>, n1: usize, n2: usize)\n    ensures\n        RepeatN(*c, n1).spec_serialize(vs) == RepeatN(*c, n2).spec_serialize(vs),\n{\n}",
+    "reason": "`spec_serialize` uses `fold_left` over `vs` without referencing `self.1` \u2014 the count field is completely ignored during serialization",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "wf_helper_equals_wf",
+    "type": "logical",
+    "code": "proof fn phi_3_wf_helper_equals_wf<C: SecureSpecCombinator>(c: &RepeatN<C>, vs: Seq<C::Type>)\n    ensures\n        c.wf(vs) == c.wf_helper(vs, c.1),\n{\n}",
+    "reason": "`wf` and `wf_helper` should be equivalent when `n == self.1` \u2014 if they diverged, the roundtrip proof using `wf_helper` would not transfer to the `wf`-based trait contract",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "serialize_append_splits",
+    "type": "behavioral",
+    "code": "proof fn phi_4_serialize_append_splits<C: SecureSpecCombinator>(c: &RepeatN<C>, vs: Seq<C::Type>)\n    requires\n        vs.len() > 0,\n    ensures\n        c.spec_serialize(vs) == c.spec_serialize(vs.drop_last()) + c.0.spec_serialize(vs.last()),\n{\n}",
+    "reason": "Serialization of a sequence should equal serialization of all-but-last concatenated with serialization of the last element \u2014 if fold_left didn't decompose this way, the inductive roundtrip proof structure would be unsound",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "max_length_lemma_individual_bound",
+    "type": "boundary",
+    "code": "proof fn phi_5_max_length_lemma_individual_bound<C: SecureSpecCombinator>(c: &RepeatN<C>, vs: Seq<C::Type>, i: int)\n    requires\n        c.requires(),\n        c.wf(vs),\n        c.spec_serialize(vs).len() <= usize::MAX,\n        0 <= i < vs.len(),\n    ensures\n        c.0.spec_serialize(vs[i]).len() <= usize::MAX,\n{\n    c.lemma_spec_serialize_max_length(vs, c.1);\n}",
+    "reason": "If the total serialization fits in usize, each individual element's serialization must also fit \u2014 if any individual exceeded usize::MAX while the total didn't, the addition would have overflowed",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

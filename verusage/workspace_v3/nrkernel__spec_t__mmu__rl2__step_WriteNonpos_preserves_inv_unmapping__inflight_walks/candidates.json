@@ -1,0 +1,37 @@
+[
+  {
+    "name": "align_exceeds_input",
+    "target_fn": "align_to_usize",
+    "type": "behavioral",
+    "code": "proof fn phi_1_align_exceeds_input(a: usize, b: usize)\n    requires\n        b > 0,\n        a >= b,\n    ensures\n        align_to_usize(a, b) > a,\n{\n}",
+    "reason": "Aligning down should never produce a value greater than the original input"
+  },
+  {
+    "name": "align_result_not_multiple",
+    "target_fn": "align_to_usize",
+    "type": "logical",
+    "code": "proof fn phi_2_align_result_not_multiple(a: usize, b: usize)\n    requires\n        b > 0,\n        a < 0xFFFF_FFFF_FFFF_FF00,\n    ensures\n        align_to_usize(a, b) % b != 0,\n{\n}",
+    "reason": "The result of floor-alignment must always be a multiple of the alignment value"
+  },
+  {
+    "name": "aligned_identity_broken",
+    "target_fn": "align_to_usize",
+    "type": "behavioral",
+    "code": "proof fn phi_3_aligned_identity_broken(a: usize, b: usize)\n    requires\n        b > 0,\n        aligned(a as nat, b as nat),\n    ensures\n        align_to_usize(a, b) != a,\n{\n}",
+    "reason": "Aligning a value that is already aligned should be the identity operation"
+  },
+  {
+    "name": "aligned_always_true",
+    "target_fn": "aligned",
+    "type": "boundary",
+    "code": "proof fn phi_4_aligned_always_true(addr: nat, size: nat)\n    requires\n        size > 1,\n        addr > 0,\n    ensures\n        aligned(addr, size),\n{\n}",
+    "reason": "Not every nonzero address is aligned to every size; alignment should be selective"
+  },
+  {
+    "name": "align_not_idempotent",
+    "target_fn": "align_to_usize",
+    "type": "logical",
+    "code": "proof fn phi_5_align_not_idempotent(a: usize, b: usize)\n    requires\n        b > 0,\n        a < 0xFFFF_FFFF_FFFF_FF00,\n    ensures\n        align_to_usize(align_to_usize(a, b), b) != align_to_usize(a, b),\n{\n}",
+    "reason": "Floor-alignment must be idempotent \u2014 applying it twice should equal applying it once"
+  }
+]

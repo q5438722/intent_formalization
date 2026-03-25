@@ -1,0 +1,118 @@
+===PHI_START===
+NAME: sends_empty_despite_nonempty_input
+TARGET_FN: make_send_only_event_results
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_sends_empty_despite_nonempty_input(net_events: Seq<NetEvent>, res: EventResults)
+    requires
+        net_events.len() > 0,
+        forall |i: int| 0 <= i && i < net_events.len() ==> net_events[i] is Send,
+        res.recvs == Seq::<NetEvent>::empty(),
+        res.clocks == Seq::<NetEvent>::empty(),
+        res.sends == net_events,
+        res.ios == net_events,
+        res.event_seq() == net_events,
+        res.well_typed_events(),
+    ensures
+        res.sends.len() == 0,
+{
+}
+```
+REASON: A non-empty all-Send input producing empty sends would mean the spec loses track of outgoing events
+===PHI_END===
+
+===PHI_START===
+NAME: empty_input_nonempty_event_seq
+TARGET_FN: make_send_only_event_results
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_2_empty_input_nonempty_event_seq(net_events: Seq<NetEvent>, res: EventResults)
+    requires
+        net_events.len() == 0,
+        forall |i: int| 0 <= i && i < net_events.len() ==> net_events[i] is Send,
+        res.recvs == Seq::<NetEvent>::empty(),
+        res.clocks == Seq::<NetEvent>::empty(),
+        res.sends == net_events,
+        res.ios == net_events,
+        res.event_seq() == net_events,
+        res.well_typed_events(),
+    ensures
+        res.event_seq().len() > 0,
+{
+}
+```
+REASON: An empty input producing a non-empty event sequence would fabricate events out of nothing
+===PHI_END===
+
+===PHI_START===
+NAME: sends_contain_receive_event
+TARGET_FN: make_send_only_event_results
+TYPE: logical
+CODE:
+```verus
+proof fn phi_3_sends_contain_receive_event(net_events: Seq<NetEvent>, res: EventResults)
+    requires
+        net_events.len() > 0,
+        forall |i: int| 0 <= i && i < net_events.len() ==> net_events[i] is Send,
+        res.recvs == Seq::<NetEvent>::empty(),
+        res.clocks == Seq::<NetEvent>::empty(),
+        res.sends == net_events,
+        res.ios == net_events,
+        res.event_seq() == net_events,
+        res.well_typed_events(),
+    ensures
+        exists |i: int| 0 <= i && i < res.sends.len() && res.sends[i] is Receive,
+{
+}
+```
+REASON: Having a Receive inside sends would violate well_typed_events and corrupt the event classification invariant
+===PHI_END===
+
+===PHI_START===
+NAME: event_seq_longer_than_sends
+TARGET_FN: make_send_only_event_results
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_4_event_seq_longer_than_sends(net_events: Seq<NetEvent>, res: EventResults)
+    requires
+        forall |i: int| 0 <= i && i < net_events.len() ==> net_events[i] is Send,
+        res.recvs == Seq::<NetEvent>::empty(),
+        res.clocks == Seq::<NetEvent>::empty(),
+        res.sends == net_events,
+        res.ios == net_events,
+        res.event_seq() == net_events,
+        res.well_typed_events(),
+    ensures
+        res.event_seq().len() > res.sends.len(),
+{
+}
+```
+REASON: event_seq being longer than sends (with empty recvs/clocks) would mean concatenation conjured phantom events
+===PHI_END===
+
+===PHI_START===
+NAME: ios_differs_from_event_seq
+TARGET_FN: make_send_only_event_results
+TYPE: logical
+CODE:
+```verus
+proof fn phi_5_ios_differs_from_event_seq(net_events: Seq<NetEvent>, res: EventResults)
+    requires
+        net_events.len() > 0,
+        forall |i: int| 0 <= i && i < net_events.len() ==> net_events[i] is Send,
+        res.recvs == Seq::<NetEvent>::empty(),
+        res.clocks == Seq::<NetEvent>::empty(),
+        res.sends == net_events,
+        res.ios == net_events,
+        res.event_seq() == net_events,
+        res.well_typed_events(),
+    ensures
+        res.ios != res.event_seq(),
+{
+}
+```
+REASON: ios diverging from event_seq would break the refinement contract between intended and observed events
+===PHI_END===

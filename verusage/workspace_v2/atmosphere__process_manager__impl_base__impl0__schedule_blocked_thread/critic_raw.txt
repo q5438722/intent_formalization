@@ -1,0 +1,24 @@
+===VERDICT_START===
+PHI: get_proc_ensures_owned_threads_wf_without_full_wf
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: The `get_proc` external_body unconditionally ensures `ret.owned_threads.wf()` regardless of whether full `wf()` holds — only `proc_perms_wf()` and `process_fields_wf()` are required. This leaks a structural invariant that callers can exploit without establishing the complete well-formedness chain, potentially allowing reasoning about owned_threads in states where other cross-cutting invariants (threads_process_wf, threads_container_wf) don't hold.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: unique_implies_no_duplicates_external_body
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `unique_implys_no_duplicates` is `external_body` — the bridge from the custom `unique()` predicate (element distinctness over `spec_seq@` indices bounded by `self.len()`) to vstd's `Seq::no_duplicates()` is unverified. While semantically they should be equivalent when `wf()` holds (ensuring `spec_seq@.len() == value_list_len`), the proof is trusted, and any mismatch between `self.len()` in `unique()` (which uses `value_list_len` unconditionally) and the actual sequence length would be unsound.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: get_proc_container_dom_only_under_full_wf
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: This PHI's ensures clause is literally `true`, which is trivially provable regardless of the preconditions. It doesn't demonstrate any actual spec gap — it merely comments on what `get_proc` does NOT ensure under weaker preconditions, which is expected defensive design (guarding the container_dom guarantee behind `self.wf()`).
+===VERDICT_END===
+
+===SUMMARY===
+Two of the three candidates are true positives. The `get_proc` external_body leaks `owned_threads.wf()` unconditionally under weaker preconditions than full `wf()`, which is a real trust gap in the accessor's ensures. The `unique_implys_no_duplicates` external_body bridges two distinct notions of uniqueness without verified proof, creating a soundness dependency on unverified semantic equivalence. The third candidate (`get_proc_container_dom_only_under_full_wf`) is a false positive — its ensures clause is `true`, making it trivially valid and not demonstrating any actual spec inconsistency.
+===END_SUMMARY===

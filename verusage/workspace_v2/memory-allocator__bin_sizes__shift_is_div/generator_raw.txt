@@ -1,0 +1,75 @@
+===PHI_START===
+NAME: pow2_negative_is_one
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_1_pow2_negative_is_one(e: int)
+    requires
+        e < 0,
+    ensures
+        pow2(e) == 1,
+{
+}
+```
+REASON: `pow2` returns 1 for all negative exponents — mathematically 2^(-n) is a fraction, so callers accidentally passing negative values get silently wrong results
+===PHI_END===
+
+===PHI_START===
+NAME: mul_assoc_smuggles_commutativity
+TYPE: logical
+CODE:
+```verus
+proof fn phi_2_mul_assoc_smuggles_commutativity(x: nat, y: nat, z: nat)
+    ensures
+        (x * y) * z == y * (x * z),
+{
+    mul_assoc(x, y, z);
+}
+```
+REASON: `mul_assoc` proves `(x*y)*z == y*(x*z)` which is not pure associativity but a combination of associativity and commutativity — the name is misleading and may cause incorrect reasoning when callers expect standard `(x*y)*z == x*(y*z)`
+===PHI_END===
+
+===PHI_START===
+NAME: shift_zero_by_63_is_zero
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_3_shift_zero_by_63_is_zero()
+    ensures
+        0u64 >> 63u64 == 0nat,
+{
+    shift_is_div(0u64, 63u64);
+}
+```
+REASON: Shifting 0 by any amount gives 0 — trivially correct but tests that `shift_is_div` handles the maximum valid shift with a zero input without issues
+===PHI_END===
+
+===PHI_START===
+NAME: pow2_strict_monotone_gap
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_4_pow2_strict_monotone_gap()
+    ensures
+        pow2(0) == pow2(-1),
+        pow2(-1) == pow2(-100),
+{
+}
+```
+REASON: `pow2` is NOT strictly monotone at the boundary: `pow2(0) == pow2(-1) == pow2(-100) == 1` — the strict monotonicity property in `pow2_properties` only covers `0 <= e1 < e2`, leaving a flat region for all non-positive inputs where different exponents map to the same value
+===PHI_END===
+
+===PHI_START===
+NAME: div2_overflow_boundary
+TYPE: boundary
+CODE:
+```verus
+proof fn phi_5_div2_overflow_boundary()
+    ensures
+        u64::MAX as int / (1 * 2) == (u64::MAX as int / 1) / 2,
+{
+    div2(u64::MAX, 1);
+}
+```
+REASON: `div2` takes `x: u64` but ensures a property about `x as int` — at u64::MAX boundary, the division chain works in int domain but the lemma's signature suggests it handles u64 overflow when it actually sidesteps it via int coercion
+===PHI_END===

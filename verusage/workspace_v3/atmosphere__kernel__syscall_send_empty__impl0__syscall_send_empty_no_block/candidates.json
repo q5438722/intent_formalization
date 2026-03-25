@@ -1,0 +1,37 @@
+[
+  {
+    "name": "preconditions_vacuous",
+    "target_fn": "syscall_send_empty_no_block",
+    "type": "logical",
+    "code": "proof fn phi_1_preconditions_vacuous(os: OS, sender_thread_ptr: ThreadPtr, blocking_endpoint_index: EndpointIdx)\n    requires\n        os.wf(),\n        os.thread_dom().contains(sender_thread_ptr),\n        0 <= blocking_endpoint_index < MAX_NUM_ENDPOINT_DESCRIPTORS,\n        os.get_thread(sender_thread_ptr).state == ThreadState::RUNNING,\n    ensures\n        false,\n{\n}",
+    "reason": "If provable, the preconditions are jointly unsatisfiable, making the function vacuously correct but uncallable"
+  },
+  {
+    "name": "always_returns_error",
+    "target_fn": "syscall_send_empty_no_block",
+    "type": "behavioral",
+    "code": "proof fn phi_2_always_returns_error(os_pre: OS, os_post: OS, sender_thread_ptr: ThreadPtr, blocking_endpoint_index: EndpointIdx, ret: SyscallReturnStruct)\n    requires\n        os_pre.wf(),\n        os_pre.thread_dom().contains(sender_thread_ptr),\n        0 <= blocking_endpoint_index < MAX_NUM_ENDPOINT_DESCRIPTORS,\n        os_pre.get_thread(sender_thread_ptr).state == ThreadState::RUNNING,\n        os_post.wf(),\n    ensures\n        ret == SyscallReturnStruct::NoSwitchNew(RetValueType::Error),\n{\n}",
+    "reason": "If provable, the ensures clause (only self.wf()) is so weak it cannot rule out the function always reporting failure and never delivering a message"
+  },
+  {
+    "name": "sender_thread_lost",
+    "target_fn": "syscall_send_empty_no_block",
+    "type": "logical",
+    "code": "proof fn phi_3_sender_thread_lost(os_pre: OS, os_post: OS, sender_thread_ptr: ThreadPtr, blocking_endpoint_index: EndpointIdx)\n    requires\n        os_pre.wf(),\n        os_pre.thread_dom().contains(sender_thread_ptr),\n        0 <= blocking_endpoint_index < MAX_NUM_ENDPOINT_DESCRIPTORS,\n        os_pre.get_thread(sender_thread_ptr).state == ThreadState::RUNNING,\n        os_post.wf(),\n    ensures\n        !os_post.thread_dom().contains(sender_thread_ptr),\n{\n}",
+    "reason": "If provable, the spec permits the sender thread to be silently removed from the thread domain by a non-blocking send"
+  },
+  {
+    "name": "receiver_never_exists",
+    "target_fn": "syscall_send_empty_no_block",
+    "type": "behavioral",
+    "code": "proof fn phi_4_receiver_never_exists(os: OS, sender_thread_ptr: ThreadPtr, blocking_endpoint_index: EndpointIdx)\n    requires\n        os.wf(),\n        os.thread_dom().contains(sender_thread_ptr),\n        0 <= blocking_endpoint_index < MAX_NUM_ENDPOINT_DESCRIPTORS,\n        os.get_thread(sender_thread_ptr).state == ThreadState::RUNNING,\n    ensures\n        !os.receiver_exist(sender_thread_ptr, blocking_endpoint_index),\n{\n}",
+    "reason": "If provable, the well-formedness invariant structurally precludes any waiting receiver, forcing every send to take an error path"
+  },
+  {
+    "name": "endpoint_index_degenerate",
+    "target_fn": "syscall_send_empty_no_block",
+    "type": "boundary",
+    "code": "proof fn phi_5_endpoint_index_degenerate(os: OS, sender_thread_ptr: ThreadPtr, blocking_endpoint_index: EndpointIdx)\n    requires\n        os.wf(),\n        os.thread_dom().contains(sender_thread_ptr),\n        0 <= blocking_endpoint_index < MAX_NUM_ENDPOINT_DESCRIPTORS,\n        os.get_thread(sender_thread_ptr).state == ThreadState::RUNNING,\n    ensures\n        blocking_endpoint_index == 0,\n{\n}",
+    "reason": "If provable, MAX_NUM_ENDPOINT_DESCRIPTORS is at most 1, meaning each thread can reference only a single endpoint \u2014 a severe capability limitation"
+  }
+]

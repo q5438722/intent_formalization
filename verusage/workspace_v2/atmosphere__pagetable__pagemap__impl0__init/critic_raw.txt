@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: zero_is_empty_external_body_trusted
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+REASONING: `zero_leads_is_empty_page_entry` is `external_body`, axiomatically asserting that `spec_usize2page_entry(0).is_empty()`. The file already contains the bit_vector proof stubs for each individual field (in commented-out code), yet the actual lemma bypasses them. This is a real soundness gap since the property is provable but left unverified.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: init_does_not_preserve_ar_contents
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures clause `pm.ar@[i] == 0 || pm.ar@[i] != 0` is a tautology (law of excluded middle) and proves nothing about the actual ar contents. The underlying observation about the commented-out biconditional is interesting but this PHI doesn't actually demonstrate any spec gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: pagemap_spec_seq_ghost_desyncs
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures clause directly follows from `wf()`: the first conjunct is exactly what `wf()` asserts, and the second follows from `view()` returning `spec_seq@`. This confirms the spec works as intended — `wf()` is the designed synchronization invariant between `ar` and `spec_seq`.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: array_set_no_bounds_check_runtime
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: The ensures clause simply restates properties of vstd's `Seq::update`, which is a well-established axiom in Verus's standard library. `Array::set` being `external_body` is standard practice for wrapping Rust's native array operations — the frame condition and bounds are the expected trusted specification for array mutation.
+===VERDICT_END===
+
+===SUMMARY===
+One true positive was identified: `zero_is_empty_external_body_trusted` highlights that the critical lemma `zero_leads_is_empty_page_entry` is `external_body` despite being provable via bit_vector reasoning (partial proofs exist in the file). The remaining three candidates are false positives — `init_does_not_preserve_ar_contents` is a tautology, `pagemap_spec_seq_ghost_desyncs` confirms the intended wf() invariant design, and `array_set_no_bounds_check_runtime` restates standard trusted Array axioms.
+===END_SUMMARY===

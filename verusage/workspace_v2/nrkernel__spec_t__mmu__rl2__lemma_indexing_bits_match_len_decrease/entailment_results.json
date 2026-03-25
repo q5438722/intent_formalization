@@ -1,0 +1,47 @@
+[
+  {
+    "name": "indexing_bits_match_zero_trivial",
+    "type": "boundary",
+    "code": "proof fn phi_1_indexing_bits_match_zero_trivial(va1: usize, va2: usize)\n    ensures\n        indexing_bits_match(va1, va2, 0),\n{\n    reveal(indexing_bits_match);\n}",
+    "reason": "`indexing_bits_match` with len=0 is trivially true for any two addresses \u2014 no bits are required to match, yet this passes the predicate",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "indexing_bits_match_reflexive",
+    "type": "behavioral",
+    "code": "proof fn phi_2_indexing_bits_match_reflexive(va: usize, len: nat)\n    ensures\n        indexing_bits_match(va, va, len),\n{\n    reveal(indexing_bits_match);\n}",
+    "reason": "Any address matches itself at all lengths \u2014 tests basic reflexivity of the predicate",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "indexing_bits_match_ignores_low_12",
+    "type": "logical",
+    "code": "proof fn phi_3_indexing_bits_match_ignores_low_12(va: usize, offset1: usize, offset2: usize)\n    requires\n        offset1 < 4096,\n        offset2 < 4096,\n        va & bitmask_inc!(0usize, 11usize) == 0,\n    ensures\n        indexing_bits_match(add(va, offset1), add(va, offset2), 4),\n{\n    reveal(indexing_bits_match);\n    assert(l0_bits!(add(va, offset1)) == l0_bits!(add(va, offset2))) by (bit_vector)\n        requires offset1 < 4096, offset2 < 4096, va & bitmask_inc!(0usize, 11usize) == 0;\n    assert(l1_bits!(add(va, offset1)) == l1_bits!(add(va, offset2))) by (bit_vector)\n        requires offset1 < 4096, offset2 < 4096, va & bitmask_inc!(0usize, 11usize) == 0;\n    assert(l2_bits!(add(va, offset1)) == l2_bits!(add(va, offset2))) by (bit_vector)\n        requires offset1 < 4096, offset2 < 4096, va & bitmask_inc!(0usize, 11usize) == 0;\n    assert(l3_bits!(add(va, offset1)) == l3_bits!(add(va, offset2))) by (bit_vector)\n        requires offset1 < 4096, offset2 < 4096, va & bitmask_inc!(0usize, 11usize) == 0;\n}",
+    "reason": "Two addresses within the same 4KB page match all 4 indexing levels \u2014 page table walks for same-page addresses follow identical paths, which is correct but means the predicate can't distinguish intra-page offsets",
+    "entailed": true,
+    "verus_output": "verification results:: 10 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "indexing_bits_match_len5_constrains_nothing_extra",
+    "type": "boundary",
+    "code": "proof fn phi_4_indexing_bits_match_len5_constrains_nothing_extra(va1: usize, va2: usize)\n    requires\n        indexing_bits_match(va1, va2, 4),\n    ensures\n        indexing_bits_match(va1, va2, 5),\n{\n    reveal(indexing_bits_match);\n}",
+    "reason": "`indexing_bits_match` only has 4 levels of constraints \u2014 len > 4 adds no additional bit-matching requirements, so len=5 is equivalent to len=4",
+    "entailed": true,
+    "verus_output": "verification results:: 2 verified, 0 errors\n",
+    "timed_out": false
+  },
+  {
+    "name": "indexing_bits_match_ignores_high_bits",
+    "type": "logical",
+    "code": "proof fn phi_5_indexing_bits_match_ignores_high_bits(va1: usize, va2: usize)\n    requires\n        va1 & bitmask_inc!(0usize, 47usize) == va2 & bitmask_inc!(0usize, 47usize),\n    ensures\n        indexing_bits_match(va1, va2, 4),\n{\n    reveal(indexing_bits_match);\n    assert(l0_bits!(va1) == l0_bits!(va2)) by (bit_vector)\n        requires va1 & bitmask_inc!(0usize, 47usize) == va2 & bitmask_inc!(0usize, 47usize);\n    assert(l1_bits!(va1) == l1_bits!(va2)) by (bit_vector)\n        requires va1 & bitmask_inc!(0usize, 47usize) == va2 & bitmask_inc!(0usize, 47usize);\n    assert(l2_bits!(va1) == l2_bits!(va2)) by (bit_vector)\n        requires va1 & bitmask_inc!(0usize, 47usize) == va2 & bitmask_inc!(0usize, 47usize);\n    assert(l3_bits!(va1) == l3_bits!(va2)) by (bit_vector)\n        requires va1 & bitmask_inc!(0usize, 47usize) == va2 & bitmask_inc!(0usize, 47usize);\n}",
+    "reason": "`indexing_bits_match` only checks bits 12-47 \u2014 addresses differing only in bits 48-63 (non-canonical bits) are considered matching at all levels",
+    "entailed": true,
+    "verus_output": "verification results:: 10 verified, 0 errors\n",
+    "timed_out": false
+  }
+]

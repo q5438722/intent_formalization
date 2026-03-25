@@ -1,0 +1,47 @@
+[
+  {
+    "name": "unmarshal_marshal_roundtrip",
+    "type": "logical",
+    "code": "proof fn phi_1_unmarshal_marshal_roundtrip<T: ResourceView>(o: T)\n    requires\n        true,\n    ensures\n        T::unmarshal(o.marshal()) is Ok,\n{\n}",
+    "reason": "no marshal_preserves_integrity proof or axiom exists in this version \u2014 marshal_spec/unmarshal_spec are fully uninterpreted with zero roundtrip guarantees, so this should be unprovable",
+    "entailed": false,
+    "verus_output": "nts__proof__lemma_eventually_always_vrs_in_schedule_does_not_have_deletion_timestamp/phi_1_unmarshal_marshal_roundtrip.rs:3863:9\n     |\n3859 | proof fn phi_1_unmarshal_marshal_roundtrip<T: ResourceView>(o: T)\n     |       ----------------------------------------------------------- at the end of the function body\n...\n3863 |         T::unmarshal(o.marshal()) is Ok,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "unmarshal_spec_and_status_jointly_total",
+    "type": "boundary",
+    "code": "proof fn phi_2_unmarshal_spec_and_status_jointly_total<T: ResourceView>(obj: DynamicObjectView)\n    requires\n        obj.kind == T::kind(),\n    ensures\n        T::unmarshal_spec(obj.spec) is Ok && T::unmarshal_status(obj.status) is Ok,\n{\n}",
+    "reason": "both unmarshal functions are uninterpreted with no totality axiom \u2014 matching kind should not guarantee that arbitrary spec and status Values can be successfully decoded",
+    "entailed": false,
+    "verus_output": "of fn phi_2_unmarshal_spec_and_status_jointly_total<T: ResourceView>(obj: DynamicObjectView)\n     |       ----------------------------------------------------------------------------------------- at the end of the function body\n...\n3863 |         T::unmarshal_spec(obj.spec) is Ok && T::unmarshal_status(obj.status) is Ok,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "get_then_update_key_matches_get_then_delete",
+    "type": "logical",
+    "code": "proof fn phi_3_get_then_update_key_matches_get_then_delete(gu: GetThenUpdateRequest, gd: GetThenDeleteRequest)\n    requires\n        gu.obj.kind == gd.key.kind,\n        gu.namespace == gd.key.namespace,\n    ensures\n        gu.key() == gd.key(),\n{\n}",
+    "reason": "GetThenUpdateRequest::key uses self.name while GetThenDeleteRequest::key returns self.key which has its own name \u2014 matching kind and namespace does NOT imply the name components agree",
+    "entailed": false,
+    "verus_output": "/phi_3_get_then_update_key_matches_get_then_delete.rs:3864:9\n     |\n3859 | proof fn phi_3_get_then_update_key_matches_get_then_delete(gu: GetThenUpdateRequest, gd: GetThenDeleteRequest)\n     |       -------------------------------------------------------------------------------------------------------- at the end of the function body\n...\n3864 |         gu.key() == gd.key(),\n     |         ^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "allocate_ids_never_collide",
+    "type": "behavioral",
+    "code": "proof fn phi_4_allocate_ids_never_collide(a1: ReconcileIdAllocator, a2: ReconcileIdAllocator)\n    requires\n        a1.reconcile_id_counter != a2.reconcile_id_counter,\n    ensures\n        a1.allocate().0.allocate().1 != a2.allocate().1,\n{\n}",
+    "reason": "a1 allocates twice yielding counter+1, a2 allocates once yielding its counter \u2014 if a1.counter+1 == a2.counter they collide, so distinct initial counters do NOT prevent collision after different numbers of allocations",
+    "entailed": false,
+    "verus_output": "i_4_allocate_ids_never_collide.rs:3863:9\n     |\n3859 | proof fn phi_4_allocate_ids_never_collide(a1: ReconcileIdAllocator, a2: ReconcileIdAllocator)\n     |       --------------------------------------------------------------------------------------- at the end of the function body\n...\n3863 |         a1.allocate().0.allocate().1 != a2.allocate().1,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "update_key_determines_obj_kind",
+    "type": "logical",
+    "code": "proof fn phi_5_update_key_determines_obj_kind(r1: UpdateRequest, r2: UpdateStatusRequest)\n    requires\n        r1.key() == r2.key(),\n    ensures\n        r1.obj.metadata == r2.obj.metadata,\n{\n}",
+    "reason": "key() only constrains obj.kind, namespace, and name \u2014 equal keys say nothing about the obj.metadata fields which are independent struct members",
+    "entailed": false,
+    "verus_output": "not_have_deletion_timestamp/phi_5_update_key_determines_obj_kind.rs:3863:9\n     |\n3859 | proof fn phi_5_update_key_determines_obj_kind(r1: UpdateRequest, r2: UpdateStatusRequest)\n     |       ----------------------------------------------------------------------------------- at the end of the function body\n...\n3863 |         r1.obj.metadata == r2.obj.metadata,\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

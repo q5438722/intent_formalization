@@ -1,0 +1,31 @@
+===VERDICT_START===
+PHI: va_1g_valid_equals_spec_va_2m_valid
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: `va_1g_valid` has `#[verifier(when_used_as_spec(spec_va_2m_valid))]` — a clear copy-paste bug from `va_2m_valid`. In spec context, `va_1g_valid(va)` resolves to `spec_va_2m_valid(va)` instead of `spec_va_1g_valid(va)`, making all 1GB validation checks silently use 2MB validation.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: va_1g_accepts_non_1g_aligned
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: Direct consequence of the copy-paste bug: a 2MB-aligned but non-1GB-aligned address passes `va_1g_valid` in spec context, allowing misaligned addresses into 1GB page operations.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: v2l3index_weakened_precondition
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: Downstream impact of the same bug: `v2l3index`'s precondition disjunction `va_1g_valid(va)` resolves to `spec_va_2m_valid(va)`, so any 2MB-valid address satisfies the precondition through the 1GB path regardless of actual 1GB alignment.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: v2l3index_1g_path_nonzero_result
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: A 2MB-aligned address with nonzero L3 index is not 1GB-aligned, yet passes `va_1g_valid` and enters `v2l3index`. Callers relying on the 1GB path to guarantee specific L3 index properties (e.g., that it indexes into a valid 1GB page table entry) would get incorrect results.
+===VERDICT_END===
+
+===SUMMARY===
+All four candidates are true positives stemming from the same root cause: `va_1g_valid` has `when_used_as_spec(spec_va_2m_valid)` instead of `when_used_as_spec(spec_va_1g_valid)`, a copy-paste bug from the adjacent `va_2m_valid` definition. This causes all spec-level 1GB validation to silently degrade to 2MB validation, with cascading effects on downstream functions like `v2l3index` whose preconditions become weaker than intended.
+===END_SUMMARY===

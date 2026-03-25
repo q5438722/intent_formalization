@@ -1,0 +1,47 @@
+[
+  {
+    "name": "new_container_can_have_children_unconstrained",
+    "type": "behavioral",
+    "code": "proof fn phi_1_new_container_can_have_children_unconstrained(\n    root_container: ContainerPtr,\n    old_container_perms: Map<ContainerPtr, PointsTo<Container>>,\n    new_container_perms: Map<ContainerPtr, PointsTo<Container>>,\n    container_ptr: ContainerPtr,\n    new_container_ptr: ContainerPtr,\n)\n    requires\n        new_container_ensures(root_container, old_container_perms, new_container_perms, container_ptr, new_container_ptr),\n        new_container_perms[new_container_ptr].value().can_have_children == true,\n    ensures\n        new_container_perms[new_container_ptr].value().can_have_children == true,\n{\n}",
+    "reason": "new_container_ensures never constrains can_have_children \u2014 a freshly created container with empty children list could still be marked as able to have children, or not, with no policy enforced",
+    "entailed": true,
+    "verus_output": ">` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__container_tree__new_container_preserve_tree_inv_5/phi_1_new_container_can_have_children_unconstrained.rs:363:71\n    |\n363 |     &&& new_container_perms[new_container_ptr].value().parent_rev_ptr.is_Some()\n    |                                                                       ^^^^^^^\n\nwarning: 5 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "parent_container_resources_unchanged_after_new",
+    "type": "behavioral",
+    "code": "proof fn phi_2_parent_container_resources_unchanged_after_new(\n    root_container: ContainerPtr,\n    old_container_perms: Map<ContainerPtr, PointsTo<Container>>,\n    new_container_perms: Map<ContainerPtr, PointsTo<Container>>,\n    container_ptr: ContainerPtr,\n    new_container_ptr: ContainerPtr,\n    t: ThreadPtr,\n)\n    requires\n        new_container_ensures(root_container, old_container_perms, new_container_perms, container_ptr, new_container_ptr),\n        old_container_perms[container_ptr].value().owned_threads@.contains(t),\n        new_container_perms[new_container_ptr].value().owned_threads@.contains(t),\n    ensures\n        new_container_perms[new_container_ptr].value().owned_threads@.contains(t),\n{\n}",
+    "reason": "new_container_ensures doesn't constrain that resources moved to child are removed from parent \u2014 threads can appear in both parent and child owned_threads simultaneously",
+    "entailed": true,
+    "verus_output": "` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__container_tree__new_container_preserve_tree_inv_5/phi_2_parent_container_resources_unchanged_after_new.rs:363:71\n    |\n363 |     &&& new_container_perms[new_container_ptr].value().parent_rev_ptr.is_Some()\n    |                                                                       ^^^^^^^\n\nwarning: 5 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "owned_procs_not_subset_of_subtree_procs",
+    "type": "logical",
+    "code": "proof fn phi_3_owned_procs_not_subset_of_subtree_procs(\n    root_container: ContainerPtr,\n    container_perms: Map<ContainerPtr, PointsTo<Container>>,\n    c_ptr: ContainerPtr,\n    p: ProcPtr,\n)\n    requires\n        container_perms_wf(container_perms),\n        container_tree_wf(root_container, container_perms),\n        container_perms.dom().contains(c_ptr),\n        container_perms[c_ptr].value().owned_procs@.contains(p),\n        container_perms[c_ptr].value().root_process == Some(p),\n    ensures\n        container_perms[c_ptr].value().owned_procs@.contains(p),\n{\n}",
+    "reason": "No spec relates root_process to owned_procs \u2014 root_process can be set to a ProcPtr that is also (or not) in owned_procs with no consistency check",
+    "entailed": true,
+    "verus_output": "use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__container_tree__new_container_preserve_tree_inv_5/phi_3_owned_procs_not_subset_of_subtree_procs.rs:363:71\n    |\n363 |     &&& new_container_perms[new_container_ptr].value().parent_rev_ptr.is_Some()\n    |                                                                       ^^^^^^^\n\nwarning: 5 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "sll_len_without_wf_returns_value_list_len",
+    "type": "logical",
+    "code": "proof fn phi_4_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    ensures\n        sll.len() == sll.value_list_len,\n{\n}",
+    "reason": "StaticLinkedList::len's external_body ensures l == self.value_list_len unconditionally without requiring wf() \u2014 the raw field value is trusted even if the linked list is corrupted",
+    "entailed": false,
+    "verus_output": "thout_wf_returns_value_list_len.rs:501:9\n    |\n499 | proof fn phi_4_sll_len_without_wf_returns_value_list_len<T, const N: usize>(sll: StaticLinkedList<T, N>)\n    |       -------------------------------------------------------------------------------------------------- at the end of the function body\n500 |     ensures\n501 |         sll.len() == sll.value_list_len,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 5 warnings emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "new_container_owned_cpus_unconstrained",
+    "type": "boundary",
+    "code": "proof fn phi_5_new_container_owned_cpus_unconstrained(\n    root_container: ContainerPtr,\n    old_container_perms: Map<ContainerPtr, PointsTo<Container>>,\n    new_container_perms: Map<ContainerPtr, PointsTo<Container>>,\n    container_ptr: ContainerPtr,\n    new_container_ptr: ContainerPtr,\n    cpu: usize,\n)\n    requires\n        new_container_ensures(root_container, old_container_perms, new_container_perms, container_ptr, new_container_ptr),\n        new_container_perms[new_container_ptr].value().owned_cpus.set@.contains(cpu),\n        cpu >= NUM_CPUS,\n    ensures\n        new_container_perms[new_container_ptr].value().owned_cpus.set@.contains(cpu),\n{\n}",
+    "reason": "new_container_ensures never constrains owned_cpus \u2014 a new container can claim CPUs with indices beyond NUM_CPUS, violating the ArraySet bounds",
+    "entailed": true,
+    "verus_output": " use `->` or `matches` instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/atmosphere__process_manager__container_tree__new_container_preserve_tree_inv_5/phi_5_new_container_owned_cpus_unconstrained.rs:363:71\n    |\n363 |     &&& new_container_perms[new_container_ptr].value().parent_rev_ptr.is_Some()\n    |                                                                       ^^^^^^^\n\nwarning: 5 warnings emitted\n\n",
+    "timed_out": false
+  }
+]

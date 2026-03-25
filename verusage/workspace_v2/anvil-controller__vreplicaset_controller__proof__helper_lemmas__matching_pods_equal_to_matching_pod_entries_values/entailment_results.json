@@ -1,0 +1,47 @@
+[
+  {
+    "name": "selector_none_equals_empty_some",
+    "type": "logical",
+    "code": "proof fn phi_1_selector_none_equals_empty_some(labels: Map<StringView, StringView>)\n    requires\n        true,\n    ensures\n        LabelSelectorView { match_labels: None }.matches(labels)\n            == LabelSelectorView { match_labels: Some(Map::empty()) }.matches(labels),\n{\n}",
+    "reason": "None and Some(empty) both vacuously match all labels \u2014 if entailed, it reveals the spec cannot distinguish \"no selector\" from \"empty selector\", which may be unintended",
+    "entailed": false,
+    "verus_output": "error: struct literals are not allowed here; try surrounding the struct literal with parentheses\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__helper_lemmas__matching_pods_equal_to_matching_pod_entries_values/phi_1_selector_none_equals_empty_some.rs:445:9\n    |\n445 |         LabelSelectorView { match_labels: None }.matches(labels)\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror: aborting due to 1 previous error\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "owned_match_implies_name_is_some",
+    "type": "boundary",
+    "code": "proof fn phi_2_owned_match_implies_name_is_some(vrs: VReplicaSetView, obj: DynamicObjectView)\n    requires\n        owned_selector_match_is(vrs, obj),\n    ensures\n        obj.metadata.name is Some,\n{\n}",
+    "reason": "owned_selector_match_is checks namespace, owner_references, labels, deletion_timestamp, and kind \u2014 but never requires the pod's name to be Some, so this should NOT be entailed",
+    "entailed": false,
+    "verus_output": "pods_equal_to_matching_pod_entries_values/phi_2_owned_match_implies_name_is_some.rs:445:9\n    |\n441 | proof fn phi_2_owned_match_implies_name_is_some(vrs: VReplicaSetView, obj: DynamicObjectView)\n    |       --------------------------------------------------------------------------------------- at the end of the function body\n...\n445 |         obj.metadata.name is Some,\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "matching_pods_cardinality_equals_entries",
+    "type": "behavioral",
+    "code": "proof fn phi_3_matching_pods_cardinality_equals_entries(vrs: VReplicaSetView, s: StoredState)\n    requires\n        true,\n    ensures\n        matching_pod_entries(vrs, s).dom().len() == matching_pods(vrs, s).len(),\n{\n}",
+    "reason": "matching_pod_entries maps keys to values so multiple keys can map to the same DynamicObjectView \u2014 the entries domain can be larger than the deduplicated values set",
+    "entailed": false,
+    "verus_output": "  |\n441 | proof fn phi_3_matching_pods_cardinality_equals_entries(vrs: VReplicaSetView, s: StoredState)\n    |       --------------------------------------------------------------------------------------- at the end of the function body\n...\n445 |         matching_pod_entries(vrs, s).dom().len() == matching_pods(vrs, s).len(),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "different_vrs_disjoint_matching_pods",
+    "type": "logical",
+    "code": "proof fn phi_4_different_vrs_disjoint_matching_pods(vrs1: VReplicaSetView, vrs2: VReplicaSetView, s: StoredState)\n    requires\n        vrs1.metadata.uid != vrs2.metadata.uid,\n        vrs1.metadata.name != vrs2.metadata.name,\n    ensures\n        matching_pods(vrs1, s).disjoint(matching_pods(vrs2, s)),\n{\n}",
+    "reason": "a pod's owner_references is a Seq that can contain multiple entries \u2014 a pod could have owner refs for both controllers, so different VRS do NOT imply disjoint matching pod sets",
+    "entailed": false,
+    "verus_output": "| proof fn phi_4_different_vrs_disjoint_matching_pods(vrs1: VReplicaSetView, vrs2: VReplicaSetView, s: StoredState)\n    |       ----------------------------------------------------------------------------------------------------------- at the end of the function body\n...\n446 |         matching_pods(vrs1, s).disjoint(matching_pods(vrs2, s)),\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "selector_match_is_transitive_on_labels",
+    "type": "logical",
+    "code": "proof fn phi_5_selector_match_is_transitive_on_labels(sel: LabelSelectorView, l1: Map<StringView, StringView>, l2: Map<StringView, StringView>)\n    requires\n        sel.matches(l1),\n        forall |k: StringView, v: StringView| l1.contains_pair(k, v) ==> l2.contains_pair(k, v),\n    ensures\n        sel.matches(l2),\n{\n}",
+    "reason": "while logically this looks like transitivity of subset containment (match_labels \u2286 l1 \u2286 l2), the forall-based spec may not give the SMT solver enough triggers to chain the reasoning \u2014 if it IS entailed, it confirms the spec is monotone in label superset which may over-match",
+    "entailed": true,
+    "verus_output": " instead: https://verus-lang.github.io/verus/guide/datatypes_enum.html\n  --> /home/chentianyu/intent_formalization/verusage/workspace_v2/anvil-controller__vreplicaset_controller__proof__helper_lemmas__matching_pods_equal_to_matching_pod_entries_values/phi_5_selector_match_is_transitive_on_labels.rs:59:1\n   |\n59 | / #[is_variant]\n60 | | pub enum Kind {\n61 | |     ConfigMapKind,\n62 | |     CustomResourceKind(StringView),\n...  |\n71 | |     SecretKind,\n72 | | }\n   | |_^\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

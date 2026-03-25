@@ -1,0 +1,47 @@
+[
+  {
+    "name": "write_commutative_different_addrs",
+    "type": "behavioral",
+    "code": "proof fn phi_1_write_commutative_different_addrs(mem: PTMem, a1: usize, v1: usize, a2: usize, v2: usize)\n    requires\n        a1 != a2,\n    ensures\n        mem.write(a1, v1).write(a2, v2) == mem.write(a2, v2).write(a1, v1),\n{\n}",
+    "reason": "Writes to different addresses should commute \u2014 if they don't, the write_seq fold_left order matters even for disjoint addresses, which would be a spec gap",
+    "entailed": false,
+    "verus_output": " fn phi_1_write_commutative_different_addrs(mem: PTMem, a1: usize, v1: usize, a2: usize, v2: usize)\n     |       -------------------------------------------------------------------------------------------------- at the end of the function body\n...\n1466 |         mem.write(a1, v1).write(a2, v2) == mem.write(a2, v2).write(a1, v1),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "write_overwrites_same_addr",
+    "type": "behavioral",
+    "code": "proof fn phi_2_write_overwrites_same_addr(mem: PTMem, addr: usize, v1: usize, v2: usize)\n    ensures\n        mem.write(addr, v1).write(addr, v2) == mem.write(addr, v2),\n{\n}",
+    "reason": "A second write to the same address should fully overwrite the first \u2014 tests that Map::insert idempotency holds for PTMem, which is foundational for store buffer reasoning",
+    "entailed": false,
+    "verus_output": "ddr.rs:1464:9\n     |\n1462 | proof fn phi_2_write_overwrites_same_addr(mem: PTMem, addr: usize, v1: usize, v2: usize)\n     |       ---------------------------------------------------------------------------------- at the end of the function body\n1463 |     ensures\n1464 |         mem.write(addr, v1).write(addr, v2) == mem.write(addr, v2),\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition\n\nerror: aborting due to 1 previous error; 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "l3_entry_size_equals_page_size",
+    "type": "logical",
+    "code": "proof fn phi_3_l3_entry_size_equals_page_size()\n    ensures\n        L3_ENTRY_SIZE == PAGE_SIZE,\n        L2_ENTRY_SIZE == 512 * PAGE_SIZE,\n        L1_ENTRY_SIZE == 512 * 512 * PAGE_SIZE,\n{\n}",
+    "reason": "Entry sizes should form a geometric progression based on 512 entries per level \u2014 if the constants are wrong, walk results would produce incorrect vbase/size mappings",
+    "entailed": true,
+    "verus_output": "ields` has been renamed to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__next_step_preserves_inv/phi_3_l3_entry_size_equals_page_size.rs:264:9\n    |\n264 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "from_bits_supervisor_inverted",
+    "type": "behavioral",
+    "code": "proof fn phi_4_from_bits_supervisor_inverted()\n    ensures\n        Flags::from_bits(true, true, false).is_supervisor == false,\n        Flags::from_bits(true, false, false).is_supervisor == true,\n{\n}",
+    "reason": "`from_bits` sets `is_supervisor = !flag_US` \u2014 a US=true (user-accessible) entry has is_supervisor=false; tests that the inversion is intentional and not a bug",
+    "entailed": true,
+    "verus_output": "fields` has been renamed to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__next_step_preserves_inv/phi_4_from_bits_supervisor_inverted.rs:264:9\n    |\n264 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  },
+  {
+    "name": "update_range_at_zero_equals_prefix_replace",
+    "type": "behavioral",
+    "code": "proof fn phi_5_update_range_at_zero_equals_prefix_replace(s: Seq<u8>, new: Seq<u8>)\n    requires\n        new.len() <= s.len(),\n    ensures\n        update_range(s, 0, new) =~= new + s.subrange(new.len() as int, s.len() as int),\n{\n}",
+    "reason": "Updating at index 0 should replace the prefix \u2014 tests that `subrange(0, 0)` correctly produces an empty sequence and doesn't corrupt the result",
+    "entailed": true,
+    "verus_output": "een renamed to `repr_transparent_non_zst_fields`\n   --> /home/chentianyu/intent_formalization/verusage/workspace_v2/nrkernel__spec_t__mmu__rl2__next_step_preserves_inv/phi_5_update_range_at_zero_equals_prefix_replace.rs:264:9\n    |\n264 | #[allow(repr_transparent_external_private_fields)]\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`\n    |\n    = note: `#[warn(renamed_and_removed_lints)]` on by default\n\nwarning: 1 warning emitted\n\n",
+    "timed_out": false
+  }
+]

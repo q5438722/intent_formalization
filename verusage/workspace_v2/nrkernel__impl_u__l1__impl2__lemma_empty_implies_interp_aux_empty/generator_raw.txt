@@ -1,0 +1,98 @@
+===PHI_START===
+NAME: inv_no_base_vaddr_alignment
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_1_inv_no_base_vaddr_alignment(d: Directory)
+    requires
+        d.inv(),
+        d.arch.inv(),
+        d.layer < d.arch.layers.len(),
+    ensures
+        // base_vaddr need not be aligned to entry_size * num_entries
+        exists|d2: Directory|
+            d2.inv() && d2.base_vaddr % (d2.entry_size() * d2.num_entries()) != 0,
+{
+}
+```
+REASON: `well_formed` has the alignment constraint on `base_vaddr` commented out — directories can have unaligned base addresses
+===PHI_END===
+
+===PHI_START===
+NAME: page_frame_base_unconstrained
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_2_page_frame_base_unconstrained(d: Directory, i: nat)
+    requires
+        d.inv(),
+        i < d.entries.len(),
+        d.entries[i as int] is Page,
+    ensures
+        // frame base can be anything — no alignment or range constraint
+        d.entries[i as int]->Page_0.frame.base == d.entries[i as int]->Page_0.frame.base,
+{
+}
+```
+REASON: `inv()` constrains page frame *size* but not frame *base* — frame base is completely unconstrained, no alignment or identity mapping requirement
+===PHI_END===
+
+===PHI_START===
+NAME: interp_aux_right_overrides_left
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_3_interp_aux_right_overrides_left(d: Directory)
+    requires
+        d.inv(),
+        d.entries.len() >= 2,
+        d.entries[0] is Page,
+        d.entries[1] is Page,
+    ensures
+        // interp_aux uses union_prefer_right with i=0 entry on top
+        // entry 0's interp overrides entry 1's if keys collide
+        d.interp_aux(0) == d.interp_aux(1).union_prefer_right(d.interp_of_entry(0)),
+{
+}
+```
+REASON: `interp_aux` builds the map with earlier entries overriding later ones via `union_prefer_right` — key collisions silently shadow entries without the spec proving disjointness
+===PHI_END===
+
+===PHI_START===
+NAME: subdirectory_base_not_aligned
+TYPE: logical
+CODE:
+```verus
+proof fn phi_4_subdirectory_base_not_aligned(d: Directory, i: nat)
+    requires
+        d.inv(),
+        i < d.entries.len(),
+        d.entries[i as int] is Directory,
+    ensures
+        // subdirectory base = parent base + i * entry_size, but parent base itself may be unaligned
+        d.entries[i as int]->Directory_0.base_vaddr == d.base_vaddr + i * d.entry_size(),
+{
+}
+```
+REASON: Subdirectory `base_vaddr` is computed from parent's `base_vaddr` which has no alignment constraint — misalignment propagates through the tree
+===PHI_END===
+
+===PHI_START===
+NAME: empty_dir_nonempty_allowed
+TYPE: behavioral
+CODE:
+```verus
+proof fn phi_5_empty_dir_nonempty_allowed(d: Directory, i: nat)
+    requires
+        d.inv(),
+        i < d.entries.len(),
+        d.entries[i as int] is Directory,
+    ensures
+        // subdirectories can be empty — the commented-out `directories_are_nonempty` is not enforced
+        d.entries[i as int]->Directory_0.inv(),
+{
+    // inv() ensures directories_obey_invariant
+}
+```
+REASON: `inv()` has `directories_are_nonempty` commented out — empty subdirectories are allowed, wasting page table entries without the spec preventing it
+===PHI_END===
