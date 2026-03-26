@@ -1,0 +1,122 @@
+[
+  {
+    "name": "new_can_reject_valid",
+    "target_fn": "new",
+    "type": "behavioral",
+    "source": "spec_only",
+    "code": "proof fn phi_1_new_can_reject_valid(number_of_bits: usize, result: Result<Bitmap, Error>)\n    requires\n        // Input satisfies all validity conditions\n        number_of_bits > 0,\n        number_of_bits < u32::MAX as usize,\n        number_of_bits % (u8::BITS as usize) == 0,\n        // Bad scenario: result is Err despite valid input\n        result is Err,\n    ensures\n        // All four ensures of new() are still satisfied\n        result matches Ok(bitmap) ==> (bitmap.inv() && bitmap@.num_bits == number_of_bits as int && bitmap@.is_empty()),\n        (number_of_bits == 0) ==> result is Err,\n        (number_of_bits >= u32::MAX as usize) ==> result is Err,\n        (number_of_bits % (u8::BITS as usize) != 0) ==> result is Err,\n{\n    // Ok branch is vacuously true (result is Err).\n    // The three Err-forcing conditions all have false antecedents.\n}",
+    "reason": "An always-Err implementation satisfies the spec vacuously, making bitmap creation dead code."
+  },
+  {
+    "name": "alloc_range_rejects_with_free",
+    "target_fn": "alloc_range",
+    "type": "behavioral",
+    "source": "spec_only",
+    "code": "proof fn phi_2_alloc_range_rejects_with_free(pre: Bitmap, post: Bitmap, size: usize, result: Result<usize, Error>)\n    requires\n        // alloc_range preconditions\n        pre.inv(),\n        size > 0,\n        size as int <= pre@.num_bits,\n        // A contiguous free range of the requested size exists\n        exists|s: int| 0 <= s && s + size as int <= pre@.num_bits\n            && (forall|j: int| s <= j < s + size as int ==> !pre@.is_bit_set(j)),\n        // Bad scenario: Err returned, state unchanged\n        result is Err,\n        post.inv(),\n        post@.num_bits == pre@.num_bits,\n        forall|i: int| 0 <= i < pre@.num_bits ==> (post@.is_bit_set(i) == pre@.is_bit_set(i)),\n    ensures\n        // All visible spec ensures hold\n        post.inv(),\n        result matches Ok(start) ==> (\n            0 <= start && start < post@.num_bits\n            && 0 < size as int && size as int <= post@.num_bits\n            && start + size as int <= post@.num_bits\n            && post@.num_bits == pre@.num_bits\n        ),\n{\n    // Ok branch is vacuously true (result is Err).\n    // Err branch lacks a 'no free range exists' postcondition.\n}",
+    "reason": "Without a liveness guarantee linking free ranges to Ok, alloc_range can always fail, making the allocator useless."
+  },
+  {
+    "name": "set_err_can_mutate",
+    "target_fn": "set",
+    "type": "logical",
+    "source": "spec_only",
+    "code": "proof fn phi_3_set_err_can_mutate(pre: Bitmap, post: Bitmap, index: usize, result: Result<(), Error>)\n    requires\n        // set precondition\n        pre.inv(),\n        // Result is Err\n        result is Err,\n        // Post-state maintains invariant but was mutated\n        post.inv(),\n        post@.num_bits == pre@.num_bits,\n        exists|k: int| 0 <= k < pre@.num_bits && post@.is_bit_set(k) != pre@.is_bit_set(k),\n    ensures\n        // All visible spec ensures still hold\n        post.inv(),\n        result matches Ok(()) ==> (\n            index < post@.num_bits\n            && post@.is_bit_set(index as int)\n            && !pre@.is_bit_set(index as int)\n            && post@.num_bits == pre@.num_bits\n        ),\n{\n    // Ok branch is vacuously true (result is Err).\n    // Err branch has no frame condition requiring self@ == old(self)@.\n}",
+    "reason": "A missing frame condition on the Err path allows silent corruption of bitmap state on any failed set call."
+  },
+  {
+    "name": "clear_err_can_mutate",
+    "target_fn": "clear",
+    "type": "logical",
+    "source": "spec_only",
+    "code": "proof fn phi_4_clear_err_can_mutate(pre: Bitmap, post: Bitmap, index: usize, result: Result<(), Error>)\n    requires\n        // clear precondition\n        pre.inv(),\n        // Index is valid but bit is already cleared (not out-of-bounds)\n        index < pre@.num_bits,\n        !pre@.is_bit_set(index as int),\n        // Result is Err\n        result is Err,\n        // Post-state maintains invariant but an unrelated bit was flipped\n        post.inv(),\n        post@.num_bits == pre@.num_bits,\n        exists|k: int| 0 <= k < pre@.num_bits && k != index as int\n            && post@.is_bit_set(k) != pre@.is_bit_set(k),\n    ensures\n        // All visible spec ensures still hold\n        post.inv(),\n        result matches Ok(()) ==> (\n            index < post@.num_bits\n            && !post@.is_bit_set(index as int)\n            && post@.num_bits == pre@.num_bits\n        ),\n{\n    // Ok branch is vacuously true (result is Err).\n    // Err branch conflates 'already cleared' with 'out of bounds'\n    // and lacks a frame condition preventing mutation.\n}",
+    "reason": "Missing frame condition and undistinguished error cases let clear silently corrupt state and prevent callers from diagnosing failures."
+  },
+  {
+    "name": "alloc_always_returns_zero",
+    "target_fn": "alloc",
+    "type": "behavioral",
+    "source": "spec_only",
+    "code": "proof fn phi_5_alloc_always_returns_zero(pre: Bitmap, post: Bitmap, index: usize)\n    requires\n        pre.inv(),\n        pre@.num_bits > 1,\n        // Multiple bits are free\n        !pre@.is_bit_set(0),\n        !pre@.is_bit_set(1),\n        // alloc returns index 0\n        index == 0,\n        // Post-state: bit 0 set, all others unchanged\n        post.inv(),\n        post@.num_bits == pre@.num_bits,\n        post@.is_bit_set(0),\n        forall|i: int| 0 < i < post@.num_bits ==> post@.is_bit_set(i) == pre@.is_bit_set(i),\n    ensures\n        // All alloc Ok-branch ensures are satisfied for index == 0\n        0 <= index && index < post@.num_bits,\n        post@.num_bits == pre@.num_bits,\n        !pre@.is_bit_set(index as int),\n        post@.is_bit_set(index as int),\n        forall|i: int| 0 <= i < post@.num_bits && i != index as int\n            ==> post@.is_bit_set(i) == pre@.is_bit_set(i),\n{\n    // index == 0 satisfies all ensures; bit 1 remains free forever.\n    // The spec has no fairness or progress requirement.\n}",
+    "reason": "Without fairness, an implementation can starve all indices except 0, causing pathological fragmentation in the allocator."
+  },
+  {
+    "name": "alloc_range_empty_full_size_can_err",
+    "target_fn": "alloc_range",
+    "type": "boundary",
+    "source": "spec_only",
+    "code": "proof fn phi_1_alloc_range_empty_full_size_can_err(bm: Bitmap, size: usize)\n    requires\n        bm.inv(),\n        forall|i: int| 0 <= i < bm@.num_bits ==> !bm@.is_bit_set(i),\n        size > 0,\n        size as int == bm@.num_bits,\n    ensures\n        // alloc_range preconditions are fully satisfied\n        bm.inv(),\n        size > 0,\n        size <= bm@.num_bits,\n        // A contiguous free range [0, size) exists in the bitmap\n        forall|i: int| 0 <= i < size as int ==> !bm@.is_bit_set(i),\n        // Yet the spec has no liveness clause:\n        //   free_range_exists(size) ==> result is Ok\n        // so the Err postcondition is satisfiable even here.\n{\n}",
+    "reason": "An empty bitmap trivially has a free range of any valid size, so alloc_range should succeed but the spec permits Err"
+  },
+  {
+    "name": "from_raw_array_no_err_branch",
+    "target_fn": "from_raw_array",
+    "type": "logical",
+    "source": "spec_only",
+    "code": "proof fn phi_2_from_raw_array_no_err_branch(array: RawArray<u8>)\n    requires\n        array.inv(),\n        array@.len() > 0,\n        array@.len() * (u8::BITS as usize) < u32::MAX as usize,\n        forall|i: int| 0 <= i < array@.len() ==> array@[i] == 0,\n    ensures\n        // from_raw_array's ensures clause is:\n        //   result matches Ok(bitmap) && { bitmap.inv() && ... }\n        // This unconditionally asserts result IS Ok \u2014 no Err arm exists.\n        // The body's checked_mul Err path has zero spec coverage.\n        // Unlike `new`, which maps each invalid-input class to Err,\n        // from_raw_array is all-or-nothing: callers must prove all four\n        // preconditions or receive no guarantees at all.\n        array@.len() > 0,\n        array@.len() * (u8::BITS as usize) < u32::MAX as usize,\n{\n}",
+    "reason": "The ensures has no Err branch, so the implementation's Err path is invisible to callers and there is no graceful degradation when preconditions are unverified"
+  },
+  {
+    "name": "test_err_code_unspecified",
+    "target_fn": "test",
+    "type": "boundary",
+    "source": "spec_only",
+    "code": "proof fn phi_3_test_err_code_unspecified(bm: Bitmap, i1: usize, i2: usize)\n    requires\n        bm.inv(),\n        i1 != i2,\n        i1 >= bm@.num_bits,\n        i2 >= bm@.num_bits,\n    ensures\n        // test's spec: Err(_) => index >= self@.num_bits\n        // The wildcard _ matches ANY Error value.\n        // Both i1 and i2 satisfy the same Err postcondition\n        // with no constraint on ErrorCode or message.\n        // The spec permits test(i1) to return InvalidArgument\n        // while test(i2) returns a completely different ErrorCode.\n        i1 >= bm@.num_bits,\n        i2 >= bm@.num_bits,\n{\n}",
+    "reason": "Callers that pattern-match on ErrorCode to distinguish out-of-bounds from other failures cannot rely on the spec for a consistent error type"
+  },
+  {
+    "name": "new_no_ok_guarantee",
+    "target_fn": "new",
+    "type": "logical",
+    "source": "body_aware",
+    "code": "proof fn phi_4_new_no_ok_guarantee(n: usize)\n    requires\n        n > 0,\n        n < u32::MAX as usize,\n        n % (u8::BITS as usize) == 0,\n    ensures\n        // All three Err conditions from new's spec are excluded:\n        !(n == 0),                            // n == 0 ==> Err is vacuously true\n        !(n >= u32::MAX as usize),            // n >= u32::MAX ==> Err is vacuously true\n        !(n % (u8::BITS as usize) != 0),      // n % 8 != 0 ==> Err is vacuously true\n        // Every Err trigger is false, yet no ensures clause forces Ok.\n        // A model with result = Err satisfies all ensures clauses vacuously.\n        // Callers cannot prove new(n) ever returns Ok.\n{\n}",
+    "reason": "Without a success guarantee, verified callers cannot compose with new \u2014 they can exclude all Err conditions yet the spec still permits Err for any reason"
+  },
+  {
+    "name": "set_err_codes_not_distinguished",
+    "target_fn": "set",
+    "type": "behavioral",
+    "source": "body_aware",
+    "code": "proof fn phi_5_set_err_codes_not_distinguished(bm: Bitmap, idx_oob: usize, idx_set: usize)\n    requires\n        bm.inv(),\n        idx_oob >= bm@.num_bits,\n        idx_set < bm@.num_bits,\n        bm@.is_bit_set(idx_set as int),\n    ensures\n        // Scenario 1 (out-of-bounds): body returns Err(InvalidArgument)\n        !(idx_oob < bm@.num_bits),\n        // Scenario 2 (already set): body returns Err(ResourceBusy)\n        bm@.is_bit_set(idx_set as int),\n        // Both satisfy set's Err postcondition, which uses wildcard _\n        // and provides no ErrorCode constraint. A caller wanting to\n        // retry on ResourceBusy but abort on InvalidArgument cannot\n        // rely on the spec for this distinction.\n{\n}",
+    "reason": "Error codes are part of the observable contract but the spec erases them, preventing callers from programmatically differentiating retry-able vs fatal errors"
+  },
+  {
+    "name": "clear_no_alloc_hint",
+    "target_fn": "clear",
+    "type": "behavioral",
+    "source": "body_aware",
+    "code": "proof fn phi_1_clear_no_alloc_hint(bm: Bitmap, cleared_idx: int, higher_free: int)\n    requires\n        bm.inv(),\n        0 <= cleared_idx < bm@.num_bits,\n        0 <= higher_free < bm@.num_bits,\n        cleared_idx < higher_free,\n        !bm@.is_bit_set(cleared_idx),\n        !bm@.is_bit_set(higher_free),\n    ensures\n        // higher_free satisfies alloc's Ok postcondition (valid free bit),\n        // so the spec permits alloc to return higher_free, skipping the\n        // recently-cleared cleared_idx. The body would prefer cleared_idx\n        // because clear updates next_free to cleared_idx.\n        !bm@.is_bit_set(higher_free) && higher_free > cleared_idx,\n{\n}",
+    "reason": "Callers relying on temporal reuse (e.g., PID recycling) cannot reason about allocation order after free because the spec omits the next_free hint guarantee."
+  },
+  {
+    "name": "alloc_range_no_nextfit",
+    "target_fn": "alloc_range",
+    "type": "behavioral",
+    "source": "body_aware",
+    "code": "proof fn phi_2_alloc_range_no_nextfit(bm: Bitmap, last_alloc_end: int, earlier_free: int)\n    requires\n        bm.inv(),\n        0 <= earlier_free < last_alloc_end,\n        last_alloc_end <= bm@.num_bits,\n        !bm@.is_bit_set(earlier_free),\n    ensures\n        // earlier_free (before last_alloc_end) satisfies alloc_range's Ok\n        // postcondition for the returned index: it is in bounds and free.\n        // The spec permits allocating here even though the body's next-fit\n        // strategy would start searching from last_alloc_end.\n        !bm@.is_bit_set(earlier_free) && earlier_free < last_alloc_end,\n{\n}",
+    "reason": "Sequential packing is important for fragmentation and cache locality; the spec permits arbitrary non-sequential allocation, breaking callers' determinism assumptions."
+  },
+  {
+    "name": "clear_err_codes_indistinguishable",
+    "target_fn": "clear",
+    "type": "behavioral",
+    "source": "body_aware",
+    "code": "proof fn phi_3_clear_err_codes_indistinguishable(bm: Bitmap, oob_idx: int, clear_idx: int)\n    requires\n        bm.inv(),\n        oob_idx >= bm@.num_bits,\n        0 <= clear_idx < bm@.num_bits,\n        !bm@.is_bit_set(clear_idx),\n    ensures\n        // Both oob_idx and clear_idx trigger clear's Err path but for different reasons:\n        //   oob_idx  >= num_bits  \u2192 body returns InvalidArgument\n        //   clear_idx already 0   \u2192 body returns BadAddress\n        // The spec's Err(_) wildcard treats both identically; callers cannot\n        // distinguish bounds errors from logic errors.\n        oob_idx >= bm@.num_bits && (clear_idx < bm@.num_bits && !bm@.is_bit_set(clear_idx)),\n{\n}",
+    "reason": "Without distinct error codes in the spec, callers cannot differentiate a bounds violation (programming error) from an already-cleared bit (logic error) for proper error handling."
+  },
+  {
+    "name": "set_no_hint_update",
+    "target_fn": "set",
+    "type": "logical",
+    "source": "body_aware",
+    "code": "proof fn phi_4_set_no_hint_update(bm: Bitmap, set_idx: int, free_before_set: int)\n    requires\n        bm.inv(),\n        0 <= set_idx < bm@.num_bits,\n        0 <= free_before_set < set_idx,\n        bm@.is_bit_set(set_idx),\n        !bm@.is_bit_set(free_before_set),\n    ensures\n        // After set(set_idx), the spec of alloc permits returning free_before_set\n        // (below set_idx). Since set does NOT update next_free (unlike alloc_range),\n        // the allocation cursor is unchanged; the spec does not capture this\n        // asymmetry, allowing callers to wrongly assume alloc avoids the set region.\n        !bm@.is_bit_set(free_before_set) && 0 <= free_before_set < bm@.num_bits,\n{\n}",
+    "reason": "Callers interleaving set and alloc cannot reason about allocation search order because the spec hides the asymmetric cursor behavior between set (no update) and alloc (advances cursor)."
+  },
+  {
+    "name": "alloc_range_err_codes_ambiguous",
+    "target_fn": "alloc_range",
+    "type": "boundary",
+    "source": "body_aware",
+    "code": "proof fn phi_5_alloc_range_err_codes_ambiguous(bm: Bitmap, size: int)\n    requires\n        bm.inv(),\n        size > 0,\n        size <= bm@.num_bits,\n        forall|i: int| 0 <= i < bm@.num_bits ==> bm@.is_bit_set(i),\n    ensures\n        // All bits are set, so alloc_range will fail with OutOfMemory in the body.\n        // But the spec's Err(_) pattern does not bind the error code, meaning\n        // InvalidArgument also satisfies the postcondition.\n        // Callers cannot distinguish resource exhaustion from invalid arguments.\n        !bm@.has_free_bit(),\n{\n}",
+    "reason": "Without error-code discrimination in the spec, callers cannot decide whether to retry with a different size (InvalidArgument) or free resources first (OutOfMemory)."
+  }
+]

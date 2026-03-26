@@ -1,0 +1,129 @@
+[
+  {
+    "id": "neg_1",
+    "target_fn": "new",
+    "category": "behavioral",
+    "property": "new could reject every valid input because the spec never guarantees Ok for compliant number_of_bits values",
+    "reasoning": "The ensures clause is one-directional: 'result matches Ok(bitmap) ==> ...' states properties when Ok, and three clauses state when Err is required, but there is no clause like 'number_of_bits > 0 && number_of_bits < u32::MAX && number_of_bits % 8 == 0 ==> result is Ok'. An implementation that always returns Err would satisfy all four ensures clauses vacuously for the Ok branch and trivially for the Err branches. This makes the liveness of bitmap creation unproven.",
+    "source": "spec_only"
+  },
+  {
+    "id": "neg_2",
+    "target_fn": "alloc_range",
+    "category": "behavioral",
+    "property": "alloc_range could always return Err even when a contiguous free range of the requested size exists in the bitmap",
+    "reasoning": "The ensures clause describes what must hold when result is Ok(start) and what must hold when result is Err(_), but the Err branch (lines 287-305 partially omitted) may not include a clause like 'no free range of size exists'. Without such a guarantee, an implementation satisfying inv() on exit could simply always return Err(OutOfMemory), making alloc and alloc_range useless despite free bits being available. The spec would be vacuously satisfied on the Ok branch.",
+    "source": "spec_only"
+  },
+  {
+    "id": "neg_3",
+    "target_fn": "set",
+    "category": "logical",
+    "property": "set returning Err could still silently mutate the bitmap state (flip bits, change usage) as long as inv() is maintained",
+    "reasoning": "The ensures clause guarantees self.inv() on all paths, and the Ok branch has a frame condition preserving other bits. However, the Err branch (lines 508-519 partially omitted) may not include a frame condition like 'self@ == old(self)@'. If the Err ensures only says 'index >= self@.num_bits' (mirroring test's Err), a spec-compliant implementation could arbitrarily mutate internal bitmap state on an Err path \u2014 flipping unrelated bits or changing usage \u2014 so long as the invariant still holds.",
+    "source": "spec_only"
+  },
+  {
+    "id": "neg_4",
+    "target_fn": "clear",
+    "category": "logical",
+    "property": "clear returning Err could mutate the bitmap, and the Err branch may not require old(self)@.is_bit_set(index) to distinguish 'already cleared' from 'out of bounds'",
+    "reasoning": "The clear spec's Err branch (lines 574-580 partially omitted) may not distinguish between the two distinct failure modes: index >= num_bits (out of bounds) and bit already cleared. Without a postcondition like 'self@ == old(self)@' on Err, and without distinguishing error cases, a caller cannot reason about what went wrong or whether the bitmap was left unchanged. This is especially dangerous because the implementation mutates self.next_free in the Ok path and a missing frame on Err could allow similar mutations.",
+    "source": "spec_only"
+  },
+  {
+    "id": "neg_5",
+    "target_fn": "alloc",
+    "category": "behavioral",
+    "property": "alloc could always return index 0 whenever bit 0 is free, never allocating any other free index",
+    "reasoning": "The spec only requires that the returned index was previously unset and is now set, with a frame condition for all other bits. It does not mandate any fairness, round-robin, or progress property. An implementation that always scans from index 0 would perpetually return 0 after every clear(0), starving all other bit positions. While functionally correct per spec, this defeats the purpose of a bitmap allocator and can cause pathological fragmentation.",
+    "source": "spec_only"
+  },
+  {
+    "id": "neg_6",
+    "target_fn": "alloc_range",
+    "category": "boundary",
+    "property": "alloc_range with size equal to num_bits on a completely empty bitmap is not guaranteed to succeed",
+    "reasoning": "The precondition allows size == self@.num_bits (since 'size <= old(self)@.num_bits'), and if every bit is unset there exists a free contiguous range [0, num_bits). However, unless the Err ensures clause explicitly states 'no free range of the given size exists', the spec permits returning Err even for this trivially satisfiable case. This is the most basic boundary scenario for full-bitmap allocation.",
+    "source": "spec_only"
+  },
+  {
+    "id": "neg_7",
+    "target_fn": "from_raw_array",
+    "category": "logical",
+    "property": "from_raw_array's ensures clause is unconditionally Ok, meaning it can never return Err, even though the implementation contains an Err path for checked_mul overflow",
+    "reasoning": "The ensures reads 'result matches Ok(bitmap) && {...}' with no Err branch at all. Under the stated preconditions (array@.len() * u8::BITS < u32::MAX), the Err path is indeed unreachable. However, if a caller ever invokes from_raw_array without verifying those preconditions (since they are requires, not runtime checks), the spec gives no information about what happens \u2014 the function could do anything. This is an all-or-nothing spec with no graceful degradation, unlike new which explicitly maps invalid inputs to Err.",
+    "source": "spec_only"
+  },
+  {
+    "id": "neg_8",
+    "target_fn": "test",
+    "category": "boundary",
+    "property": "test does not specify what ErrorCode is returned for out-of-bounds index, so different out-of-bounds indices could produce different error codes",
+    "reasoning": "The Err ensures clause is simply 'index >= self@.num_bits'. It says nothing about the ErrorCode variant or message in the returned Error. A caller that pattern-matches on the error to distinguish 'out of bounds' from other failures (e.g., from set or clear which use different error codes) cannot rely on the spec to guarantee a consistent error type. This propagates to set and clear, which call test internally and forward its errors.",
+    "source": "spec_only"
+  },
+  {
+    "id": "gap_1",
+    "target_fn": "new",
+    "category": "logical",
+    "property": "The spec never guarantees that `new` returns Ok for valid inputs. It specifies three Err conditions (size 0, size >= u32::MAX, not multiple of 8) and what holds when Ok is returned, but there is no clause like `number_of_bits > 0 && number_of_bits < u32::MAX && number_of_bits % 8 == 0 ==> result is Ok(...)`. The body shows that for valid inputs the only remaining failure path is `RawArray::new(len)?`, so at minimum the spec should express conditional liveness: if the underlying allocation succeeds, the result is Ok.",
+    "body_evidence": "The body computes `len = number_of_bits / 8`, calls `RawArray::new(len)?`, and then unconditionally constructs `Ok(result)`. After the two guard-`if` blocks, no other Err path exists besides the `?` propagation from `RawArray::new`.",
+    "reasoning": "Without a success condition, callers cannot prove that `new` will ever return Ok, even with perfectly valid arguments. This makes composing verified callers impossible \u2014 they can show the Err preconditions don't hold, yet the spec still permits Err for any reason.",
+    "source": "body_aware"
+  },
+  {
+    "id": "gap_2",
+    "target_fn": "set",
+    "category": "behavioral",
+    "property": "When `set` fails because the bit is already set, the body returns `ErrorCode::ResourceBusy`. When it fails because the index is out of bounds (via `self.test(index)?`), it returns `ErrorCode::InvalidArgument`. The spec's Err branch (lines 508-519, partially omitted) does not distinguish these error codes, so callers cannot programmatically differentiate 'bit already set' from 'index out of range'.",
+    "body_evidence": "`if self.test(index)? { ... return Err(Error::new(ErrorCode::ResourceBusy, reason)); }` \u2014 the body explicitly chooses ResourceBusy for the already-set case, while `test` internally returns InvalidArgument for out-of-bounds.",
+    "reasoning": "Error codes are part of the function's observable contract. A caller that needs to retry on ResourceBusy but abort on InvalidArgument cannot rely on the spec to distinguish these outcomes.",
+    "source": "body_aware"
+  },
+  {
+    "id": "gap_3",
+    "target_fn": "clear",
+    "category": "behavioral",
+    "property": "When `clear` succeeds on a bit at index < self.next_free, the body updates the internal `next_free` hint to `index`. This means subsequent `alloc`/`alloc_range` calls will begin searching from the just-cleared position, making reallocation of recently-freed bits more likely. The spec's ensures clause does not expose any property about allocation-hint advancement after clear.",
+    "body_evidence": "`if index < self.next_free { self.next_free = index; }` \u2014 this conditional update at the end of `clear` directly influences future allocation search order.",
+    "reasoning": "This is a meaningful behavioral guarantee: clearing a low-index bit makes the allocator revisit that region first. Systems relying on temporal locality or predictable reuse patterns (e.g., PID recycling, page-frame allocation) benefit from this guarantee being in the spec. Without it, a caller cannot reason about allocation order after free.",
+    "source": "body_aware"
+  },
+  {
+    "id": "gap_4",
+    "target_fn": "alloc_range",
+    "category": "behavioral",
+    "property": "After a successful allocation at `start`, the body sets `self.next_free = start + size`, meaning the next allocation search begins immediately after the just-allocated range. Combined with the wrap-around logic, this provides a sequential-packing / next-fit allocation strategy. The spec only guarantees the allocated range is valid and was previously unset; it says nothing about allocation order or the relationship between successive allocation results.",
+    "body_evidence": "`self.next_free = start + size;` after the third (allocation) loop completes, and `let initial_start: usize = self.next_free;` at the beginning of the search \u2014 the body uses next_free as the starting cursor and advances it past each allocation.",
+    "reasoning": "The next-fit strategy is important for callers reasoning about fragmentation, cache locality, or deterministic allocation order. Two allocations in sequence from an empty bitmap will always return consecutive ranges (0 then size\u2081), but the spec permits any valid free range, so callers cannot rely on this packing behavior.",
+    "source": "body_aware"
+  },
+  {
+    "id": "gap_5",
+    "target_fn": "clear",
+    "category": "behavioral",
+    "property": "When `clear` fails because the bit is already cleared, the body returns `ErrorCode::BadAddress`. When it fails because the index is out of bounds (via `self.test(index)?`), it returns `ErrorCode::InvalidArgument`. The spec does not specify distinct error codes for these two failure modes.",
+    "body_evidence": "`if !self.test(index)? { ... return Err(Error::new(ErrorCode::BadAddress, reason)); }` \u2014 the body explicitly uses BadAddress for the already-cleared case.",
+    "reasoning": "Same rationale as `set`: callers need to distinguish 'bit was already cleared' (a logic error) from 'index out of range' (a bounds error) for proper error handling. The spec should express which ErrorCode corresponds to which failure.",
+    "source": "body_aware"
+  },
+  {
+    "id": "gap_6",
+    "target_fn": "set",
+    "category": "logical",
+    "property": "The body of `set` does NOT update `self.next_free`, while `clear` does. This means manually setting bits via `set` leaves the allocation hint unchanged \u2014 future `alloc` calls may revisit indices that `set` already occupied. The spec does not capture this asymmetry between `set` and `alloc`/`alloc_range` with respect to the allocation cursor.",
+    "body_evidence": "The body of `set` ends with `self.usage = self.usage + 1; Ok(())` \u2014 there is no assignment to `self.next_free`. Compare with `alloc_range` which does `self.next_free = start + size;` and `clear` which conditionally sets `self.next_free = index`.",
+    "reasoning": "A caller interleaving `set` and `alloc` needs to know that `set` doesn't advance the allocation hint. Without this in the spec, a caller cannot reason about whether `alloc` might return an index that was just `set` by a concurrent or prior operation.",
+    "source": "body_aware"
+  },
+  {
+    "id": "gap_7",
+    "target_fn": "alloc_range",
+    "category": "boundary",
+    "property": "The body distinguishes two different error codes for distinct failure modes: `ErrorCode::InvalidArgument` when `size == 0 || size > self.number_of_bits`, and `ErrorCode::OutOfMemory` when `self.usage > self.number_of_bits - size` (capacity exceeded) or when no contiguous free range is found after a full scan. The spec's Err branch does not specify which error code is returned.",
+    "body_evidence": "Three distinct Err returns: (1) `Error::new(ErrorCode::InvalidArgument, ...)` for invalid size, (2) `Error::new(ErrorCode::OutOfMemory, ...)` for capacity exceeded, (3) `Error::new(ErrorCode::OutOfMemory, ...)` at the end for 'bitmap is full'.",
+    "reasoning": "Callers need to distinguish 'invalid argument' (programming error) from 'out of memory' (resource exhaustion) to decide whether to retry, grow the bitmap, or propagate the error. The spec should express which failure mode yields which error code.",
+    "source": "body_aware"
+  }
+]

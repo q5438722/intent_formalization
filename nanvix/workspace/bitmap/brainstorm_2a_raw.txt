@@ -1,0 +1,59 @@
+```json
+[
+  {
+    "id": "neg_1",
+    "target_fn": "new",
+    "category": "behavioral",
+    "property": "new could reject every valid input because the spec never guarantees Ok for compliant number_of_bits values",
+    "reasoning": "The ensures clause is one-directional: 'result matches Ok(bitmap) ==> ...' states properties when Ok, and three clauses state when Err is required, but there is no clause like 'number_of_bits > 0 && number_of_bits < u32::MAX && number_of_bits % 8 == 0 ==> result is Ok'. An implementation that always returns Err would satisfy all four ensures clauses vacuously for the Ok branch and trivially for the Err branches. This makes the liveness of bitmap creation unproven."
+  },
+  {
+    "id": "neg_2",
+    "target_fn": "alloc_range",
+    "category": "behavioral",
+    "property": "alloc_range could always return Err even when a contiguous free range of the requested size exists in the bitmap",
+    "reasoning": "The ensures clause describes what must hold when result is Ok(start) and what must hold when result is Err(_), but the Err branch (lines 287-305 partially omitted) may not include a clause like 'no free range of size exists'. Without such a guarantee, an implementation satisfying inv() on exit could simply always return Err(OutOfMemory), making alloc and alloc_range useless despite free bits being available. The spec would be vacuously satisfied on the Ok branch."
+  },
+  {
+    "id": "neg_3",
+    "target_fn": "set",
+    "category": "logical",
+    "property": "set returning Err could still silently mutate the bitmap state (flip bits, change usage) as long as inv() is maintained",
+    "reasoning": "The ensures clause guarantees self.inv() on all paths, and the Ok branch has a frame condition preserving other bits. However, the Err branch (lines 508-519 partially omitted) may not include a frame condition like 'self@ == old(self)@'. If the Err ensures only says 'index >= self@.num_bits' (mirroring test's Err), a spec-compliant implementation could arbitrarily mutate internal bitmap state on an Err path — flipping unrelated bits or changing usage — so long as the invariant still holds."
+  },
+  {
+    "id": "neg_4",
+    "target_fn": "clear",
+    "category": "logical",
+    "property": "clear returning Err could mutate the bitmap, and the Err branch may not require old(self)@.is_bit_set(index) to distinguish 'already cleared' from 'out of bounds'",
+    "reasoning": "The clear spec's Err branch (lines 574-580 partially omitted) may not distinguish between the two distinct failure modes: index >= num_bits (out of bounds) and bit already cleared. Without a postcondition like 'self@ == old(self)@' on Err, and without distinguishing error cases, a caller cannot reason about what went wrong or whether the bitmap was left unchanged. This is especially dangerous because the implementation mutates self.next_free in the Ok path and a missing frame on Err could allow similar mutations."
+  },
+  {
+    "id": "neg_5",
+    "target_fn": "alloc",
+    "category": "behavioral",
+    "property": "alloc could always return index 0 whenever bit 0 is free, never allocating any other free index",
+    "reasoning": "The spec only requires that the returned index was previously unset and is now set, with a frame condition for all other bits. It does not mandate any fairness, round-robin, or progress property. An implementation that always scans from index 0 would perpetually return 0 after every clear(0), starving all other bit positions. While functionally correct per spec, this defeats the purpose of a bitmap allocator and can cause pathological fragmentation."
+  },
+  {
+    "id": "neg_6",
+    "target_fn": "alloc_range",
+    "category": "boundary",
+    "property": "alloc_range with size equal to num_bits on a completely empty bitmap is not guaranteed to succeed",
+    "reasoning": "The precondition allows size == self@.num_bits (since 'size <= old(self)@.num_bits'), and if every bit is unset there exists a free contiguous range [0, num_bits). However, unless the Err ensures clause explicitly states 'no free range of the given size exists', the spec permits returning Err even for this trivially satisfiable case. This is the most basic boundary scenario for full-bitmap allocation."
+  },
+  {
+    "id": "neg_7",
+    "target_fn": "from_raw_array",
+    "category": "logical",
+    "property": "from_raw_array's ensures clause is unconditionally Ok, meaning it can never return Err, even though the implementation contains an Err path for checked_mul overflow",
+    "reasoning": "The ensures reads 'result matches Ok(bitmap) && {...}' with no Err branch at all. Under the stated preconditions (array@.len() * u8::BITS < u32::MAX), the Err path is indeed unreachable. However, if a caller ever invokes from_raw_array without verifying those preconditions (since they are requires, not runtime checks), the spec gives no information about what happens — the function could do anything. This is an all-or-nothing spec with no graceful degradation, unlike new which explicitly maps invalid inputs to Err."
+  },
+  {
+    "id": "neg_8",
+    "target_fn": "test",
+    "category": "boundary",
+    "property": "test does not specify what ErrorCode is returned for out-of-bounds index, so different out-of-bounds indices could produce different error codes",
+    "reasoning": "The Err ensures clause is simply 'index >= self@.num_bits'. It says nothing about the ErrorCode variant or message in the returned Error. A caller that pattern-matches on the error to distinguish 'out of bounds' from other failures (e.g., from set or clear which use different error codes) cannot rely on the spec to guarantee a consistent error type. This propagates to set and clear, which call test internally and forward its errors."
+  }
+]

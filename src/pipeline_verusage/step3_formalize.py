@@ -35,50 +35,9 @@ You are given:
 1. A Verus source file with type definitions, spec functions, and executable functions
 2. A list of negative properties described in natural language
 
-Your job: for EACH property, write a Verus `proof fn` that formalizes it as an
-ENTAILMENT CHECK for spec completeness.
-
-## Structure of each proof fn
-
-```rust
-proof fn phi_<n>_<name>(pre: T, post: T, result: Result<U, Error>)
-    requires
-        // (1) The function's PRECONDITIONS (from its `requires` clause)
-        pre.inv(),
-        ...
-        // (2) The BAD SCENARIO (undesirable behavior that should not be allowed)
-        result is Err,  // or whatever the bad behavior is
-    ensures
-        // (3) EXACT COPY of the function's spec postconditions (from its `ensures` clause)
-        // Copy verbatim — do not modify, add, or omit anything.
-        post.inv(),
-        match result {
-            Ok(v) => { ... },
-            Err(_) => { ... },
-        },
-{
-    // Empty body — rely on SMT solver
-}
-```
-
-## Interpretation
-- If Verus VERIFIES this: the spec allows the bad behavior → spec is INCOMPLETE (finding!)
-- If Verus REJECTS this: the spec excludes the bad behavior → spec is complete (no finding)
-
-## CRITICAL RULES
-1. `requires` = function preconditions + bad scenario ONLY.
-   Do NOT put spec postconditions in `requires`. This causes contradictions and false results.
-2. `ensures` = EXACT COPY of the function's spec `ensures` clause. Copy verbatim.
-3. Use FREE VARIABLES (pre, post, result) for the exec function's old state, new state,
-   and return value — proof fns cannot call exec fns.
-   Use `pre` for `old(self)` and `post` for `self`.
-   You may call spec fns and ghost methods on these variables (e.g., `pre@.is_full()`).
-4. The proof body MUST be empty `{}`.
-5. Common bad scenarios to encode in `requires`:
-   - Liveness: valid input + Err result
-   - Frame condition: Err + state changed (post@ != pre@)
-   - Fairness: Ok but degenerate output (e.g., always returns 0)
-   - Precision: Ok but output violates expected semantic property
+Your job: for EACH property, write a Verus `proof fn` that formalizes it.
+If the spec entails this proof fn (Verus verifies it), it means the spec ALLOWS this
+undesirable behavior — a spec consistency issue.
 
 For EACH property, output in this EXACT format:
 
@@ -90,12 +49,11 @@ SOURCE: <source from the property: spec_only or body_aware>
 PROPERTY: <the natural language property being formalized>
 CODE:
 ```verus
-proof fn phi_<n>_<snake_name>(<free_variables>)
+proof fn phi_<n>_<snake_name>(<params>)
     requires
-        <function preconditions>,
-        <bad scenario>,
+        <preconditions from the spec>,
     ensures
-        <exact copy of function's spec ensures>,
+        <the undesirable property formalized>,
 {
 }
 ```
@@ -107,6 +65,7 @@ RULES:
 - Each proof fn will be appended inside the existing verus!{} block
 - Use types/functions/traits from the source file
 - Do NOT add new `use`/`mod` statements or wrap in verus!{}
+- Keep proof bodies SHORT — rely on Verus's SMT solver
 - If a property is too vague to formalize, do your best and note it in REASON
 """
 
