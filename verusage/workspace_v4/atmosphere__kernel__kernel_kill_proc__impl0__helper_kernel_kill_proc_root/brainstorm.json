@@ -1,0 +1,121 @@
+[
+  {
+    "id": "neg_1",
+    "target_fn": "helper_kernel_kill_proc_root",
+    "category": "logical",
+    "property": "The subtree_set update postcondition is vacuously true for a depth-0 root process with an empty uppertree_seq, meaning the spec provides no actual guarantee about subtree bookkeeping when killing a root process",
+    "reasoning": "The precondition requires depth == 0. For a root process, uppertree_seq@ is likely empty (no ancestors). The forall quantifier over old(self).get_proc(proc_ptr).uppertree_seq@.contains(p_p_ptr) would then be vacuously true, meaning the ensures clause about removing proc_ptr from ancestors' subtree_set@ provides zero guarantees. A conforming implementation could leave stale entries in subtree_sets of unrelated processes.",
+    "source": "spec_only"
+  },
+  {
+    "id": "neg_2",
+    "target_fn": "helper_kernel_kill_proc_root",
+    "category": "behavioral",
+    "property": "The spec does not ensure that the freed page (from kill_process_root) is actually returned to the free page pool, allowing a memory leak of exactly one 4k page per process kill",
+    "reasoning": "The implementation calls self.page_alloc.free_page_4k(page_ptr, page_perm), but the ensures clauses never state that self.page_alloc.free_pages_4k() grows or that the total count of free 4k pages increases by one. The only relevant postcondition is self.wf(), which may or may not encode this. A conforming implementation could 'lose' the page without violating the stated postconditions.",
+    "source": "spec_only"
+  },
+  {
+    "id": "neg_3",
+    "target_fn": "helper_kernel_kill_proc_root",
+    "category": "logical",
+    "property": "The spec does not ensure the killed process's PCID is recycled or freed, potentially leading to PCID exhaustion over time",
+    "reasoning": "The implementation calls self.mem_man.free_page_table(proc_ptr, pcid), but no ensures clause states that the PCID (old(self).get_proc(proc_ptr).pcid) is returned to an available pool or is no longer associated with any process in mem_man. The postcondition about pagetable preservation for remaining procs doesn't cover PCID lifecycle. A conforming implementation could permanently consume PCIDs.",
+    "source": "spec_only"
+  },
+  {
+    "id": "neg_4",
+    "target_fn": "helper_kernel_kill_proc_root",
+    "category": "behavioral",
+    "property": "The spec does not prevent spurious modifications to 2m and 1g page allocator state, despite the implementation's assertions that these remain empty",
+    "reasoning": "The implementation body asserts self.page_alloc.mapped_pages_2m() =~= Set::empty() and similarly for 1g pages and allocated 2m/1g pages. However, the ensures clauses never export these invariants. A different conforming implementation could introduce non-empty 2m or 1g allocated/mapped page sets while still satisfying self.wf(), since the postcondition doesn't explicitly constrain these sets to remain unchanged.",
+    "source": "spec_only"
+  },
+  {
+    "id": "neg_5",
+    "target_fn": "helper_kernel_kill_proc_root",
+    "category": "boundary",
+    "property": "The spec does not ensure container_dom or container state is updated to reflect the removal of a root process that may be associated with a container, potentially leaving a dangling process reference inside a container",
+    "reasoning": "The ensures state self.container_dom() == old(self).container_dom() and containers_tree_unchanged, meaning containers are completely unmodified. But a root process (depth 0) is likely the top-level process of a container. After proc_ptr is removed from proc_dom, any container that referenced proc_ptr now holds a dangling reference. The spec explicitly preserves this stale state rather than cleaning it up.",
+    "source": "spec_only"
+  },
+  {
+    "id": "neg_6",
+    "target_fn": "helper_kernel_kill_proc_root",
+    "category": "behavioral",
+    "property": "The spec allows the function to modify page_mapping or page_io_mapping ghost state for pages unrelated to the killed process, since no ensures clause constrains these maps to be unchanged for pages not owned by proc_ptr",
+    "reasoning": "The implementation's proof body reasons about page_mapping_wf() internally but the ensures clauses never state that self.page_mapping == old(self).page_mapping or self.page_io_mapping == old(self).page_io_mapping. Since the killed process's page table is required to be empty (no mappings), these maps should be completely unchanged. The absence of this postcondition means a conforming implementation could silently add or remove page mappings for other processes.",
+    "source": "spec_only"
+  },
+  {
+    "id": "neg_7",
+    "target_fn": "helper_kernel_kill_proc_root",
+    "category": "logical",
+    "property": "The ensures clause threads_unchanged_except(..., set![]) combined with processes_fields_unchanged does not clarify whether the 'fields' include subtree_set, meaning the spec could allow arbitrary modifications to any surviving process's subtree_set beyond the uppertree ancestors",
+    "reasoning": "The postcondition about subtree_set only covers processes in uppertree_seq (which is likely empty for depth 0). The processes_fields_unchanged predicate's scope is opaque from this spec. If it does not cover subtree_set, then subtree_sets of processes NOT in uppertree_seq could be arbitrarily modified. If it does cover subtree_set, it may conflict with the subtree_set removal clause for uppertree processes. Either way, the spec has an ambiguity.",
+    "source": "spec_only"
+  },
+  {
+    "id": "gap_1",
+    "target_fn": "helper_kernel_kill_proc_root",
+    "category": "behavioral",
+    "property": "A 4k page is freed back to the page allocator's free pool, meaning free_pages_4k grows by one element and allocated_pages_4k shrinks by one element",
+    "body_evidence": "The body calls `self.page_alloc.free_page_4k(page_ptr, page_perm)` where `page_ptr` is obtained from `self.proc_man.kill_process_root(proc_ptr)`. This returns the process's internal page to the free pool. The ensures clause never mentions `free_pages_4k()` or `allocated_pages_4k()` changing.",
+    "reasoning": "Callers may need to reason about page allocator capacity after killing a process \u2014 e.g., that a page is now available for future allocation. Without this in the spec, callers cannot prove that a subsequent allocation will succeed based on having freed this page.",
+    "source": "body_aware"
+  },
+  {
+    "id": "gap_2",
+    "target_fn": "helper_kernel_kill_proc_root",
+    "category": "behavioral",
+    "property": "The pcid (page table ID) of the killed process is released from the memory manager via free_page_table, making it available for future reuse",
+    "body_evidence": "The body retrieves `pcid` via `self.proc_man.get_proc(proc_ptr).pcid` and then calls `self.mem_man.free_page_table(proc_ptr, pcid)`. The ensures clause mentions pagetable preservation for *remaining* procs but says nothing about the killed process's pcid being freed or the memory manager's pcid allocation state.",
+    "reasoning": "The pcid is a finite resource. Callers creating new processes need to know that pcids are returned to the available pool when processes are killed, otherwise they cannot reason about pcid exhaustion or availability.",
+    "source": "body_aware"
+  },
+  {
+    "id": "gap_3",
+    "target_fn": "helper_kernel_kill_proc_root",
+    "category": "logical",
+    "property": "The page_mapping and page_io_mapping are completely preserved (unchanged) across this operation",
+    "body_evidence": "The body asserts `self.page_mapping_wf()` and proves the forward/reverse bijection between `self.page_mapping@` and `self.page_alloc.page_mappings()` still holds. Since the precondition requires the killed process's page table to be empty, no page mappings are affected. Yet the ensures clause never states `self.page_mapping == old(self).page_mapping` or `self.page_io_mapping == old(self).page_io_mapping`.",
+    "reasoning": "Callers reasoning about page-level isolation need to know that killing a root process with an empty page table does not disturb any existing page-to-process mappings. Without this guarantee, callers cannot prove that other processes' pages remain correctly mapped.",
+    "source": "body_aware"
+  },
+  {
+    "id": "gap_4",
+    "target_fn": "helper_kernel_kill_proc_root",
+    "category": "boundary",
+    "property": "The 2m and 1g allocated and mapped page sets remain empty after the operation",
+    "body_evidence": "The body explicitly asserts `self.page_alloc.mapped_pages_2m() =~= Set::empty()`, `self.page_alloc.mapped_pages_1g() =~= Set::empty()`, `self.page_alloc.allocated_pages_2m() =~= Set::empty()`, and `self.page_alloc.allocated_pages_1g() =~= Set::empty()` inside the `memory_wf` proof block.",
+    "reasoning": "These assertions show the system is operating in a 4k-only page regime. Callers reasoning about the absence of large pages (e.g., to prove no 2m/1g TLB entries exist) cannot derive this from the ensures clause, which says nothing about the 2m/1g page sets.",
+    "source": "body_aware"
+  },
+  {
+    "id": "gap_5",
+    "target_fn": "helper_kernel_kill_proc_root",
+    "category": "logical",
+    "property": "The page allocator's container maps (container_map_4k, container_map_2m, container_map_1g) have domains equal to the container domain after the operation",
+    "body_evidence": "The body asserts `self.page_alloc.container_map_4k@.dom() =~= self.proc_man.container_dom()` and the same for `container_map_2m` and `container_map_1g` inside the `memory_wf` proof block. While the ensures clause states `self.container_dom() == old(self).container_dom()`, it does not expose the relationship between container_dom and the page allocator's container maps.",
+    "reasoning": "Callers performing container-level page accounting need to know that the container maps remain consistent with the container domain. This relationship is only provable through `self.wf()` which is opaque (`closed spec`), so callers of this function who need this specific property cannot extract it from the postcondition.",
+    "source": "body_aware"
+  },
+  {
+    "id": "gap_6",
+    "target_fn": "helper_kernel_kill_proc_root",
+    "category": "behavioral",
+    "property": "The mapping_wf and pcid_ioid_wf invariants are preserved, meaning the VA-to-PA mapping structure and the pcid-to-ioid association remain consistent",
+    "body_evidence": "The body explicitly asserts `self.mapping_wf()` and `self.pcid_ioid_wf()` as separate proof obligations at the end. These are distinct from `self.wf()` and capture that (a) all VA mappings in page tables are consistent with the page allocator state, and (b) pcid-ioid associations are well-formed. The ensures clause only states `self.wf()` but does not individually guarantee these sub-properties.",
+    "reasoning": "If `wf()` is a closed spec, callers cannot decompose it. Explicitly ensuring `mapping_wf()` and `pcid_ioid_wf()` would let callers reason modularly \u2014 e.g., that killing a process doesn't corrupt the mapping layer or the ioid assignment for other processes.",
+    "source": "body_aware"
+  },
+  {
+    "id": "gap_7",
+    "target_fn": "helper_kernel_kill_proc_root",
+    "category": "logical",
+    "property": "The mem_man's page_closure combined with proc_man's page_closure exactly equals the page allocator's allocated 4k pages after the operation",
+    "body_evidence": "The body asserts `self.mem_man.page_closure() + self.proc_man.page_closure() == self.page_alloc.allocated_pages_4k()` inside the `memory_wf` proof block. This is the fundamental page-accounting equation showing no pages are leaked or double-counted.",
+    "reasoning": "Callers performing global resource accounting (e.g., proving no page leaks across a sequence of process create/kill operations) need this equation. The ensures clause provides no information about the relationship between page_closure sets and allocated pages, making leak-freedom unprovable by callers.",
+    "source": "body_aware"
+  }
+]

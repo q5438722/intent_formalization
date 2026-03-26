@@ -23,9 +23,10 @@ sys.path.insert(0, str(BASE / "src"))
 
 from llm import LLMClient
 from pipeline.step1_extract import extract_from_file
-from pipeline.step2_generate import process_one as step2_process
-from pipeline.step3_entailment import process_one as step3_process
-from pipeline.step4_critic import process_one as step4_process
+from pipeline.step2_brainstorm import process_one as step2_process
+from pipeline.step3_formalize import process_one as step3_process
+from pipeline.step4_entailment import process_one as step4_process
+from pipeline.step5_critic import process_one as step5_process
 
 
 def run_task(entry: dict, model: str, workspace: Path, verus_timeout: int) -> dict:
@@ -40,38 +41,48 @@ def run_task(entry: dict, model: str, workspace: Path, verus_timeout: int) -> di
     (task_dir / "exec_functions.json").write_text(
         json.dumps(entry["exec_functions"], indent=2))
 
-    llm = LLMClient(timeout=300)
+    llm = LLMClient(timeout=600)
 
-    # Step 2: Generate candidates
-    print(f"  [step2] generate")
+    # Step 2: Brainstorm negative properties (natural language)
+    print(f"  [step2] brainstorm")
     r2 = step2_process(entry, llm, model, workspace)
 
     if r2.get("status") != "ok":
-        return {"task": task_name, "status": r2.get("status", "no_candidates"),
-                "candidates": r2.get("candidates", 0)}
+        return {"task": task_name, "status": r2.get("status", "no_properties"),
+                "properties": r2.get("total", 0)}
 
-    # Step 3: Entailment check
-    print(f"  [step3] entailment")
-    r3 = step3_process(task_dir, verus_timeout)
+    # Step 3: Formalize into Verus proof fns
+    print(f"  [step3] formalize")
+    r3 = step3_process(task_dir, llm, model)
 
-    if r3.get("verified", 0) == 0:
+    if r3.get("candidates", 0) == 0:
+        return {"task": task_name, "status": "no_candidates",
+                "properties": r2.get("total", 0), "candidates": 0}
+
+    # Step 4: Entailment check
+    print(f"  [step4] entailment")
+    r4 = step4_process(task_dir, verus_timeout)
+
+    if r4.get("verified", 0) == 0:
         return {"task": task_name, "status": "no_verified",
-                "candidates": r2.get("candidates", 0), "verified": 0}
+                "properties": r2.get("total", 0),
+                "candidates": r3.get("candidates", 0), "verified": 0}
 
-    # Step 4: Tautology check + LLM critic
-    print(f"  [step4] critic")
-    r4 = step4_process(task_dir, llm, model)
+    # Step 5: Tautology check + LLM critic
+    print(f"  [step5] critic")
+    r5 = step5_process(task_dir, llm, model)
 
     return {
         "task": task_name,
-        "status": r4.get("status", "complete"),
-        "candidates": r2.get("candidates", 0),
-        "candidates_2a": r2.get("candidates_2a", 0),
-        "candidates_2b": r2.get("candidates_2b", 0),
-        "verified": r3.get("verified", 0),
-        "tautologies": r4.get("tautologies", 0),
-        "true_positives": r4.get("true_positives", 0),
-        "false_positives": r4.get("false_positives", 0),
+        "status": r5.get("status", "complete"),
+        "properties": r2.get("total", 0),
+        "properties_2a": r2.get("props_2a", 0),
+        "properties_2b": r2.get("props_2b", 0),
+        "candidates": r3.get("candidates", 0),
+        "verified": r4.get("verified", 0),
+        "tautologies": r5.get("tautologies", 0),
+        "true_positives": r5.get("true_positives", 0),
+        "false_positives": r5.get("false_positives", 0),
     }
 
 
@@ -121,7 +132,8 @@ def main():
     print(f"\n{'='*60}")
     print(f"Task: {result.get('task')}")
     print(f"Status: {result.get('status')}")
-    print(f"Candidates: {result.get('candidates', 0)} (2a={result.get('candidates_2a', 0)}, 2b={result.get('candidates_2b', 0)})")
+    print(f"Properties: {result.get('properties', 0)} (2a={result.get('properties_2a', 0)}, 2b={result.get('properties_2b', 0)})")
+    print(f"Candidates: {result.get('candidates', 0)}")
     print(f"Verified: {result.get('verified', 0)}")
     print(f"Tautologies: {result.get('tautologies', 0)}")
     print(f"True positives: {result.get('true_positives', 0)}")

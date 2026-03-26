@@ -1,0 +1,156 @@
+[
+  {
+    "name": "always_returns_empty",
+    "target_fn": "next_run",
+    "type": "behavioral",
+    "source": "spec_only",
+    "reason": "A trivial implementation returning (512,0) satisfies the postcondition via vacuous truth over the empty range, defeating the purpose of scanning for set-bit runs.",
+    "entailed": true,
+    "verified": 26,
+    "errors": 0,
+    "output_tail": "verification results:: 26 verified, 0 errors\n\n"
+  },
+  {
+    "name": "next_idx_before_scan",
+    "target_fn": "next_run",
+    "type": "behavioral",
+    "source": "spec_only",
+    "reason": "The spec has no constraint next_idx >= idx, so (0, 0) satisfies the postcondition for any idx > 0, breaking callers that assume forward progress.",
+    "entailed": true,
+    "verified": 26,
+    "errors": 0,
+    "output_tail": "verification results:: 26 verified, 0 errors\n\n"
+  },
+  {
+    "name": "skips_earlier_run",
+    "target_fn": "next_run",
+    "type": "behavioral",
+    "source": "spec_only",
+    "reason": "The spec allows returning (200,10) while skipping the earlier run at [10,20), since the commented-out clause forall |t| idx<=t<next_idx ==> !self@.contains(t) is not enforced.",
+    "entailed": true,
+    "verified": 26,
+    "errors": 0,
+    "output_tail": "verification results:: 26 verified, 0 errors\n\n"
+  },
+  {
+    "name": "set_bit_zero_count",
+    "target_fn": "next_run",
+    "type": "boundary",
+    "source": "spec_only",
+    "reason": "Despite a set bit at the scan start, (512,0) is a valid return via vacuous truth, so callers relying on next_run to discover set regions may miss them entirely.",
+    "entailed": true,
+    "verified": 26,
+    "errors": 0,
+    "output_tail": "verification results:: 26 verified, 0 errors\n\n"
+  },
+  {
+    "name": "non_maximal_count",
+    "target_fn": "next_run",
+    "type": "logical",
+    "source": "spec_only",
+    "reason": "The spec only requires reported bits to be set, not that count is maximal; returning (idx,1) for a 10-bit run satisfies the postcondition but under-reports the contiguous region.",
+    "entailed": true,
+    "verified": 26,
+    "errors": 0,
+    "output_tail": "verification results:: 26 verified, 0 errors\n\n"
+  },
+  {
+    "name": "boundary_511_empty",
+    "target_fn": "next_run",
+    "type": "boundary",
+    "source": "spec_only",
+    "reason": "At the maximum boundary idx=511 with bit 511 set, the spec still permits the degenerate (512,0) return, failing to detect the last set bit.",
+    "entailed": true,
+    "verified": 26,
+    "errors": 0,
+    "output_tail": "verification results:: 26 verified, 0 errors\n\n"
+  },
+  {
+    "name": "all_set_single_bit_run",
+    "target_fn": "next_run",
+    "type": "logical",
+    "source": "spec_only",
+    "reason": "For an all-ones mask the spec allows count=1, grossly under-reporting the 512-bit contiguous region; iteration would need 512 calls instead of 1.",
+    "entailed": true,
+    "verified": 26,
+    "errors": 0,
+    "output_tail": "verification results:: 26 verified, 0 errors\n\n"
+  },
+  {
+    "name": "no_forward_progress",
+    "target_fn": "next_run",
+    "type": "behavioral",
+    "source": "body_aware",
+    "reason": "The spec allows next_idx=0 < idx, so callers iterating with increasing idx cannot assume forward progress, risking infinite loops.",
+    "entailed": true,
+    "verified": 26,
+    "errors": 0,
+    "output_tail": "verification results:: 26 verified, 0 errors\n\n"
+  },
+  {
+    "name": "skipped_set_bits",
+    "target_fn": "next_run",
+    "type": "behavioral",
+    "source": "body_aware",
+    "reason": "The spec allows (512,0) while a set bit at idx lies in [idx, next_idx), so the scanning semantics (all skipped positions are unset) is not enforced.",
+    "entailed": true,
+    "verified": 26,
+    "errors": 0,
+    "output_tail": "verification results:: 26 verified, 0 errors\n\n"
+  },
+  {
+    "name": "non_maximal_run",
+    "target_fn": "next_run",
+    "type": "behavioral",
+    "source": "body_aware",
+    "reason": "The spec permits count=1 for a 10-bit run, with the bit right after the reported run still set, showing maximality is not enforced.",
+    "entailed": true,
+    "verified": 26,
+    "errors": 0,
+    "output_tail": "verification results:: 26 verified, 0 errors\n\n"
+  },
+  {
+    "name": "zero_count_not_sentinel",
+    "target_fn": "next_run",
+    "type": "boundary",
+    "source": "body_aware",
+    "reason": "The spec allows (0,0) as a valid return with count==0 but next_idx!=512, so callers using next_idx==512 as a termination sentinel cannot distinguish it from an interior empty result.",
+    "entailed": true,
+    "verified": 26,
+    "errors": 0,
+    "output_tail": "verification results:: 26 verified, 0 errors\n\n"
+  },
+  {
+    "name": "positive_count_high_idx",
+    "target_fn": "next_run",
+    "type": "logical",
+    "source": "body_aware",
+    "reason": "This gap is actually already closed by the spec: next_idx+count<=512 with count>0 implies next_idx<512 arithmetically, so this proof fn should NOT verify.",
+    "entailed": false,
+    "verified": 25,
+    "errors": 1,
+    "output_tail": "     let next_idx = COMMIT_MASK_BITS as usize;\n217 | |         let count = 1usize;\n218 | |         next_idx + count <= COMMIT_MASK_BITS\n...   |\n221 | |         && next_idx >= COMMIT_MASK_BITS as usize\n222 | |     }),\n    | |______^ failed this postcondition\n\nerror: aborting due to 1 previous error\n\n"
+  },
+  {
+    "name": "no_completeness",
+    "target_fn": "next_run",
+    "type": "logical",
+    "source": "body_aware",
+    "reason": "Even with a set bit at idx, (512,0) satisfies the postcondition, so the spec is consistent with a trivial implementation that never finds any set bits.",
+    "entailed": true,
+    "verified": 26,
+    "errors": 0,
+    "output_tail": "verification results:: 26 verified, 0 errors\n\n"
+  },
+  {
+    "name": "interior_run_start",
+    "target_fn": "next_run",
+    "type": "logical",
+    "source": "body_aware",
+    "reason": "The spec allows returning (15,3) for a run at [10,20), starting at an interior point rather than the true run beginning at 10, causing callers to miss committed-but-unreported slices.",
+    "entailed": true,
+    "verified": 26,
+    "errors": 0,
+    "output_tail": "verification results:: 26 verified, 0 errors\n\n"
+  }
+]

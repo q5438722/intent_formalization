@@ -1,0 +1,93 @@
+[
+  {
+    "phi": "always_returns_empty",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "filter_applied": "incompleteness",
+    "reasoning": "Targets exec function `next_run`. The postcondition is vacuously satisfied by (512,0) for any input, since the universal quantifier ranges over an empty set when count=0. This reveals the spec lacks any liveness/completeness guarantee \u2014 it doesn't promise to find set bits that exist. The source comments acknowledge missing clauses."
+  },
+  {
+    "phi": "next_idx_before_scan",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "filter_applied": "incompleteness",
+    "reasoning": "Targets exec function `next_run`. The spec has no `next_idx >= idx` constraint, so (0,0) satisfies the postcondition for any idx>0. The function body scans forward from idx, but callers cannot rely on this. This is a genuine spec gap affecting iteration correctness."
+  },
+  {
+    "phi": "skips_earlier_run",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "filter_applied": "incompleteness",
+    "reasoning": "Targets exec function `next_run`. The spec allows returning (200,10) while a closer run [10,20) exists at idx=5. The source code explicitly has the commented-out clause `forall |t| idx<=t<next_idx ==> !self@.contains(t)` that would prevent this, acknowledging the gap. Callers relying on nearest-run semantics are unprotected."
+  },
+  {
+    "phi": "set_bit_zero_count",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "filter_applied": "incompleteness",
+    "reasoning": "Targets exec function `next_run`. Even when a set bit exists exactly at idx, the spec permits (512,0) via vacuous truth. The body would find it, but the spec doesn't promise it. This is a stronger witness of the same completeness gap as \u03c61, with a tighter precondition making the deficiency starker."
+  },
+  {
+    "phi": "non_maximal_count",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "filter_applied": "incompleteness",
+    "reasoning": "Targets exec function `next_run`. The spec only requires reported bits be set, not that count is maximal. Returning (idx,1) for a 10-bit run is spec-legal. The source comments acknowledge \"we could have a condition that count is not smaller than necessary.\" Callers depending on full-run discovery are unprotected."
+  },
+  {
+    "phi": "boundary_511_empty",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "filter_applied": "incompleteness",
+    "reasoning": "Targets exec function `next_run`. At the maximum boundary with bit 511 set, the spec still permits (512,0). This is a boundary-specific instance of the completeness gap. The body handles this correctly, but the spec doesn't guarantee the last set bit is discoverable."
+  },
+  {
+    "phi": "all_set_single_bit_run",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "filter_applied": "incompleteness",
+    "reasoning": "Targets exec function `next_run`. With all 512 bits set, the spec allows count=1 \u2014 a gross under-report requiring 512 iterations instead of 1. This is an extreme case of the maximality gap, demonstrating that callers performing iterative scanning face worst-case blowup without a maximality guarantee."
+  },
+  {
+    "phi": "no_forward_progress",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "filter_applied": "incompleteness",
+    "reasoning": "Targets exec function `next_run`. Same underlying issue as \u03c62: spec allows next_idx=0 < idx. Callers using an iteration pattern `idx = next_idx + count` risk infinite loops since forward progress is not guaranteed by the spec, only by the body."
+  },
+  {
+    "phi": "skipped_set_bits",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "filter_applied": "incompleteness",
+    "reasoning": "Targets exec function `next_run`. The spec allows (512,0) while a set bit at idx lies in the skipped range [idx, next_idx). This combines the completeness gap with the missing \"no set bits skipped\" clause, showing callers cannot trust that all reachable set bits are eventually reported."
+  },
+  {
+    "phi": "non_maximal_run",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "filter_applied": "incompleteness",
+    "reasoning": "Targets exec function `next_run`. The spec permits count=1 for a 10-bit run, and this \u03c6 explicitly witnesses that the bit at next_idx+count is still set \u2014 a direct maximality violation. This is a stronger form of \u03c65 since it provides an observable witness bit proving the run was cut short."
+  },
+  {
+    "phi": "zero_count_not_sentinel",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "filter_applied": "incompleteness",
+    "reasoning": "Targets exec function `next_run`. The spec allows (0,0) as a valid return \u2014 count=0 but next_idx\u2260512. Callers using `next_idx == COMMIT_MASK_BITS` as a \"scan complete\" sentinel cannot distinguish this from a legitimate interior empty result, breaking termination detection protocols."
+  },
+  {
+    "phi": "no_completeness",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "filter_applied": "incompleteness",
+    "reasoning": "Targets exec function `next_run`. Equivalent to \u03c64 \u2014 (512,0) is valid despite a set bit at idx. This directly demonstrates the spec is consistent with a trivial implementation that never finds any bits, confirming the completeness gap from a different angle."
+  },
+  {
+    "phi": "interior_run_start",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "filter_applied": "incompleteness",
+    "reasoning": "Targets exec function `next_run`. The spec allows returning (15,3) for a contiguous run [10,20), starting mid-run rather than at bit 10. This combines the missing \"nearest first set bit\" guarantee with the maximality gap \u2014 callers miss committed slices both before and after the reported sub-range."
+  }
+]

@@ -33,7 +33,7 @@ from pipeline_common import (
     parse_verdicts, parse_summary,
 )
 
-VERUS_BINARY = str(Path.home() / ".verus" / "verus-x86" / "verus")
+VERUS_BINARY = str(Path.home() / "intent_formalization" / "verus" / "verus")
 
 
 # ---------------------------------------------------------------------------
@@ -296,7 +296,7 @@ def main():
 
     print(f"Step 4: Critic for {len(task_dirs)} tasks (model={args.model})")
 
-    llm = LLMClient(timeout=300)
+    llm = LLMClient(timeout=600)
     total_tp = 0
     total_taut = 0
 

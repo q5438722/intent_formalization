@@ -1,0 +1,72 @@
+[
+  {
+    "phi": "vacuous_subtree_update",
+    "verdict": "FALSE_POSITIVE",
+    "confidence": "high",
+    "filter_applied": "generality",
+    "reasoning": "The function explicitly targets a **root** process (depth 0). A root process has no ancestors, so `uppertree_seq` being empty is the expected invariant\u2014not a spec gap. The vacuously true quantifier correctly reflects that there are zero ancestor subtree_sets to update. This is correct-by-design generality, not missing completeness."
+  },
+  {
+    "phi": "page_not_freed",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "filter_applied": "incompleteness",
+    "reasoning": "Killing a process must deallocate its owned 4k pages back to the free pool. The spec's ensures clause never constrains `free_pages_4k()` to grow, so callers cannot reason about memory reclamation. This is a genuine exec-level incompleteness: the implementation frees pages but the spec doesn't promise it, leading to unbounded memory leakage from the caller's perspective."
+  },
+  {
+    "phi": "pcid_not_recycled",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "filter_applied": "incompleteness",
+    "reasoning": "PCIDs are a finite hardware resource (typically 4096 values). The spec never states that the killed process's PCID is returned to an available pool. Callers creating new processes cannot prove PCID availability, leading to eventual exhaustion. This is exec-level incompleteness\u2014the body likely recycles the PCID but the spec doesn't reflect it."
+  },
+  {
+    "phi": "spurious_2m_1g_modification",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "filter_applied": "incompleteness",
+    "reasoning": "A root-process kill operating only on 4k pages should leave 2m/1g mapped/allocated sets unchanged. The spec provides no frame condition for `mapped_pages_2m()`, `mapped_pages_1g()`, `allocated_pages_2m()`, or `allocated_pages_1g()`, allowing a conforming implementation to corrupt 2m/1g page state. This is a missing frame condition for exec-visible state."
+  },
+  {
+    "phi": "dangling_container_ref",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "filter_applied": "incompleteness",
+    "reasoning": "The spec explicitly preserves `container_dom` verbatim while removing `proc_ptr` from `proc_dom`. If any container internally references the killed root process, this creates a dangling reference the spec does not address. The spec should either update the container's internal reference or document the contract for how containers handle root-process death."
+  },
+  {
+    "phi": "page_mapping_unrelated_modified",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "filter_applied": "incompleteness",
+    "reasoning": "The spec lacks a frame condition preserving `page_mappings(p)` for pages unrelated to the killed process. A conforming implementation could silently add mappings to other processes' pages, breaking memory isolation. This is a critical exec-level incompleteness\u2014callers of unrelated pages cannot rely on their mappings being stable across a process kill."
+  },
+  {
+    "phi": "subtree_set_unconstrained",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "medium",
+    "filter_applied": "incompleteness",
+    "reasoning": "If `processes_fields_unchanged` (which is opaque/closed) does not cover `subtree_set`, surviving processes' subtree_sets are unconstrained by the spec. Since this \u03c6 passed the tautology filter, `subtree_set` is evidently not protected, allowing silent corruption of the process tree for surviving processes. This is an exec-level incompleteness in the frame condition."
+  },
+  {
+    "phi": "freed_page_not_in_ensures",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "filter_applied": "incompleteness",
+    "reasoning": "This reinforces \u03c6 page_not_freed from a body-aware perspective. The implementation frees pages (moving them from allocated to free), but the ensures clause permits a post-state where `free_pages_4k()` and `allocated_pages_4k()` are completely unchanged. Callers cannot prove that a subsequent allocation will succeed, making the spec insufficient for reasoning about resource availability."
+  },
+  {
+    "phi": "pcid_not_freed",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "filter_applied": "incompleteness",
+    "reasoning": "This reinforces \u03c6 pcid_not_recycled from a body-aware perspective. The implementation recycles the PCID but the ensures clause permits available_pcids to remain unchanged. Callers creating new processes have no spec-level guarantee that PCIDs freed by kills are reusable, making PCID availability unprovable."
+  },
+  {
+    "phi": "page_mapping_preservation_not_ensured",
+    "verdict": "TRUE_POSITIVE",
+    "confidence": "high",
+    "filter_applied": "incompleteness",
+    "reasoning": "Complementary to \u03c6 page_mapping_unrelated_modified: the spec also allows silently *removing* existing mappings for unrelated pages. Without a frame condition like `forall|p| unrelated(p) ==> new_alloc.page_mappings(p) == old_alloc.page_mappings(p)`, callers cannot rely on mapping stability, breaking isolation guarantees in both directions."
+  }
+]

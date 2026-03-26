@@ -21,7 +21,7 @@ sys.path.insert(0, str(BASE / "src" / "utils"))
 from verus import run_verus
 from pipeline_common import build_entailment_file
 
-VERUS_BINARY = str(Path.home() / ".verus" / "verus-x86" / "verus")
+VERUS_BINARY = str(Path.home() / "intent_formalization" / "verus" / "verus")
 
 
 def process_one(task_dir: Path, verus_timeout: int) -> dict:

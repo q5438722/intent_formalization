@@ -1,0 +1,403 @@
+=== BATCH 1 ===
+Here are the formalized proof functions:
+
+===PHI_START===
+NAME: vacuous_subtree_update
+TARGET_FN: helper_kernel_kill_proc_root
+TYPE: logical
+SOURCE: spec_only
+PROPERTY: The subtree_set update postcondition is vacuously true for a depth-0 root process with an empty uppertree_seq, meaning the spec provides no actual guarantee about subtree bookkeeping when killing a root process
+CODE:
+```verus
+proof fn phi_1_vacuous_subtree_update(proc_ptr: ProcPtr)
+    ensures
+        // For a root process (depth 0) with empty uppertree_seq,
+        // ANY consequent — even `false` — is vacuously satisfied by the
+        // forall quantifier over uppertree_seq elements.
+        // This means the postcondition about removing proc_ptr from
+        // ancestors' subtree_sets provides zero guarantees.
+        forall|p_p_ptr: ProcPtr|
+            !Seq::<ProcPtr>::empty().contains(p_p_ptr),
+        forall|p_p_ptr: ProcPtr|
+            Seq::<ProcPtr>::empty().contains(p_p_ptr)
+            ==> false,
+{
+}
+```
+REASON: A vacuously true postcondition lets a conforming implementation leave stale proc_ptr entries in any process's subtree_set without violating the spec
+===PHI_END===
+
+===PHI_START===
+NAME: page_not_freed
+TARGET_FN: helper_kernel_kill_proc_root
+TYPE: behavioral
+SOURCE: spec_only
+PROPERTY: The spec does not ensure that the freed page (from kill_process_root) is actually returned to the free page pool, allowing a memory leak of exactly one 4k page per process kill
+CODE:
+```verus
+proof fn phi_2_page_not_freed(
+    page_alloc: PageAllocator,
+    page_ptr: PagePtr,
+)
+    requires
+        // The page was not in the free set before the call
+        !page_alloc.free_pages_4k().contains(page_ptr),
+    ensures
+        // The spec allows a post-state where the page remains not-free,
+        // since no postcondition of helper_kernel_kill_proc_root constrains
+        // free_pages_4k() to grow by the freed page.
+        !page_alloc.free_pages_4k().contains(page_ptr),
+{
+}
+```
+REASON: Leaking one 4k page per process kill leads to unbounded memory loss over time since the spec never requires the freed page to re-enter the free pool
+===PHI_END===
+
+===PHI_START===
+NAME: pcid_not_recycled
+TARGET_FN: helper_kernel_kill_proc_root
+TYPE: logical
+SOURCE: spec_only
+PROPERTY: The spec does not ensure the killed process's PCID is recycled or freed, potentially leading to PCID exhaustion over time
+CODE:
+```verus
+proof fn phi_3_pcid_not_recycled(
+    pcid: Pcid,
+    consumed_pcids: Set<Pcid>,
+)
+    requires
+        // The killed process's PCID was in the consumed set
+        consumed_pcids.contains(pcid),
+    ensures
+        // The spec allows the PCID to remain consumed after process kill,
+        // since no postcondition states that the PCID is returned to an
+        // available pool or disassociated from the killed process.
+        consumed_pcids.contains(pcid),
+{
+}
+```
+REASON: Permanently consuming PCIDs without recycling leads to PCID exhaustion since hardware PCID space is finite (typically 12 bits)
+===PHI_END===
+
+===PHI_START===
+NAME: spurious_2m_1g_modification
+TARGET_FN: helper_kernel_kill_proc_root
+TYPE: behavioral
+SOURCE: spec_only
+PROPERTY: The spec does not prevent spurious modifications to 2m and 1g page allocator state, despite the implementation's assertions that these remain empty
+CODE:
+```verus
+proof fn phi_4_spurious_2m_1g_modification(
+    alloc_old: PageAllocator,
+    alloc_new: PageAllocator,
+    spurious_page: PagePtr,
+)
+    requires
+        // Before: 2m mapped pages were empty
+        alloc_old.mapped_pages_2m() =~= Set::<PagePtr>::empty(),
+        alloc_old.allocated_pages_2m() =~= Set::<PagePtr>::empty(),
+        // After: a spurious 2m mapping appeared
+        alloc_new.mapped_pages_2m() =~= Set::<PagePtr>::empty().insert(spurious_page),
+    ensures
+        // Spec allows a conforming implementation to introduce a spurious
+        // 2m mapping, since postconditions never constrain 2m/1g state.
+        alloc_new.mapped_pages_2m().contains(spurious_page),
+        !alloc_old.mapped_pages_2m().contains(spurious_page),
+{
+}
+```
+REASON: Allowing spurious 2m/1g page state changes can corrupt memory isolation since the spec never constrains these sets to remain unchanged across root process kills
+===PHI_END===
+
+===PHI_START===
+NAME: dangling_container_ref
+TARGET_FN: helper_kernel_kill_proc_root
+TYPE: boundary
+SOURCE: spec_only
+PROPERTY: The spec does not ensure container_dom or container state is updated to reflect the removal of a root process that may be associated with a container, potentially leaving a dangling process reference inside a container
+CODE:
+```verus
+proof fn phi_5_dangling_container_ref(
+    container_dom_old: Set<ContainerPtr>,
+    container_dom_new: Set<ContainerPtr>,
+    proc_dom_old: Set<ProcPtr>,
+    proc_dom_new: Set<ProcPtr>,
+    proc_ptr: ProcPtr,
+    container_ptr: ContainerPtr,
+)
+    requires
+        // Process existed and was killed
+        proc_dom_old.contains(proc_ptr),
+        !proc_dom_new.contains(proc_ptr),
+        // Container domain explicitly preserved (from ensures clause)
+        container_dom_new =~= container_dom_old,
+        // Container that referenced this root process still exists
+        container_dom_old.contains(container_ptr),
+    ensures
+        // Container persists with potentially dangling reference to proc_ptr
+        // since the spec preserves container_dom verbatim while removing proc_ptr
+        container_dom_new.contains(container_ptr),
+        !proc_dom_new.contains(proc_ptr),
+{
+}
+```
+REASON: A container holding a dangling reference to a killed root process can cause use-after-free or stale lookups when the container later tries to access its root process
+===PHI_END===
+
+=== BATCH 2 ===
+Looking at the source to understand the available types and spec functions, then formalizing each property.
+
+===PHI_START===
+NAME: page_mapping_unrelated_modified
+TARGET_FN: helper_kernel_kill_proc_root
+TYPE: behavioral
+SOURCE: spec_only
+PROPERTY: The spec allows the function to modify page_mapping or page_io_mapping ghost state for pages unrelated to the killed process, since no ensures clause constrains these maps to be unchanged for pages not owned by proc_ptr
+CODE:
+```verus
+proof fn phi_1_page_mapping_unrelated_modified(
+    old_alloc: PageAllocator,
+    new_alloc: PageAllocator,
+    p: PagePtr,
+    spurious: (Pcid, VAddr),
+)
+    requires
+        old_alloc.page_array_wf(),
+        new_alloc.page_array_wf(),
+        // The page had no such mapping before
+        !old_alloc.page_mappings(p).contains(spurious),
+        // But a conforming implementation could add one,
+        // since ensures never constrains page_mappings preservation
+        new_alloc.page_mappings(p).contains(spurious),
+    ensures
+        // Undesirable: page_mappings changed for an unrelated page
+        new_alloc.page_mappings(p) != old_alloc.page_mappings(p),
+{
+}
+```
+REASON: Silently adding or removing page mappings for other processes breaks page-level isolation guarantees that callers depend on.
+===PHI_END===
+
+===PHI_START===
+NAME: subtree_set_unconstrained
+TARGET_FN: helper_kernel_kill_proc_root
+TYPE: logical
+SOURCE: spec_only
+PROPERTY: The ensures clause threads_unchanged_except(..., set![]) combined with processes_fields_unchanged does not clarify whether the 'fields' include subtree_set, meaning the spec could allow arbitrary modifications to any surviving process's subtree_set beyond the uppertree ancestors
+CODE:
+```verus
+proof fn phi_2_subtree_set_unconstrained(
+    old_subtree_set: Set<ProcPtr>,
+    new_subtree_set: Set<ProcPtr>,
+    spurious_child: ProcPtr,
+)
+    requires
+        // A surviving process (not in uppertree_seq) had this subtree_set
+        !old_subtree_set.contains(spurious_child),
+        // processes_fields_unchanged is opaque; if it does not cover subtree_set,
+        // a conforming implementation could add an arbitrary child
+        new_subtree_set.contains(spurious_child),
+    ensures
+        // Undesirable: a surviving process's subtree_set was silently modified
+        old_subtree_set != new_subtree_set,
+{
+}
+```
+REASON: If subtree_set is not protected by processes_fields_unchanged, the process tree invariant can be silently corrupted for surviving processes.
+===PHI_END===
+
+===PHI_START===
+NAME: freed_page_not_in_ensures
+TARGET_FN: helper_kernel_kill_proc_root
+TYPE: behavioral
+SOURCE: body_aware
+PROPERTY: A 4k page is freed back to the page allocator's free pool, meaning free_pages_4k grows by one element and allocated_pages_4k shrinks by one element
+CODE:
+```verus
+proof fn phi_3_freed_page_not_in_ensures(
+    old_alloc: PageAllocator,
+    new_alloc: PageAllocator,
+    page_ptr: PagePtr,
+)
+    requires
+        old_alloc.page_array_wf(),
+        new_alloc.page_array_wf(),
+        // Pre: the page is allocated, not in the free pool
+        old_alloc.allocated_pages_4k().contains(page_ptr),
+        !old_alloc.free_pages_4k().contains(page_ptr),
+        // The function's ensures never mention free/allocated page sets,
+        // so a conforming post-state may leave them unchanged:
+        new_alloc.free_pages_4k() =~= old_alloc.free_pages_4k(),
+        new_alloc.allocated_pages_4k() =~= old_alloc.allocated_pages_4k(),
+    ensures
+        // Undesirable: the page is still marked allocated and not free,
+        // even though the implementation freed it
+        new_alloc.allocated_pages_4k().contains(page_ptr),
+        !new_alloc.free_pages_4k().contains(page_ptr),
+{
+}
+```
+REASON: Callers cannot prove a subsequent 4k allocation will succeed because the spec never reflects the freed page returning to the free pool.
+===PHI_END===
+
+===PHI_START===
+NAME: pcid_not_freed
+TARGET_FN: helper_kernel_kill_proc_root
+TYPE: behavioral
+SOURCE: body_aware
+PROPERTY: The pcid (page table ID) of the killed process is released from the memory manager via free_page_table, making it available for future reuse
+CODE:
+```verus
+proof fn phi_4_pcid_not_freed(
+    old_available_pcids: Set<Pcid>,
+    new_available_pcids: Set<Pcid>,
+    freed_pcid: Pcid,
+)
+    requires
+        // Pre: the pcid was in use (not available)
+        !old_available_pcids.contains(freed_pcid),
+        // The function's ensures never mention pcid availability changing,
+        // so a conforming post-state may leave the available set unchanged:
+        new_available_pcids =~= old_available_pcids,
+    ensures
+        // Undesirable: the pcid is still not available for reuse
+        !new_available_pcids.contains(freed_pcid),
+{
+}
+```
+REASON: Pcids are a finite resource; callers creating new processes cannot reason about pcid availability if the spec never reflects freed pcids returning to the available pool.
+===PHI_END===
+
+===PHI_START===
+NAME: page_mapping_preservation_not_ensured
+TARGET_FN: helper_kernel_kill_proc_root
+TYPE: logical
+SOURCE: body_aware
+PROPERTY: The page_mapping and page_io_mapping are completely preserved (unchanged) across this operation
+CODE:
+```verus
+proof fn phi_5_page_mapping_preservation_not_ensured(
+    old_alloc: PageAllocator,
+    new_alloc: PageAllocator,
+    p: PagePtr,
+    lost_mapping: (Pcid, VAddr),
+)
+    requires
+        old_alloc.page_array_wf(),
+        new_alloc.page_array_wf(),
+        // Pre: a valid mapping exists for some page
+        old_alloc.page_mappings(p).contains(lost_mapping),
+        // The ensures never state page_mapping == old(page_mapping),
+        // so a conforming post-state could lose an existing mapping:
+        !new_alloc.page_mappings(p).contains(lost_mapping),
+    ensures
+        // Undesirable: an existing page mapping was silently removed,
+        // even though the killed process's page table was empty
+        old_alloc.page_mappings(p) != new_alloc.page_mappings(p),
+{
+}
+```
+REASON: Other processes' pages may become incorrectly unmapped because the spec does not guarantee mapping preservation when killing a process with an empty page table.
+===PHI_END===
+
+=== BATCH 3 ===
+===PHI_START===
+NAME: large_page_sets_remain_empty
+TARGET_FN: helper_kernel_kill_proc_root
+TYPE: boundary
+SOURCE: body_aware
+PROPERTY: The 2m and 1g allocated and mapped page sets remain empty after the operation
+CODE:
+```verus
+proof fn phi_1_large_page_sets_remain_empty(page_alloc: PageAllocator)
+    requires
+        page_alloc.page_array_wf(),
+    ensures
+        page_alloc.mapped_pages_2m() =~= Set::<PagePtr>::empty(),
+        page_alloc.mapped_pages_1g() =~= Set::<PagePtr>::empty(),
+        page_alloc.allocated_pages_2m() =~= Set::<PagePtr>::empty(),
+        page_alloc.allocated_pages_1g() =~= Set::<PagePtr>::empty(),
+{
+}
+```
+REASON: The ensures clause never constrains large-page sets, so callers cannot confirm the system operates in a 4k-only regime or prove absence of 2m/1g TLB entries.
+===PHI_END===
+
+===PHI_START===
+NAME: container_maps_domain_consistent
+TARGET_FN: helper_kernel_kill_proc_root
+TYPE: logical
+SOURCE: body_aware
+PROPERTY: The page allocator's container maps (container_map_4k, container_map_2m, container_map_1g) have domains equal to the container domain after the operation
+CODE:
+```verus
+proof fn phi_2_container_maps_domain_consistent(
+    page_alloc: PageAllocator,
+    container_dom: Set<ContainerPtr>,
+)
+    requires
+        page_alloc.page_array_wf(),
+    ensures
+        page_alloc.container_map_4k@.dom() =~= container_dom,
+        page_alloc.container_map_2m@.dom() =~= container_dom,
+        page_alloc.container_map_1g@.dom() =~= container_dom,
+{
+}
+```
+REASON: The ensures preserves container_dom equality but never exposes its link to the page allocator's container maps, blocking container-level page accounting by callers.
+===PHI_END===
+
+===PHI_START===
+NAME: mapping_wf_preserved
+TARGET_FN: helper_kernel_kill_proc_root
+TYPE: behavioral
+SOURCE: body_aware
+PROPERTY: The mapping_wf and pcid_ioid_wf invariants are preserved, meaning the VA-to-PA mapping structure and the pcid-to-ioid association remain consistent
+CODE:
+```verus
+proof fn phi_3_mapping_wf_preserved(
+    page_alloc: PageAllocator,
+    pt: PageTable,
+    pcid: Pcid,
+)
+    requires
+        pt.wf(),
+        page_alloc.page_array_wf(),
+        pt.pcid == Some(pcid),
+    ensures
+        forall|va: VAddr|
+            #![trigger pt.mapping_4k()[va]]
+            pt.mapping_4k().contains_key(va) ==> (
+                page_alloc.mapped_pages_4k().contains(pt.mapping_4k()[va].addr)
+                && page_alloc.page_mappings(pt.mapping_4k()[va].addr).contains((pcid, va))
+            ),
+{
+}
+```
+REASON: The closed wf() postcondition cannot be decomposed by callers, so mapping consistency between page tables and page allocator is not individually derivable.
+===PHI_END===
+
+===PHI_START===
+NAME: page_closure_accounting
+TARGET_FN: helper_kernel_kill_proc_root
+TYPE: logical
+SOURCE: body_aware
+PROPERTY: The mem_man's page_closure combined with proc_man's page_closure exactly equals the page allocator's allocated 4k pages after the operation
+CODE:
+```verus
+proof fn phi_4_page_closure_accounting(
+    page_alloc: PageAllocator,
+    mem_page_closure: Set<PagePtr>,
+    proc_page_closure: Set<PagePtr>,
+)
+    requires
+        page_alloc.page_array_wf(),
+        mem_page_closure.finite(),
+        proc_page_closure.finite(),
+    ensures
+        mem_page_closure + proc_page_closure =~= page_alloc.allocated_pages_4k(),
+{
+}
+```
+REASON: The fundamental page-accounting equation (no leaked or double-counted pages) is hidden behind closed specs, making global leak-freedom unprovable by callers across create/kill sequences.
+===PHI_END===

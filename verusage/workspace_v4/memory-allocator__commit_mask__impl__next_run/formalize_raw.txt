@@ -1,0 +1,369 @@
+Looking at this task, I need to formalize 14 properties as Verus proof functions. Let me analyze the spec and write them all.
+
+Here are the 14 formalized proof functions:
+
+===PHI_START===
+NAME: always_returns_empty
+TARGET_FN: next_run
+TYPE: behavioral
+SOURCE: spec_only
+PROPERTY: The function always returns (COMMIT_MASK_BITS, 0) — i.e., (512, 0) — regardless of the mask contents and the value of idx
+CODE:
+```verus
+proof fn phi_1_always_returns_empty(cm: &CommitMask, idx: usize)
+    requires
+        0 <= idx < COMMIT_MASK_BITS,
+    ensures ({
+        let next_idx = COMMIT_MASK_BITS as usize;
+        let count = 0usize;
+        next_idx + count <= COMMIT_MASK_BITS
+        && (forall |t: int| next_idx <= t < next_idx + count ==> cm@.contains(t))
+    }),
+{
+    const_facts();
+}
+```
+REASON: A trivial implementation returning (512,0) satisfies the postcondition via vacuous truth over the empty range, defeating the purpose of scanning for set-bit runs.
+===PHI_END===
+
+===PHI_START===
+NAME: next_idx_before_scan
+TARGET_FN: next_run
+TYPE: behavioral
+SOURCE: spec_only
+PROPERTY: The function returns a next_idx that is strictly less than idx, reporting a run that begins before the requested scan position
+CODE:
+```verus
+proof fn phi_2_next_idx_before_scan(cm: &CommitMask, idx: usize)
+    requires
+        0 < idx,
+        idx < COMMIT_MASK_BITS,
+    ensures ({
+        let next_idx = 0usize;
+        let count = 0usize;
+        next_idx + count <= COMMIT_MASK_BITS
+        && (forall |t: int| next_idx <= t < next_idx + count ==> cm@.contains(t))
+        && next_idx < idx
+    }),
+{
+    const_facts();
+}
+```
+REASON: The spec has no constraint next_idx >= idx, so (0, 0) satisfies the postcondition for any idx > 0, breaking callers that assume forward progress.
+===PHI_END===
+
+===PHI_START===
+NAME: skips_earlier_run
+TARGET_FN: next_run
+TYPE: behavioral
+SOURCE: spec_only
+PROPERTY: The function skips over set bits between idx and next_idx, returning a later run when an earlier one exists at or after idx
+CODE:
+```verus
+proof fn phi_3_skips_earlier_run(cm: &CommitMask, idx: usize)
+    requires
+        idx == 5,
+        forall |t: int| 10 <= t < 20 ==> cm@.contains(t),
+        forall |t: int| 200 <= t < 210 ==> cm@.contains(t),
+    ensures ({
+        let next_idx = 200usize;
+        let count = 10usize;
+        next_idx + count <= COMMIT_MASK_BITS
+        && (forall |t: int| next_idx <= t < next_idx + count ==> cm@.contains(t))
+    }),
+{
+    const_facts();
+}
+```
+REASON: The spec allows returning (200,10) while skipping the earlier run at [10,20), since the commented-out clause forall |t| idx<=t<next_idx ==> !self@.contains(t) is not enforced.
+===PHI_END===
+
+===PHI_START===
+NAME: set_bit_zero_count
+TARGET_FN: next_run
+TYPE: boundary
+SOURCE: spec_only
+PROPERTY: When self@.contains(idx) is true (the bit at the scan start is set), the function returns count == 0, reporting no run
+CODE:
+```verus
+proof fn phi_4_set_bit_zero_count(cm: &CommitMask, idx: usize)
+    requires
+        0 <= idx < COMMIT_MASK_BITS,
+        cm@.contains(idx as int),
+    ensures ({
+        let next_idx = COMMIT_MASK_BITS as usize;
+        let count = 0usize;
+        next_idx + count <= COMMIT_MASK_BITS
+        && (forall |t: int| next_idx <= t < next_idx + count ==> cm@.contains(t))
+        && count == 0
+    }),
+{
+    const_facts();
+}
+```
+REASON: Despite a set bit at the scan start, (512,0) is a valid return via vacuous truth, so callers relying on next_run to discover set regions may miss them entirely.
+===PHI_END===
+
+===PHI_START===
+NAME: non_maximal_count
+TARGET_FN: next_run
+TYPE: logical
+SOURCE: spec_only
+PROPERTY: The function returns a count that is strictly smaller than the maximal contiguous run of set bits starting at next_idx
+CODE:
+```verus
+proof fn phi_5_non_maximal_count(cm: &CommitMask, idx: usize)
+    requires
+        0 <= idx < COMMIT_MASK_BITS,
+        idx + 10 <= COMMIT_MASK_BITS,
+        forall |t: int| idx as int <= t < (idx + 10) as int ==> cm@.contains(t),
+    ensures ({
+        let next_idx = idx;
+        let count = 1usize;
+        next_idx + count <= COMMIT_MASK_BITS
+        && (forall |t: int| next_idx <= t < next_idx + count ==> cm@.contains(t))
+        && count < 10
+    }),
+{
+    const_facts();
+}
+```
+REASON: The spec only requires reported bits to be set, not that count is maximal; returning (idx,1) for a 10-bit run satisfies the postcondition but under-reports the contiguous region.
+===PHI_END===
+
+===PHI_START===
+NAME: boundary_511_empty
+TARGET_FN: next_run
+TYPE: boundary
+SOURCE: spec_only
+PROPERTY: When idx == 511 (last valid bit) and bit 511 is set, the function returns (512, 0) instead of (511, 1)
+CODE:
+```verus
+proof fn phi_6_boundary_511_empty(cm: &CommitMask)
+    requires
+        cm@.contains(511int),
+    ensures ({
+        let next_idx = COMMIT_MASK_BITS as usize;
+        let count = 0usize;
+        next_idx + count <= COMMIT_MASK_BITS
+        && (forall |t: int| next_idx <= t < next_idx + count ==> cm@.contains(t))
+        && count == 0
+    }),
+{
+    const_facts();
+}
+```
+REASON: At the maximum boundary idx=511 with bit 511 set, the spec still permits the degenerate (512,0) return, failing to detect the last set bit.
+===PHI_END===
+
+===PHI_START===
+NAME: all_set_single_bit_run
+TARGET_FN: next_run
+TYPE: logical
+SOURCE: spec_only
+PROPERTY: When all 512 bits are set and idx == 0, the function returns (0, 1) instead of (0, 512), reporting only a single-bit run
+CODE:
+```verus
+proof fn phi_7_all_set_single_bit_run(cm: &CommitMask)
+    requires
+        forall |t: int| 0 <= t < 512 ==> cm@.contains(t),
+    ensures ({
+        let next_idx = 0usize;
+        let count = 1usize;
+        next_idx + count <= COMMIT_MASK_BITS
+        && (forall |t: int| next_idx <= t < next_idx + count ==> cm@.contains(t))
+        && count == 1
+    }),
+{
+    const_facts();
+}
+```
+REASON: For an all-ones mask the spec allows count=1, grossly under-reporting the 512-bit contiguous region; iteration would need 512 calls instead of 1.
+===PHI_END===
+
+===PHI_START===
+NAME: no_forward_progress
+TARGET_FN: next_run
+TYPE: behavioral
+SOURCE: body_aware
+PROPERTY: The returned next_idx is always greater than or equal to the input idx. The function scans forward from idx and never returns a position before it.
+CODE:
+```verus
+proof fn phi_8_no_forward_progress(cm: &CommitMask, idx: usize)
+    requires
+        0 < idx,
+        idx < COMMIT_MASK_BITS,
+    ensures ({
+        let next_idx = 0usize;
+        let count = 0usize;
+        next_idx + count <= COMMIT_MASK_BITS
+        && (forall |t: int| next_idx <= t < next_idx + count ==> cm@.contains(t))
+        && next_idx < idx
+    }),
+{
+    const_facts();
+}
+```
+REASON: The spec allows next_idx=0 < idx, so callers iterating with increasing idx cannot assume forward progress, risking infinite loops.
+===PHI_END===
+
+===PHI_START===
+NAME: skipped_set_bits
+TARGET_FN: next_run
+TYPE: behavioral
+SOURCE: body_aware
+PROPERTY: All bit positions in the range [idx, next_idx) are NOT set in the commit mask. The function finds the first set bit at or after idx, so every position it skips over is unset.
+CODE:
+```verus
+proof fn phi_9_skipped_set_bits(cm: &CommitMask, idx: usize)
+    requires
+        0 <= idx < COMMIT_MASK_BITS,
+        cm@.contains(idx as int),
+    ensures ({
+        let next_idx = COMMIT_MASK_BITS as usize;
+        let count = 0usize;
+        next_idx + count <= COMMIT_MASK_BITS
+        && (forall |t: int| next_idx <= t < next_idx + count ==> cm@.contains(t))
+        && (idx as int) < (next_idx as int)
+        && cm@.contains(idx as int)
+    }),
+{
+    const_facts();
+}
+```
+REASON: The spec allows (512,0) while a set bit at idx lies in [idx, next_idx), so the scanning semantics (all skipped positions are unset) is not enforced.
+===PHI_END===
+
+===PHI_START===
+NAME: non_maximal_run
+TARGET_FN: next_run
+TYPE: behavioral
+SOURCE: body_aware
+PROPERTY: The returned count is maximal — the run of consecutive set bits is not truncated. Either next_idx + count == COMMIT_MASK_BITS (512), or the bit at position next_idx + count is NOT in self@.
+CODE:
+```verus
+proof fn phi_10_non_maximal_run(cm: &CommitMask, idx: usize)
+    requires
+        0 <= idx < COMMIT_MASK_BITS,
+        idx + 10 <= COMMIT_MASK_BITS,
+        forall |t: int| idx as int <= t < (idx + 10) as int ==> cm@.contains(t),
+    ensures ({
+        let next_idx = idx;
+        let count = 1usize;
+        next_idx + count <= COMMIT_MASK_BITS
+        && (forall |t: int| next_idx <= t < next_idx + count ==> cm@.contains(t))
+        && cm@.contains((next_idx + count) as int)
+        && (next_idx + count) < COMMIT_MASK_BITS
+    }),
+{
+    const_facts();
+}
+```
+REASON: The spec permits count=1 for a 10-bit run, with the bit right after the reported run still set, showing maximality is not enforced.
+===PHI_END===
+
+===PHI_START===
+NAME: zero_count_not_sentinel
+TARGET_FN: next_run
+TYPE: boundary
+SOURCE: body_aware
+PROPERTY: When count == 0, next_idx is exactly COMMIT_MASK_BITS (512). The only way the function returns a zero-length run is when no set bit exists at or after idx, and it returns the sentinel value (512, 0).
+CODE:
+```verus
+proof fn phi_11_zero_count_not_sentinel(cm: &CommitMask, idx: usize)
+    requires
+        0 < idx,
+        idx < COMMIT_MASK_BITS,
+    ensures ({
+        let next_idx = 0usize;
+        let count = 0usize;
+        next_idx + count <= COMMIT_MASK_BITS
+        && (forall |t: int| next_idx <= t < next_idx + count ==> cm@.contains(t))
+        && count == 0
+        && next_idx != COMMIT_MASK_BITS as usize
+    }),
+{
+    const_facts();
+}
+```
+REASON: The spec allows (0,0) as a valid return with count==0 but next_idx!=512, so callers using next_idx==512 as a termination sentinel cannot distinguish it from an interior empty result.
+===PHI_END===
+
+===PHI_START===
+NAME: positive_count_high_idx
+TARGET_FN: next_run
+TYPE: logical
+SOURCE: body_aware
+PROPERTY: When count > 0, next_idx is strictly less than COMMIT_MASK_BITS (512). Equivalently, next_idx < 512 whenever a non-empty run is found.
+CODE:
+```verus
+proof fn phi_12_positive_count_high_idx(cm: &CommitMask, idx: usize)
+    requires
+        0 <= idx < COMMIT_MASK_BITS,
+    ensures ({
+        let next_idx = COMMIT_MASK_BITS as usize;
+        let count = 1usize;
+        next_idx + count <= COMMIT_MASK_BITS
+        && (forall |t: int| next_idx <= t < next_idx + count ==> cm@.contains(t))
+        && count > 0
+        && next_idx >= COMMIT_MASK_BITS as usize
+    }),
+{
+    const_facts();
+}
+```
+REASON: This gap is actually already closed by the spec: next_idx+count<=512 with count>0 implies next_idx<512 arithmetically, so this proof fn should NOT verify.
+===PHI_END===
+
+===PHI_START===
+NAME: no_completeness
+TARGET_FN: next_run
+TYPE: logical
+SOURCE: body_aware
+PROPERTY: Completeness / existence guarantee: if any bit position t in [idx, 512) satisfies self@.contains(t), then count > 0 (a run IS found). The function never returns (512, 0) when there are set bits at or after idx.
+CODE:
+```verus
+proof fn phi_13_no_completeness(cm: &CommitMask, idx: usize)
+    requires
+        0 <= idx < COMMIT_MASK_BITS,
+        cm@.contains(idx as int),
+    ensures ({
+        let next_idx = COMMIT_MASK_BITS as usize;
+        let count = 0usize;
+        next_idx + count <= COMMIT_MASK_BITS
+        && (forall |t: int| next_idx <= t < next_idx + count ==> cm@.contains(t))
+        && count == 0
+    }),
+{
+    const_facts();
+}
+```
+REASON: Even with a set bit at idx, (512,0) satisfies the postcondition, so the spec is consistent with a trivial implementation that never finds any set bits.
+===PHI_END===
+
+===PHI_START===
+NAME: interior_run_start
+TARGET_FN: next_run
+TYPE: logical
+SOURCE: body_aware
+PROPERTY: The returned next_idx is always word-aligned relative to its containing word: next_idx == (next_idx / 64) * 64 + (next_idx % 64), and the run starts at the exact first set bit position, not at an arbitrary position within the set run.
+CODE:
+```verus
+proof fn phi_14_interior_run_start(cm: &CommitMask, idx: usize)
+    requires
+        idx == 0,
+        forall |t: int| 10 <= t < 20 ==> cm@.contains(t),
+    ensures ({
+        let next_idx = 15usize;
+        let count = 3usize;
+        next_idx + count <= COMMIT_MASK_BITS
+        && (forall |t: int| next_idx <= t < next_idx + count ==> cm@.contains(t))
+        && cm@.contains((next_idx - 1) as int)
+        && next_idx > idx
+    }),
+{
+    const_facts();
+}
+```
+REASON: The spec allows returning (15,3) for a run at [10,20), starting at an interior point rather than the true run beginning at 10, causing callers to miss committed-but-unreported slices.
+===PHI_END===

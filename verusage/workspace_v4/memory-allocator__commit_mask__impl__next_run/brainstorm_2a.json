@@ -1,0 +1,58 @@
+[
+  {
+    "id": "neg_1",
+    "target_fn": "next_run",
+    "category": "behavioral",
+    "property": "The function always returns (COMMIT_MASK_BITS, 0) \u2014 i.e., (512, 0) \u2014 regardless of the mask contents and the value of idx",
+    "reasoning": "The postcondition requires next_idx + count <= COMMIT_MASK_BITS and that all bits in [next_idx, next_idx+count) are in self@. When count == 0 the universal quantifier over the empty range [512, 512) is vacuously true, and 512 + 0 <= 512 holds. So a trivial implementation that ignores the mask entirely and always returns (512, 0) satisfies the spec. This defeats the purpose of scanning for set-bit runs.",
+    "source": "spec_only"
+  },
+  {
+    "id": "neg_2",
+    "target_fn": "next_run",
+    "category": "behavioral",
+    "property": "The function returns a next_idx that is strictly less than idx, reporting a run that begins before the requested scan position",
+    "reasoning": "The ensures clause has no constraint that next_idx >= idx. The intended semantics is 'scan forward from idx', but the spec allows the function to return, e.g., (0, 5) when called with idx = 100, as long as bits 0\u20134 are set. This would break callers that assume forward progress from idx.",
+    "source": "spec_only"
+  },
+  {
+    "id": "neg_3",
+    "target_fn": "next_run",
+    "category": "behavioral",
+    "property": "The function skips over set bits between idx and next_idx, returning a later run when an earlier one exists at or after idx",
+    "reasoning": "The commented-out clause 'forall |t| idx <= t < next_idx ==> !self@.contains(t)' is not enforced. Without it, if bits 10\u201315 and 100\u2013110 are all set and idx == 5, the function could legally return (100, 11), silently ignoring the nearer run at bits 10\u201315. Callers iterating over runs would miss segments.",
+    "source": "spec_only"
+  },
+  {
+    "id": "neg_4",
+    "target_fn": "next_run",
+    "category": "boundary",
+    "property": "When self@.contains(idx) is true (the bit at the scan start is set), the function returns count == 0, reporting no run",
+    "reasoning": "Since count == 0 makes the forall vacuously true, the spec permits returning (next_idx, 0) for any valid next_idx even when there is a set bit right at idx. This means a mask with bit idx set could have that bit's run entirely unreported, which would be incorrect for any caller relying on next_run to discover set regions.",
+    "source": "spec_only"
+  },
+  {
+    "id": "neg_5",
+    "target_fn": "next_run",
+    "category": "logical",
+    "property": "The function returns a count that is strictly smaller than the maximal contiguous run of set bits starting at next_idx",
+    "reasoning": "The spec only requires every bit in [next_idx, next_idx+count) to be in self@, but does not require that count is maximal \u2014 i.e., it does not require !self@.contains(next_idx + count) when next_idx + count < 512. The function could return (10, 1) when bits 10\u201320 are all set. The code comments acknowledge this gap ('we could have a condition that count is not smaller than necessary'). Callers using count to determine allocation sizes would under-allocate.",
+    "source": "spec_only"
+  },
+  {
+    "id": "neg_6",
+    "target_fn": "next_run",
+    "category": "boundary",
+    "property": "When idx == 511 (last valid bit) and bit 511 is set, the function returns (512, 0) instead of (511, 1)",
+    "reasoning": "At the maximum boundary idx == 511, the spec still allows the degenerate (512, 0) return due to vacuous truth. A correct implementation should detect the set bit at position 511 and return (511, 1), but nothing in the ensures clause forces this. This is a concrete boundary instance of the general 'always return empty' weakness.",
+    "source": "spec_only"
+  },
+  {
+    "id": "neg_7",
+    "target_fn": "next_run",
+    "category": "logical",
+    "property": "When all 512 bits are set and idx == 0, the function returns (0, 1) instead of (0, 512), reporting only a single-bit run",
+    "reasoning": "The postcondition only demands that reported bits are in self@, not that the run is complete. For an all-ones mask starting at idx 0, any count from 0 to 512 is valid. Returning (0, 1) satisfies the spec but grossly under-reports the contiguous region. An iteration loop calling next_run repeatedly would need 512 calls instead of 1, and logic depending on run length would be wrong.",
+    "source": "spec_only"
+  }
+]

@@ -1,0 +1,59 @@
+```json
+[
+  {
+    "id": "gap_1",
+    "target_fn": "next_run",
+    "category": "behavioral",
+    "property": "The returned next_idx is always greater than or equal to the input idx. The function scans forward from idx and never returns a position before it.",
+    "body_evidence": "The scanning starts with `i = idx / 64` and `ofs = idx % 64`, and the first while loop only increments `i` and resets `ofs` to 0 (never decrements). When a bit is found, `next_idx = i * 64 + ofs` which must be >= idx. The early-exit path returns (512, 0) where 512 >= idx since idx < 512.",
+    "reasoning": "Without this guarantee, a caller cannot assume that calling next_run repeatedly with increasing idx values makes forward progress through the mask. Any iteration protocol over the mask depends on next_idx >= idx to avoid infinite loops. The spec comment explicitly acknowledges this omission: 'forall |t| idx <= t < next_idx ==> !self@.contains(t)' is commented out, and that property subsumes next_idx >= idx."
+  },
+  {
+    "id": "gap_2",
+    "target_fn": "next_run",
+    "category": "behavioral",
+    "property": "All bit positions in the range [idx, next_idx) are NOT set in the commit mask. The function finds the first set bit at or after idx, so every position it skips over is unset.",
+    "body_evidence": "The first while loop iterates through mask words starting at idx's position. It only advances (`i += 1; ofs = 0`) when `mask == 0` (no bits left in the current word). Within a word, the inner `while mask & 1 == 0` loop shifts past unset bits. It only breaks when `mask & 1 == 1`, meaning the first set bit is found. The source comments and spec comments explicitly note this: '// This should be true, but isn't strictly needed to prove safety: //forall |t| idx <= t < next_idx ==> !self@.contains(t)'.",
+    "reasoning": "This is the core 'scanning' semantics of next_run. Without it, the spec is consistent with returning ANY run of set bits anywhere in the mask (even one far past idx while skipping over closer set bits). A caller that wants to iterate all runs starting from position 0 needs this to know it won't miss any set bits."
+  },
+  {
+    "id": "gap_3",
+    "target_fn": "next_run",
+    "category": "behavioral",
+    "property": "The returned count is maximal — the run of consecutive set bits is not truncated. Either next_idx + count == COMMIT_MASK_BITS (512), or the bit at position next_idx + count is NOT in self@.",
+    "body_evidence": "The counting loops (outer and inner) continue as long as `mask & 1 == 1`, only breaking when `mask & 1 != 1` or when `i >= COMMIT_MASK_FIELD_COUNT`. The outer loop re-enters only if the next word still has its lowest bit set. It stops precisely at the first unset bit or at the mask boundary. The spec comment acknowledges: 'Likewise we could have a condition that count is not smaller than necessary'.",
+    "reasoning": "Without maximality, the spec allows returning count=1 for a run of 100 consecutive set bits. A caller doing memory commit/decommit decisions based on run length would undercount available committed slices. Maximality is essential for correct iteration: calling next_run(next_idx + count) to find the next run only works if count fully covers the current run."
+  },
+  {
+    "id": "gap_4",
+    "target_fn": "next_run",
+    "category": "boundary",
+    "property": "When count == 0, next_idx is exactly COMMIT_MASK_BITS (512). The only way the function returns a zero-length run is when no set bit exists at or after idx, and it returns the sentinel value (512, 0).",
+    "body_evidence": "The if-else at the bottom: `if i >= COMMIT_MASK_FIELD_COUNT as usize { (COMMIT_MASK_BITS as usize, 0) }`. This is the ONLY path that returns count == 0. The else branch enters the counting loop with `mask & 1 == 1` as an invariant, guaranteeing at least one iteration where count is incremented, so count >= 1 in the else branch.",
+    "reasoning": "The spec allows (0, 0), (42, 0), or (200, 0) as valid returns — any (x, 0) where x <= 512 satisfies the ensures clause vacuously. But the body only returns (512, 0). Callers likely use `next_idx == 512` or `count == 0` as a termination sentinel for iteration. Without knowing the exact sentinel value, the caller cannot distinguish 'no more bits' from 'empty run at some interior position'."
+  },
+  {
+    "id": "gap_5",
+    "target_fn": "next_run",
+    "category": "logical",
+    "property": "When count > 0, next_idx is strictly less than COMMIT_MASK_BITS (512). Equivalently, next_idx < 512 whenever a non-empty run is found.",
+    "body_evidence": "In the else branch (where count > 0), next_idx is computed as `i * usize::BITS as usize + ofs` where the first while loop's ensures give `i < 8` and `ofs < 64`. Thus next_idx <= 7*64 + 63 = 511 < 512. The spec only says next_idx + count <= 512, which would allow next_idx == 512, count == 1 (but that would be out of bounds for the mask view).",
+    "reasoning": "Callers may need to know that a non-empty result's next_idx is a valid bit index within the mask (0..511). The spec only constrains next_idx + count, not next_idx alone. This property also means next_idx is a valid index for re-entry: a caller could inspect self@.contains(next_idx) knowing it's in range."
+  },
+  {
+    "id": "gap_6",
+    "target_fn": "next_run",
+    "category": "logical",
+    "property": "Completeness / existence guarantee: if any bit position t in [idx, 512) satisfies self@.contains(t), then count > 0 (a run IS found). The function never returns (512, 0) when there are set bits at or after idx.",
+    "body_evidence": "The first while loop scans every word from idx's word through word 7. For each word, it checks `mask != 0` after shifting by ofs. If any bit is set in any word at or after idx, the `mask != 0` branch is taken and the inner loop finds the specific bit, leading to the else branch where count >= 1. The loop only falls through (i >= 8) when every inspected word has no remaining set bits.",
+    "reasoning": "Without this, the spec is consistent with a trivial implementation that always returns (512, 0) — which satisfies all current ensures clauses vacuously. The completeness guarantee is what makes next_run useful: it promises to actually find set bits that exist. Any caller iterating over all set bits in the mask relies on this to ensure full coverage."
+  },
+  {
+    "id": "gap_7",
+    "target_fn": "next_run",
+    "category": "logical",
+    "property": "The returned next_idx is always word-aligned relative to its containing word: next_idx == (next_idx / 64) * 64 + (next_idx % 64), and the run starts at the exact first set bit position, not at an arbitrary position within the set run.",
+    "body_evidence": "next_idx is computed as `i * usize::BITS as usize + ofs` where ofs is precisely the bit offset found by the inner `while mask & 1 == 0` loop that shifts past unset low bits. This means self@.contains(next_idx) and (next_idx == idx or !self@.contains(next_idx - 1) or next_idx is the start of the scan). The run start is tight, not an interior point.",
+    "reasoning": "The spec allows returning a sub-range of a set run — e.g., if bits 10..20 are set, returning (15, 3) satisfies the ensures. But the body guarantees next_idx is the beginning of the run (from the scan direction). Callers computing memory regions from (next_idx, count) need the run to start at its true beginning to avoid leaving committed-but-unreported slices."
+  }
+]
