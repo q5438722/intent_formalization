@@ -43,21 +43,19 @@ ENTAILMENT CHECK for spec completeness.
 ```rust
 proof fn phi_<n>_<name>(pre: T, post: T, result: Result<U, Error>)
     requires
-        // (1) The function's PRECONDITIONS (from its `requires` clause)
+        // EXACT COPY of the target function's spec `requires` clause
         pre.inv(),
         ...
-        // (2) The BAD SCENARIO (undesirable behavior that should not be allowed)
-        result is Err,  // or whatever the bad behavior is
     ensures
-        // (3) EXACT COPY of the function's spec postconditions (from its `ensures` clause)
-        // Copy verbatim — do not modify, add, or omit anything.
+        // EXACT COPY of the target function's spec `ensures` clause
         post.inv(),
         match result {
             Ok(v) => { ... },
             Err(_) => { ... },
         },
 {
-    // Empty body — rely on SMT solver
+    // Bad scenario encoded as assume() statements
+    assume(result is Err);   // or other undesirable conditions
 }
 ```
 
@@ -66,19 +64,21 @@ proof fn phi_<n>_<name>(pre: T, post: T, result: Result<U, Error>)
 - If Verus REJECTS this: the spec excludes the bad behavior → spec is complete (no finding)
 
 ## CRITICAL RULES
-1. `requires` = function preconditions + bad scenario ONLY.
-   Do NOT put spec postconditions in `requires`. This causes contradictions and false results.
-2. `ensures` = EXACT COPY of the function's spec `ensures` clause. Copy verbatim.
-3. Use FREE VARIABLES (pre, post, result) for the exec function's old state, new state,
+1. `requires` = EXACT COPY of the function's spec `requires`. Nothing else.
+   Do NOT add bad scenario conditions here. Do NOT add extra preconditions.
+2. `ensures` = EXACT COPY of the function's spec `ensures`. No modifications.
+3. Body = `assume()` statements encoding the bad scenario.
+   This is the ONLY place test logic goes. All bad scenario conditions go here.
+4. Use FREE VARIABLES (pre, post, result) for the exec function's old state, new state,
    and return value — proof fns cannot call exec fns.
    Use `pre` for `old(self)` and `post` for `self`.
    You may call spec fns and ghost methods on these variables (e.g., `pre@.is_full()`).
-4. The proof body MUST be empty `{}`.
-5. Common bad scenarios to encode in `requires`:
-   - Liveness: valid input + Err result
-   - Frame condition: Err + state changed (post@ != pre@)
-   - Fairness: Ok but degenerate output (e.g., always returns 0)
-   - Precision: Ok but output violates expected semantic property
+5. The proof body should contain ONLY `assume()` statements — rely on Verus's SMT solver.
+6. Common bad scenarios to encode as assume():
+   - Liveness: `assume(result is Err)` — valid input but Err
+   - Frame condition: `assume(result is Err); assume(post@ != pre@)` — Err but state changed
+   - Fairness: `assume(result == Ok(0))` + consistent post-state — degenerate output
+   - Precision: `assume(result is Ok)` + output violates expected property
 
 For EACH property, output in this EXACT format:
 
@@ -92,11 +92,11 @@ CODE:
 ```verus
 proof fn phi_<n>_<snake_name>(<free_variables>)
     requires
-        <function preconditions>,
-        <bad scenario>,
+        <exact copy of function's spec requires>,
     ensures
         <exact copy of function's spec ensures>,
 {
+    <assume statements for bad scenario>
 }
 ```
 REASON: <one line why this would be undesirable if entailed>
