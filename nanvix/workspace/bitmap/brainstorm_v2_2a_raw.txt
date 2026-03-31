@@ -1,0 +1,102 @@
+Here is the analysis of negative properties for the Bitmap spec:
+
+```json
+[
+  {
+    "id": "neg_1",
+    "target_fn": "new",
+    "category": "boundary",
+    "property": "new returns Err for valid inputs where 0 < number_of_bits < u32::MAX and number_of_bits % 8 == 0",
+    "reasoning": "The spec only states what must hold when the result is Ok, and lists three conditions that force Err (zero, >= u32::MAX, not a multiple of 8). But it never states that valid inputs MUST produce Ok. A trivially-rejecting implementation that always returns Err would satisfy all ensures clauses, since the Ok branch is conditional and never triggered. This is a liveness gap.",
+    "state_scenarios": [
+      "number_of_bits == 8 (minimal valid input)",
+      "number_of_bits == 256 (typical valid input)",
+      "number_of_bits == u32::MAX - 8 (near-maximum valid input, multiple of 8)"
+    ]
+  },
+  {
+    "id": "neg_2",
+    "target_fn": "alloc",
+    "category": "behavioral",
+    "property": "alloc always returns Err even when the bitmap has free (unset) bits",
+    "reasoning": "The spec's ensures clause (visible portion) describes what must hold when Ok(index) is returned, but the Err branch (lines 238-246, omitted) may not require that no free bit exists. If the Err postcondition doesn't assert '!self@.has_free_bit()', then an implementation that unconditionally returns Err satisfies the spec—violating the expected liveness property that alloc succeeds when free bits are available.",
+    "state_scenarios": [
+      "when usage == 0 (completely empty bitmap, all bits free)",
+      "when usage == num_bits - 1 (exactly one free bit remains)",
+      "when usage == num_bits / 2 (half the bits are free)"
+    ]
+  },
+  {
+    "id": "neg_3",
+    "target_fn": "alloc",
+    "category": "behavioral",
+    "property": "alloc always returns index 0 regardless of bitmap state",
+    "reasoning": "The visible ensures clause only requires that the returned index was previously unset and is now set, with a valid range 0 <= index < num_bits. It does not require any fairness or progress—if bit 0 is repeatedly freed and reallocated, alloc could always return 0 and never allocate any other bit. The spec does not prevent starvation of higher-indexed bits.",
+    "state_scenarios": [
+      "when usage == 0 (empty bitmap—bit 0 is always free, so returning 0 is trivially correct)",
+      "when bit 0 is free but many other bits are also free",
+      "when bit 0 is set (this forces a different index, so the property only applies when bit 0 is clear)"
+    ]
+  },
+  {
+    "id": "neg_4",
+    "target_fn": "alloc",
+    "category": "behavioral",
+    "property": "alloc flips or clears bits other than the allocated index",
+    "reasoning": "The visible Ok branch ensures the allocated bit transitions from unset to set, and that num_bits is preserved. However, the frame condition for all other bits (lines 238-246) is in the omitted portion. If the frame condition is missing or incomplete, alloc could set the target bit but also silently clear or set arbitrary other bits, corrupting the bitmap state while technically satisfying the visible postconditions.",
+    "state_scenarios": [
+      "when usage == 0 (no other bits set, so clearing others is vacuously harmless—hard to detect)",
+      "when usage > 0 (other bits are set; flipping them would lose allocated resources)",
+      "when usage == num_bits - 1 (almost full; flipping a set bit would create a spurious free slot)"
+    ]
+  },
+  {
+    "id": "neg_5",
+    "target_fn": "set",
+    "category": "logical",
+    "property": "set returns Err for a valid in-range index where the bit is currently clear",
+    "reasoning": "The set function has no precondition on index (only requires old(self).inv()). The ensures says Ok implies the bit was previously unset and is now set, plus index < num_bits. But there is no ensures clause guaranteeing that when index < num_bits AND !old(self)@.is_bit_set(index), the result MUST be Ok. An implementation could return Err for any input, and the spec would still hold vacuously for the Ok branch.",
+    "state_scenarios": [
+      "when index == 0 and bit 0 is clear (simplest valid case)",
+      "when index == num_bits - 1 and that bit is clear (boundary index)",
+      "when index < num_bits and the bit is already set (Err is expected here per implementation)"
+    ]
+  },
+  {
+    "id": "neg_6",
+    "target_fn": "clear",
+    "category": "logical",
+    "property": "clear succeeds (returns Ok) on a bit that is already cleared, without the spec prohibiting it",
+    "reasoning": "The visible Ok ensures for clear states: index < num_bits, !self@.is_bit_set(index), num_bits preserved, and a frame condition for other bits. Crucially, it does NOT include 'old(self)@.is_bit_set(index)' in the visible portion—meaning the spec does not require that the bit was previously set before clearing. The implementation rejects this case with an Err, but the spec's Ok branch could be satisfied by a no-op clear on an already-clear bit, which would corrupt the usage count or violate caller assumptions.",
+    "state_scenarios": [
+      "when index < num_bits and bit is already clear (the problematic case)",
+      "when index < num_bits and bit is set (normal expected behavior)",
+      "when usage == 0 and all bits are clear (clearing any bit is a no-op but spec might allow Ok)"
+    ]
+  },
+  {
+    "id": "neg_7",
+    "target_fn": "alloc_range",
+    "category": "boundary",
+    "property": "alloc_range with size == num_bits on a completely empty bitmap could return Err despite sufficient contiguous free space",
+    "reasoning": "The requires clause allows size == num_bits (since 'size <= old(self)@.num_bits'). The Ok postcondition requires start + size <= num_bits AND 0 <= start < num_bits, which forces start == 0. But the Err branch (lines 287-305, omitted) may not properly require that no contiguous free range of the requested size exists. This means alloc_range could reject a request for all bits in a fully-empty bitmap, even though start=0 with size=num_bits is valid.",
+    "state_scenarios": [
+      "when usage == 0 and size == num_bits (entire bitmap requested, all free)",
+      "when usage == 0 and size == 1 (minimal request on empty bitmap)",
+      "when usage == num_bits - size (exactly enough contiguous free space exists at one location)"
+    ]
+  },
+  {
+    "id": "neg_8",
+    "target_fn": "from_raw_array",
+    "category": "logical",
+    "property": "from_raw_array ensures clause is unconditionally Ok (no Err branch), making the postcondition vacuously true if it ever returns Err",
+    "reasoning": "The ensures clause says 'result matches Ok(bitmap) && { ... }'. Unlike new(), there is no Err branch in the ensures. If the implementation ever returns Err despite the preconditions being met (e.g., due to the checked_mul overflow path that is guarded at runtime), the ensures would be vacuously satisfied because the Ok match fails. However, the spec intends this as a liveness guarantee—the comment says 'given preconditions, always succeeds'—but the ensures syntax 'result matches Ok(_) && P' is asserting P only when Ok, not asserting that it IS Ok. This may be a Verus encoding subtlety.",
+    "state_scenarios": [
+      "when array.len() == 1 (minimal valid array, 8 bits)",
+      "when array.len() * 8 == u32::MAX - 1 (near-maximum valid size)",
+      "when array contains all zeros (satisfies forall precondition)"
+    ]
+  }
+]
+```

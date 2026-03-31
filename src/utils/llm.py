@@ -8,8 +8,10 @@ For structured output, uses `--output-format json` and parses JSONL.
 import json
 import logging
 import os
+import select
 import subprocess
 import tempfile
+import time
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -25,6 +27,9 @@ MODEL_MAP = {
 # Use /tmp as working dir to avoid copilot reading workspace files
 COPILOT_CWD = "/tmp"
 
+# Global default timeout (seconds). Override via LLM_TIMEOUT env var.
+DEFAULT_TIMEOUT = int(os.environ.get("LLM_TIMEOUT", "150"))
+
 
 @dataclass
 class LLMResponse:
@@ -33,19 +38,24 @@ class LLMResponse:
     usage: dict = field(default_factory=dict)
 
 
+# Stall timeout: kill if no output for this many seconds
+STALL_TIMEOUT = int(os.environ.get("LLM_STALL_TIMEOUT", "90"))
+
+
 def _run_copilot(
     prompt: str,
     model: str = "claude-opus-4.6",
-    timeout: int = 600,
+    timeout: int | None = None,
     silent: bool = True,
 ) -> LLMResponse:
     """
     Run copilot CLI with a prompt and return the response.
     
-    For large prompts (>4K chars), pipes via stdin to avoid shell arg limits.
-    Uses -s (silent) for clean text output.
-    Runs from /tmp to avoid workspace context pollution.
+    Uses Popen to monitor for stalls — if no stdout data arrives for
+    STALL_TIMEOUT seconds, the process is killed.
+    Total wall-clock timeout is also enforced.
     """
+    timeout = timeout or DEFAULT_TIMEOUT
     resolved_model = MODEL_MAP.get(model, model)
 
     use_stdin = len(prompt) > 4000
@@ -59,37 +69,92 @@ def _run_copilot(
 
     logger.info(f"Copilot request: model={resolved_model}, prompt_len={len(prompt)}, stdin={use_stdin}")
 
+    proc = subprocess.Popen(
+        cmd,
+        stdin=subprocess.PIPE if use_stdin else None,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        cwd=COPILOT_CWD,
+    )
+
     try:
-        result = subprocess.run(
-            cmd,
-            input=prompt if use_stdin else None,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            cwd=COPILOT_CWD,
-        )
+        # Send input if piping via stdin
+        if use_stdin:
+            proc.stdin.write(prompt)
+            proc.stdin.close()
 
-        if result.returncode != 0:
-            logger.error(f"Copilot failed (exit {result.returncode}): {result.stderr[:500]}")
-            raise RuntimeError(f"Copilot exited with code {result.returncode}: {result.stderr[:500]}")
+        chunks = []
+        start_time = time.monotonic()
+        last_data_time = time.monotonic()
 
-        content = result.stdout.strip()
+        while True:
+            elapsed = time.monotonic() - start_time
+            if elapsed > timeout:
+                proc.kill()
+                proc.wait()
+                raise TimeoutError(f"Copilot timed out after {timeout}s (total)")
+
+            stall = time.monotonic() - last_data_time
+            if stall > STALL_TIMEOUT:
+                proc.kill()
+                proc.wait()
+                partial = "".join(chunks)
+                raise TimeoutError(
+                    f"Copilot stalled for {STALL_TIMEOUT}s (no output). "
+                    f"Got {len(partial)} chars so far. Total elapsed: {elapsed:.0f}s"
+                )
+
+            # Poll stdout with 1s timeout
+            ready, _, _ = select.select([proc.stdout], [], [], 1.0)
+            if ready:
+                chunk = proc.stdout.read(4096)
+                if chunk:
+                    chunks.append(chunk)
+                    last_data_time = time.monotonic()
+                else:
+                    # EOF — process done writing
+                    break
+            
+            # Check if process exited
+            if proc.poll() is not None:
+                # Read remaining
+                remaining = proc.stdout.read()
+                if remaining:
+                    chunks.append(remaining)
+                break
+
+        proc.wait()
+        content = "".join(chunks).strip()
+        stderr = proc.stderr.read()
+
+        if proc.returncode != 0:
+            logger.error(f"Copilot failed (exit {proc.returncode}): {stderr[:500]}")
+            raise RuntimeError(f"Copilot exited with code {proc.returncode}: {stderr[:500]}")
+
+        elapsed = time.monotonic() - start_time
+        logger.info(f"Copilot completed in {elapsed:.0f}s, {len(content)} chars")
         return LLMResponse(content=content, model=resolved_model)
 
-    except subprocess.TimeoutExpired:
-        raise TimeoutError(f"Copilot timed out after {timeout}s")
+    except Exception:
+        # Ensure process is dead on any error
+        if proc.poll() is None:
+            proc.kill()
+            proc.wait()
+        raise
 
 
 def _run_copilot_json(
     prompt: str,
     model: str = "claude-opus-4.6",
-    timeout: int = 300,
+    timeout: int | None = None,
 ) -> LLMResponse:
     """
     Run copilot CLI with JSON output format and parse the response.
     
     Extracts the final assistant.message content from JSONL stream.
     """
+    timeout = timeout or DEFAULT_TIMEOUT
     resolved_model = MODEL_MAP.get(model, model)
 
     cmd = ["copilot", "-p", prompt, "--model", resolved_model, "--output-format", "json"]
@@ -144,8 +209,8 @@ def _run_copilot_json(
 class LLMClient:
     """LLM client using GitHub Copilot CLI."""
 
-    def __init__(self, timeout: int = 600):
-        self.timeout = timeout
+    def __init__(self, timeout: int | None = None):
+        self.timeout = timeout or DEFAULT_TIMEOUT
 
     def chat(
         self,

@@ -1,0 +1,1345 @@
+=== BATCH 1 ===
+I can't access the source file directly due to permissions, but I have all the information needed from the function declarations and property descriptions in your prompt. Let me generate the phi bodies.
+
+===PHI_START===
+NAME: neg_1
+TARGET_FN: new
+TYPE: boundary
+SOURCE: spec_only
+PROPERTY: new returns Err for valid inputs where 0 < number_of_bits < u32::MAX and number_of_bits % 8 == 0
+PARAMS: number_of_bits: usize, result: Result<Bitmap, Error>
+BODY:
+```rust
+// --- State assumptions ---
+assume(number_of_bits > 0);
+assume((number_of_bits as u64) < (u32::MAX as u64));
+assume(number_of_bits % (u8::BITS as usize) == 0);
+
+// --- Bad scenario ---
+assume(result is Err);
+```
+REASON: A trivially-rejecting implementation that always returns Err satisfies all ensures clauses since the Ok branch is conditional
+===PHI_END===
+
+===PHI_START===
+NAME: neg_1_minimal
+TARGET_FN: new
+TYPE: boundary
+SOURCE: spec_only
+PROPERTY: new returns Err for valid inputs where 0 < number_of_bits < u32::MAX and number_of_bits % 8 == 0
+PARAMS: number_of_bits: usize, result: Result<Bitmap, Error>
+BODY:
+```rust
+// --- State assumptions ---
+assume(number_of_bits == 8usize);
+
+// --- Bad scenario ---
+assume(result is Err);
+```
+REASON: Minimal valid input (8 bits = 1 byte) rejected despite satisfying all validity constraints
+===PHI_END===
+
+===PHI_START===
+NAME: neg_1_typical
+TARGET_FN: new
+TYPE: boundary
+SOURCE: spec_only
+PROPERTY: new returns Err for valid inputs where 0 < number_of_bits < u32::MAX and number_of_bits % 8 == 0
+PARAMS: number_of_bits: usize, result: Result<Bitmap, Error>
+BODY:
+```rust
+// --- State assumptions ---
+assume(number_of_bits == 256usize);
+
+// --- Bad scenario ---
+assume(result is Err);
+```
+REASON: Typical valid input (256 bits = 32 bytes) rejected despite satisfying all validity constraints
+===PHI_END===
+
+===PHI_START===
+NAME: neg_1_near_max
+TARGET_FN: new
+TYPE: boundary
+SOURCE: spec_only
+PROPERTY: new returns Err for valid inputs where 0 < number_of_bits < u32::MAX and number_of_bits % 8 == 0
+PARAMS: number_of_bits: usize, result: Result<Bitmap, Error>
+BODY:
+```rust
+// --- State assumptions ---
+// u32::MAX - 7 == 4294967288, the largest multiple of 8 below u32::MAX
+assume(number_of_bits == (u32::MAX as usize) - 7);
+
+// --- Bad scenario ---
+assume(result is Err);
+```
+REASON: Near-maximum valid input rejected despite satisfying all validity constraints
+===PHI_END===
+
+===PHI_START===
+NAME: neg_2
+TARGET_FN: alloc
+TYPE: behavioral
+SOURCE: spec_only
+PROPERTY: alloc always returns Err even when the bitmap has free (unset) bits
+PARAMS: pre: Bitmap, post: Bitmap, result: Result<usize, Error>
+BODY:
+```rust
+// --- State assumptions ---
+assume(pre.inv());
+assume(post.inv());
+assume(!pre@.is_full());
+
+// --- Bad scenario ---
+assume(result is Err);
+```
+REASON: An implementation that unconditionally returns Err violates liveness when free bits exist
+===PHI_END===
+
+===PHI_START===
+NAME: neg_2_empty
+TARGET_FN: alloc
+TYPE: behavioral
+SOURCE: spec_only
+PROPERTY: alloc always returns Err even when the bitmap has free (unset) bits
+PARAMS: pre: Bitmap, post: Bitmap, result: Result<usize, Error>
+BODY:
+```rust
+// --- State assumptions ---
+assume(pre.inv());
+assume(post.inv());
+assume(pre@.usage() == 0);
+assume(pre@.num_bits > 0);
+
+// --- Bad scenario ---
+assume(result is Err);
+```
+REASON: Completely empty bitmap (all bits free) but alloc returns Err instead of allocating
+===PHI_END===
+
+===PHI_START===
+NAME: neg_2_one_free
+TARGET_FN: alloc
+TYPE: behavioral
+SOURCE: spec_only
+PROPERTY: alloc always returns Err even when the bitmap has free (unset) bits
+PARAMS: pre: Bitmap, post: Bitmap, result: Result<usize, Error>
+BODY:
+```rust
+// --- State assumptions ---
+assume(pre.inv());
+assume(post.inv());
+assume(pre@.num_bits > 1);
+assume(pre@.usage() == pre@.num_bits - 1);
+
+// --- Bad scenario ---
+assume(result is Err);
+```
+REASON: Exactly one free bit remains but alloc returns Err instead of allocating it
+===PHI_END===
+
+===PHI_START===
+NAME: neg_2_half_free
+TARGET_FN: alloc
+TYPE: behavioral
+SOURCE: spec_only
+PROPERTY: alloc always returns Err even when the bitmap has free (unset) bits
+PARAMS: pre: Bitmap, post: Bitmap, result: Result<usize, Error>
+BODY:
+```rust
+// --- State assumptions ---
+assume(pre.inv());
+assume(post.inv());
+assume(pre@.num_bits > 1);
+assume(pre@.usage() == pre@.num_bits / 2);
+
+// --- Bad scenario ---
+assume(result is Err);
+```
+REASON: Half the bits are free but alloc returns Err instead of allocating any of them
+===PHI_END===
+
+===PHI_START===
+NAME: neg_3
+TARGET_FN: alloc
+TYPE: behavioral
+SOURCE: spec_only
+PROPERTY: alloc always returns index 0 regardless of bitmap state
+PARAMS: pre: Bitmap, post: Bitmap, result: Result<usize, Error>
+BODY:
+```rust
+// --- State assumptions ---
+assume(pre.inv());
+assume(post.inv());
+assume(!pre@.is_full());
+assume(pre@.num_bits > 1);
+assume(!pre@.is_bit_set(0));
+
+// --- Bad scenario ---
+assume(result == Ok::<usize, Error>(0usize));
+```
+REASON: Spec allows starvation of higher-indexed bits since it does not require fairness or progress across indices
+===PHI_END===
+
+===PHI_START===
+NAME: neg_3_empty
+TARGET_FN: alloc
+TYPE: behavioral
+SOURCE: spec_only
+PROPERTY: alloc always returns index 0 regardless of bitmap state
+PARAMS: pre: Bitmap, post: Bitmap, result: Result<usize, Error>
+BODY:
+```rust
+// --- State assumptions ---
+assume(pre.inv());
+assume(post.inv());
+assume(pre@.usage() == 0);
+assume(pre@.num_bits > 1);
+
+// --- Bad scenario ---
+assume(result == Ok::<usize, Error>(0usize));
+```
+REASON: Empty bitmap trivially satisfies returning 0 since bit 0 is always free — no diversity required
+===PHI_END===
+
+===PHI_START===
+NAME: neg_3_bit0_free_many_free
+TARGET_FN: alloc
+TYPE: behavioral
+SOURCE: spec_only
+PROPERTY: alloc always returns index 0 regardless of bitmap state
+PARAMS: pre: Bitmap, post: Bitmap, result: Result<usize, Error>
+BODY:
+```rust
+// --- State assumptions ---
+assume(pre.inv());
+assume(post.inv());
+assume(!pre@.is_bit_set(0));
+assume(pre@.num_bits > 1);
+assume(pre@.usage() < pre@.num_bits / 2);
+
+// --- Bad scenario ---
+assume(result == Ok::<usize, Error>(0usize));
+```
+REASON: Many free bits available but alloc always picks index 0, starving higher indices
+===PHI_END===
+
+===PHI_START===
+NAME: neg_3_bit0_set
+TARGET_FN: alloc
+TYPE: behavioral
+SOURCE: spec_only
+PROPERTY: alloc always returns index 0 regardless of bitmap state
+PARAMS: pre: Bitmap, post: Bitmap, result: Result<usize, Error>
+BODY:
+```rust
+// --- State assumptions ---
+assume(pre.inv());
+assume(post.inv());
+assume(pre@.is_bit_set(0));
+assume(!pre@.is_full());
+assume(pre@.num_bits > 1);
+
+// --- Bad scenario ---
+assume(result == Ok::<usize, Error>(0usize));
+```
+REASON: Bit 0 is already set so returning Ok(0) violates the precondition that the allocated bit was previously unset — control case
+===PHI_END===
+
+===PHI_START===
+NAME: neg_4
+TARGET_FN: alloc
+TYPE: behavioral
+SOURCE: spec_only
+PROPERTY: alloc flips or clears bits other than the allocated index
+PARAMS: pre: Bitmap, post: Bitmap, result: Result<usize, Error>, index: usize
+BODY:
+```rust
+// --- State assumptions ---
+assume(pre.inv());
+assume(post.inv());
+assume(!pre@.is_full());
+assume(result == Ok::<usize, Error>(index));
+
+// --- Bad scenario ---
+assume(exists|j: int| (0 <= j) && (j < post@.num_bits) && j != index as int && post@.is_bit_set(j) != pre@.is_bit_set(j));
+```
+REASON: Alloc could set the target bit but silently corrupt other bits if the frame condition is missing
+===PHI_END===
+
+===PHI_START===
+NAME: neg_4_empty
+TARGET_FN: alloc
+TYPE: behavioral
+SOURCE: spec_only
+PROPERTY: alloc flips or clears bits other than the allocated index
+PARAMS: pre: Bitmap, post: Bitmap, result: Result<usize, Error>, index: usize
+BODY:
+```rust
+// --- State assumptions ---
+assume(pre.inv());
+assume(post.inv());
+assume(pre@.usage() == 0);
+assume(pre@.num_bits > 1);
+assume(result == Ok::<usize, Error>(index));
+
+// --- Bad scenario ---
+assume(exists|j: int| (0 <= j) && (j < post@.num_bits) && j != index as int && post@.is_bit_set(j) != pre@.is_bit_set(j));
+```
+REASON: No other bits set initially — clearing others is vacuously harmless but setting extra bits is detectable
+===PHI_END===
+
+===PHI_START===
+NAME: neg_4_some_set
+TARGET_FN: alloc
+TYPE: behavioral
+SOURCE: spec_only
+PROPERTY: alloc flips or clears bits other than the allocated index
+PARAMS: pre: Bitmap, post: Bitmap, result: Result<usize, Error>, index: usize
+BODY:
+```rust
+// --- State assumptions ---
+assume(pre.inv());
+assume(post.inv());
+assume(pre@.usage() > 0);
+assume(!pre@.is_full());
+assume(result == Ok::<usize, Error>(index));
+
+// --- Bad scenario ---
+assume(exists|j: int| (0 <= j) && (j < post@.num_bits) && j != index as int && post@.is_bit_set(j) != pre@.is_bit_set(j));
+```
+REASON: Other bits are set — flipping them would lose allocated resources or corrupt bitmap state
+===PHI_END===
+
+===PHI_START===
+NAME: neg_4_almost_full
+TARGET_FN: alloc
+TYPE: behavioral
+SOURCE: spec_only
+PROPERTY: alloc flips or clears bits other than the allocated index
+PARAMS: pre: Bitmap, post: Bitmap, result: Result<usize, Error>, index: usize
+BODY:
+```rust
+// --- State assumptions ---
+assume(pre.inv());
+assume(post.inv());
+assume(pre@.num_bits > 1);
+assume(pre@.usage() == pre@.num_bits - 1);
+assume(result == Ok::<usize, Error>(index));
+
+// --- Bad scenario ---
+assume(exists|j: int| (0 <= j) && (j < post@.num_bits) && j != index as int && post@.is_bit_set(j) != pre@.is_bit_set(j));
+```
+REASON: Almost full bitmap — flipping a set bit would create a spurious free slot and corrupt allocation tracking
+===PHI_END===
+
+===PHI_START===
+NAME: neg_5
+TARGET_FN: set
+TYPE: logical
+SOURCE: spec_only
+PROPERTY: set returns Err for a valid in-range index where the bit is currently clear
+PARAMS: pre: Bitmap, post: Bitmap, index: usize, result: Result<(), Error>
+BODY:
+```rust
+// --- State assumptions ---
+assume(pre.inv());
+assume(post.inv());
+assume((index as int) < pre@.num_bits);
+assume(!pre@.is_bit_set(index as int));
+
+// --- Bad scenario ---
+assume(result is Err);
+```
+REASON: An implementation could return Err for any input and the Ok branch holds vacuously — liveness gap
+===PHI_END===
+
+===PHI_START===
+NAME: neg_5_index_zero
+TARGET_FN: set
+TYPE: logical
+SOURCE: spec_only
+PROPERTY: set returns Err for a valid in-range index where the bit is currently clear
+PARAMS: pre: Bitmap, post: Bitmap, index: usize, result: Result<(), Error>
+BODY:
+```rust
+// --- State assumptions ---
+assume(pre.inv());
+assume(post.inv());
+assume(index == 0usize);
+assume(pre@.num_bits > 0);
+assume(!pre@.is_bit_set(0));
+
+// --- Bad scenario ---
+assume(result is Err);
+```
+REASON: Simplest valid case — index 0, bit clear — but set returns Err anyway
+===PHI_END===
+
+===PHI_START===
+NAME: neg_5_boundary
+TARGET_FN: set
+TYPE: logical
+SOURCE: spec_only
+PROPERTY: set returns Err for a valid in-range index where the bit is currently clear
+PARAMS: pre: Bitmap, post: Bitmap, index: usize, result: Result<(), Error>
+BODY:
+```rust
+// --- State assumptions ---
+assume(pre.inv());
+assume(post.inv());
+assume(pre@.num_bits > 0);
+assume(index as int == pre@.num_bits - 1);
+assume(!pre@.is_bit_set(pre@.num_bits - 1));
+
+// --- Bad scenario ---
+assume(result is Err);
+```
+REASON: Boundary index (last valid bit) is clear but set returns Err — tests edge of valid range
+===PHI_END===
+
+===PHI_START===
+NAME: neg_5_already_set
+TARGET_FN: set
+TYPE: logical
+SOURCE: spec_only
+PROPERTY: set returns Err for a valid in-range index where the bit is currently clear
+PARAMS: pre: Bitmap, post: Bitmap, index: usize, result: Result<(), Error>
+BODY:
+```rust
+// --- State assumptions ---
+assume(pre.inv());
+assume(post.inv());
+assume((index as int) < pre@.num_bits);
+assume(pre@.is_bit_set(index as int));
+
+// --- Bad scenario (control: Err is expected when bit is already set) ---
+assume(result is Err);
+```
+REASON: Control case — bit already set, so Err is the correct behavior per spec; should be SAT
+===PHI_END===
+
+=== BATCH 2 ===
+I cannot directly read the file due to permissions, but I have all the necessary information from the function declarations and spec provided. Let me generate the phi bodies.
+
+===PHI_START===
+NAME: neg_6
+TARGET_FN: clear
+TYPE: logical
+SOURCE: spec_only
+PROPERTY: clear succeeds (returns Ok) on a bit that is already cleared, without the spec prohibiting it
+PARAMS: pre: Bitmap, post: Bitmap, result: Result<(), Error>, index: usize
+BODY:
+```rust
+// --- State assumptions ---
+assume(pre.inv());
+assume(post.inv());
+
+// --- Bad scenario ---
+// clear returns Ok on a bit that was already clear; spec Ok branch lacks old(self)@.is_bit_set(index)
+assume(!pre@.is_bit_set(index as int));
+assume(result is Ok);
+```
+REASON: Clearing an already-clear bit should fail, but the Ok ensures lack a pre@.is_bit_set guard, allowing spurious success that corrupts usage count
+===PHI_END===
+
+===PHI_START===
+NAME: neg_6_already_clear
+TARGET_FN: clear
+TYPE: logical
+SOURCE: spec_only
+PROPERTY: clear succeeds (returns Ok) on a bit that is already cleared, without the spec prohibiting it
+PARAMS: pre: Bitmap, post: Bitmap, result: Result<(), Error>, index: usize
+BODY:
+```rust
+// --- State assumptions ---
+assume(pre.inv());
+assume(post.inv());
+assume(index < pre@.num_bits);
+assume(!pre@.is_bit_set(index as int));
+
+// --- Bad scenario ---
+// The problematic case: bit is already clear but clear returns Ok
+assume(result is Ok);
+```
+REASON: Index is valid and bit is already clear; Ok would decrement usage incorrectly since nothing was actually cleared
+===PHI_END===
+
+===PHI_START===
+NAME: neg_6_bit_set
+TARGET_FN: clear
+TYPE: logical
+SOURCE: spec_only
+PROPERTY: clear succeeds (returns Ok) on a bit that is already cleared, without the spec prohibiting it
+PARAMS: pre: Bitmap, post: Bitmap, result: Result<(), Error>, index: usize
+BODY:
+```rust
+// --- State assumptions ---
+assume(pre.inv());
+assume(post.inv());
+assume(index < pre@.num_bits);
+assume(pre@.is_bit_set(index as int));
+
+// --- Bad scenario ---
+// Normal path: bit is set, Ok is correct here,
+// but the spec's Ok branch doesn't assert pre@.is_bit_set, so callers can't distinguish from the already-clear case
+assume(result is Ok);
+```
+REASON: The spec accepts Ok identically whether the bit was set or not, so callers have no spec-level guarantee that clearing actually toggled the bit
+===PHI_END===
+
+===PHI_START===
+NAME: neg_6_all_clear
+TARGET_FN: clear
+TYPE: logical
+SOURCE: spec_only
+PROPERTY: clear succeeds (returns Ok) on a bit that is already cleared, without the spec prohibiting it
+PARAMS: pre: Bitmap, post: Bitmap, result: Result<(), Error>, index: usize
+BODY:
+```rust
+// --- State assumptions ---
+assume(pre.inv());
+assume(post.inv());
+assume(pre@.usage() == 0);
+assume(forall|i: int| 0 <= i < pre@.num_bits ==> !pre@.is_bit_set(i));
+assume(index < pre@.num_bits);
+
+// --- Bad scenario ---
+// All bits already clear, usage is 0; clear returning Ok would make usage go to -1
+assume(result is Ok);
+```
+REASON: With usage already at 0 and all bits clear, returning Ok would decrement usage to -1, a logically impossible state
+===PHI_END===
+
+===PHI_START===
+NAME: neg_7
+TARGET_FN: alloc_range
+TYPE: boundary
+SOURCE: spec_only
+PROPERTY: alloc_range with size == num_bits on a completely empty bitmap could return Err despite sufficient contiguous free space
+PARAMS: pre: Bitmap, post: Bitmap, result: Result<usize, Error>, size: usize
+BODY:
+```rust
+// --- State assumptions ---
+assume(pre.inv());
+assume(post.inv());
+assume(size > 0);
+assume(size <= pre@.num_bits);
+
+// --- Bad scenario ---
+// A contiguous free range of the requested size exists, but Err is returned
+assume(pre@.exists_contiguous_free_range(size as int));
+assume(result is Err);
+```
+REASON: Returning Err when a valid contiguous free range exists violates the allocator's liveness obligation
+===PHI_END===
+
+===PHI_START===
+NAME: neg_7_all_free
+TARGET_FN: alloc_range
+TYPE: boundary
+SOURCE: spec_only
+PROPERTY: alloc_range with size == num_bits on a completely empty bitmap could return Err despite sufficient contiguous free space
+PARAMS: pre: Bitmap, post: Bitmap, result: Result<usize, Error>, size: usize
+BODY:
+```rust
+// --- State assumptions ---
+assume(pre.inv());
+assume(post.inv());
+assume(pre@.usage() == 0);
+assume(forall|i: int| 0 <= i < pre@.num_bits ==> !pre@.is_bit_set(i));
+assume(pre@.num_bits > 0);
+assume(size == pre@.num_bits as usize);
+assume(size > 0);
+assume(size <= pre@.num_bits);
+
+// --- Bad scenario ---
+// Entire bitmap is free, requesting all bits, but Err returned
+assume(result is Err);
+```
+REASON: A fully empty bitmap has the maximal contiguous free range (0..num_bits), so requesting size == num_bits must succeed with start == 0
+===PHI_END===
+
+===PHI_START===
+NAME: neg_7_minimal
+TARGET_FN: alloc_range
+TYPE: boundary
+SOURCE: spec_only
+PROPERTY: alloc_range with size == num_bits on a completely empty bitmap could return Err despite sufficient contiguous free space
+PARAMS: pre: Bitmap, post: Bitmap, result: Result<usize, Error>, size: usize
+BODY:
+```rust
+// --- State assumptions ---
+assume(pre.inv());
+assume(post.inv());
+assume(pre@.usage() == 0);
+assume(forall|i: int| 0 <= i < pre@.num_bits ==> !pre@.is_bit_set(i));
+assume(pre@.num_bits > 0);
+assume(size == 1usize);
+
+// --- Bad scenario ---
+// Minimal request on a completely empty bitmap, but Err returned
+assume(result is Err);
+```
+REASON: A single-bit request on a completely empty bitmap has trivially sufficient free space; Err would indicate a spurious failure
+===PHI_END===
+
+===PHI_START===
+NAME: neg_7_exact_space
+TARGET_FN: alloc_range
+TYPE: boundary
+SOURCE: spec_only
+PROPERTY: alloc_range with size == num_bits on a completely empty bitmap could return Err despite sufficient contiguous free space
+PARAMS: pre: Bitmap, post: Bitmap, result: Result<usize, Error>, size: usize
+BODY:
+```rust
+// --- State assumptions ---
+assume(pre.inv());
+assume(post.inv());
+assume(size > 0);
+assume(size <= pre@.num_bits);
+// Exactly enough contiguous free space exists somewhere
+assume(pre@.exists_contiguous_free_range(size as int));
+assume(pre@.usage() == pre@.num_bits - (size as int));
+
+// --- Bad scenario ---
+// Sufficient contiguous space exists, but Err returned
+assume(result is Err);
+```
+REASON: When exactly enough contiguous free space exists at some location, Err incorrectly claims no valid range is available
+===PHI_END===
+
+===PHI_START===
+NAME: neg_8
+TARGET_FN: from_raw_array
+TYPE: logical
+SOURCE: spec_only
+PROPERTY: from_raw_array ensures clause is unconditionally Ok (no Err branch), making the postcondition vacuously true if it ever returns Err
+PARAMS: array: RawArray<u8>, result: Result<Bitmap, Error>
+BODY:
+```rust
+// --- State assumptions ---
+assume(array.inv());
+assume(array@.len() > 0);
+assume(array@.len() * (u8::BITS as int) < u32::MAX as int);
+assume(forall|i: int| 0 <= i < array@.len() ==> array@[i] == 0);
+
+// --- Bad scenario ---
+// All preconditions met, but Err returned; ensures is vacuously satisfied since it only covers Ok
+assume(result is Err);
+```
+REASON: The ensures only constrains the Ok branch, so returning Err trivially satisfies the postcondition, breaking the intended liveness guarantee
+===PHI_END===
+
+===PHI_START===
+NAME: neg_8_minimal
+TARGET_FN: from_raw_array
+TYPE: logical
+SOURCE: spec_only
+PROPERTY: from_raw_array ensures clause is unconditionally Ok (no Err branch), making the postcondition vacuously true if it ever returns Err
+PARAMS: array: RawArray<u8>, result: Result<Bitmap, Error>
+BODY:
+```rust
+// --- State assumptions ---
+assume(array.inv());
+assume(array@.len() == 1);
+assume(forall|i: int| 0 <= i < array@.len() ==> array@[i] == 0);
+
+// --- Bad scenario ---
+// Minimal valid array (1 byte = 8 bits), but Err returned
+assume(result is Err);
+```
+REASON: A single-byte array trivially satisfies all preconditions with no overflow risk, yet Err would be vacuously accepted by the spec
+===PHI_END===
+
+===PHI_START===
+NAME: neg_8_near_max
+TARGET_FN: from_raw_array
+TYPE: logical
+SOURCE: spec_only
+PROPERTY: from_raw_array ensures clause is unconditionally Ok (no Err branch), making the postcondition vacuously true if it ever returns Err
+PARAMS: array: RawArray<u8>, result: Result<Bitmap, Error>
+BODY:
+```rust
+// --- State assumptions ---
+assume(array.inv());
+assume(array@.len() > 0);
+assume(array@.len() * (u8::BITS as int) == (u32::MAX as int) - 1);
+assume(forall|i: int| 0 <= i < array@.len() ==> array@[i] == 0);
+
+// --- Bad scenario ---
+// Near-maximum valid size; checked_mul path in impl may fail despite preconditions being met
+assume(result is Err);
+```
+REASON: Near u32::MAX sizes are where the runtime checked_mul guard fires, and the spec vacuously accepts Err without flagging the liveness violation
+===PHI_END===
+
+===PHI_START===
+NAME: neg_8_all_zeros
+TARGET_FN: from_raw_array
+TYPE: logical
+SOURCE: spec_only
+PROPERTY: from_raw_array ensures clause is unconditionally Ok (no Err branch), making the postcondition vacuously true if it ever returns Err
+PARAMS: array: RawArray<u8>, result: Result<Bitmap, Error>
+BODY:
+```rust
+// --- State assumptions ---
+assume(array.inv());
+assume(array@.len() > 0);
+assume(array@.len() * (u8::BITS as int) < u32::MAX as int);
+assume(forall|i: int| 0 <= i < array@.len() ==> array@[i] == 0);
+assume(array@.len() >= 2);
+
+// --- Bad scenario ---
+// All zeros, moderate size, preconditions clearly met, but Err returned
+assume(result is Err);
+```
+REASON: An all-zero array of moderate size should trivially construct an empty bitmap; Err here is pure spec vacuity
+===PHI_END===
+
+===PHI_START===
+NAME: gap_1
+TARGET_FN: alloc_range
+TYPE: behavioral
+SOURCE: body_aware
+PROPERTY: The body implements a next-fit (circular first-fit from `next_free`) allocation policy, but the spec only says some free range is returned without specifying which one is chosen when multiple contiguous free ranges exist.
+PARAMS: pre: Bitmap, post: Bitmap, result: Result<usize, Error>, size: usize, alt_start: usize
+BODY:
+```rust
+// --- State assumptions ---
+assume(pre.inv());
+assume(post.inv());
+assume(size > 0);
+assume(size <= pre@.num_bits);
+
+// --- Bad scenario ---
+// Two distinct valid free ranges exist; spec allows either to be returned
+assume(result == Ok::<usize, Error>(alt_start));
+assume(0 <= alt_start && (alt_start as int) + (size as int) <= pre@.num_bits);
+assume(pre@.all_bits_unset_in_range(alt_start as int, (alt_start as int) + (size as int)));
+// Another valid range exists at a different position
+assume(exists|other: int|
+    other != (alt_start as int)
+    && 0 <= other
+    && other + (size as int) <= pre@.num_bits
+    && pre@.all_bits_unset_in_range(other, other + (size as int))
+);
+```
+REASON: The spec permits any valid free range, allowing non-deterministic allocation when multiple ranges exist, while the implementation deterministically uses next-fit
+===PHI_END===
+
+===PHI_START===
+NAME: gap_1_multi_free
+TARGET_FN: alloc_range
+TYPE: behavioral
+SOURCE: body_aware
+PROPERTY: The body implements a next-fit (circular first-fit from `next_free`) allocation policy, but the spec only says some free range is returned without specifying which one is chosen when multiple contiguous free ranges exist.
+PARAMS: pre: Bitmap, post: Bitmap, result: Result<usize, Error>, size: usize, chosen: usize
+BODY:
+```rust
+// --- State assumptions ---
+assume(pre.inv());
+assume(post.inv());
+assume(size > 0);
+assume(pre@.num_bits >= 4 * (size as int));
+assume(size <= pre@.num_bits);
+// Two disjoint free ranges separated by set bits
+assume(pre@.all_bits_unset_in_range(0, size as int));
+assume(pre@.all_bits_set_in_range(size as int, 2 * (size as int)));
+assume(pre@.all_bits_unset_in_range(2 * (size as int), 3 * (size as int)));
+
+// --- Bad scenario ---
+// Spec allows either range [0..size) or [2*size..3*size); implementation picks based on next_free
+assume(result == Ok::<usize, Error>(chosen));
+assume(chosen == (2 * size));
+```
+REASON: With two valid free ranges, the spec allows returning the later range even if next-fit would have chosen the earlier one
+===PHI_END===
+
+===PHI_START===
+NAME: gap_1_before_after
+TARGET_FN: alloc_range
+TYPE: behavioral
+SOURCE: body_aware
+PROPERTY: The body implements a next-fit (circular first-fit from `next_free`) allocation policy, but the spec only says some free range is returned without specifying which one is chosen when multiple contiguous free ranges exist.
+PARAMS: pre: Bitmap, post: Bitmap, result: Result<usize, Error>, size: usize, chosen: usize, midpoint: usize
+BODY:
+```rust
+// --- State assumptions ---
+assume(pre.inv());
+assume(post.inv());
+assume(size > 0);
+assume(size <= pre@.num_bits);
+assume(midpoint > size);
+assume((midpoint as int) + (size as int) + (size as int) <= pre@.num_bits);
+// Free range before midpoint
+assume(pre@.all_bits_unset_in_range(0, size as int));
+// Free range after midpoint
+assume(pre@.all_bits_unset_in_range(midpoint as int, (midpoint as int) + (size as int)));
+
+// --- Bad scenario ---
+// Spec allows returning range before midpoint (start=0) even if next_free is past midpoint
+assume(result == Ok::<usize, Error>(chosen));
+assume(chosen == 0usize);
+```
+REASON: When free ranges exist both before and after next_free, the spec allows returning the earlier one, contradicting the circular scan order
+===PHI_END===
+
+===PHI_START===
+NAME: gap_1_wrap
+TARGET_FN: alloc_range
+TYPE: behavioral
+SOURCE: body_aware
+PROPERTY: The body implements a next-fit (circular first-fit from `next_free`) allocation policy, but the spec only says some free range is returned without specifying which one is chosen when multiple contiguous free ranges exist.
+PARAMS: pre: Bitmap, post: Bitmap, result: Result<usize, Error>, size: usize, chosen: usize
+BODY:
+```rust
+// --- State assumptions ---
+assume(pre.inv());
+assume(post.inv());
+assume(size > 0);
+assume(pre@.num_bits >= 3 * (size as int));
+assume(size <= pre@.num_bits);
+// Free range at the very beginning (wrapping target)
+assume(pre@.all_bits_unset_in_range(0, size as int));
+// Free range near the end
+assume(pre@.all_bits_unset_in_range(pre@.num_bits - (size as int), pre@.num_bits));
+// Some set bits in between to separate ranges
+assume(pre@.all_bits_set_in_range(size as int, pre@.num_bits - (size as int)));
+
+// --- Bad scenario ---
+// If next_free is in the middle, implementation wraps to beginning; spec allows the end range too
+assume(result == Ok::<usize, Error>(chosen));
+assume(chosen == (pre@.num_bits - (size as int)) as usize);
+```
+REASON: The only range reachable by wrapping is at position 0, but the spec also permits the range at the end, breaking next-fit semantics
+===PHI_END===
+
+===PHI_START===
+NAME: gap_2
+TARGET_FN: alloc_range
+TYPE: behavioral
+SOURCE: body_aware
+PROPERTY: After a successful allocation at position `start` with size `size`, the body updates `self.next_free = start + size`. This cursor advancement is not captured in the spec, so callers cannot reason about allocation locality across successive calls.
+PARAMS: pre: Bitmap, post: Bitmap, result: Result<usize, Error>, size: usize, start: usize
+BODY:
+```rust
+// --- State assumptions ---
+assume(pre.inv());
+assume(post.inv());
+assume(size > 0);
+assume(size <= pre@.num_bits);
+
+// --- Bad scenario ---
+// Allocation succeeds at 'start', but spec doesn't capture that next_free is now start + size
+assume(result == Ok::<usize, Error>(start));
+assume((start as int) + (size as int) < pre@.num_bits);
+// Free space exists both after and before the allocated block
+// Spec doesn't guarantee the next allocation will start at start + size
+assume(pre@.all_bits_unset_in_range(start as int, (start as int) + 2 * (size as int)));
+assume(start >= size);
+assume(pre@.all_bits_unset_in_range((start as int) - (size as int), start as int));
+```
+REASON: Without capturing cursor advancement, the spec allows the next allocation to go anywhere, destroying allocation locality guarantees
+===PHI_END===
+
+===PHI_START===
+NAME: gap_2_middle
+TARGET_FN: alloc_range
+TYPE: behavioral
+SOURCE: body_aware
+PROPERTY: After a successful allocation at position `start` with size `size`, the body updates `self.next_free = start + size`. This cursor advancement is not captured in the spec, so callers cannot reason about allocation locality across successive calls.
+PARAMS: pre: Bitmap, post: Bitmap, result: Result<usize, Error>, size: usize, start: usize
+BODY:
+```rust
+// --- State assumptions ---
+assume(pre.inv());
+assume(post.inv());
+assume(size > 0);
+assume(size <= pre@.num_bits);
+// Allocation from the middle of the bitmap
+assume(pre@.num_bits >= 4 * (size as int));
+assume(start == (pre@.num_bits / 2) as usize);
+assume(pre@.all_bits_unset_in_range(start as int, (start as int) + (size as int)));
+
+// --- Bad scenario ---
+// Allocated in the middle; next_free should advance to start + size, but spec is silent
+assume(result == Ok::<usize, Error>(start));
+// Post-state satisfies spec ensures but doesn't pin next_free = start + size
+```
+REASON: After allocating from the middle, the cursor should advance past the block, but the spec-visible post-state is indistinguishable from one with cursor at 0
+===PHI_END===
+
+===PHI_START===
+NAME: gap_2_near_end
+TARGET_FN: alloc_range
+TYPE: behavioral
+SOURCE: body_aware
+PROPERTY: After a successful allocation at position `start` with size `size`, the body updates `self.next_free = start + size`. This cursor advancement is not captured in the spec, so callers cannot reason about allocation locality across successive calls.
+PARAMS: pre: Bitmap, post: Bitmap, result: Result<usize, Error>, size: usize, start: usize
+BODY:
+```rust
+// --- State assumptions ---
+assume(pre.inv());
+assume(post.inv());
+assume(size > 0);
+assume(size <= pre@.num_bits);
+// Allocation near the end of the bitmap
+assume(pre@.num_bits >= 2 * (size as int));
+assume(start == (pre@.num_bits - (size as int)) as usize);
+assume(pre@.all_bits_unset_in_range(start as int, pre@.num_bits));
+
+// --- Bad scenario ---
+// Allocated at the very end; next_free should be num_bits (or wrap), but spec doesn't capture this
+assume(result == Ok::<usize, Error>(start));
+// Post-state is valid per spec but next_free reaching num_bits affects wrapping behavior for future allocs
+```
+REASON: When next_free reaches num_bits after a tail allocation, the next alloc must wrap to 0, but this cursor state is invisible in the spec
+===PHI_END===
+
+===PHI_START===
+NAME: gap_2_sequential
+TARGET_FN: alloc_range
+TYPE: behavioral
+SOURCE: body_aware
+PROPERTY: After a successful allocation at position `start` with size `size`, the body updates `self.next_free = start + size`. This cursor advancement is not captured in the spec, so callers cannot reason about allocation locality across successive calls.
+PARAMS: pre: Bitmap, post: Bitmap, result: Result<usize, Error>, size: usize, start: usize
+BODY:
+```rust
+// --- State assumptions ---
+assume(pre.inv());
+assume(post.inv());
+assume(size > 0);
+assume(size <= pre@.num_bits);
+// Mostly empty bitmap; sequential allocations should be contiguous
+assume(pre@.usage() == 0);
+assume(forall|i: int| 0 <= i < pre@.num_bits ==> !pre@.is_bit_set(i));
+assume(pre@.num_bits >= 3 * (size as int));
+
+// --- Bad scenario ---
+// First alloc should go to start=0 (since bitmap is empty and next_free starts at 0)
+// but spec allows any start, so it could return start=2*size, fragmenting the bitmap
+assume(result == Ok::<usize, Error>(start));
+assume(start > 0usize);
+```
+REASON: On a fully empty bitmap the implementation allocates from position 0, but the spec allows a non-zero start, preventing callers from relying on contiguous sequential allocation
+===PHI_END===
+
+=== BATCH 3 ===
+I can't access the source file directly, but I have enough context from the function declarations and property descriptions to generate all the proof bodies. Here are the formalized properties:
+
+===PHI_START===
+NAME: gap_3
+TARGET_FN: clear
+TYPE: behavioral
+SOURCE: body_aware
+PROPERTY: When clearing a bit at `index < self.next_free`, the body updates `self.next_free = index`, lowering the allocation cursor to promote reuse of freed low-index slots. The spec says nothing about this state update.
+PARAMS: pre: Bitmap, post: Bitmap, index: usize, result: Result<(), Error>
+BODY:
+```rust
+// --- State assumptions ---
+// (none - universal)
+
+// --- Bad scenario ---
+// Clear succeeds but the spec does not constrain post.next_free at all
+assume(result is Ok);
+assume(post.next_free != if index < pre.next_free { index } else { pre.next_free });
+```
+REASON: Spec allows stale next_free after clear, breaking allocator reuse of freed low-index slots.
+===PHI_END===
+
+===PHI_START===
+NAME: gap_3_index_lt_next_free
+TARGET_FN: clear
+TYPE: behavioral
+SOURCE: body_aware
+PROPERTY: When clearing a bit at `index < self.next_free`, the body updates `self.next_free = index`, lowering the allocation cursor to promote reuse of freed low-index slots. The spec says nothing about this state update.
+PARAMS: pre: Bitmap, post: Bitmap, index: usize, result: Result<(), Error>
+BODY:
+```rust
+// --- State assumptions ---
+// Clearing at an index strictly below the current allocation cursor
+assume(index < pre.next_free);
+
+// --- Bad scenario ---
+// Clear succeeds but cursor is not lowered to the freed index
+assume(result is Ok);
+assume(post.next_free == pre.next_free);
+```
+REASON: Freed slot below cursor is invisible to future alloc calls when next_free is not lowered.
+===PHI_END===
+
+===PHI_START===
+NAME: gap_3_index_geq_next_free
+TARGET_FN: clear
+TYPE: behavioral
+SOURCE: body_aware
+PROPERTY: When clearing a bit at `index < self.next_free`, the body updates `self.next_free = index`, lowering the allocation cursor to promote reuse of freed low-index slots. The spec says nothing about this state update.
+PARAMS: pre: Bitmap, post: Bitmap, index: usize, result: Result<(), Error>
+BODY:
+```rust
+// --- State assumptions ---
+// Clearing at an index at or above the current cursor (no update expected)
+assume(index >= pre.next_free);
+
+// --- Bad scenario ---
+// Clear succeeds but spec allows cursor to change arbitrarily
+assume(result is Ok);
+assume(post.next_free != pre.next_free);
+```
+REASON: Spec permits spurious cursor changes even when body preserves next_free for index >= cursor.
+===PHI_END===
+
+===PHI_START===
+NAME: gap_3_lowest_set_bit
+TARGET_FN: clear
+TYPE: behavioral
+SOURCE: body_aware
+PROPERTY: When clearing a bit at `index < self.next_free`, the body updates `self.next_free = index`, lowering the allocation cursor to promote reuse of freed low-index slots. The spec says nothing about this state update.
+PARAMS: pre: Bitmap, post: Bitmap, index: usize, result: Result<(), Error>
+BODY:
+```rust
+// --- State assumptions ---
+// Index is the lowest set bit in the bitmap and below cursor
+assume(pre@.is_bit_set(index as int));
+assume(forall|j: int| 0 <= j && (j < (index as int)) ==> !pre@.is_bit_set(j));
+assume(index < pre.next_free);
+
+// --- Bad scenario ---
+// Clearing the lowest set bit; cursor should be lowered to index
+assume(result is Ok);
+assume(post.next_free != index);
+```
+REASON: Freeing the lowest-index occupied bit without lowering cursor prevents optimal reuse by next alloc.
+===PHI_END===
+
+===PHI_START===
+NAME: gap_4
+TARGET_FN: new
+TYPE: logical
+SOURCE: body_aware
+PROPERTY: The spec lacks a liveness (completeness) guarantee: it does not promise that valid inputs (non-zero, < u32::MAX, multiple of 8) produce Ok. Contrast with `from_raw_array`, which explicitly guarantees `result matches Ok(bitmap) && { ... }` given preconditions.
+PARAMS: number_of_bits: usize, result: Result<Bitmap, Error>
+BODY:
+```rust
+// --- State assumptions ---
+// (none - universal, no pre-existing bitmap state)
+
+// --- Bad scenario ---
+// All three validity checks pass but spec permits Err (no liveness)
+assume(number_of_bits > 0);
+assume((number_of_bits as int) < (u32::MAX as int));
+assume(number_of_bits % (u8::BITS as usize) == 0);
+assume(result is Err);
+```
+REASON: Valid inputs cannot be proven to produce Ok, making verified callers unable to rely on successful construction.
+===PHI_END===
+
+===PHI_START===
+NAME: gap_4_memory_exhausted
+TARGET_FN: new
+TYPE: logical
+SOURCE: body_aware
+PROPERTY: The spec lacks a liveness (completeness) guarantee: it does not promise that valid inputs (non-zero, < u32::MAX, multiple of 8) produce Ok. Contrast with `from_raw_array`, which explicitly guarantees `result matches Ok(bitmap) && { ... }` given preconditions.
+PARAMS: number_of_bits: usize, result: Result<Bitmap, Error>
+BODY:
+```rust
+// --- State assumptions ---
+// Valid input satisfying all three checks
+assume(number_of_bits > 0);
+assume((number_of_bits as int) < (u32::MAX as int));
+assume(number_of_bits % (u8::BITS as usize) == 0);
+
+// --- Bad scenario ---
+// System memory exhaustion causes Err despite valid input;
+// spec has no clause distinguishing allocation failure from invalid input
+assume(result is Err);
+```
+REASON: Memory allocation failure for valid inputs is unaddressed by spec, conflated with invalid-input errors.
+===PHI_END===
+
+===PHI_START===
+NAME: gap_4_small_valid
+TARGET_FN: new
+TYPE: logical
+SOURCE: body_aware
+PROPERTY: The spec lacks a liveness (completeness) guarantee: it does not promise that valid inputs (non-zero, < u32::MAX, multiple of 8) produce Ok. Contrast with `from_raw_array`, which explicitly guarantees `result matches Ok(bitmap) && { ... }` given preconditions.
+PARAMS: number_of_bits: usize, result: Result<Bitmap, Error>
+BODY:
+```rust
+// --- State assumptions ---
+// Trivially small valid allocation request
+assume(number_of_bits == 8usize);
+
+// --- Bad scenario ---
+// Even the smallest valid input has no Ok guarantee
+assume(result is Err);
+```
+REASON: Even minimal valid inputs (8 bits) cannot be proven to succeed, blocking verified construction of any bitmap.
+===PHI_END===
+
+===PHI_START===
+NAME: gap_5
+TARGET_FN: set
+TYPE: behavioral
+SOURCE: body_aware
+PROPERTY: The `set` function does NOT update `next_free`, unlike `alloc_range`. This means manually setting a bit at position `next_free` makes the allocation cursor stale — a subsequent `alloc` will scan past the now-occupied position. The spec doesn't capture this asymmetry.
+PARAMS: pre: Bitmap, post: Bitmap, index: usize, result: Result<(), Error>
+BODY:
+```rust
+// --- State assumptions ---
+// (none - universal)
+
+// --- Bad scenario ---
+// Set succeeds but spec doesn't constrain next_free at all
+assume(result is Ok);
+assume(post.next_free != pre.next_free);
+```
+REASON: Spec permits arbitrary next_free changes after set, hiding the cursor-staleness asymmetry with alloc_range.
+===PHI_END===
+
+===PHI_START===
+NAME: gap_5_index_eq_next_free
+TARGET_FN: set
+TYPE: behavioral
+SOURCE: body_aware
+PROPERTY: The `set` function does NOT update `next_free`, unlike `alloc_range`. This means manually setting a bit at position `next_free` makes the allocation cursor stale — a subsequent `alloc` will scan past the now-occupied position. The spec doesn't capture this asymmetry.
+PARAMS: pre: Bitmap, post: Bitmap, index: usize, result: Result<(), Error>
+BODY:
+```rust
+// --- State assumptions ---
+// Setting the bit exactly at the current allocation cursor
+assume(index == pre.next_free);
+
+// --- Bad scenario ---
+// Set succeeds; cursor now points to an occupied bit (stale)
+// Spec does not warn callers about this stale-cursor condition
+assume(result is Ok);
+assume(post.next_free == pre.next_free);
+assume(post@.is_bit_set(index as int));
+```
+REASON: Cursor becomes stale pointing to a now-occupied bit; subsequent alloc must scan past it unnecessarily.
+===PHI_END===
+
+===PHI_START===
+NAME: gap_5_alloc_advanced
+TARGET_FN: set
+TYPE: behavioral
+SOURCE: body_aware
+PROPERTY: The `set` function does NOT update `next_free`, unlike `alloc_range`. This means manually setting a bit at position `next_free` makes the allocation cursor stale — a subsequent `alloc` will scan past the now-occupied position. The spec doesn't capture this asymmetry.
+PARAMS: pre: Bitmap, post: Bitmap, index: usize, result: Result<(), Error>
+BODY:
+```rust
+// --- State assumptions ---
+// Prior alloc advanced cursor past the index being set
+assume(pre.next_free > index);
+
+// --- Bad scenario ---
+// Set succeeds; spec allows cursor to change even though body preserves it
+assume(result is Ok);
+assume(post.next_free != pre.next_free);
+```
+REASON: Spec doesn't guarantee next_free frame preservation through set, preventing reasoning about cursor stability.
+===PHI_END===
+
+===PHI_START===
+NAME: gap_5_alternating
+TARGET_FN: set
+TYPE: behavioral
+SOURCE: body_aware
+PROPERTY: The `set` function does NOT update `next_free`, unlike `alloc_range`. This means manually setting a bit at position `next_free` makes the allocation cursor stale — a subsequent `alloc` will scan past the now-occupied position. The spec doesn't capture this asymmetry.
+PARAMS: pre: Bitmap, post: Bitmap, index: usize, result: Result<(), Error>
+BODY:
+```rust
+// --- State assumptions ---
+// Pre-state reflects prior alternating set/alloc activity
+assume(pre@.usage() > 0);
+assume(pre.next_free > 0);
+assume(!pre@.is_bit_set(index as int));
+assume((index as int) < pre@.num_bits);
+
+// --- Bad scenario ---
+// After set, next_free is unconstrained — may drift from body's preserved value
+assume(result is Ok);
+assume(post.next_free != pre.next_free);
+```
+REASON: Interleaving set and alloc makes cursor behavior unpredictable since spec doesn't constrain next_free through set.
+===PHI_END===
+
+===PHI_START===
+NAME: gap_6
+TARGET_FN: alloc_range
+TYPE: boundary
+SOURCE: body_aware
+PROPERTY: The body returns distinct ErrorCode values depending on the failure reason — `InvalidArgument` for size==0 or size > number_of_bits, and `OutOfMemory` for capacity exceeded or no free range found — but the spec only says `Err(_)`, discarding the error code.
+PARAMS: pre: Bitmap, post: Bitmap, size: usize, result: Result<usize, Error>
+BODY:
+```rust
+// --- State assumptions ---
+// (none - universal)
+
+// --- Bad scenario ---
+// alloc_range fails; spec wildcards the Error with Err(_)
+// Caller cannot inspect error code to distinguish failure reasons
+assume(result is Err);
+assume(!pre@.exists_contiguous_free_range(size as int));
+```
+REASON: Spec's Err(_) wildcard discards error codes, preventing caller-side failure-reason dispatch.
+===PHI_END===
+
+===PHI_START===
+NAME: gap_6_precondition_violation
+TARGET_FN: alloc_range
+TYPE: boundary
+SOURCE: body_aware
+PROPERTY: The body returns distinct ErrorCode values depending on the failure reason — `InvalidArgument` for size==0 or size > number_of_bits, and `OutOfMemory` for capacity exceeded or no free range found — but the spec only says `Err(_)`, discarding the error code.
+PARAMS: pre: Bitmap, post: Bitmap, size: usize, result: Result<usize, Error>
+BODY:
+```rust
+// --- State assumptions ---
+// Precondition violation: size == 0 (unverified caller)
+// Violates requires(size > 0), making spec vacuous
+assume(size == 0usize);
+
+// --- Bad scenario ---
+// Body returns InvalidArgument, but spec has no ensures for this case
+// No error code distinction is possible
+assume(result is Err);
+```
+REASON: Unverified callers passing invalid size get no spec-level error code information whatsoever.
+===PHI_END===
+
+===PHI_START===
+NAME: gap_6_capacity_exceeded
+TARGET_FN: alloc_range
+TYPE: boundary
+SOURCE: body_aware
+PROPERTY: The body returns distinct ErrorCode values depending on the failure reason — `InvalidArgument` for size==0 or size > number_of_bits, and `OutOfMemory` for capacity exceeded or no free range found — but the spec only says `Err(_)`, discarding the error code.
+PARAMS: pre: Bitmap, post: Bitmap, size: usize, result: Result<usize, Error>
+BODY:
+```rust
+// --- State assumptions ---
+// Total capacity is insufficient for requested size
+assume(pre@.usage() > pre@.num_bits - (size as int));
+
+// --- Bad scenario ---
+// Body returns OutOfMemory via early capacity check
+// Spec says Err(_) with !exists_contiguous_free_range — same as scan failure
+assume(result is Err);
+assume(!pre@.exists_contiguous_free_range(size as int));
+assume(post@ == pre@);
+```
+REASON: Capacity-exceeded OutOfMemory is indistinguishable from scan-failure OutOfMemory in the spec.
+===PHI_END===
+
+===PHI_START===
+NAME: gap_6_fragmented
+TARGET_FN: alloc_range
+TYPE: boundary
+SOURCE: body_aware
+PROPERTY: The body returns distinct ErrorCode values depending on the failure reason — `InvalidArgument` for size==0 or size > number_of_bits, and `OutOfMemory` for capacity exceeded or no free range found — but the spec only says `Err(_)`, discarding the error code.
+PARAMS: pre: Bitmap, post: Bitmap, size: usize, result: Result<usize, Error>
+BODY:
+```rust
+// --- State assumptions ---
+// Sufficient total free bits but no contiguous range (fragmented)
+assume(pre@.usage() + (size as int) <= pre@.num_bits);
+assume(!pre@.exists_contiguous_free_range(size as int));
+
+// --- Bad scenario ---
+// Body returns OutOfMemory after full scan — same Err(_) as capacity case
+// Caller cannot tell fragmentation apart from capacity exhaustion
+assume(result is Err);
+assume(post@ == pre@);
+```
+REASON: Fragmentation-caused failure is conflated with capacity-caused failure under the same Err(_) wildcard.
+===PHI_END===
+
+===PHI_START===
+NAME: gap_7
+TARGET_FN: alloc_range
+TYPE: logical
+SOURCE: body_aware
+PROPERTY: The body performs an O(1) early-exit capacity check (`usage > number_of_bits - size`) before scanning, proving via lemma that no contiguous free range can exist when total free bits are insufficient. The spec's Err postcondition (`!exists_contiguous_free_range`) doesn't distinguish this fast-path from a full scan failure.
+PARAMS: pre: Bitmap, post: Bitmap, size: usize, result: Result<usize, Error>
+BODY:
+```rust
+// --- State assumptions ---
+// (none - universal)
+
+// --- Bad scenario ---
+// Spec doesn't expose the closed-form sufficient condition for Err:
+// usage > num_bits - size ==> must fail
+// Caller must reason about the existential !exists_contiguous_free_range
+assume(result is Err);
+assume(pre@.usage() > pre@.num_bits - (size as int));
+assume(post@ == pre@);
+```
+REASON: Spec lacks the simple arithmetic capacity check, forcing callers to reason through the harder existential.
+===PHI_END===
+
+===PHI_START===
+NAME: gap_7_full
+TARGET_FN: alloc_range
+TYPE: logical
+SOURCE: body_aware
+PROPERTY: The body performs an O(1) early-exit capacity check (`usage > number_of_bits - size`) before scanning, proving via lemma that no contiguous free range can exist when total free bits are insufficient. The spec's Err postcondition (`!exists_contiguous_free_range`) doesn't distinguish this fast-path from a full scan failure.
+PARAMS: pre: Bitmap, post: Bitmap, size: usize, result: Result<usize, Error>
+BODY:
+```rust
+// --- State assumptions ---
+// Bitmap is completely full
+assume(pre@.usage() == pre@.num_bits);
+
+// --- Bad scenario ---
+// Trivially must fail via capacity check, but spec requires proving
+// !exists_contiguous_free_range rather than checking usage == num_bits
+assume(result is Err);
+assume(post@ == pre@);
+```
+REASON: Full bitmap is trivially detected by capacity check but spec still requires the existential proof.
+===PHI_END===
+
+===PHI_START===
+NAME: gap_7_one_short
+TARGET_FN: alloc_range
+TYPE: logical
+SOURCE: body_aware
+PROPERTY: The body performs an O(1) early-exit capacity check (`usage > number_of_bits - size`) before scanning, proving via lemma that no contiguous free range can exist when total free bits are insufficient. The spec's Err postcondition (`!exists_contiguous_free_range`) doesn't distinguish this fast-path from a full scan failure.
+PARAMS: pre: Bitmap, post: Bitmap, size: usize, result: Result<usize, Error>
+BODY:
+```rust
+// --- State assumptions ---
+// Exactly one bit short of possibly fitting the requested range
+assume(pre@.usage() == pre@.num_bits - (size as int) + 1);
+
+// --- Bad scenario ---
+// Pigeonhole argument suffices but spec requires existential proof
+assume(result is Err);
+assume(post@ == pre@);
+```
+REASON: One-bit-short case is O(1)-decidable by capacity but spec demands the full existential witness.
+===PHI_END===
+
+===PHI_START===
+NAME: gap_7_fragmented
+TARGET_FN: alloc_range
+TYPE: logical
+SOURCE: body_aware
+PROPERTY: The body performs an O(1) early-exit capacity check (`usage > number_of_bits - size`) before scanning, proving via lemma that no contiguous free range can exist when total free bits are insufficient. The spec's Err postcondition (`!exists_contiguous_free_range`) doesn't distinguish this fast-path from a full scan failure.
+PARAMS: pre: Bitmap, post: Bitmap, size: usize, result: Result<usize, Error>
+BODY:
+```rust
+// --- State assumptions ---
+// Enough total free bits but fragmented — capacity check passes, full scan needed
+assume(pre@.usage() + (size as int) <= pre@.num_bits);
+assume(!pre@.exists_contiguous_free_range(size as int));
+
+// --- Bad scenario ---
+// Capacity check says "maybe possible"; only scan reveals failure
+// Spec conflates this scan-failure with capacity-failure under same Err condition
+assume(result is Err);
+assume(post@ == pre@);
+```
+REASON: Spec merges scan-based failure with capacity-based failure, hiding the body's two distinct proof strategies.
+===PHI_END===

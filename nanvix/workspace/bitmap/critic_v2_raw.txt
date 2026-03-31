@@ -1,0 +1,157 @@
+The file is restricted by content exclusion policy, but I have sufficient information from the φ candidates themselves — each includes the full `ensures` (spec) and the scenario under test. I can perform the analysis directly.
+
+Here are the specs extracted from the φ bodies:
+
+- **`new`**: Ok ⇒ inv ∧ num_bits matches ∧ is_empty; three error conditions (0, ≥u32::MAX, not %8). No guarantee valid→Ok.
+- **`alloc`**: Ok ⇒ index in range ∧ num_bits preserved ∧ bit was clear ∧ bit now set. Err ⇒ true. No constraint on other bits.
+- **`set`**: Ok ⇒ index in range ∧ bit now set ∧ was clear ∧ num_bits preserved. Err ⇒ true. No liveness guarantee.
+
+---
+
+===VERDICT_START===
+PHI: phi_1_new_err_valid_input
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+FILTER_APPLIED: incompleteness
+REASONING: The spec specifies three conditions that force Err but never guarantees Ok for valid inputs (>0, <u32::MAX, divisible by 8). The body presumably succeeds for valid inputs, but callers cannot rely on this — the spec admits Err for any input. This is a liveness/completeness gap affecting the executable `new` function.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: phi_1_new_err_valid_input_minimal
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+FILTER_APPLIED: incompleteness
+REASONING: Instantiation of the same liveness gap at number_of_bits=8 (1 byte). A trivially small, valid allocation can return Err per the spec, even though the body would always succeed. Same incompleteness as φ1.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: phi_1_new_err_valid_input_typical
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+FILTER_APPLIED: incompleteness
+REASONING: Instantiation at number_of_bits=256 (32 bytes). Same missing liveness guarantee — valid input, spec permits Err. Same incompleteness as φ1.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: phi_1_new_err_valid_input_near_max
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+FILTER_APPLIED: incompleteness
+REASONING: Instantiation at u32::MAX−7 (largest valid multiple of 8). Same liveness gap. While large allocations could plausibly fail in practice due to OOM, the spec doesn't distinguish sizes — it uniformly lacks a success guarantee for all valid inputs.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: phi_3_alloc_always_zero
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+FILTER_APPLIED: generality
+REASONING: The spec intentionally does not specify which free bit `alloc` returns — it only requires the returned index was previously clear and is now set. Allowing index 0 when bit 0 is free is a valid, correct outcome. The spec's non-determinism over allocation order is deliberate generality, not a gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: phi_3_alloc_always_zero_empty
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+FILTER_APPLIED: generality
+REASONING: Same as φ5 but with an empty bitmap. Returning index 0 from an all-free bitmap is a perfectly valid allocation choice. The spec's freedom in which bit to allocate is intentional abstraction, not incompleteness.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: phi_3_alloc_always_zero_others_free
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+FILTER_APPLIED: generality
+REASONING: Same generality issue — multiple free bits exist (0, 1, 2), spec allows returning any of them. Returning 0 is a valid choice. No spec gap; this is deliberate non-determinism over allocation policy.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: phi_4_alloc_flips_other_bits
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+FILTER_APPLIED: incompleteness
+REASONING: The spec's Ok branch only constrains the allocated index: it was clear and is now set, and num_bits is preserved. It says NOTHING about other bits being unchanged. The body surely only modifies the target bit, but the spec allows alloc to corrupt arbitrary other bits — a critical frame-condition gap that means callers cannot trust existing allocations are preserved.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: phi_4_alloc_flips_other_bits_empty
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+FILTER_APPLIED: incompleteness
+REASONING: Same frame-condition gap as φ8, instantiated on an empty bitmap. The spec permits alloc to set additional bits beyond the allocated one. Callers cannot rely on the rest of the bitmap remaining unchanged after a successful allocation.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: phi_4_alloc_flips_other_bits_in_use
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+FILTER_APPLIED: incompleteness
+REASONING: Same frame-condition gap, concretely showing that alloc could set bit 1 while clearing bit 0 (a previously allocated resource). This is the most dangerous instantiation — allocated resources could be silently lost. The spec's missing `forall|j| j != index ==> post@.is_bit_set(j) == pre@.is_bit_set(j)` is a real defect.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: phi_4_alloc_flips_other_bits_almost_full
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+FILTER_APPLIED: incompleteness
+REASONING: Same frame-condition gap on an almost-full bitmap. Alloc could set the last free bit while clearing a previously allocated one, creating a spurious free slot. This demonstrates the practical danger of the missing frame condition in the alloc spec.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: phi_5_set_err_valid_clear
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+FILTER_APPLIED: incompleteness
+REASONING: The spec allows `set` to return Err even when the index is in range and the bit is clear — a valid precondition for success. The body presumably succeeds in this case, but the spec's `Err(_) => true` admits failure for any reason. This is a liveness gap: callers cannot rely on `set` succeeding for valid inputs.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: phi_5_set_err_valid_clear_index0
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+FILTER_APPLIED: incompleteness
+REASONING: Instantiation of the `set` liveness gap at index 0 with a clear bit. Same incompleteness as φ12 — the spec does not guarantee success for valid in-range clear-bit inputs.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: phi_5_set_err_valid_clear_last_index
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+FILTER_APPLIED: incompleteness
+REASONING: Instantiation at the last valid index. Same liveness gap — spec permits Err for a valid index with a clear bit. The body would succeed but the spec doesn't promise it.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: phi_5_set_err_valid_clear_already_set
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+FILTER_APPLIED: incompleteness
+REASONING: This is a control case. When the bit is already set, the Ok branch requires `!pre@.is_bit_set(index)`, which contradicts the assumption. Therefore Ok is logically impossible and Err is the only valid outcome. The spec correctly forces Err here — this isn't a gap, it's the spec working as intended.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: phi_4_new_liveness
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+FILTER_APPLIED: incompleteness
+REASONING: Identical gap to φ1 — the spec has no liveness guarantee for `new`. Valid inputs (>0, <u32::MAX, %8==0) can still produce Err per the spec, even though the body succeeds. This is the general (universal) case of the missing success guarantee.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: phi_4_new_liveness_memory_exhausted
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: medium
+FILTER_APPLIED: incompleteness
+REASONING: Same liveness gap, instantiated with a very large allocation (>1 billion bits). While OOM could justify Err in practice, the spec uniformly lacks any success guarantee — it doesn't even promise Ok for small allocations. The gap is real, though one could argue large allocations should be allowed to fail. Rated medium because the "memory exhaustion" scenario provides partial justification.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: phi_4_new_liveness_small_valid
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+FILTER_APPLIED: incompleteness
+REASONING: Same liveness gap at number_of_bits=8 (1 byte allocation). This is the strongest instantiation — a trivially small, valid allocation that cannot plausibly fail, yet the spec permits Err. Clearly demonstrates the missing success guarantee.
+===VERDICT_END===
+
+===SUMMARY===
+The analysis reveals two major spec incompleteness issues and one cluster of false positives. **First**, the `new` and `set` functions lack liveness guarantees: their specs never promise Ok for valid inputs (φ1–4, φ12–14, φ16–18 are all true positives). The `Err(_) => true` pattern means callers cannot rely on these functions succeeding even under ideal conditions. **Second**, the `alloc` spec is missing a critical frame condition (φ8–11 are true positives): it does not guarantee that bits other than the allocated one remain unchanged, meaning the spec permits alloc to corrupt existing allocations. **The "always returns zero" cluster** (φ5–7) is a false positive — the spec intentionally abstracts over allocation order, and returning any free bit is valid. **The "already set" control** (φ15) is also a false positive — the spec correctly forces Err when the bit is already set. In total: 14 true positives identifying 3 distinct spec gaps (new liveness, set liveness, alloc frame condition) and 4 false positives.
+===END_SUMMARY===

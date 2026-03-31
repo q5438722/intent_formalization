@@ -62,6 +62,33 @@ Output a JSON array of objects:
 
 Generate AT LEAST 5 negative properties. Be specific — reference actual parameter names,
 types, and spec clauses. Do NOT generate Verus code — only natural language.
+
+## State refinement
+
+For each negative property, also consider whether it applies universally or only under
+specific object states. Derive state scenarios from the spec's own predicates and conditions
+(e.g., if the spec mentions `is_full()`, consider full vs non-full states; if the spec has
+a size parameter with bounds, consider boundary values).
+
+For each property, include a `state_scenarios` field — a list of meaningful state conditions
+under which the bad behavior might or might not be possible. Example:
+```json
+{
+  "id": "neg_1",
+  "target_fn": "alloc",
+  "category": "behavioral",
+  "property": "alloc always returns index 0",
+  "reasoning": "...",
+  "state_scenarios": [
+    "no constraints (universal)",
+    "when usage == 0 (empty)",
+    "when usage == num_bits - 1 (almost full)"
+  ]
+}
+```
+
+Derive scenarios from the spec's predicates and parameters — do NOT hardcode domain-specific
+states. The scenarios should be meaningful boundaries of the spec's own conditions.
 """
 
 BODY_AWARE_BRAINSTORM = """You are analyzing a Verus (Rust verification) function for spec incompleteness.
@@ -92,6 +119,33 @@ Output a JSON array of objects:
 
 Generate AT LEAST 5 properties. Be specific — reference actual code lines.
 Do NOT generate Verus code — only natural language.
+
+## State refinement
+
+For each property, also consider whether the gap manifests universally or only under
+specific object states. Derive state scenarios from the spec's own predicates and conditions
+(e.g., if the spec uses `is_full()`, consider full vs non-full; if the spec has range
+conditions, consider their boundaries).
+
+For each property, include a `state_scenarios` field — a list of meaningful state conditions.
+Example:
+```json
+{
+  "id": "gap_1",
+  "target_fn": "alloc",
+  "category": "behavioral",
+  "property": "body uses next-fit but spec doesn't capture allocation cursor",
+  "body_evidence": "...",
+  "reasoning": "...",
+  "state_scenarios": [
+    "no constraints (universal)",
+    "when multiple free ranges exist"
+  ]
+}
+```
+
+Derive scenarios from the spec's predicates and parameters — do NOT hardcode domain-specific
+states.
 """
 
 

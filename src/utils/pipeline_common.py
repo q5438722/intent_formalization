@@ -98,7 +98,12 @@ def strip_spec(source_text: str) -> str:
 
 
 def parse_phi_blocks(text: str) -> list:
-    """Parse ===PHI_START===...===PHI_END=== blocks from generator output."""
+    """Parse ===PHI_START===...===PHI_END=== blocks from generator output.
+    
+    Supports two formats:
+    - Legacy: CODE block with full proof fn
+    - New: BODY block with only assume statements + PARAMS for free variables
+    """
     blocks = []
     pattern = r'===PHI_START===(.*?)===PHI_END==='
     for match in re.finditer(pattern, text, re.DOTALL):
@@ -107,18 +112,32 @@ def parse_phi_blocks(text: str) -> list:
         target_m = re.search(r'TARGET_FN:\s*(.+)', block)
         type_m = re.search(r'TYPE:\s*(.+)', block)
         source_m = re.search(r'SOURCE:\s*(.+)', block)
-        code_m = re.search(r'```(?:verus|rust)?\s*\n(.*?)```', block, re.DOTALL)
+        property_m = re.search(r'PROPERTY:\s*(.+)', block)
+        params_m = re.search(r'PARAMS:\s*(.+)', block)
         reason_m = re.search(r'REASON:\s*(.+)', block)
 
-        if name_m and code_m:
-            blocks.append({
+        # Try BODY first (new format), fall back to CODE (legacy)
+        # For BODY, look for the code block after BODY:
+        body_m = re.search(r'BODY:\s*\n```(?:verus|rust)?\s*\n(.*?)```', block, re.DOTALL)
+        code_m = re.search(r'CODE:\s*\n```(?:verus|rust)?\s*\n(.*?)```', block, re.DOTALL)
+        if code_m is None:
+            code_m = re.search(r'```(?:verus|rust)?\s*\n(.*?)```', block, re.DOTALL)
+
+        if name_m and (body_m or code_m):
+            entry = {
                 "name": name_m.group(1).strip(),
                 "target_fn": target_m.group(1).strip() if target_m else "",
                 "type": type_m.group(1).strip() if type_m else "unknown",
                 "source": source_m.group(1).strip() if source_m else "spec_only",
-                "code": code_m.group(1).strip(),
+                "property": property_m.group(1).strip() if property_m else "",
                 "reason": reason_m.group(1).strip() if reason_m else "",
-            })
+            }
+            if body_m:
+                entry["body"] = body_m.group(1).strip()
+                entry["params"] = params_m.group(1).strip() if params_m else ""
+            if code_m:
+                entry["code"] = code_m.group(1).strip()
+            blocks.append(entry)
     return blocks
 
 

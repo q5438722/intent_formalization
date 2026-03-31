@@ -1,0 +1,93 @@
+I can analyze these φ results from the spec information embedded in the ensures clauses (which are exact copies from the source). Let me reason through each.
+
+The `new` spec has four ensures clauses:
+1. `Ok(bitmap) ==> { properties }` — conditional on success
+2. `bits == 0 ==> Err`
+3. `bits >= u32::MAX ==> Err`
+4. `bits % 8 != 0 ==> Err`
+
+Crucially, **no clause guarantees Ok when all validity checks pass**. Contrast with `from_raw_array` which has `result matches Ok(bitmap) && { ... }` (unconditional Ok).
+
+For φ9, note that `requires size > 0` but the body assumes `size == 0` — contradicting the precondition.
+
+For φ5, `(u32::MAX as int) - 1 = 4294967294`, and `4294967294 / 8 = 536870911.75` — no integer `len` satisfies `len * 8 == 4294967294`, making the assumptions contradictory.
+
+---
+
+===VERDICT_START===
+PHI: phi_neg_1
+VERDICT: TRUE_POSITIVE
+CONFIDENCE: high
+REASONING: Spec for `new` only specifies when result is Err (three invalid-input conditions) and what holds if Ok, but never guarantees Ok for valid inputs. An implementation returning Err unconditionally satisfies all four ensures clauses. This is the canonical liveness gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: phi_neg_1_minimal
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Duplicate of phi_neg_1. Same spec, same gap (missing liveness), just instantiated at number_of_bits==8. No additional finding.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: phi_neg_1_typical
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Duplicate of phi_neg_1. Same spec, same gap, instantiated at number_of_bits==256.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: phi_neg_1_near_max
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Duplicate of phi_neg_1. Same spec, same gap, instantiated at u32::MAX-7. No new finding beyond the missing liveness guarantee already captured by phi_neg_1.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: phi_neg_8_near_max
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Tautological — assumptions are contradictory. The assume requires array@.len()*8 == u32::MAX-1 (=4294967294), but 4294967294 is not divisible by 8, so no integer length satisfies this. Verus proves the ensures vacuously via ex falso. The from_raw_array spec actually DOES guarantee Ok (unconditional Ok in ensures), so there is no real gap.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: phi_gap_4
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Duplicate of phi_neg_1. Identical spec, identical gap (missing liveness for `new`), identical assumption structure (valid inputs + result is Err). Different description but same finding.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: phi_gap_4_memory_exhausted
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Duplicate of phi_neg_1. The OOM narrative adds motivating context but demonstrates the identical spec gap — no liveness clause in `new`. The assumption structure is identical to phi_neg_1/phi_gap_4.
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: phi_gap_4_small_valid
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Duplicate of phi_neg_1 and phi_neg_1_minimal. Same spec, same gap, same concrete value (number_of_bits==8).
+===VERDICT_END===
+
+===VERDICT_START===
+PHI: phi_gap_6_precondition_violation
+VERDICT: FALSE_POSITIVE
+CONFIDENCE: high
+REASONING: Tautological — the body assumes size==0, which directly contradicts the requires clause (size > 0). The requires is available inside the proof body, giving Verus both size>0 and size==0 simultaneously — a contradiction. Verified vacuously via ex falso; no real spec gap.
+===VERDICT_END===
+
+===SUMMARY===
+**1 TRUE_POSITIVE, 8 FALSE_POSITIVE**
+
+The single real finding is the **missing liveness guarantee for `new`** (phi_neg_1): the spec never promises `Ok` for valid inputs (non-zero, <u32::MAX, multiple-of-8). An always-Err implementation trivially satisfies all ensures. This contrasts with `from_raw_array`, which unconditionally guarantees `Ok`.
+
+The remaining 8 φs break down as:
+- **6 duplicates** (phi_neg_1_minimal, _typical, _near_max, phi_gap_4, _memory_exhausted, _small_valid) — all re-demonstrate the same liveness gap with different input values or descriptions
+- **2 tautological** (phi_neg_8_near_max: unsatisfiable integer constraint; phi_gap_6_precondition_violation: contradicts own requires clause)
+
+**Recommended fix**: Add a liveness ensures clause to `new`:
+```
+number_of_bits > 0 && number_of_bits < u32::MAX && number_of_bits % 8 == 0 ==> result is Ok
+```
+===END_SUMMARY===

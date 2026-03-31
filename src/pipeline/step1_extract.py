@@ -18,7 +18,7 @@ VERUS_SO = str(BASE / "verus.so")
 VERUSAGE = BASE / "verusage" / "source-projects"
 
 sys.path.insert(0, str(BASE / "src" / "utils"))
-from verus_parser import verus_parser
+from verus_parser import verus_parser, node_to_text
 
 
 def task_name_for(source_path: Path) -> str:
@@ -35,6 +35,22 @@ def extract_fn_name(decl_node) -> str:
     return 'unknown'
 
 
+def strip_body(decl_node) -> str:
+    """Return function declaration text with body replaced by {}."""
+    decl_bytes = decl_node.text
+    # Find the function_item child and its body
+    for child in decl_node.children:
+        if child.type == 'function_item':
+            body = child.child_by_field_name('body')
+            if body is not None:
+                # Calculate byte offsets relative to decl_node start
+                body_start = body.start_byte - decl_node.start_byte
+                body_end = body.end_byte - decl_node.start_byte
+                result = decl_bytes[:body_start] + b'{ }' + decl_bytes[body_end:]
+                return result.decode()
+    return decl_bytes.decode()
+
+
 def extract_from_file(fpath: Path) -> dict | None:
     """Extract exec function info from a single source file. Returns entry dict or None."""
     vp = verus_parser(VERUS_SO)
@@ -47,7 +63,7 @@ def extract_from_file(fpath: Path) -> dict | None:
         name = extract_fn_name(decl)
         if name == 'main':
             continue
-        exec_info.append({"name": name, "code": decl.text.decode()})
+        exec_info.append({"name": name, "code": decl.text.decode(), "declaration": strip_body(decl)})
 
     if not exec_info:
         return None
@@ -96,6 +112,7 @@ def main():
             exec_info.append({
                 "name": name,
                 "code": decl.text.decode(),
+                "declaration": strip_body(decl),
             })
 
         if not exec_info:
