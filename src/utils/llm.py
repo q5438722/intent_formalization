@@ -39,7 +39,7 @@ class LLMResponse:
 
 
 # Stall timeout: kill if no output for this many seconds
-STALL_TIMEOUT = int(os.environ.get("LLM_STALL_TIMEOUT", "90"))
+STALL_TIMEOUT = int(os.environ.get("LLM_STALL_TIMEOUT", "360"))
 
 
 def _run_copilot(
