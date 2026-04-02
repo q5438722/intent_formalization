@@ -323,7 +323,7 @@ def main():
         task_dirs = task_dirs[:args.limit]
 
     print(f"Step 3: Formalizing for {len(task_dirs)} tasks (model={args.model})")
-    llm = LLMClient(timeout=600)
+    llm = LLMClient(timeout=3600)
 
     total_candidates = 0
     for i, td in enumerate(task_dirs):
