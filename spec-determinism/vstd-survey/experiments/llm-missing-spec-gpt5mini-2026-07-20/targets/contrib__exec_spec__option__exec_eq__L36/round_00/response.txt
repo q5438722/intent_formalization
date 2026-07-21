@@ -1,0 +1,14 @@
+{
+  "decision": "add_spec",
+  "ensures": [
+    "res == match (this, other) { (Some(t1), Some(t2)) => <&'a T>::exec_eq(t1, t2), _ => this.deep_view() =~~= other.deep_view(), }"
+  ],
+  "useful": true,
+  "rationale": "Gives a precise structural postcondition: when both are Some, result delegates to the element ExecSpecEq; otherwise it falls back to deep_view equality (which covers None/None and mismatches). This is stronger and mirrors the implementation while remaining consistent with the trait contract.",
+  "risks": [
+    "Refers to <&'a T>::exec_eq; if T's ExecSpecEq impl is missing/unsound, verification may fail.",
+    "Relies on deep_view() and =~~= semantics; any hidden or non-spec'd interior state could affect soundness, but matches inherited trait expectations.",
+    "If ExecSpecEq for T can diverge or be nondeterministic, the spec may be harder to use in proofs."
+  ]
+}
+

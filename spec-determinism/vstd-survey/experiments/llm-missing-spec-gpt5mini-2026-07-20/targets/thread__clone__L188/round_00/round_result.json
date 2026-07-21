@@ -1,0 +1,31 @@
+{
+  "round": 0,
+  "llm_ms": 32640,
+  "candidate": {
+    "decision": "add_spec",
+    "ensures": [
+      "result@@ == self@"
+    ],
+    "useful": true,
+    "rationale": "Clone for the tracked IsThread should produce an identical ghost value; the strongest sound postcondition is that the returned object's tracked value equals the input's tracked value.",
+    "risks": [
+      "If the external implementation violated the tracked/ownership discipline (e.g., cloning across threads despite !Send/!Sync), the postcondition could be unsound; however the type-level !Send/!Sync and phantom prevention mitigate this.",
+      "Relies on the verifier's interpretation of result@@/self@ for tracked values matching runtime cloning semantics."
+    ]
+  },
+  "checker": {
+    "status": "verus_error",
+    "requires": [],
+    "ensures": [
+      "result@@ == self@"
+    ],
+    "equal_fn_trivial": false,
+    "stderr_tail": "error[E0599]: no method named `view` found for struct `vstd::thread::ThreadId` in the current scope\n  --> vstd-survey/experiments/llm-missing-spec-gpt5mini-2026-07-20/targets/thread__clone__L188/round_00/artifacts/thread__clone__L188/harness.rs:17:21\n   |\n17 |             &&& (r1@@ == self_@)\n   |                  -- ^ method not found in `vstd::thread::ThreadId`\n   |                  |\n   |                  method `view` is available on `&vstd::thread::IsThread`\n\nerror[E0599]: no method named `view` found for struct `vstd::thread::ThreadId` in the current scope\n  --> vstd-survey/experiments/llm-missing-spec-gpt5mini-2026-07-20/targets/thread__clone__L188/round_00/artifacts/thread__clone__L188/harness.rs:18:21\n   |\n18 |             &&& (r2@@ == self_@)\n   |                  -- ^ method not found in `vstd::thread::ThreadId`\n   |                  |\n   |                  method `view` is available on `&vstd::thread::IsThread`\n\nerror: aborting due to 2 previous errors\n\nFor more information about this error, try `rustc --explain E0599`.\n"
+  },
+  "anti_vacuity_issues": [
+    "checker_status:verus_error",
+    "tracked_value_exec_clone_is_uncallable"
+  ],
+  "raw_det_reward": 0,
+  "guarded_reward": 0
+}

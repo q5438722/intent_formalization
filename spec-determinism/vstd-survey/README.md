@@ -26,20 +26,20 @@
 7. 实验性的 `contrib::exec_spec`；
 8. prelude、宏和 verifier encoding 基础设施。
 
-源码中共有 **3,367 个 specification-related declaration sites**：
+源码中共有 **3,405 个 specification-related declaration sites**：
 
 | 类型 | 数量 | 含义 |
 |---|---:|---|
-| API contract sites | 515 | 185 个 exec/trait 后置条件，加上 330 个带后置条件的 `assume_specification` |
+| API contract sites | 553 | 223 个 exec/trait 后置条件，加上 330 个带后置条件的 `assume_specification` |
 | Mathematical `spec fn` | 1,375 | 状态模型、view、抽象操作和辅助谓词 |
 | `proof fn` | 1,319 | 可验证引理和 proof automation |
 | `axiom fn` | 158 | trusted axioms 或编译器/标准库桥接 |
 
-对 spec-determinism 最重要的是 **515 个 contract sites**，而不是全部 3,367 个声明：
+对 spec-determinism 最重要的是 **553 个 contract sites**，而不是全部 3,405 个声明：
 
-- 64.1% 的 contract surface 来自 trusted `assume_specification`；
-- 35.9% 来自 exec function 或 trait method 的后置条件；
-- 47 个 `critical`/`high` module 已覆盖 440/515，即 **85.4%** 的 contract surface。
+- 59.7% 的 contract surface 来自 trusted `assume_specification`；
+- 40.3% 来自 exec function 或 trait method 的后置条件；
+- 47 个 `critical`/`high` module 已覆盖 477/553，即 **86.3%** 的 contract surface。
 
 因此不需要一开始平均处理全部 125 个 module。
 
@@ -49,21 +49,21 @@
 
 | 源码级口径 | 全部 | Public |
 |---|---:|---:|
-| 有函数体的 exec definitions | 220 | 126 |
-| 其中有明确 postcondition | 177 | 111 |
-| 只有 `requires`、没有 postcondition | 6 | 6 |
+| 有函数体的 exec definitions | 245 | 151 |
+| 其中有明确 postcondition | 201 | 135 |
+| 只有 `requires`、没有 postcondition | 7 | 7 |
 | `requires` 和 postcondition 都没有 | 37 | 9 |
-| 没有 postcondition合计 | 43 | 15 |
-| 只有 trait/signature、没有函数体的 exec declarations | 66 | 64 |
+| 没有 postcondition合计 | 44 | 16 |
+| 只有 trait/signature、没有函数体的 exec declarations | 83 | 78 |
 
 因此，“exec fn 没有 spec”有两个常用口径：
 
 - 如果指既没有 `requires`，也没有 `ensures`、`returns` 或 `default_ensures`：
   **全部 37 个，public 9 个**；
 - 如果只要求“没有 postcondition”，即允许存在 `requires`：
-  **全部 43 个，public 15 个**。
+  **全部 44 个，public 16 个**。
 
-15 个没有 postcondition 的 public exec definitions 主要是：
+16 个没有 postcondition 的 public exec definitions 主要是：
 
 | 类别 | 数量 | 例子 |
 |---|---:|---|
@@ -71,6 +71,7 @@
 | pervasive runtime/internal helpers | 5 | `runtime_assert`、`print_u64`、panic helpers |
 | intentional prophecy nondeterminism | 1 | `Prophecy::new` |
 | linear resource-consuming operations | 4 | `deallocate`、`free`、`release_read`、`release_write` |
+| hidden-state unit operation | 1 | 新版 `cell::invcell::InvCell::set` |
 
 这些项目目前没有明显属于“普通 public API 遗漏 postcondition”的案例。trait
 signature 不与有函数体的 definition 混算，因为其语义可能由实现、external trait
@@ -92,15 +93,17 @@ specification 或 `exec_spec` 宏提供。
 - 宏模板只计一次，不按整数类型等实际展开次数重复计算；
 - 数字表示规范密度，不直接表示覆盖率、正确性或完整性；
 - `no explicit postcondition` 不自动等于缺失 spec，它可能来自 trait 继承、compiler intrinsic 或有意非确定性。
+- 表格中的 `module:function@line` 是源码定位 ID；private impl module 也会出现在
+  ID 中，不保证它对应同名的公开 rustdoc 路径。
 
 ## 总体结构
 
 | 层次 | Modules | Lines | Contract sites | Total spec sites | 主要作用 |
 |---|---:|---:|---:|---:|---|
 | Mathematical foundations | 36 | 19,954 | 0 | 1,111 | 定义抽象语义和证明库 |
-| Rust standard-library specs | 26 | 9,115 | 303 | 869 | Rust/core/alloc/std 的 trusted contracts |
+| Rust standard-library specs | 26 | 9,115 | 320 | 886 | Rust/core/alloc/std 的 trusted contracts |
 | Runtime collections and data | 11 | 5,075 | 97 | 388 | vstd 自身的可执行数据结构 |
-| Memory and ownership | 6 | 2,701 | 51 | 142 | pointer、cell 和 ownership permissions |
+| Memory and ownership | 6 | 2,701 | 72 | 163 | pointer、cell 和 ownership permissions |
 | Concurrency and prophecy | 9 | 3,497 | 13 | 96 | atomic、invariant、thread、future、prophecy |
 | Resources and protocols | 23 | 9,349 | 0 | 635 | separation-style resource algebra |
 | Experimental exec-spec | 8 | 1,637 | 48 | 51 | executable/spec 双表示实验 |
@@ -109,8 +112,8 @@ specification 或 `exec_spec` 宏提供。
 最明显的结构性结论是：
 
 - 数学基础与 resource/protocol 占据大量源码和 proof，但几乎没有直接 API contract；
-- `std_specs/*` 单独承载 303/515，即 **58.8%** 的 contract surface；
-- `std_specs/*`、runtime data、memory/ownership 三层合计承载 **87.6%** 的 contract surface。
+- `std_specs/*` 单独承载 320/553，即 **57.9%** 的 contract surface；
+- `std_specs/*`、runtime data、memory/ownership 三层合计承载 **88.4%** 的 contract surface。
 
 ## 重要 module
 
@@ -134,13 +137,13 @@ contract site 最多的稳定 module：
 |---|---:|---|
 | `std_specs::hash` | 45 | HashMap/HashSet、iterator order、hasher model |
 | `std_specs::num` | 34 | checked/wrapping/saturating integer operations |
-| `std_specs::vec` | 29 | `Vec` 的 mutation、capacity-independent view |
+| `std_specs::vec` | 31 | `Vec` 的 mutation、capacity-independent view |
 | `std_specs::btree` | 24 | BTreeMap/BTreeSet 与 entry API |
 | `std_specs::option` | 20 | Option methods 与 comparison trait specs |
 | `std_specs::vecdeque` | 19 | 双端序列及其 view |
 | `std_specs::range` | 18 | range 与 iterator semantics |
 | `std_specs::bits` | 16 | primitive bit operations |
-| `std_specs::cmp` | 14 | `PartialEq`/`Ord` external trait specs |
+| `std_specs::cmp` | 25 | `PartialEq`/`Ord` external trait specs |
 | `std_specs::slice` | 13 | slice access、mutation 和 range indexing |
 
 这一层的 spec 是 trusted axioms：determinism 可以检查它是否过弱，但不能证明真实 Rust 实现满足该 spec。
@@ -197,17 +200,17 @@ contract site 最多的稳定 module：
 
 ## 数据质量说明
 
-当前安装的 `tree-sitter-verus` 落后于最新 vstd 语法，125 个 module 中有 54 个触发 parse recovery，主要涉及：
+当前安装的 `tree-sitter-verus` 落后于最新 vstd 语法，125 个 module 中有 63 个触发 parse recovery，主要涉及：
 
 - `default_ensures`；
 - 宏模板；
 - 新的 trait/external-spec syntax。
 
-此外，scanner 目前不会进入 `verus_! { ... }` 这种 `verus!` 的别名宏。
-因此 `cell::invcell`、`cell::pcell`、`cell::pcell_maybe_uninit` 以及部分
-`std_specs` module 在表格中可能显示 `Parse error` 为空、exec 数量为 0，
-但这表示“宏体未被解析”，不表示模块真的没有 exec/spec surface。完整列表、
-影响和修复优先级见 [`HANDOFF.md`](HANDOFF.md)。
+scanner 现在会在解析副本中把 `verus_! { ... }` 规范化为 `verus!`，因此
+`cell::invcell`、`cell::pcell`、`cell::pcell_maybe_uninit` 及相关
+`std_specs` module 已进入 inventory。该规范化只用于解析，不修改源码文件。
+`macro_rules!` 的实际展开仍未枚举，因此宏生成的 concrete function/type 数量
+依然会被低估。完整限制见 [`HANDOFF.md`](HANDOFF.md)。
 
 扫描器对 `assume_specification`、`returns` 和 `default_ensures` 使用 lexical fallback，因此 contract 总数仍可用于总体规划；但对 parse-error module 的精确 function-level 列表必须在后续升级 grammar 后重新生成。
 
@@ -227,10 +230,17 @@ contract site 最多的稳定 module：
 - `generated/exec_functions.csv`：全部 exec definitions/signatures，包含 module、行号和 contract 状态；
 - `scan_vstd.py`：可重复运行的扫描器。
 - `run_determinism.py`：复用现有 spec-determinism pipeline 的 vstd determinism runner。
+- `run_missing_spec_reward.py`：44 个 no-post definitions 的 reward/anti-vacuity 实验。
+- `run_llm_missing_spec_feedback.py`：LLM 生成候选并用 determinism/anti-vacuity feedback 修订。
 - `experiments/pilot-2026-07-14/SUMMARY.md`：首批 `array`/`bytes` determinism 结果。
-- `experiments/REVIEW-2026-07-14.md`：全部 111 个 public exec definitions 的综合实验结论。
+- `experiments/REVIEW-2026-07-14.md`：alias 修复前 111 个 public exec definitions 的综合实验结论。
 - `experiments/UNKNOWN-AUDIT-2026-07-15.md`：原 27 个 unknown 的逐项语义审计。
 - `experiments/impl-methods-2026-07-14/SUMMARY.md`：77 个 line-qualified impl methods 的逐项结果。
+- `experiments/missing-spec-reward-2026-07-20/SUMMARY.md`：no-post 候选与 determinism reward 结果。
+- `experiments/MISSING-SPEC-REWARD-2026-07-20.md`：no-post spec-generation 实验结论与 guarded reward 设计。
+- `experiments/LLM-MISSING-SPEC-FEEDBACK-2026-07-20.md`：`gpt-5-mini` 44-target 生成与反馈结果。
+- `experiments/LLM-MISSING-SPEC-MODEL-COMPARISON-2026-07-20.md`：`gpt-5-mini` 与 `gpt-5.6-sol` 对比。
+- `experiments/SPECGEN-EXPERIMENT-RESULTS-2026-07-21.md`：统一结果文档与生成 spec 示例。
 
 ## Regenerate
 
@@ -257,12 +267,12 @@ python vstd-survey/scan_vstd.py \
 
 | Group | Modules | Lines | Exec bodies | Public exec | Public no-post | Signature-only | Contract sites | Total spec sites | Parse errors |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Mathematical foundations | 36 | 19954 | 0 | 0 | 0 | 0 | 0 | 1111 | 14 |
-| Rust standard-library specs | 26 | 9115 | 0 | 0 | 0 | 8 | 303 | 869 | 10 |
+| Mathematical foundations | 36 | 19954 | 0 | 0 | 0 | 0 | 0 | 1111 | 16 |
+| Rust standard-library specs | 26 | 9115 | 3 | 3 | 0 | 25 | 320 | 886 | 15 |
 | Runtime collections and data | 11 | 5075 | 72 | 60 | 0 | 13 | 97 | 388 | 8 |
-| Memory and ownership | 6 | 2701 | 47 | 41 | 2 | 0 | 51 | 142 | 3 |
+| Memory and ownership | 6 | 2701 | 69 | 63 | 3 | 0 | 72 | 163 | 4 |
 | Concurrency and prophecy | 9 | 3497 | 23 | 20 | 8 | 0 | 13 | 96 | 6 |
-| Resources and protocols | 23 | 9349 | 0 | 0 | 0 | 0 | 0 | 635 | 6 |
+| Resources and protocols | 23 | 9349 | 0 | 0 | 0 | 0 | 0 | 635 | 7 |
 | Experimental exec-spec | 8 | 1637 | 70 | 0 | 0 | 43 | 48 | 51 | 3 |
 | Infrastructure | 6 | 1387 | 8 | 5 | 5 | 2 | 3 | 75 | 4 |
 
@@ -271,7 +281,7 @@ python vstd-survey/scan_vstd.py \
 | Module | Group | Importance | Lines | Exec bodies | Public exec | Public post | Public requires-only | Public no-contract | Signature-only | Assume post/all | Model spec fn | Proof+axiom | Parse error |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
 | `function` | Mathematical foundations | critical | 164 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0 | 2 | 5 | yes |
-| `map` | Mathematical foundations | critical | 491 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0 | 11 | 22 |  |
+| `map` | Mathematical foundations | critical | 491 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0 | 11 | 22 | yes |
 | `map_lib` | Mathematical foundations | critical | 837 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0 | 24 | 27 | yes |
 | `multiset` | Mathematical foundations | critical | 727 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0 | 21 | 32 | yes |
 | `multiset_lib` | Mathematical foundations | critical | 68 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0 | 2 | 3 |  |
@@ -297,7 +307,7 @@ python vstd-survey/scan_vstd.py \
 | `arithmetic::power2` | Mathematical foundations | medium | 343 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0 | 3 | 11 |  |
 | `bits` | Mathematical foundations | medium | 484 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0 | 1 | 10 |  |
 | `compute` | Mathematical foundations | medium | 40 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0 | 3 | 1 |  |
-| `imap` | Mathematical foundations | medium | 495 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0 | 10 | 20 |  |
+| `imap` | Mathematical foundations | medium | 495 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0 | 10 | 20 | yes |
 | `imap_lib` | Mathematical foundations | medium | 831 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0 | 24 | 26 | yes |
 | `iset` | Mathematical foundations | medium | 1081 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0 | 30 | 42 | yes |
 | `iset_lib` | Mathematical foundations | medium | 1541 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0 | 22 | 60 | yes |
@@ -306,16 +316,16 @@ python vstd-survey/scan_vstd.py \
 | `math` | Mathematical foundations | medium | 76 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0 | 8 | 0 |  |
 | `predicate` | Mathematical foundations | medium | 18 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0 | 2 | 0 |  |
 | `relations` | Mathematical foundations | medium | 113 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0 | 17 | 1 |  |
-| `std_specs::cmp` | Rust standard-library specs | critical | 527 | 0 | 0 | 0 | 0 | 0 | 0 | 14/24 | 39 | 0 |  |
+| `std_specs::cmp` | Rust standard-library specs | critical | 527 | 0 | 0 | 0 | 0 | 0 | 11 | 14/24 | 39 | 0 | yes |
 | `std_specs::hash` | Rust standard-library specs | critical | 1553 | 0 | 0 | 0 | 0 | 0 | 0 | 45/45 | 64 | 43 | yes |
-| `std_specs::iter` | Rust standard-library specs | critical | 540 | 0 | 0 | 0 | 0 | 0 | 0 | 1/1 | 39 | 2 |  |
+| `std_specs::iter` | Rust standard-library specs | critical | 540 | 0 | 0 | 0 | 0 | 0 | 3 | 1/1 | 39 | 2 | yes |
 | `std_specs::num` | Rust standard-library specs | critical | 474 | 0 | 0 | 0 | 0 | 0 | 0 | 34/50 | 13 | 0 |  |
 | `std_specs::ops` | Rust standard-library specs | critical | 514 | 0 | 0 | 0 | 0 | 0 | 0 | 10/12 | 17 | 0 | yes |
 | `std_specs::option` | Rust standard-library specs | critical | 412 | 0 | 0 | 0 | 0 | 0 | 0 | 20/23 | 22 | 8 | yes |
 | `std_specs::range` | Rust standard-library specs | critical | 658 | 0 | 0 | 0 | 0 | 0 | 2 | 18/18 | 61 | 2 | yes |
 | `std_specs::result` | Rust standard-library specs | critical | 284 | 0 | 0 | 0 | 0 | 0 | 0 | 10/10 | 19 | 8 | yes |
-| `std_specs::slice` | Rust standard-library specs | critical | 265 | 0 | 0 | 0 | 0 | 0 | 0 | 13/15 | 17 | 1 |  |
-| `std_specs::vec` | Rust standard-library specs | critical | 535 | 0 | 0 | 0 | 0 | 0 | 0 | 29/30 | 20 | 10 |  |
+| `std_specs::slice` | Rust standard-library specs | critical | 265 | 0 | 0 | 0 | 0 | 0 | 0 | 13/15 | 17 | 1 | yes |
+| `std_specs::vec` | Rust standard-library specs | critical | 535 | 2 | 2 | 2 | 0 | 0 | 0 | 29/30 | 20 | 10 | yes |
 | `std_specs::alloc` | Rust standard-library specs | high | 41 | 0 | 0 | 0 | 0 | 0 | 0 | 1/3 | 0 | 0 |  |
 | `std_specs::atomic` | Rust standard-library specs | high | 105 | 0 | 0 | 0 | 0 | 0 | 0 | 0/14 | 0 | 0 |  |
 | `std_specs::bits` | Rust standard-library specs | high | 726 | 0 | 0 | 0 | 0 | 0 | 0 | 16/16 | 16 | 16 |  |
@@ -323,13 +333,13 @@ python vstd-survey/scan_vstd.py \
 | `std_specs::clone` | Rust standard-library specs | high | 73 | 0 | 0 | 0 | 0 | 0 | 1 | 5/6 | 0 | 0 |  |
 | `std_specs::convert` | Rust standard-library specs | high | 182 | 0 | 0 | 0 | 0 | 0 | 4 | 3/5 | 16 | 0 |  |
 | `std_specs::default` | Rust standard-library specs | high | 83 | 0 | 0 | 0 | 0 | 0 | 1 | 6/6 | 0 | 0 |  |
-| `std_specs::maybe_uninit` | Rust standard-library specs | high | 59 | 0 | 0 | 0 | 0 | 0 | 0 | 5/5 | 4 | 0 |  |
+| `std_specs::maybe_uninit` | Rust standard-library specs | high | 59 | 0 | 0 | 0 | 0 | 0 | 0 | 5/5 | 4 | 0 | yes |
 | `std_specs::smart_ptrs` | Rust standard-library specs | high | 78 | 0 | 0 | 0 | 0 | 0 | 0 | 10/10 | 0 | 0 |  |
 | `std_specs::vecdeque` | Rust standard-library specs | high | 342 | 0 | 0 | 0 | 0 | 0 | 0 | 19/19 | 16 | 3 | yes |
 | `std_specs` | Rust standard-library specs | medium | 44 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0 | 0 | 0 |  |
 | `std_specs::borrow` | Rust standard-library specs | medium | 103 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0 | 6 | 0 |  |
 | `std_specs::control_flow` | Rust standard-library specs | medium | 74 | 0 | 0 | 0 | 0 | 0 | 0 | 4/4 | 1 | 1 | yes |
-| `std_specs::core` | Rust standard-library specs | medium | 224 | 0 | 0 | 0 | 0 | 0 | 0 | 4/4 | 3 | 0 |  |
+| `std_specs::core` | Rust standard-library specs | medium | 224 | 1 | 1 | 1 | 0 | 0 | 3 | 4/4 | 3 | 0 |  |
 | `std_specs::manually_drop` | Rust standard-library specs | medium | 65 | 0 | 0 | 0 | 0 | 0 | 0 | 4/4 | 3 | 1 | yes |
 | `std_specs::nonzero` | Rust standard-library specs | medium | 177 | 0 | 0 | 0 | 0 | 0 | 0 | 4/4 | 17 | 3 | yes |
 | `array` | Runtime collections and data | high | 216 | 5 | 4 | 4 | 0 | 0 | 1 | 0/2 | 9 | 8 | yes |
@@ -345,9 +355,9 @@ python vstd-survey/scan_vstd.py \
 | `wrapping` | Runtime collections and data | medium | 118 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0 | 13 | 0 |  |
 | `raw_ptr` | Memory and ownership | critical | 1055 | 20 | 15 | 14 | 1 | 0 | 0 | 6/6 | 39 | 14 | yes |
 | `cell` | Memory and ownership | high | 393 | 12 | 12 | 12 | 0 | 0 | 0 | 0/0 | 10 | 0 | yes |
-| `cell::invcell` | Memory and ownership | high | 168 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0 | 4 | 0 |  |
-| `cell::pcell` | Memory and ownership | high | 237 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0 | 3 | 1 |  |
-| `cell::pcell_maybe_uninit` | Memory and ownership | high | 248 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0 | 6 | 1 |  |
+| `cell::invcell` | Memory and ownership | high | 168 | 5 | 5 | 4 | 1 | 0 | 0 | 0/0 | 4 | 0 |  |
+| `cell::pcell` | Memory and ownership | high | 237 | 7 | 7 | 7 | 0 | 0 | 0 | 0/0 | 3 | 1 | yes |
+| `cell::pcell_maybe_uninit` | Memory and ownership | high | 248 | 10 | 10 | 10 | 0 | 0 | 0 | 0/0 | 6 | 1 |  |
 | `simple_pptr` | Memory and ownership | high | 600 | 15 | 14 | 13 | 1 | 0 | 0 | 0/0 | 9 | 4 | yes |
 | `atomic` | Concurrency and prophecy | high | 660 | 3 | 3 | 3 | 0 | 0 | 0 | 0/0 | 11 | 0 | yes |
 | `invariant` | Concurrency and prophecy | high | 651 | 5 | 5 | 0 | 0 | 5 | 0 | 0/0 | 4 | 3 | yes |
@@ -380,7 +390,7 @@ python vstd-survey/scan_vstd.py \
 | `resource::pcm` | Resources and protocols | specialized | 309 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0 | 3 | 17 | yes |
 | `resource::relations` | Resources and protocols | specialized | 99 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0 | 7 | 3 |  |
 | `resource::storage_protocol` | Resources and protocols | specialized | 379 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0 | 13 | 20 | yes |
-| `tokens` | Resources and protocols | specialized | 851 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0 | 42 | 43 |  |
+| `tokens` | Resources and protocols | specialized | 851 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0 | 42 | 43 | yes |
 | `contrib` | Experimental exec-spec | support | 4 | 0 | 0 | 0 | 0 | 0 | 0 | 0/0 | 0 | 0 |  |
 | `contrib::exec_spec` | Experimental exec-spec | support | 207 | 0 | 0 | 0 | 0 | 0 | 6 | 0/0 | 0 | 0 |  |
 | `contrib::exec_spec::map` | Experimental exec-spec | support | 266 | 11 | 0 | 0 | 0 | 0 | 6 | 0/0 | 0 | 0 | yes |
@@ -401,6 +411,34 @@ python vstd-survey/scan_vstd.py \
 This list includes every source-level exec definition and signature found by the scanner.
 `definition` has a function body; `signature` is a trait/declaration-only item.
 
+### `std_specs::cmp`
+
+- Definitions: 0
+- Signature-only declarations: 11
+
+| Line | Kind | Function | Context | Visibility | Contract | Flags |
+|---:|---|---|---|---|---|---|
+| 19 | signature | `eq` | `trait ExPartialEq` | public | post (ensures) |  |
+| 23 | signature | `ne` | `trait ExPartialEq` | public | post (ensures+default_ensures) |  |
+| 49 | signature | `partial_cmp` | `trait ExPartialOrd` | public | post (ensures) |  |
+| 53 | signature | `lt` | `trait ExPartialOrd` | public | post (ensures+default_ensures) |  |
+| 65 | signature | `le` | `trait ExPartialOrd` | public | post (ensures+default_ensures) |  |
+| 83 | signature | `gt` | `trait ExPartialOrd` | public | post (ensures+default_ensures) |  |
+| 95 | signature | `ge` | `trait ExPartialOrd` | public | post (ensures+default_ensures) |  |
+| 123 | signature | `cmp` | `trait ExOrd` | public | post (ensures) |  |
+| 127 | signature | `max` | `trait ExOrd` | public | post (ensures+default_ensures) |  |
+| 143 | signature | `min` | `trait ExOrd` | public | post (ensures+default_ensures) |  |
+| 159 | signature | `clamp` | `trait ExOrd` | public | post (ensures+default_ensures) |  |
+### `std_specs::iter`
+
+- Definitions: 0
+- Signature-only declarations: 3
+
+| Line | Kind | Function | Context | Visibility | Contract | Flags |
+|---:|---|---|---|---|---|---|
+| 37 | signature | `next` | `free` | private | post (ensures+returns) |  |
+| 81 | signature | `rev` | `free` | private | post (default_ensures) |  |
+| 88 | signature | `collect` | `free` | private | post (default_ensures) |  |
 ### `std_specs::range`
 
 - Definitions: 0
@@ -410,6 +448,15 @@ This list includes every source-level exec definition and signature found by the
 |---:|---|---|---|---|---|---|
 | 396 | signature | `start_bound` | `trait ExRangeBounds` | public | no-contract |  |
 | 398 | signature | `end_bound` | `trait ExRangeBounds` | public | no-contract |  |
+### `std_specs::vec`
+
+- Definitions: 2
+- Signature-only declarations: 0
+
+| Line | Kind | Function | Context | Visibility | Contract | Flags |
+|---:|---|---|---|---|---|---|
+| 53 | definition | `vec_index` | `free` | public | post (ensures) |  |
+| 67 | definition | `vec_index_mut` | `free` | public | post (ensures) |  |
 ### `std_specs::clone`
 
 - Definitions: 0
@@ -437,6 +484,17 @@ This list includes every source-level exec definition and signature found by the
 | Line | Kind | Function | Context | Visibility | Contract | Flags |
 |---:|---|---|---|---|---|---|
 | 10 | signature | `default` | `trait ExDefault` | public | no-contract |  |
+### `std_specs::core`
+
+- Definitions: 1
+- Signature-only declarations: 3
+
+| Line | Kind | Function | Context | Visibility | Contract | Flags |
+|---:|---|---|---|---|---|---|
+| 36 | signature | `deref` | `trait ExDeref` | public | no-contract |  |
+| 43 | signature | `deref_mut` | `trait ExDerefMut` | public | no-contract |  |
+| 55 | signature | `index` | `trait ExIndex` | public | requires-only |  |
+| 205 | definition | `index_set` | `free` | public | post (ensures) | external_body |
 ### `array`
 
 - Definitions: 5
@@ -624,6 +682,49 @@ This list includes every source-level exec definition and signature found by the
 | 344 | definition | `new` | `impl<T> InvCell<T>` | public | post (ensures) |  |
 | 359 | definition | `replace` | `impl<T> InvCell<T>` | public | post (ensures) |  |
 | 378 | definition | `get` | `impl<T: Copy> InvCell<T>` | public | post (ensures) |  |
+### `cell::invcell`
+
+- Definitions: 5
+- Signature-only declarations: 0
+
+| Line | Kind | Function | Context | Visibility | Contract | Flags |
+|---:|---|---|---|---|---|---|
+| 105 | definition | `new` | `impl<T, Pred: Predicate<T>> InvCell<T, Pred>` | public | post (ensures) |  |
+| 116 | definition | `set` | `impl<T, Pred: Predicate<T>> InvCell<T, Pred>` | public | requires-only |  |
+| 123 | definition | `replace` | `impl<T, Pred: Predicate<T>> InvCell<T, Pred>` | public | post (ensures) |  |
+| 139 | definition | `get` | `impl<T, Pred: Predicate<T>> InvCell<T, Pred>` | public | post (ensures) |  |
+| 155 | definition | `into_inner` | `impl<T, Pred: Predicate<T>> InvCell<T, Pred>` | public | post (ensures) |  |
+### `cell::pcell`
+
+- Definitions: 7
+- Signature-only declarations: 0
+
+| Line | Kind | Function | Context | Visibility | Contract | Flags |
+|---:|---|---|---|---|---|---|
+| 132 | definition | `new` | `impl<T: ?Sized> PCell<T>` | public | post (ensures) | external_body |
+| 145 | definition | `borrow` | `impl<T: ?Sized> PCell<T>` | public | post (ensures) | external_body |
+| 159 | definition | `borrow_mut` | `impl<T: ?Sized> PCell<T>` | public | post (ensures) | external_body |
+| 175 | definition | `into_inner` | `impl<T: ?Sized> PCell<T>` | public | post (ensures) | external_body |
+| 193 | definition | `replace` | `impl<T: ?Sized> PCell<T>` | public | post (ensures) | external_body |
+| 210 | definition | `write` | `impl<T: ?Sized> PCell<T>` | public | post (ensures) |  |
+| 224 | definition | `read` | `impl<T: ?Sized> PCell<T>` | public | post (returns) |  |
+### `cell::pcell_maybe_uninit`
+
+- Definitions: 10
+- Signature-only declarations: 0
+
+| Line | Kind | Function | Context | Visibility | Contract | Flags |
+|---:|---|---|---|---|---|---|
+| 107 | definition | `empty` | `impl<V> PCell<V>` | public | post (ensures) |  |
+| 117 | definition | `new` | `impl<V> PCell<V>` | public | post (ensures) |  |
+| 127 | definition | `put` | `impl<V> PCell<V>` | public | post (ensures) |  |
+| 141 | definition | `take` | `impl<V> PCell<V>` | public | post (ensures) |  |
+| 158 | definition | `replace` | `impl<V> PCell<V>` | public | post (ensures) |  |
+| 175 | definition | `borrow` | `impl<V> PCell<V>` | public | post (ensures) |  |
+| 190 | definition | `borrow_mut` | `impl<V> PCell<V>` | public | post (ensures) |  |
+| 207 | definition | `into_inner` | `impl<V> PCell<V>` | public | post (ensures) |  |
+| 221 | definition | `write` | `impl<V> PCell<V>` | public | post (ensures) |  |
+| 234 | definition | `read` | `impl<V> PCell<V>` | public | post (returns) |  |
 ### `simple_pptr`
 
 - Definitions: 15

@@ -1,0 +1,268 @@
+Revise a proposed Verus postcondition after determinism-checking feedback.
+
+Target: contrib::exec_spec::set:get_ref@18
+
+Previous proposal:
+```json
+{
+  "decision": "add_spec",
+  "ensures": [
+    "res.deep_view() == self.deep_view()"
+  ],
+  "useful": true,
+  "rationale": "Matches the ToRef trait contract: the reference returned must present the same deep view as the receiver. This is the strongest sound postcondition expressible with existing vstd vocabulary without exposing pointers or internal mutability.",
+  "risks": [
+    "Soundness depends on correctness of K::deep_view (e.g., no collisions or nondeterminism in deep views).",
+    "Does not express aliasing/pointer-equality or rules about mutation of the underlying HashSet; hidden interior mutability could violate intuitive identity properties.",
+    "If DeepView semantics are implementation-dependent, the postcondition may be too weak to capture some intended invariants (but remains sound)."
+  ]
+}
+```
+
+Checker result:
+```json
+{
+  "status": "verus_error",
+  "requires": [],
+  "ensures": [
+    "res.deep_view() == self.deep_view()"
+  ],
+  "equal_fn_trivial": false,
+  "stderr_tail": "                                      ^^^^^^^^^^^^^ not found in this scope\n   |\nhelp: consider importing this trait\n   |\n 3 + use vstd::contrib::exec_spec::DeepViewClone;\n   |\n\nerror[E0425]: cannot find type `HashSet` in this scope\n  --> vstd-survey/experiments/llm-missing-spec-gpt5mini-2026-07-20/targets/contrib__exec_spec__set__get_ref__L18/round_00/artifacts/contrib__exec_spec__set__get_ref__L18/harness.rs:14:118\n   |\n14 | ...sh + std::cmp::Eq>(g_neq_tuple: bool, self_: &'a HashSet<K>, r1: &HashSet<K>, r2: &HashSet<K>)\n   |                                                     ^^^^^^^ not found in this scope\n   |\nhelp: consider importing this struct\n   |\n 3 + use std::collections::HashSet;\n   |\n\nerror[E0425]: cannot find type `HashSet` in this scope\n  --> vstd-survey/experiments/llm-missing-spec-gpt5mini-2026-07-20/targets/contrib__exec_spec__set__get_ref__L18/round_00/artifacts/contrib__exec_spec__set__get_ref__L18/harness.rs:14:135\n   |\n14 | ...>(g_neq_tuple: bool, self_: &'a HashSet<K>, r1: &HashSet<K>, r2: &HashSet<K>)\n   |                                                     ^^^^^^^ not found in this scope\n   |\nhelp: consider importing this struct\n   |\n 3 + use std::collections::HashSet;\n   |\n\nerror[E0425]: cannot find type `HashSet` in this scope\n  --> vstd-survey/experiments/llm-missing-spec-gpt5mini-2026-07-20/targets/contrib__exec_spec__set__get_ref__L18/round_00/artifacts/contrib__exec_spec__set__get_ref__L18/harness.rs:14:152\n   |\n14 | ...ol, self_: &'a HashSet<K>, r1: &HashSet<K>, r2: &HashSet<K>)\n   |                                                     ^^^^^^^ not found in this scope\n   |\nhelp: consider importing this struct\n   |\n 3 + use std::collections::HashSet;\n   |\n\nerror[E0425]: cannot find value `res` in this scope\n  --> vstd-survey/experiments/llm-missing-spec-gpt5mini-2026-07-20/targets/contrib__exec_spec__set__get_ref__L18/round_00/artifacts/contrib__exec_spec__set__get_ref__L18/harness.rs:17:18\n   |\n17 |             &&& (res.deep_view() == self_.deep_view())\n   |                  ^^^ not found in this scope\n\nerror[E0425]: cannot find value `res` in this scope\n  --> vstd-survey/experiments/llm-missing-spec-gpt5mini-2026-07-20/targets/contrib__exec_spec__set__get_ref__L18/round_00/artifacts/contrib__exec_spec__set__get_ref__L18/harness.rs:18:18\n   |\n18 |             &&& (res.deep_view() == self_.deep_view())\n   |                  ^^^ not found in this scope\n\nerror[E0603]: module `set` is private\n --> vstd-survey/experiments/llm-missing-spec-gpt5mini-2026-07-20/targets/contrib__exec_spec__set__get_ref__L18/round_00/artifacts/contrib__exec_spec__set__get_ref__L18/harness.rs:4:31\n  |\n4 | use vstd::contrib::exec_spec::set::*;\n  |                               ^^^ private module\n  |\nnote: the module `set` is defined here\n --> vstd/contrib/exec_spec/mod.rs:21:0\n\nerror: aborting due to 10 previous errors\n\nSome errors have detailed explanations: E0405, E0425, E0603.\nFor more information about an error, try `rustc --explain E0405`.\n"
+}
+```
+
+Anti-vacuity/semantic issues:
+```json
+[
+  "already_specified_via_trait",
+  "checker_status:verus_error"
+]
+```
+
+Relevant source:
+```rust
+   1: //! This module contains [`Set`]-specific method implementations.
+   2: use crate::contrib::exec_spec::*;
+   3: use crate::prelude::*;
+   4: use std::collections::HashSet;
+   5: 
+   6: verus! {
+   7: 
+   8: // Note: many of the exec translations are currently unverified, even though the exec functions have specs in vstd.
+   9: // This is because HashSet<K>::deep_view() is quite hard to work with.
+  10: // E.g., the correctness of the translations requires reasoning that K::deep_view does not create collisions.
+  11: broadcast use {crate::group_vstd_default, crate::std_specs::hash::group_hash_axioms};
+  12: 
+  13: /// Impls for shared traits
+  14: impl<'a, K: DeepView + DeepViewClone + std::hash::Hash + std::cmp::Eq> ToRef<
+  15:     &'a HashSet<K>,
+  16: > for &'a HashSet<K> {
+  17:     #[inline(always)]
+  18:     fn get_ref(self) -> &'a HashSet<K> {
+  19:         &self
+  20:     }
+  21: }
+  22: 
+  23: impl<'a, K: DeepView + DeepViewClone + std::hash::Hash + std::cmp::Eq> ToOwned<
+  24:     HashSet<K>,
+  25: > for &'a HashSet<K> {
+  26:     #[verifier::external_body]
+  27:     #[inline(always)]
+  28:     fn get_owned(self) -> HashSet<K> {
+  29:         let mut new_set = HashSet::new();
+  30:         for k in self.iter() {
+  31:             new_set.insert(k.deep_clone());
+  32:         }
+  33:         new_set
+  34:     }
+  35: }
+  36: 
+  37: impl<K: DeepView + DeepViewClone + std::hash::Hash + std::cmp::Eq> DeepViewClone for HashSet<K> {
+  38:     #[verifier::external_body]
+  39:     #[inline(always)]
+  40:     fn deep_clone(&self) -> Self {
+  41:         let mut new_set = HashSet::new();
+  42:         for k in self.iter() {
+  43:             new_set.insert(k.deep_clone());
+  44:         }
+  45:         new_set
+  46:     }
+  47: }
+  48: 
+  49: impl<'a, K: DeepView + DeepViewClone + std::hash::Hash + std::cmp::Eq> ExecSpecEq<
+  50:     'a,
+  51: > for &'a HashSet<K> where &'a K: ExecSpecEq<'a, Other = &'a K> {
+  52:     type Other = &'a HashSet<K>;
+  53: 
+  54:     #[verifier::external_body]
+  55:     #[inline(always)]
+  56:     fn exec_eq(this: Self, other: Self::Other) -> bool {
+  57:         if this.len() != other.len() {
+  58:             return false;
+  59:         }
+  60:         for k in this.iter() {
+  61:             if !other.contains(k) {
+  62:                 return false;
+  63:             }
+  64:         }
+  65:         true
+  66:     }
+  67: }
+  68: 
+  69: impl<'a, K: DeepView + DeepViewClone + std::hash::Hash + std::cmp::Eq> ExecSpecLen for &'a HashSet<
+  70:     K,
+  71: > {
+  72:     #[inline(always)]
+  73:     #[verifier::external_body]
+  74:     fn exec_len(self) -> (res: usize)
+  75:         ensures
+  76:             res == self.deep_view().len(),
+  77:     {
+  78:         self.len()
+  79:     }
+  80: }
+  81: 
+  82: /// Traits for Set methods
+  83: /// Spec for executable version of [`Set::empty`].
+  84: pub trait ExecSpecSetEmpty: Sized {
+  85:     fn exec_empty() -> Self;
+  86: }
+  87: 
+  88: /// Spec for executable version of [`Set::contains`].
+  89: pub trait ExecSpecSetContains<'a>: Sized + DeepView {
+  90:     type Elem: DeepView;
+  91: 
+  92:     fn exec_contains(self, a: Self::Elem) -> bool;
+  93: }
+  94: 
+  95: /// Spec for executable version of [`Set::insert`].
+  96: pub trait ExecSpecSetInsert<'a, Out: Sized + DeepView>: Sized + DeepView + ToOwned<Out> {
+  97:     type Elem: DeepView + DeepViewClone;
+  98: 
+  99:     fn exec_insert(self, a: Self::Elem) -> Out;
+ 100: }
+ 101: 
+ 102: /// Spec for executable version of [`Set::remove`].
+ 103: pub trait ExecSpecSetRemove<'a, Out: Sized + DeepView>: Sized + DeepView + ToOwned<Out> {
+ 104:     type Elem: DeepView + DeepViewClone;
+ 105: 
+ 106:     fn exec_remove(self, a: Self::Elem) -> Out;
+ 107: }
+ 108: 
+
+// Shared trait declarations:
+T001: //! This module provides runtime utilities for the compiled
+T002: //! executable code of [`verus_builtin_macros::exec_spec_verified`]
+T003: //! and [`verus_builtin_macros::exec_spec_unverified`].
+T004: #![cfg(all(feature = "alloc", feature = "std"))]
+T005: 
+T006: use crate::multiset::*;
+T007: use crate::prelude::*;
+T008: use std::collections::HashMap;
+T009: use std::collections::HashSet;
+T010: pub use verus_builtin_macros::exec_spec_unverified;
+T011: pub use verus_builtin_macros::exec_spec_verified;
+T012: 
+T013: mod map;
+T014: pub use map::*;
+T015: mod multiset;
+T016: pub use multiset::*;
+T017: mod option;
+T018: pub use option::*;
+T019: mod seq;
+T020: pub use seq::*;
+T021: mod set;
+T022: pub use set::*;
+T023: mod string;
+T024: pub use string::*;
+T025: 
+T026: verus! {
+T027: 
+T028: /// [`ToRef`] and [`ToOwned`] are almost the same trait
+T029: /// but separated to avoid type inference ambiguities.
+T030: pub trait ToRef<T: Sized + DeepView>: Sized + DeepView<V = T::V> {
+T031:     fn get_ref(self) -> (res: T)
+T032:         ensures
+T033:             res.deep_view() == self.deep_view(),
+T034:     ;
+T035: }
+T036: 
+T037: pub trait ToOwned<T: Sized + DeepView>: Sized + DeepView<V = T::V> {
+T038:     fn get_owned(self) -> (res: T)
+T039:         ensures
+T040:             res.deep_view() == self.deep_view(),
+T041:     ;
+T042: }
+T043: 
+T044: /// Cloned objects have the same deep view
+T045: pub trait DeepViewClone: Sized + DeepView {
+T046:     fn deep_clone(&self) -> (res: Self)
+T047:         ensures
+T048:             res.deep_view() == self.deep_view(),
+T049:     ;
+T050: }
+T051: 
+T052: /// Any spec types used in [`exec_spec_verified`] or [`exec_spec_unverified`] macros
+T053: /// must implement this trait to indicate
+T054: /// the corresponding exec type (owned and borrowed versions).
+T055: pub trait ExecSpecType where
+T056:     for <'a>&'a Self::ExecOwnedType: ToRef<Self::ExecRefType<'a>>,
+T057:     for <'a>Self::ExecRefType<'a>: ToOwned<Self::ExecOwnedType>,
+T058:  {
+T059:     /// Owned version of the exec type.
+T060:     type ExecOwnedType: DeepView<V = Self>;
+T061: 
+T062:     /// Reference version of the exec type.
+T063:     type ExecRefType<'a>: DeepView<V = Self>;
+T064: }
+T065: 
+T066: /// Spec for the executable version of equality.
+T067: pub trait ExecSpecEq<'a>: DeepView + Sized {
+T068:     type Other: DeepView<V = Self::V>;
+T069: 
+T070:     fn exec_eq(this: Self, other: Self::Other) -> (res: bool)
+T071:         ensures
+T072:             res == (this.deep_view() =~~= other.deep_view()),
+T073:     ;
+T074: }
+T075: 
+T076: /// Spec for executable version of [`Seq`] and [`str`] indexing.
+T077: pub trait ExecSpecIndex<'a>: Sized + DeepView<V = Seq<<Self::Elem as DeepView>::V>> {
+T078:     type Elem: DeepView;
+T079: 
+T080:     fn exec_index(self, index: usize) -> Self::Elem
+T081:         requires
+T082:             0 <= index < self.deep_view().len(),
+T083:     ;
+T084: }
+T085: 
+T086: /// Spec for executable version of `len`.
+T087: pub trait ExecSpecLen {
+T088:     fn exec_len(self) -> usize;
+T089: }
+T090: 
+T091: /// A macro to implement various traits for primitive arithmetic types.
+T092: macro_rules! impl_primitives {
+T093:     ($(,)?) => {};
+T094:     ($t:ty $(,$rest:ty)* $(,)?) => {
+T095:         verus! {
+T096:             impl ExecSpecType for $t {
+T097:                 type ExecOwnedType = $t;
+T098:                 type ExecRefType<'a> = $t;
+T099:             }
+T100: 
+```
+
+Return JSON only with the same schema:
+{
+  "decision": "add_spec" | "skip",
+  "ensures": ["..."],
+  "useful": true | false,
+  "rationale": "...",
+  "risks": ["..."]
+}
+
+Do not optimize for `R0 = unsat` by returning a redundant, vacuous, false-domain,
+unit-output, or semantically unusable specification. Choose `skip` if no useful
+postcondition can be expressed.

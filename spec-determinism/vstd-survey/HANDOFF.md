@@ -12,10 +12,16 @@ The current work has:
 1. inventoried the visible vstd module/spec surface;
 2. built a vstd-specific runner on top of the existing spec-determinism code;
 3. added source-line-qualified extraction for same-named impl methods;
-4. run determinism checks over 111 AST-visible public exec definitions with
-   explicit postconditions in a matching Verus/vstd snapshot;
+4. run determinism checks over the original 111 AST-visible public exec
+   definitions with explicit postconditions in a matching Verus/vstd snapshot;
 5. manually audited the original 27 `R0 = unknown` results;
 6. fixed several general equal-fn/view-generation bugs found by the experiment.
+7. normalized `verus_!` aliases in the scanner, exposing 26 additional public
+   postcondition targets in the matching snapshot;
+8. audited all 44 exec definitions with no local postcondition and ran guarded
+   determinism-reward negative controls.
+9. ran `gpt-5-mini` over all 44 targets with one feedback round; the model
+   moved from 29 to 4 `add_spec` decisions, with zero raw or guarded reward.
 
 The current effective experiment result is:
 
@@ -36,12 +42,14 @@ The 20 remaining unknowns are semantically audited:
 | Genuine semantic underconstraint | 4 |
 | Unresolved | 0 |
 
-**Critical scope warning:** the 111 targets are not the complete vstd exec
-surface. The current scanner does not enter `verus_! { ... }` alias macro
-blocks. This omits, among other things, the non-deprecated
-`vstd::cell::invcell`, `cell::pcell`, and `cell::pcell_maybe_uninit` modules.
+**Critical scope warning:** the scanner now sees `verus_! { ... }` aliases, but
+the 111-target determinism experiment predates that fix. The matching snapshot
+now contains 137 visible public exec definitions with postconditions, so 26
+newly visible targets remain untested. These include the non-deprecated
+`vstd::cell::invcell`, `cell::pcell`, and `cell::pcell_maybe_uninit` APIs.
 The deprecated `vstd::cell::InvCell` was tested; the replacement
-`vstd::cell::invcell::InvCell` was not.
+`vstd::cell::invcell::InvCell` has only been included in the no-post audit so
+far.
 
 ## 2. Repository and environment
 
@@ -167,6 +175,8 @@ vstd-survey/
 ├── README.md                          # inventory/big-picture report
 ├── scan_vstd.py                       # source-level inventory scanner
 ├── run_determinism.py                 # vstd experiment runner
+├── run_missing_spec_reward.py         # no-post audit/reward experiment
+├── run_llm_missing_spec_feedback.py   # LLM generation + feedback loop
 ├── generated/
 │   ├── inventory.json                 # full current-upstream inventory
 │   ├── modules.csv                    # one row per visible module
@@ -175,10 +185,17 @@ vstd-survey/
 └── experiments/
     ├── REVIEW-2026-07-14.md           # combined experiment review
     ├── UNKNOWN-AUDIT-2026-07-15.md    # semantic audit of original 27 unknowns
+    ├── MISSING-SPEC-REWARD-2026-07-20.md # no-post reward conclusion
+    ├── LLM-MISSING-SPEC-FEEDBACK-2026-07-20.md # gpt-5-mini batch review
+    ├── LLM-MISSING-SPEC-MODEL-COMPARISON-2026-07-20.md # model comparison
+    ├── SPECGEN-EXPERIMENT-RESULTS-2026-07-21.md # consolidated examples/results
     ├── pilot-2026-07-14/              # initial array/bytes pilot
     ├── public-free-2026-07-14/        # 34 public free definitions
     ├── raw-pointer-strict-2026-07-14/ # strict equality rerun for 6 pointer APIs
-    └── impl-methods-2026-07-14/       # 77 line-qualified impl methods
+    ├── impl-methods-2026-07-14/       # 77 line-qualified impl methods
+    ├── missing-spec-reward-2026-07-20/# 44 no-post definitions
+    ├── llm-missing-spec-gpt5mini-2026-07-20/ # gpt-5-mini loop
+    └── llm-missing-spec-gpt56sol-2026-07-20/ # gpt-5.6-sol loop
 ```
 
 Primary reading order:
@@ -187,7 +204,11 @@ Primary reading order:
 2. [README.md](README.md) for the module inventory and broad vstd structure;
 3. [experiment review](experiments/REVIEW-2026-07-14.md);
 4. [27-unknown audit](experiments/UNKNOWN-AUDIT-2026-07-15.md);
-5. per-run `SUMMARY.md` and per-target artifacts.
+5. [no-post reward review](experiments/MISSING-SPEC-REWARD-2026-07-20.md);
+6. [LLM feedback review](experiments/LLM-MISSING-SPEC-FEEDBACK-2026-07-20.md);
+7. [model comparison](experiments/LLM-MISSING-SPEC-MODEL-COMPARISON-2026-07-20.md);
+8. [consolidated generated-spec examples](experiments/SPECGEN-EXPERIMENT-RESULTS-2026-07-21.md);
+9. per-run `SUMMARY.md` and per-target artifacts.
 
 ## 5. Inventory methodology
 
@@ -213,12 +234,13 @@ The current-upstream report at `cf3b5c3` contains:
 ```text
 125 visible modules (build.rs excluded)
 52,715 source lines
-3,367 specification-related declaration sites
-515 contract sites
-286 visible exec declarations
-220 visible exec definitions with bodies
-126 visible public exec definitions
-111 visible public exec definitions with postconditions
+3,405 specification-related declaration sites
+553 contract sites
+328 visible exec declarations
+245 visible exec definitions with bodies
+151 visible public exec definitions
+135 visible public exec definitions with postconditions
+16 visible public exec definitions without postconditions
 ```
 
 These are **source declaration-site** counts:
@@ -239,10 +261,10 @@ The scanner uses `tree-sitter-verus` for functions and a lexical fallback for:
 It writes JSON/CSV and updates the generated section of
 [README.md](README.md) between marker comments.
 
-### Known inventory gap: `verus_!`
+### `verus_!` alias normalization
 
-The parser recognizes normal `verus! { ... }` blocks but does not parse
-functions inside aliases such as:
+The parser recognizes normal `verus! { ... }` blocks but does not directly
+parse functions inside aliases such as:
 
 ```rust
 use verus as verus_;
@@ -251,8 +273,9 @@ verus_! {
 }
 ```
 
-In the matching May snapshot, files with apparent exec functions but zero
-scanned exec bodies include:
+`scan_vstd.py` now normalizes `verus_!` to `verus!` in an in-memory parse copy,
+preserving source line numbers and leaving source files unchanged. This adds
+coverage for:
 
 ```text
 cell/invcell.rs
@@ -264,12 +287,12 @@ std_specs/iter.rs
 std_specs/vec.rs
 ```
 
-Other alias files also exist (`map.rs`, `tokens.rs`, `std_specs/slice.rs`,
-`std_specs/maybe_uninit.rs`, etc.). Therefore:
+Other normalized alias files include `map.rs`, `tokens.rs`,
+`std_specs/slice.rs`, and `std_specs/maybe_uninit.rs`.
 
-- the module table remains useful for broad structure;
-- the 111-target experiment is an AST-visible subset;
-- claims such as “all public vstd exec functions” must not be made.
+The remaining source-level inventory limitation is macro expansion:
+`macro_rules!` templates count once and generated concrete items/types/views are
+not enumerated.
 
 Concrete example:
 
@@ -285,7 +308,8 @@ Both versions use the same weak `replace`/`get` result contract:
 ensures self.inv(result)
 ```
 
-but only the deprecated version appears in the current experiment target set.
+The alias-aware inventory now sees both versions, but only the deprecated
+version appears in the historical 111-target determinism run.
 
 ## 6. Experiment runner architecture
 
@@ -312,6 +336,25 @@ Targets use:
 ```text
 module:function@source_line
 ```
+
+This is a **source-location identifier**, not necessarily a public Rust API
+path. Private implementation modules are included in the identifier.
+
+For example:
+
+```text
+source target id:
+  contrib::exec_spec::map:get_ref@24
+
+public trait method:
+  vstd::contrib::exec_spec::ToRef::get_ref
+
+concrete impl:
+  <&HashMap<K,V> as ToRef<&HashMap<K,V>>>::get_ref
+```
+
+`contrib::exec_spec::map` is private (`mod map; pub use map::*;`), so a public
+rustdoc page named `vstd::contrib::exec_spec::map::get_ref` is not expected.
 
 Examples:
 
@@ -420,11 +463,15 @@ by symbol/test, not by assuming every diff hunk was introduced by this work.
 
 ## 8. Experiment corpus
 
-The matching May inventory selected 111 visible public exec definitions with
-explicit postconditions:
+The historical matching-May experiment selected 111 public exec definitions
+with explicit postconditions before alias normalization:
 
 - 34 free functions;
 - 77 impl methods.
+
+After alias normalization, the same snapshot contains 137 visible public exec
+definitions with postconditions. The additional 26 targets have not yet been
+run through the full determinism experiment.
 
 Selection criteria are read from the matching snapshot's generated
 `exec_functions.csv`:
@@ -493,6 +540,90 @@ final summary.
 
 “0 R0=sat” does not mean there is no incompleteness. Manual semantic audit
 identified intentional and genuine underconstraint among solver-unknown cases.
+
+### No-post reward experiment
+
+Directory:
+
+[missing-spec-reward-2026-07-20](experiments/missing-spec-reward-2026-07-20/)
+
+The alias-aware matching snapshot contains 44 exec definitions without a local
+postcondition:
+
+```text
+26 already inherit a trait contract
+10 are compiler/runtime plumbing
+ 8 use linear resources, hidden state, prophecy, or mode-incompatible APIs
+```
+
+Therefore the effective no-spec set is 18, not 44. The 26 trait impls must be
+excluded from missing-spec generation.
+
+The alias normalization added exactly one newly visible public no-post method:
+
+```text
+vstd::cell::invcell::InvCell::set
+```
+
+Five diagnostic candidates were checked:
+
+```text
+InvCell::set          ensures self.inv(val)
+unreached             ensures false
+runtime_assert        ensures b
+IsThread::clone x2    ensures result@ == self@
+```
+
+Result:
+
+```text
+raw determinism reward: 3
+guarded reward:         0
+```
+
+The three positive raw rewards are redundant or vacuous:
+
+- `InvCell::set` mirrors its requires clause and returns unit;
+- `unreached` has `requires false`;
+- `runtime_assert` mirrors its requires clause and returns unit.
+
+This demonstrates that determinism alone is not a valid reward for no-output,
+false-precondition, hidden-state, or linear-resource functions. No generated
+postcondition is recommended for upstream vstd from this batch.
+
+### LLM generation + feedback batch
+
+Directory:
+
+[llm-missing-spec-gpt5mini-2026-07-20](experiments/llm-missing-spec-gpt5mini-2026-07-20/)
+
+`gpt-5-mini` independently generated candidates for all 44 targets and received
+one round of checker and anti-vacuity feedback:
+
+```text
+initial: 29 add_spec, 15 skip
+final:    4 add_spec, 40 skip
+raw reward:     0
+guarded reward: 0
+```
+
+Feedback removed all 26 duplicate trait contracts. The four remaining
+`add_spec` decisions were still unusable: private invariant, natural-language
+non-Verus text, or tracked/exec-mode-incompatible Clone contracts. See
+[LLM-MISSING-SPEC-FEEDBACK-2026-07-20.md](experiments/LLM-MISSING-SPEC-FEEDBACK-2026-07-20.md).
+
+The same batch was rerun with `gpt-5.6-sol`:
+
+```text
+initial:  5 add_spec, 39 skip
+final:    5 add_spec, 39 skip
+raw reward:     0
+guarded reward: 0
+```
+
+`gpt-5.6-sol` was much more conservative initially, but feedback caused five
+correct skips to regress into redundant trait specs. See
+[LLM-MISSING-SPEC-MODEL-COMPARISON-2026-07-20.md](experiments/LLM-MISSING-SPEC-MODEL-COMPARISON-2026-07-20.md).
 
 ## 9. Original 27-unknown audit
 
@@ -624,7 +755,8 @@ python vstd-survey/scan_vstd.py \
   --out-dir vstd-survey/generated
 ```
 
-Remember that this regenerates the partial, alias-blind inventory.
+This regenerates the alias-aware source-level inventory. Macro-expanded
+concrete items remain outside the count.
 
 ### Matching May inventory for experiment selection
 
@@ -676,6 +808,34 @@ python vstd-survey/run_determinism.py \
   --rlimit 60
 ```
 
+### All no-post definitions and guarded reward
+
+```bash
+python vstd-survey/run_missing_spec_reward.py \
+  --inventory-csv vstd-survey/experiments/public-free-2026-07-14/inventory/exec_functions.csv \
+  --vstd-root /home/chentianyu/nanvix/toolchain/verus/vstd \
+  --verus-root /home/chentianyu/nanvix/toolchain/verus \
+  --out vstd-survey/experiments/missing-spec-reward-2026-07-20 \
+  --timeout 240 \
+  --rlimit 60
+```
+
+### LLM generation with one feedback round
+
+```bash
+python vstd-survey/run_llm_missing_spec_feedback.py \
+  --manifest vstd-survey/experiments/missing-spec-reward-2026-07-20/effective_manifest.json \
+  --vstd-root /home/chentianyu/nanvix/toolchain/verus/vstd \
+  --verus-root /home/chentianyu/nanvix/toolchain/verus \
+  --out vstd-survey/experiments/llm-missing-spec-gpt5mini-2026-07-20 \
+  --model gpt-5-mini \
+  --jobs 4 \
+  --feedback-rounds 1 \
+  --llm-timeout 600 \
+  --det-timeout 240 \
+  --rlimit 60
+```
+
 ### Strict raw-pointer equality
 
 Use `--compare-raw-pointers` for targets whose default equality is the trivial
@@ -695,8 +855,9 @@ python -m py_compile vstd-survey/scan_vstd.py vstd-survey/run_determinism.py
 
 ### Coverage
 
-1. `verus_!` alias blocks are not scanned.
-2. macro-expanded functions/types/views are not enumerated.
+1. macro-expanded functions/types/views are not enumerated.
+2. the 111-target determinism experiment predates alias normalization; 26 newly
+   visible public postcondition targets remain untested.
 3. `assume_specification` is inventoried lexically but not determinism-tested
    by this runner.
 4. signature-only external trait specs are not tested.
@@ -728,13 +889,10 @@ python -m py_compile vstd-survey/scan_vstd.py vstd-survey/run_determinism.py
 
 Priority order for the next owner:
 
-### P0 — fix target coverage
+### P0 — run the newly visible targets
 
-Teach the scanner/extractor to parse `verus_!` aliases or normalize them to
-`verus!` before parsing. Then regenerate both current and matching-snapshot
-inventories.
-
-At minimum, add coverage for:
+Use the alias-aware matching inventory to run the 26 public postcondition
+targets that were absent from the historical 111-target corpus, especially:
 
 ```text
 cell/invcell.rs
@@ -818,7 +976,8 @@ Before changing behavior:
 
 Before publishing numbers:
 
-1. state that current inventory misses `verus_!` alias blocks;
+1. state that the scanner normalizes `verus_!`, but the 111-target experiment
+   predates that fix and is not full coverage;
 2. state whether strict pointer equality is included;
 3. separate automatic R0 results from manual semantic audit;
 4. do not call `unknown` incomplete or complete;

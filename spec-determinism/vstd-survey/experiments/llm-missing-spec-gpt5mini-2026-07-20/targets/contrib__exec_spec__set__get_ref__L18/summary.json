@@ -1,0 +1,84 @@
+{
+  "target": "contrib::exec_spec::set:get_ref@18",
+  "semantic_disposition": "already_specified_via_trait",
+  "history": [
+    {
+      "round": 0,
+      "llm_ms": 34603,
+      "candidate": {
+        "decision": "add_spec",
+        "ensures": [
+          "res.deep_view() == self.deep_view()"
+        ],
+        "useful": true,
+        "rationale": "Matches the ToRef trait contract: the reference returned must present the same deep view as the receiver. This is the strongest sound postcondition expressible with existing vstd vocabulary without exposing pointers or internal mutability.",
+        "risks": [
+          "Soundness depends on correctness of K::deep_view (e.g., no collisions or nondeterminism in deep views).",
+          "Does not express aliasing/pointer-equality or rules about mutation of the underlying HashSet; hidden interior mutability could violate intuitive identity properties.",
+          "If DeepView semantics are implementation-dependent, the postcondition may be too weak to capture some intended invariants (but remains sound)."
+        ]
+      },
+      "checker": {
+        "status": "verus_error",
+        "requires": [],
+        "ensures": [
+          "res.deep_view() == self.deep_view()"
+        ],
+        "equal_fn_trivial": false,
+        "stderr_tail": "                                      ^^^^^^^^^^^^^ not found in this scope\n   |\nhelp: consider importing this trait\n   |\n 3 + use vstd::contrib::exec_spec::DeepViewClone;\n   |\n\nerror[E0425]: cannot find type `HashSet` in this scope\n  --> vstd-survey/experiments/llm-missing-spec-gpt5mini-2026-07-20/targets/contrib__exec_spec__set__get_ref__L18/round_00/artifacts/contrib__exec_spec__set__get_ref__L18/harness.rs:14:118\n   |\n14 | ...sh + std::cmp::Eq>(g_neq_tuple: bool, self_: &'a HashSet<K>, r1: &HashSet<K>, r2: &HashSet<K>)\n   |                                                     ^^^^^^^ not found in this scope\n   |\nhelp: consider importing this struct\n   |\n 3 + use std::collections::HashSet;\n   |\n\nerror[E0425]: cannot find type `HashSet` in this scope\n  --> vstd-survey/experiments/llm-missing-spec-gpt5mini-2026-07-20/targets/contrib__exec_spec__set__get_ref__L18/round_00/artifacts/contrib__exec_spec__set__get_ref__L18/harness.rs:14:135\n   |\n14 | ...>(g_neq_tuple: bool, self_: &'a HashSet<K>, r1: &HashSet<K>, r2: &HashSet<K>)\n   |                                                     ^^^^^^^ not found in this scope\n   |\nhelp: consider importing this struct\n   |\n 3 + use std::collections::HashSet;\n   |\n\nerror[E0425]: cannot find type `HashSet` in this scope\n  --> vstd-survey/experiments/llm-missing-spec-gpt5mini-2026-07-20/targets/contrib__exec_spec__set__get_ref__L18/round_00/artifacts/contrib__exec_spec__set__get_ref__L18/harness.rs:14:152\n   |\n14 | ...ol, self_: &'a HashSet<K>, r1: &HashSet<K>, r2: &HashSet<K>)\n   |                                                     ^^^^^^^ not found in this scope\n   |\nhelp: consider importing this struct\n   |\n 3 + use std::collections::HashSet;\n   |\n\nerror[E0425]: cannot find value `res` in this scope\n  --> vstd-survey/experiments/llm-missing-spec-gpt5mini-2026-07-20/targets/contrib__exec_spec__set__get_ref__L18/round_00/artifacts/contrib__exec_spec__set__get_ref__L18/harness.rs:17:18\n   |\n17 |             &&& (res.deep_view() == self_.deep_view())\n   |                  ^^^ not found in this scope\n\nerror[E0425]: cannot find value `res` in this scope\n  --> vstd-survey/experiments/llm-missing-spec-gpt5mini-2026-07-20/targets/contrib__exec_spec__set__get_ref__L18/round_00/artifacts/contrib__exec_spec__set__get_ref__L18/harness.rs:18:18\n   |\n18 |             &&& (res.deep_view() == self_.deep_view())\n   |                  ^^^ not found in this scope\n\nerror[E0603]: module `set` is private\n --> vstd-survey/experiments/llm-missing-spec-gpt5mini-2026-07-20/targets/contrib__exec_spec__set__get_ref__L18/round_00/artifacts/contrib__exec_spec__set__get_ref__L18/harness.rs:4:31\n  |\n4 | use vstd::contrib::exec_spec::set::*;\n  |                               ^^^ private module\n  |\nnote: the module `set` is defined here\n --> vstd/contrib/exec_spec/mod.rs:21:0\n\nerror: aborting due to 10 previous errors\n\nSome errors have detailed explanations: E0405, E0425, E0603.\nFor more information about an error, try `rustc --explain E0405`.\n"
+      },
+      "anti_vacuity_issues": [
+        "already_specified_via_trait",
+        "checker_status:verus_error"
+      ],
+      "raw_det_reward": 0,
+      "guarded_reward": 0
+    },
+    {
+      "round": 1,
+      "llm_ms": 17522,
+      "candidate": {
+        "decision": "skip",
+        "ensures": [],
+        "useful": false,
+        "rationale": "The ToRef trait (in contrib::exec_spec) already specifies ensures res.deep_view() == self.deep_view(). Adding the same postcondition on this impl is therefore redundant and triggers the already_specified_via_trait checker complaint and compilation errors. No stronger, non\u2011redundant postcondition is expressible with the current vstd vocabulary for this impl.",
+        "risks": [
+          "If the trait-level spec is later weakened or removed, revisiting this impl to add an explicit postcondition may be necessary.",
+          "The harness/compilation errors shown (missing imports, private module) are unrelated to the semantic intent of the postcondition and must be fixed separately if present."
+        ]
+      },
+      "checker": {
+        "status": "not_run"
+      },
+      "anti_vacuity_issues": [
+        "already_specified_via_trait",
+        "no_candidate_postcondition"
+      ],
+      "raw_det_reward": 0,
+      "guarded_reward": 0
+    }
+  ],
+  "final": {
+    "round": 1,
+    "llm_ms": 17522,
+    "candidate": {
+      "decision": "skip",
+      "ensures": [],
+      "useful": false,
+      "rationale": "The ToRef trait (in contrib::exec_spec) already specifies ensures res.deep_view() == self.deep_view(). Adding the same postcondition on this impl is therefore redundant and triggers the already_specified_via_trait checker complaint and compilation errors. No stronger, non\u2011redundant postcondition is expressible with the current vstd vocabulary for this impl.",
+      "risks": [
+        "If the trait-level spec is later weakened or removed, revisiting this impl to add an explicit postcondition may be necessary.",
+        "The harness/compilation errors shown (missing imports, private module) are unrelated to the semantic intent of the postcondition and must be fixed separately if present."
+      ]
+    },
+    "checker": {
+      "status": "not_run"
+    },
+    "anti_vacuity_issues": [
+      "already_specified_via_trait",
+      "no_candidate_postcondition"
+    ],
+    "raw_det_reward": 0,
+    "guarded_reward": 0
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "decision": "skip",
+  "ensures": [],
+  "useful": false,
+  "rationale": "The ExecSpecEq trait (lines 66–74) already specifies ensures: res == (this.deep_view() =~~= other.deep_view()). Adding the same postcondition on the impl is redundant and triggers \"already_specified_via_trait\" / verifier errors. Leave the impl without an ensures clause and rely on the trait contract.",
+  "risks": [
+    "The function is external_body: verifier will assume the trait postcondition holds for the impl; the runtime body must actually satisfy it or soundness is lost.",
+    "Potential nondeterminism or unsoundness if Hash/Eq used by HashMap at runtime disagrees with the semantic equality required by ExecSpecEq for K or V.",
+    "Hidden nondeterminism from HashMap iteration order is acceptable for =~~= but callers and DeepView/ExecSpecEq instances must be deterministic."
+  ]
+}
+

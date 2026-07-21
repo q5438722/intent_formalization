@@ -1,0 +1,87 @@
+{
+  "target": "contrib::exec_spec::option:deep_clone@24",
+  "semantic_disposition": "already_specified_via_trait",
+  "history": [
+    {
+      "round": 0,
+      "llm_ms": 27875,
+      "candidate": {
+        "decision": "add_spec",
+        "ensures": [
+          "res.deep_view() == self.deep_view()",
+          "res.is_some() == self.is_some()"
+        ],
+        "useful": true,
+        "rationale": "States that the cloned Option preserves its deep view (the important semantic invariant) and preserves presence/absence of a value. This matches the DeepViewClone contract and is the strongest concise, sound property expressible with vstd vocabulary here.",
+        "risks": [
+          "The second clause is redundant given the first (deep_view equality implies same Some/None), but is harmless and makes the structural guarantee explicit.",
+          "No additional hidden resource or linear-state properties are captured; if T had extra linear resources, those must be handled by T's DeepViewClone implementation."
+        ]
+      },
+      "checker": {
+        "status": "verus_error",
+        "requires": [],
+        "ensures": [
+          "res.deep_view() == self.deep_view()",
+          "res.is_some() == self.is_some()"
+        ],
+        "equal_fn_trivial": false,
+        "stderr_tail": "xec_spec__option__deep_clone__L24/round_00/artifacts/contrib__exec_spec__option__deep_clone__L24/harness.rs:10:33\n   |\n10 | spec fn det_deep_clone_equal<T: DeepViewClone>(r1: Option<T>, r2: Option<T>) -> bool {\n   |                                 ^^^^^^^^^^^^^ not found in this scope\n   |\nhelp: consider importing this trait\n   |\n 3 + use vstd::contrib::exec_spec::DeepViewClone;\n   |\n\nerror[E0405]: cannot find trait `DeepViewClone` in this scope\n  --> vstd-survey/experiments/llm-missing-spec-gpt5mini-2026-07-20/targets/contrib__exec_spec__option__deep_clone__L24/round_00/artifacts/contrib__exec_spec__option__deep_clone__L24/harness.rs:14:28\n   |\n14 | proof fn det_deep_clone<T: DeepViewClone>(g_neq_tuple: bool, self_: &Option<T>, r1: Option<T>, r2: Option<T>)\n   |                            ^^^^^^^^^^^^^ not found in this scope\n   |\nhelp: consider importing this trait\n   |\n 3 + use vstd::contrib::exec_spec::DeepViewClone;\n   |\n\nerror[E0425]: cannot find value `res` in this scope\n  --> vstd-survey/experiments/llm-missing-spec-gpt5mini-2026-07-20/targets/contrib__exec_spec__option__deep_clone__L24/round_00/artifacts/contrib__exec_spec__option__deep_clone__L24/harness.rs:17:18\n   |\n17 |             &&& (res.deep_view() == self_.deep_view())\n   |                  ^^^ not found in this scope\n\nerror[E0425]: cannot find value `res` in this scope\n  --> vstd-survey/experiments/llm-missing-spec-gpt5mini-2026-07-20/targets/contrib__exec_spec__option__deep_clone__L24/round_00/artifacts/contrib__exec_spec__option__deep_clone__L24/harness.rs:18:18\n   |\n18 |             &&& (res.is_some() == self_.is_some())\n   |                  ^^^ not found in this scope\n\nerror[E0425]: cannot find value `res` in this scope\n  --> vstd-survey/experiments/llm-missing-spec-gpt5mini-2026-07-20/targets/contrib__exec_spec__option__deep_clone__L24/round_00/artifacts/contrib__exec_spec__option__deep_clone__L24/harness.rs:19:18\n   |\n19 |             &&& (res.deep_view() == self_.deep_view())\n   |                  ^^^ not found in this scope\n\nerror[E0425]: cannot find value `res` in this scope\n  --> vstd-survey/experiments/llm-missing-spec-gpt5mini-2026-07-20/targets/contrib__exec_spec__option__deep_clone__L24/round_00/artifacts/contrib__exec_spec__option__deep_clone__L24/harness.rs:20:18\n   |\n20 |             &&& (res.is_some() == self_.is_some())\n   |                  ^^^ not found in this scope\n\nerror[E0603]: module `option` is private\n --> vstd-survey/experiments/llm-missing-spec-gpt5mini-2026-07-20/targets/contrib__exec_spec__option__deep_clone__L24/round_00/artifacts/contrib__exec_spec__option__deep_clone__L24/harness.rs:4:31\n  |\n4 | use vstd::contrib::exec_spec::option::*;\n  |                               ^^^^^^ private module\n  |\nnote: the module `option` is defined here\n --> vstd/contrib/exec_spec/mod.rs:17:0\n\nerror: aborting due to 7 previous errors\n\nSome errors have detailed explanations: E0405, E0425, E0603.\nFor more information about an error, try `rustc --explain E0405`.\n"
+      },
+      "anti_vacuity_issues": [
+        "already_specified_via_trait",
+        "checker_status:verus_error"
+      ],
+      "raw_det_reward": 0,
+      "guarded_reward": 0
+    },
+    {
+      "round": 1,
+      "llm_ms": 22473,
+      "candidate": {
+        "decision": "skip",
+        "ensures": [],
+        "useful": false,
+        "rationale": "The DeepViewClone trait already requires 'res.deep_view() == self.deep_view()'. Adding the same ensures on the impl would be redundant and triggers the 'already_specified_via_trait'/verus_error. The reported stderr shows harness/import and module-visibility issues (missing DeepViewClone import, private module) that are unrelated to adding a postcondition here and should be fixed separately.",
+        "risks": [
+          "Duplicating the trait-level postcondition would cause anti-vacuity / already_specified_via_trait errors.",
+          "Adding an extra clause (e.g., res.is_some() == self.is_some()) is logically implied by deep_view equality and would be redundant.",
+          "Harness errors (missing imports, private module) must be resolved independently; ignoring them may hide real verification problems."
+        ]
+      },
+      "checker": {
+        "status": "not_run"
+      },
+      "anti_vacuity_issues": [
+        "already_specified_via_trait",
+        "no_candidate_postcondition"
+      ],
+      "raw_det_reward": 0,
+      "guarded_reward": 0
+    }
+  ],
+  "final": {
+    "round": 1,
+    "llm_ms": 22473,
+    "candidate": {
+      "decision": "skip",
+      "ensures": [],
+      "useful": false,
+      "rationale": "The DeepViewClone trait already requires 'res.deep_view() == self.deep_view()'. Adding the same ensures on the impl would be redundant and triggers the 'already_specified_via_trait'/verus_error. The reported stderr shows harness/import and module-visibility issues (missing DeepViewClone import, private module) that are unrelated to adding a postcondition here and should be fixed separately.",
+      "risks": [
+        "Duplicating the trait-level postcondition would cause anti-vacuity / already_specified_via_trait errors.",
+        "Adding an extra clause (e.g., res.is_some() == self.is_some()) is logically implied by deep_view equality and would be redundant.",
+        "Harness errors (missing imports, private module) must be resolved independently; ignoring them may hide real verification problems."
+      ]
+    },
+    "checker": {
+      "status": "not_run"
+    },
+    "anti_vacuity_issues": [
+      "already_specified_via_trait",
+      "no_candidate_postcondition"
+    ],
+    "raw_det_reward": 0,
+    "guarded_reward": 0
+  }
+}

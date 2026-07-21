@@ -1,0 +1,13 @@
+{
+  "decision": "add_spec",
+  "ensures": [
+    "res == (this.deep_view() =~~= other.deep_view())"
+  ],
+  "useful": true,
+  "rationale": "Matches the ExecSpecEq trait contract: the boolean result must reflect deep-view equality of the two maps. This is the strongest concise specification expressible with existing vstd vocabulary and directly ties the impl to the semantic map equality used throughout the spec layer.",
+  "risks": [
+    "The implementation uses HashMap::get (Hash + Eq) to find matching keys; if the ExecSpecEq semantics for K are not consistent with the runtime Hash/Eq used by HashMap, the body could be unsound relative to the spec.",
+    "Hidden nondeterminism from HashMap iteration order is tolerated because deep_view equality (=~~=) is order-independent, but callers must ensure DeepView and ExecSpecEq instances are pure and deterministic.",
+    "Function is marked external_body; verifier will rely on this postcondition rather than checking the body, so the postcondition must accurately capture intended behavior."
+  ]
+}

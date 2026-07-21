@@ -1,0 +1,82 @@
+{
+  "target": "contrib::exec_spec::option:get_owned@17",
+  "semantic_disposition": "already_specified_via_trait",
+  "history": [
+    {
+      "round": 0,
+      "llm_ms": 21954,
+      "candidate": {
+        "decision": "add_spec",
+        "ensures": [
+          "res.deep_view() == self.deep_view()"
+        ],
+        "useful": true,
+        "rationale": "Matches the ToOwned trait and DeepViewClone contract: the owned Option<T> returned has the same deep view as the borrowed source. It's the strongest precise postcondition expressible with existing vstd vocab and is satisfied by returning self.deep_clone().",
+        "risks": [
+          "None significant \u2014 the postcondition duplicates the trait's guarantee and is already ensured by DeepViewClone::deep_clone. No hidden resources, divergence, or nondeterminism affect soundness."
+        ]
+      },
+      "checker": {
+        "status": "verus_error",
+        "requires": [],
+        "ensures": [
+          "res.deep_view() == self.deep_view()"
+        ],
+        "equal_fn_trivial": false,
+        "stderr_tail": "error[E0405]: cannot find trait `DeepViewClone` in this scope\n  --> vstd-survey/experiments/llm-missing-spec-gpt5mini-2026-07-20/targets/contrib__exec_spec__option__get_owned__L17/round_00/artifacts/contrib__exec_spec__option__get_owned__L17/harness.rs:10:43\n   |\n10 | spec fn det_get_owned_equal<T: DeepView + DeepViewClone>(r1: Option<T>, r2: Option<T>) -> bool {\n   |                                           ^^^^^^^^^^^^^ not found in this scope\n   |\nhelp: consider importing this trait\n   |\n 3 + use vstd::contrib::exec_spec::DeepViewClone;\n   |\n\nerror[E0405]: cannot find trait `DeepViewClone` in this scope\n  --> vstd-survey/experiments/llm-missing-spec-gpt5mini-2026-07-20/targets/contrib__exec_spec__option__get_owned__L17/round_00/artifacts/contrib__exec_spec__option__get_owned__L17/harness.rs:14:42\n   |\n14 | proof fn det_get_owned<'a, T: DeepView + DeepViewClone>(g_r1_is_Some: bool, g_r1_is_None: bool, g_r2_is_Some: bool, g_r2_is_None: bo...\n   |                                          ^^^^^^^^^^^^^ not found in this scope\n   |\nhelp: consider importing this trait\n   |\n 3 + use vstd::contrib::exec_spec::DeepViewClone;\n   |\n\nerror[E0425]: cannot find value `res` in this scope\n  --> vstd-survey/experiments/llm-missing-spec-gpt5mini-2026-07-20/targets/contrib__exec_spec__option__get_owned__L17/round_00/artifacts/contrib__exec_spec__option__get_owned__L17/harness.rs:17:18\n   |\n17 |             &&& (res.deep_view() == self_.deep_view())\n   |                  ^^^ not found in this scope\n\nerror[E0425]: cannot find value `res` in this scope\n  --> vstd-survey/experiments/llm-missing-spec-gpt5mini-2026-07-20/targets/contrib__exec_spec__option__get_owned__L17/round_00/artifacts/contrib__exec_spec__option__get_owned__L17/harness.rs:18:18\n   |\n18 |             &&& (res.deep_view() == self_.deep_view())\n   |                  ^^^ not found in this scope\n\nerror[E0603]: module `option` is private\n --> vstd-survey/experiments/llm-missing-spec-gpt5mini-2026-07-20/targets/contrib__exec_spec__option__get_owned__L17/round_00/artifacts/contrib__exec_spec__option__get_owned__L17/harness.rs:4:31\n  |\n4 | use vstd::contrib::exec_spec::option::*;\n  |                               ^^^^^^ private module\n  |\nnote: the module `option` is defined here\n --> vstd/contrib/exec_spec/mod.rs:17:0\n\nerror: aborting due to 5 previous errors\n\nSome errors have detailed explanations: E0405, E0425, E0603.\nFor more information about an error, try `rustc --explain E0405`.\n"
+      },
+      "anti_vacuity_issues": [
+        "already_specified_via_trait",
+        "checker_status:verus_error"
+      ],
+      "raw_det_reward": 0,
+      "guarded_reward": 0
+    },
+    {
+      "round": 1,
+      "llm_ms": 15762,
+      "candidate": {
+        "decision": "skip",
+        "ensures": [],
+        "useful": false,
+        "rationale": "The desired postcondition (res.deep_view() == self.deep_view()) is already guaranteed by the existing ToOwned and DeepViewClone trait specs (they both ensure deep_view preservation). Adding the same ensures on this impl would be redundant and triggered the determinism-checker/verification harness errors. Therefore do not add a duplicate postcondition.",
+        "risks": [
+          "Redundant specification \u2014 duplicates guarantees from ToOwned/DeepViewClone and offers no extra verification value.",
+          "May complicate harness generation or cause spurious compile errors (as seen) when duplicating trait-level specs."
+        ]
+      },
+      "checker": {
+        "status": "not_run"
+      },
+      "anti_vacuity_issues": [
+        "already_specified_via_trait",
+        "no_candidate_postcondition"
+      ],
+      "raw_det_reward": 0,
+      "guarded_reward": 0
+    }
+  ],
+  "final": {
+    "round": 1,
+    "llm_ms": 15762,
+    "candidate": {
+      "decision": "skip",
+      "ensures": [],
+      "useful": false,
+      "rationale": "The desired postcondition (res.deep_view() == self.deep_view()) is already guaranteed by the existing ToOwned and DeepViewClone trait specs (they both ensure deep_view preservation). Adding the same ensures on this impl would be redundant and triggered the determinism-checker/verification harness errors. Therefore do not add a duplicate postcondition.",
+      "risks": [
+        "Redundant specification \u2014 duplicates guarantees from ToOwned/DeepViewClone and offers no extra verification value.",
+        "May complicate harness generation or cause spurious compile errors (as seen) when duplicating trait-level specs."
+      ]
+    },
+    "checker": {
+      "status": "not_run"
+    },
+    "anti_vacuity_issues": [
+      "already_specified_via_trait",
+      "no_candidate_postcondition"
+    ],
+    "raw_det_reward": 0,
+    "guarded_reward": 0
+  }
+}

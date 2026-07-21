@@ -1,0 +1,160 @@
+Revise a proposed Verus postcondition after determinism-checking feedback.
+
+Target: cell::invcell:set@116
+
+Previous proposal:
+```json
+{
+  "decision": "skip",
+  "ensures": [],
+  "useful": false,
+  "rationale": "The stored value is hidden inside a LocalInvariant with no public content model. `set` returns nothing, while `self.inv(val)` only repeats admissibility and predicate preservation is merely a frame fact.",
+  "risks": [
+    "Any claim that `val` is now stored would be inexpressible and unsound with the existing public spec vocabulary."
+  ]
+}
+```
+
+Checker result:
+```json
+{
+  "status": "not_run"
+}
+```
+
+Anti-vacuity/semantic issues:
+```json
+[
+  "no_candidate_postcondition",
+  "no_modeled_observable_output"
+]
+```
+
+Relevant source:
+```rust
+  57:     // Create a cell that can only store even integers
+  58:     let cell_even = InvCell::<u64, FixedParity>::new(20, Ghost(FixedParity { parity: 0 }));
+  59: 
+  60:     // Create a cell that can only store odd integers
+  61:     let cell_odd = InvCell::<u64, FixedParity>::new(23, Ghost(FixedParity { parity: 1 }));
+  62: 
+  63:     let x = cell_even.get();
+  64:     assert(x % 2 == 0);
+  65: 
+  66:     let y = cell_odd.get();
+  67:     assert(y % 2 == 1);
+  68: }
+  69: ```
+  70: */
+  71: #[verifier::accept_recursive_types(T)]
+  72: pub struct InvCell<T, Pred> {
+  73:     pcell: PCell<T>,
+  74:     perm_inv: Tracked<LocalInvariant<(Pred, CellId), PointsTo<T>, InvCellPred>>,
+  75: }
+  76: 
+  77: struct InvCellPred { }
+  78: 
+  79: impl<T, Pred: Predicate<T>> InvariantPredicate<(Pred, CellId), PointsTo<T>> for InvCellPred {
+  80:     closed spec fn inv(k: (Pred, CellId), perm: PointsTo<T>) -> bool {
+  81:         let (pred, pcell_id) = k;
+  82:         {
+  83:             &&& pred.predicate(*perm.value())
+  84:             &&& pcell_id == perm.id()
+  85:         }
+  86:     }
+  87: }
+  88: 
+  89: impl<T, Pred> InvCell<T, Pred> {
+  90:     #[verifier::type_invariant]
+  91:     closed spec fn wf(&self) -> bool {
+  92:         &&& self.perm_inv@.constant().1 == self.pcell.id()
+  93:     }
+  94: 
+  95:     pub closed spec fn predicate(&self) -> Pred {
+  96:         self.perm_inv@.constant().0
+  97:     }
+  98: }
+  99: 
+ 100: impl<T, Pred: Predicate<T>> InvCell<T, Pred> {
+ 101:     pub open spec fn inv(&self, val: T) -> bool {
+ 102:         self.predicate().predicate(val)
+ 103:     }
+ 104: 
+ 105:     pub fn new(val: T, Ghost(pred): Ghost<Pred>) -> (cell: Self)
+ 106:         requires
+ 107:             pred.predicate(val),
+ 108:         ensures
+ 109:             cell.predicate() == pred,
+ 110:     {
+ 111:         let (pcell, Tracked(perm)) = PCell::new(val);
+ 112:         let tracked perm_inv = LocalInvariant::new((pred, pcell.id()), perm, 0);
+ 113:         InvCell { pcell, perm_inv: Tracked(perm_inv) }
+ 114:     }
+ 115: 
+ 116:     pub fn set(&self, val: T)
+ 117:         requires
+ 118:             self.inv(val),
+ 119:     {
+ 120:         let _ = self.replace(val);
+ 121:     }
+ 122: 
+ 123:     pub fn replace(&self, val: T) -> (old_val: T)
+ 124:         requires
+ 125:             self.inv(val),
+ 126:         ensures
+ 127:             self.inv(old_val),
+ 128:     {
+ 129:         proof {
+ 130:             use_type_invariant(self);
+ 131:         }
+ 132:         let r;
+ 133:         open_local_invariant!(self.perm_inv.borrow() => perm => {
+ 134:             r = self.pcell.replace(Tracked(&mut perm), val);
+ 135:         });
+ 136:         r
+ 137:     }
+ 138: 
+ 139:     pub fn get(&self) -> (val: T)
+ 140:         where T: Copy
+ 141:         ensures
+ 142:             self.inv(val),
+ 143:     {
+ 144:         proof {
+ 145:             use_type_invariant(self);
+ 146:         }
+ 147:         let r;
+ 148:         open_local_invariant!(self.perm_inv.borrow() => perm => {
+ 149:             r = *self.pcell.borrow(Tracked(&perm));
+ 150:         });
+ 151:         r
+ 152:     }
+ 153: 
+ 154:     #[allow(non_shorthand_field_patterns)]
+ 155:     pub fn into_inner(self) -> (val: T)
+ 156:         ensures
+ 157:             self.inv(val),
+ 158:     {
+ 159:         proof {
+ 160:             use_type_invariant(&self);
+ 161:         }
+ 162:         let InvCell { pcell, perm_inv: Tracked(perm_inv) } = self;
+ 163:         let tracked perm = perm_inv.into_inner();
+ 164:         pcell.into_inner(Tracked(perm))
+ 165:     }
+ 166: }
+ 167: 
+ 168: }
+```
+
+Return JSON only with the same schema:
+{
+  "decision": "add_spec" | "skip",
+  "ensures": ["..."],
+  "useful": true | false,
+  "rationale": "...",
+  "risks": ["..."]
+}
+
+Do not optimize for `R0 = unsat` by returning a redundant, vacuous, false-domain,
+unit-output, or semantically unusable specification. Choose `skip` if no useful
+postcondition can be expressed.

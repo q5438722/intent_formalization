@@ -1,0 +1,285 @@
+You are proposing a Verus postcondition for one existing vstd exec function.
+
+Target:
+- id: contrib::exec_spec::multiset:deep_clone@66
+- module/context: impl<T: DeepView + DeepViewClone + std::hash::Hash + std::cmp::Eq> DeepViewClone for ExecMultiset< T, >
+- visibility: private
+- current contract status: no-contract
+
+Relevant source:
+```rust
+   7: 
+   8: // Note: all of the exec translations are currently unverified.
+   9: // Some will require axiomatization because their corresponding specs are uninterp.
+  10: broadcast use {
+  11:     crate::group_vstd_default,
+  12:     crate::std_specs::hash::group_hash_axioms,
+  13:     crate::std_specs::hash::lemma_hashmap_deepview_dom,
+  14: };
+  15: 
+  16: /// `Multiset<T>` is compiled to `ExecMultiset<T>`.
+  17: #[derive(Eq, PartialEq, Debug)]
+  18: pub struct ExecMultiset<T: std::hash::Hash + std::cmp::Eq> {
+  19:     pub m: HashMap<T, usize>,
+  20: }
+  21: 
+  22: /// Implementations for shared traits
+  23: /*
+  24: trouble implementing this - complains about lifetime of T
+  25: impl<T: DeepView + DeepViewClone + std::hash::Hash + std::cmp::Eq> ExecSpecType for Multiset<T> {
+  26:     type ExecOwnedType = ExecMultiset<T>;
+  27: 
+  28:     type ExecRefType<'a> = &'a ExecMultiset<T>;
+  29: }*/
+  30: impl<T: DeepView + std::hash::Hash + std::cmp::Eq> DeepView for ExecMultiset<T> {
+  31:     type V = Multiset<<T as DeepView>::V>;
+  32: 
+  33:     open spec fn deep_view(&self) -> Self::V {
+  34:         Multiset::from_map(self.m.deep_view().map_values(|v| v as nat))
+  35:     }
+  36: }
+  37: 
+  38: impl<'a, T: DeepView + DeepViewClone + std::hash::Hash + std::cmp::Eq> ToRef<
+  39:     &'a ExecMultiset<T>,
+  40: > for &'a ExecMultiset<T> {
+  41:     #[inline(always)]
+  42:     fn get_ref(self) -> &'a ExecMultiset<T> {
+  43:         &self
+  44:     }
+  45: }
+  46: 
+  47: impl<'a, T: DeepView + DeepViewClone + std::hash::Hash + std::cmp::Eq> ToOwned<
+  48:     ExecMultiset<T>,
+  49: > for &'a ExecMultiset<T> {
+  50:     #[verifier::external_body]
+  51:     #[inline(always)]
+  52:     fn get_owned(self) -> ExecMultiset<T> {
+  53:         let mut new_map = HashMap::new();
+  54:         for (k, v) in self.m.iter() {
+  55:             new_map.insert(k.deep_clone(), v.deep_clone());
+  56:         }
+  57:         ExecMultiset { m: new_map }
+  58:     }
+  59: }
+  60: 
+  61: impl<T: DeepView + DeepViewClone + std::hash::Hash + std::cmp::Eq> DeepViewClone for ExecMultiset<
+  62:     T,
+  63: > {
+  64:     #[verifier::external_body]
+  65:     #[inline(always)]
+  66:     fn deep_clone(&self) -> Self {
+  67:         let mut new_map = HashMap::new();
+  68:         for (k, v) in self.m.iter() {
+  69:             new_map.insert(k.deep_clone(), v.deep_clone());
+  70:         }
+  71:         ExecMultiset { m: new_map }
+  72:     }
+  73: }
+  74: 
+  75: impl<'a, T: DeepView + DeepViewClone + std::hash::Hash + std::cmp::Eq> ExecSpecEq<
+  76:     'a,
+  77: > for &'a ExecMultiset<T> where &'a T: ExecSpecEq<'a, Other = &'a T> {
+  78:     type Other = &'a ExecMultiset<T>;
+  79: 
+  80:     #[verifier::external_body]
+  81:     #[inline(always)]
+  82:     fn exec_eq(this: Self, other: Self::Other) -> bool {
+  83:         if this.m.len() != other.m.len() {
+  84:             return false;
+  85:         }
+  86:         for (k, v) in this.m.iter() {
+  87:             match other.m.get(k) {
+  88:                 Some(ov) => {
+  89:                     if !<&'a usize>::exec_eq(v, ov) {
+  90:                         return false;
+  91:                     }
+  92:                 },
+  93:                 None => return false,
+  94:             }
+  95:         }
+  96:         true
+  97:     }
+  98: }
+  99: 
+ 100: impl<
+ 101:     'a,
+ 102:     T: DeepView + DeepViewClone + std::hash::Hash + std::cmp::Eq,
+ 103: > ExecSpecLen for &'a ExecMultiset<T> {
+ 104:     #[inline(always)]
+ 105:     #[verifier::external_body]
+ 106:     fn exec_len(self) -> (res: usize)
+ 107:         ensures
+ 108:             res == self.deep_view().len(),
+ 109:     {
+ 110:         let mut len = 0;
+ 111:         for (_, v) in self.m.iter() {
+ 112:             len = len + v;
+ 113:         }
+ 114:         len
+ 115:     }
+ 116: }
+ 117: 
+ 118: //
+ 119: // Trait definitions for methods
+ 120: //
+ 121: /// Spec for executable version of [`Multiset::count`].
+ 122: pub trait ExecSpecMultisetCount: Sized + DeepView {
+ 123:     type Elem;
+ 124: 
+ 125:     fn exec_count(self, value: Self::Elem) -> usize;
+ 126: }
+ 127: 
+ 128: /// Spec for executable version of [`Multiset::empty`].
+ 129: pub trait ExecSpecMultisetEmpty: Sized {
+ 130:     fn exec_empty() -> Self;
+ 131: }
+ 132: 
+ 133: /// Spec for executable version of [`Multiset::singleton`].
+ 134: pub trait ExecSpecMultisetSingleton: Sized {
+ 135:     type Elem;
+ 136: 
+ 137:     fn exec_singleton(v: Self::Elem) -> Self;
+ 138: }
+ 139: 
+ 140: /// Spec for executable version of [`Multiset::add`].
+ 141: pub trait ExecSpecMultisetAdd<'a, Out: Sized + DeepView>: Sized + DeepView + ToOwned<Out> {
+ 142:     fn exec_add(self, m2: Self) -> Out;
+ 143: }
+ 144: 
+ 145: /// Spec for executable version of [`Multiset::sub`].
+ 146: pub trait ExecSpecMultisetSub<'a, Out: Sized + DeepView>: Sized + DeepView + ToOwned<Out> {
+ 147:     fn exec_sub(self, m2: Self) -> Out;
+ 148: }
+ 149: 
+ 150: //
+ 151: // Implementations for ExecMultiset
+ 152: //
+ 153: impl<
+ 154:     'a,
+ 155:     T: DeepView + DeepViewClone + std::hash::Hash + std::cmp::Eq,
+ 156: > ExecSpecMultisetCount for &'a ExecMultiset<T> {
+
+// Shared trait declarations:
+T001: //! This module provides runtime utilities for the compiled
+T002: //! executable code of [`verus_builtin_macros::exec_spec_verified`]
+T003: //! and [`verus_builtin_macros::exec_spec_unverified`].
+T004: #![cfg(all(feature = "alloc", feature = "std"))]
+T005: 
+T006: use crate::multiset::*;
+T007: use crate::prelude::*;
+T008: use std::collections::HashMap;
+T009: use std::collections::HashSet;
+T010: pub use verus_builtin_macros::exec_spec_unverified;
+T011: pub use verus_builtin_macros::exec_spec_verified;
+T012: 
+T013: mod map;
+T014: pub use map::*;
+T015: mod multiset;
+T016: pub use multiset::*;
+T017: mod option;
+T018: pub use option::*;
+T019: mod seq;
+T020: pub use seq::*;
+T021: mod set;
+T022: pub use set::*;
+T023: mod string;
+T024: pub use string::*;
+T025: 
+T026: verus! {
+T027: 
+T028: /// [`ToRef`] and [`ToOwned`] are almost the same trait
+T029: /// but separated to avoid type inference ambiguities.
+T030: pub trait ToRef<T: Sized + DeepView>: Sized + DeepView<V = T::V> {
+T031:     fn get_ref(self) -> (res: T)
+T032:         ensures
+T033:             res.deep_view() == self.deep_view(),
+T034:     ;
+T035: }
+T036: 
+T037: pub trait ToOwned<T: Sized + DeepView>: Sized + DeepView<V = T::V> {
+T038:     fn get_owned(self) -> (res: T)
+T039:         ensures
+T040:             res.deep_view() == self.deep_view(),
+T041:     ;
+T042: }
+T043: 
+T044: /// Cloned objects have the same deep view
+T045: pub trait DeepViewClone: Sized + DeepView {
+T046:     fn deep_clone(&self) -> (res: Self)
+T047:         ensures
+T048:             res.deep_view() == self.deep_view(),
+T049:     ;
+T050: }
+T051: 
+T052: /// Any spec types used in [`exec_spec_verified`] or [`exec_spec_unverified`] macros
+T053: /// must implement this trait to indicate
+T054: /// the corresponding exec type (owned and borrowed versions).
+T055: pub trait ExecSpecType where
+T056:     for <'a>&'a Self::ExecOwnedType: ToRef<Self::ExecRefType<'a>>,
+T057:     for <'a>Self::ExecRefType<'a>: ToOwned<Self::ExecOwnedType>,
+T058:  {
+T059:     /// Owned version of the exec type.
+T060:     type ExecOwnedType: DeepView<V = Self>;
+T061: 
+T062:     /// Reference version of the exec type.
+T063:     type ExecRefType<'a>: DeepView<V = Self>;
+T064: }
+T065: 
+T066: /// Spec for the executable version of equality.
+T067: pub trait ExecSpecEq<'a>: DeepView + Sized {
+T068:     type Other: DeepView<V = Self::V>;
+T069: 
+T070:     fn exec_eq(this: Self, other: Self::Other) -> (res: bool)
+T071:         ensures
+T072:             res == (this.deep_view() =~~= other.deep_view()),
+T073:     ;
+T074: }
+T075: 
+T076: /// Spec for executable version of [`Seq`] and [`str`] indexing.
+T077: pub trait ExecSpecIndex<'a>: Sized + DeepView<V = Seq<<Self::Elem as DeepView>::V>> {
+T078:     type Elem: DeepView;
+T079: 
+T080:     fn exec_index(self, index: usize) -> Self::Elem
+T081:         requires
+T082:             0 <= index < self.deep_view().len(),
+T083:     ;
+T084: }
+T085: 
+T086: /// Spec for executable version of `len`.
+T087: pub trait ExecSpecLen {
+T088:     fn exec_len(self) -> usize;
+T089: }
+T090: 
+T091: /// A macro to implement various traits for primitive arithmetic types.
+T092: macro_rules! impl_primitives {
+T093:     ($(,)?) => {};
+T094:     ($t:ty $(,$rest:ty)* $(,)?) => {
+T095:         verus! {
+T096:             impl ExecSpecType for $t {
+T097:                 type ExecOwnedType = $t;
+T098:                 type ExecRefType<'a> = $t;
+T099:             }
+T100: 
+```
+
+Return JSON only:
+{
+  "decision": "add_spec" | "skip",
+  "ensures": ["Verus boolean expression", "..."],
+  "useful": true | false,
+  "rationale": "short explanation",
+  "risks": ["..."]
+}
+
+Rules:
+- Do not edit files.
+- Do not change the signature or requires clauses.
+- Propose the strongest sound postcondition expressible with existing public
+  vstd spec vocabulary.
+- Do not use `true`, `false`, `arbitrary()`, `assume`, or a postcondition that
+  merely repeats a requires clause.
+- Account for trait-inherited contracts, tracked/linear resource consumption,
+  compiler-erased functions, divergence, hidden interior state, and intentional
+  nondeterminism.
+- If no useful non-vacuous postcondition exists, choose `skip` and leave
+  `ensures` empty.

@@ -1,0 +1,33 @@
+{
+  "round": 0,
+  "llm_ms": 58646,
+  "candidate": {
+    "decision": "add_spec",
+    "ensures": [
+      "self.predicate() == old(self.predicate())"
+    ],
+    "useful": true,
+    "rationale": "Setting the cell must not change its associated predicate (the invariant). This is a strong, provable, and nontrivial postcondition that does not merely repeat the requires clause.",
+    "risks": [
+      "Relatively weak: it does not state anything about the stored value after the call (can't assert equality without Copy).",
+      "May be seen as trivial if predicate is already provably constant from the type invariant, but it documents and enforces intent."
+    ]
+  },
+  "checker": {
+    "status": "verus_error",
+    "requires": [
+      "self.inv(val)"
+    ],
+    "ensures": [
+      "self.predicate() == old(self.predicate())"
+    ],
+    "equal_fn_trivial": false,
+    "stderr_tail": "error[E0308]: mismatched types\n  --> vstd-survey/experiments/llm-missing-spec-gpt5mini-2026-07-20/targets/cell__invcell__set__L116/round_00/artifacts/cell__invcell__set__L116/harness.rs:19:43\n   |\n15 | proof fn det_set<T, Pred: Predicate<T>>(g_neq_tuple: bool, self_: &InvCell<T, Pred>, val: T, r1: (), r2: ())\n   |                     ---- found this type parameter\n...\n19 |             &&& (self_.predicate() == old(self_.predicate()))\n   |                                       --- ^^^^^^^^^^^^^^^^^ expected `&mut _`, found type parameter `Pred`\n   |                                       |\n   |                                       arguments to this function are incorrect\n   |\n   = note: expected mutable reference `&mut _`\n                 found type parameter `Pred`\nnote: function defined here\n  --> builtin/src/lib.rs:293:7\nhelp: consider mutably borrowing here\n   |\n19 |             &&& (self_.predicate() == old(&mut self_.predicate()))\n   |                                           ++++\n\nerror[E0308]: mismatched types\n  --> vstd-survey/experiments/llm-missing-spec-gpt5mini-2026-07-20/targets/cell__invcell__set__L116/round_00/artifacts/cell__invcell__set__L116/harness.rs:20:43\n   |\n15 | proof fn det_set<T, Pred: Predicate<T>>(g_neq_tuple: bool, self_: &InvCell<T, Pred>, val: T, r1: (), r2: ())\n   |                     ---- found this type parameter\n...\n20 |             &&& (self_.predicate() == old(self_.predicate()))\n   |                                       --- ^^^^^^^^^^^^^^^^^ expected `&mut _`, found type parameter `Pred`\n   |                                       |\n   |                                       arguments to this function are incorrect\n   |\n   = note: expected mutable reference `&mut _`\n                 found type parameter `Pred`\nnote: function defined here\n  --> builtin/src/lib.rs:293:7\nhelp: consider mutably borrowing here\n   |\n20 |             &&& (self_.predicate() == old(&mut self_.predicate()))\n   |                                           ++++\n\nerror: aborting due to 2 previous errors\n\nFor more information about this error, try `rustc --explain E0308`.\n"
+  },
+  "anti_vacuity_issues": [
+    "checker_status:verus_error",
+    "no_modeled_observable_output"
+  ],
+  "raw_det_reward": 0,
+  "guarded_reward": 0
+}

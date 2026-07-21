@@ -111,6 +111,7 @@ class ModuleStats:
     lines: int
     parser_error: bool
     macro_rules_sites: int
+    verus_alias_sites: int
     function_sites_ast: int
     exec_function_sites: int
     exec_body_sites: int
@@ -202,6 +203,16 @@ def mask_comments(source: str) -> str:
             continue
         i += 1
     return "".join(chars)
+
+
+def normalize_verus_aliases(source: str) -> str:
+    """Normalize common `use verus as verus_; verus_! { ... }` aliases.
+
+    tree-sitter-verus parses the canonical `verus!` macro body, but treats an
+    aliased invocation as an opaque token tree. The replacement is parse-only;
+    it preserves line numbers and never changes the source file on disk.
+    """
+    return re.sub(r"\bverus_!", "verus!", source)
 
 
 def iter_nodes(node: ts.Node) -> Iterable[ts.Node]:
@@ -382,7 +393,8 @@ def scan_file(
     path: Path,
 ) -> tuple[ModuleStats, list[ExecItem]]:
     source = path.read_text(errors="replace")
-    source_bytes = source.encode()
+    parse_source = normalize_verus_aliases(source)
+    source_bytes = parse_source.encode()
     masked = mask_comments(source)
     tree = parser.parse(source_bytes)
     relative = path.relative_to(root)
@@ -514,6 +526,7 @@ def scan_file(
             lines=source.count("\n") + (0 if source.endswith("\n") else 1),
             parser_error=tree.root_node.has_error,
             macro_rules_sites=lexical_count(masked, r"\bmacro_rules\s*!"),
+            verus_alias_sites=lexical_count(masked, r"\bverus_!\s*\{"),
             function_sites_ast=ast_counts["function_sites"],
             exec_function_sites=ast_counts["exec_sites"],
             exec_body_sites=ast_counts["exec_body_sites"],
@@ -646,6 +659,7 @@ def aggregate(rows: list[ModuleStats], key: str) -> list[dict]:
                 "total_spec_sites": sum(item.total_spec_sites for item in items),
                 "parser_error_modules": sum(item.parser_error for item in items),
                 "macro_rules_sites": sum(item.macro_rules_sites for item in items),
+                "verus_alias_sites": sum(item.verus_alias_sites for item in items),
             }
         )
     return result

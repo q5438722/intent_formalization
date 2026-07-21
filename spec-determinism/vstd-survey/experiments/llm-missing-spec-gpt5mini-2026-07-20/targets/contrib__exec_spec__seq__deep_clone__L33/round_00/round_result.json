@@ -1,0 +1,31 @@
+{
+  "round": 0,
+  "llm_ms": 23971,
+  "candidate": {
+    "decision": "add_spec",
+    "ensures": [
+      "res.deep_view() == self.deep_view()"
+    ],
+    "useful": true,
+    "rationale": "Matches the DeepViewClone trait guarantee: the cloned Vec must have the same deep view as the original. This is the strongest, sound, and general specification expressible with existing vstd vocabulary (it implies per-element deep_view equality and length equality).",
+    "risks": [
+      "None substantive \u2014 relies on T: DeepViewClone to ensure per-element preservation of deep_view; implementation is external_body so the body must actually satisfy this contract.",
+      "If T's deep_view has hidden/internal state or nondeterminism, the spec only constrains observable deep_view equality and not internal/runtime aliasing concerns."
+    ]
+  },
+  "checker": {
+    "status": "verus_error",
+    "requires": [],
+    "ensures": [
+      "res.deep_view() == self.deep_view()"
+    ],
+    "equal_fn_trivial": false,
+    "stderr_tail": "error[E0405]: cannot find trait `DeepViewClone` in this scope\n  --> vstd-survey/experiments/llm-missing-spec-gpt5mini-2026-07-20/targets/contrib__exec_spec__seq__deep_clone__L33/round_00/artifacts/contrib__exec_spec__seq__deep_clone__L33/harness.rs:10:33\n   |\n10 | spec fn det_deep_clone_equal<T: DeepViewClone>(r1: Vec<T>, r2: Vec<T>) -> bool {\n   |                                 ^^^^^^^^^^^^^ not found in this scope\n   |\nhelp: consider importing this trait\n   |\n 3 + use vstd::contrib::exec_spec::DeepViewClone;\n   |\n\nerror[E0405]: cannot find trait `DeepViewClone` in this scope\n  --> vstd-survey/experiments/llm-missing-spec-gpt5mini-2026-07-20/targets/contrib__exec_spec__seq__deep_clone__L33/round_00/artifacts/contrib__exec_spec__seq__deep_clone__L33/harness.rs:14:28\n   |\n14 | proof fn det_deep_clone<T: DeepViewClone>(g_neq_tuple: bool, self_: &Vec<T>, r1: Vec<T>, r2: Vec<T>)\n   |                            ^^^^^^^^^^^^^ not found in this scope\n   |\nhelp: consider importing this trait\n   |\n 3 + use vstd::contrib::exec_spec::DeepViewClone;\n   |\n\nerror[E0425]: cannot find value `res` in this scope\n  --> vstd-survey/experiments/llm-missing-spec-gpt5mini-2026-07-20/targets/contrib__exec_spec__seq__deep_clone__L33/round_00/artifacts/contrib__exec_spec__seq__deep_clone__L33/harness.rs:17:18\n   |\n17 |             &&& (res.deep_view() == self_.deep_view())\n   |                  ^^^ not found in this scope\n\nerror[E0425]: cannot find value `res` in this scope\n  --> vstd-survey/experiments/llm-missing-spec-gpt5mini-2026-07-20/targets/contrib__exec_spec__seq__deep_clone__L33/round_00/artifacts/contrib__exec_spec__seq__deep_clone__L33/harness.rs:18:18\n   |\n18 |             &&& (res.deep_view() == self_.deep_view())\n   |                  ^^^ not found in this scope\n\nerror[E0603]: module `seq` is private\n --> vstd-survey/experiments/llm-missing-spec-gpt5mini-2026-07-20/targets/contrib__exec_spec__seq__deep_clone__L33/round_00/artifacts/contrib__exec_spec__seq__deep_clone__L33/harness.rs:4:31\n  |\n4 | use vstd::contrib::exec_spec::seq::*;\n  |                               ^^^ private module\n  |\nnote: the module `seq` is defined here\n --> vstd/contrib/exec_spec/mod.rs:19:0\n\nerror: aborting due to 5 previous errors\n\nSome errors have detailed explanations: E0405, E0425, E0603.\nFor more information about an error, try `rustc --explain E0405`.\n"
+  },
+  "anti_vacuity_issues": [
+    "already_specified_via_trait",
+    "checker_status:verus_error"
+  ],
+  "raw_det_reward": 0,
+  "guarded_reward": 0
+}

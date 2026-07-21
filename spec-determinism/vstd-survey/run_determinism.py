@@ -52,6 +52,7 @@ EXTRA_IMPORTS = {
     "raw_ptr": ["vstd::layout::*"],
     "hash_map": ["std::hash::Hash", "vstd::std_specs::hash::*"],
     "hash_set": ["std::hash::Hash", "vstd::std_specs::hash::*"],
+    "cell::invcell": ["vstd::predicate::Predicate"],
 }
 
 
@@ -86,6 +87,10 @@ def parse_target(target: str) -> tuple[str, str, int | None]:
     else:
         function = function_part
     return module, function, source_line
+
+
+def normalize_verus_aliases(source: str) -> str:
+    return re.sub(r"\bverus_!", "verus!", source)
 
 
 def build_harness(module: str, det_spec, schemas) -> str:
@@ -162,6 +167,7 @@ def run_target(
     rlimit: float,
     compare_raw_pointers: bool,
     view_registry: ViewRegistry | None,
+    ensures_override: list[str] | None = None,
 ) -> dict:
     artifact_dir = out_dir / "artifacts" / safe_name(
         module,
@@ -174,6 +180,7 @@ def run_target(
 
     source_path = module_file(vstd_root, module)
     source = source_path.read_text(errors="replace")
+    analysis_source = normalize_verus_aliases(source)
     result = {
         "module": module,
         "function": function,
@@ -186,12 +193,16 @@ def run_target(
 
     try:
         spec = extract_spec(
-            source,
+            analysis_source,
             function,
-            type_sources=[source],
+            type_sources=[analysis_source],
             source_line=source_line,
         )
         result["requires"] = list(spec.requires)
+        result["original_ensures"] = list(spec.ensures)
+        if ensures_override is not None:
+            spec.ensures = list(ensures_override)
+            result["ensures_override"] = list(ensures_override)
         result["ensures"] = list(spec.ensures)
         if not spec.ensures:
             result["status"] = "no_ensures"
@@ -215,7 +226,7 @@ def run_target(
         )
         det_spec = build_det_check_spec(
             spec,
-            source=source,
+            source=analysis_source,
             equal_policy=equal_policy,
             view_registry=view_registry,
         )

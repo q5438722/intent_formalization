@@ -1,0 +1,231 @@
+# Spec generation + determinism feedback progress (2026-07-21)
+
+## 1. VeruSage benchmark experiment (191 cases)
+
+We first ran the VeruSAGE spec-generation + determinism-feedback loop on a subset (complete functions in verusage benchmark).  This subset contains 191 complete
+functions with dependencies.
+
+Pipeline:
+
+1. Replace the target function's original `ensures` with
+   `specgen_candidate_post(...)`.
+2. Ask the model to generate `specgen_candidate_post` and optional helper specs.
+3. Run the determinism checker.
+4. Give up to 3 rounds of checker/verifier feedback.
+
+Final results:
+
+| model | initial deterministic | basic repair -> deterministic | det-feedback candidates | det-feedback -> deterministic | final deterministic |
+|---|---:|---:|---:|---:|---:|
+| `gpt-5.5` | 186 | 2 | 2 | 1 | 189 |
+| `gpt-5.4` | 156 | 20 | 14 | 13 | 189 |
+| `claude-opus-4.8` | 176 | 0 | 6 | 6 | 182 |
+| `claude-opus-4.7` | 167 | 1 | 21 | 21 | 189 |
+| `claude-opus-4.6` | 159 | 0 | 29 | 29 | 188 |
+
+- `basic repair` means other verus feedback, e.g., syntax error.
+- The important trend is that weaker Opus models leave more room for
+determinism feedback to help: `opus-4.8` has 6 feedback repairs, `opus-4.7` has
+21, and `opus-4.6` has 29.
+
+### Example positive case
+
+Case:
+
+```text
+model: claude-opus-4.6
+task:  slinkedlist__spec_impl_u__impl2__init__set_prev
+target: set_prev
+```
+
+Source code:
+
+- Original target source:
+  [`verusage/source-projects/atmosphere/verified/slinkedlist/slinkedlist__spec_impl_u__impl2__init.rs:366-392`](../verusage/source-projects/atmosphere/verified/slinkedlist/slinkedlist__spec_impl_u__impl2__init.rs#L366-L392)
+- Before-feedback artifact:
+  [`round_00/det_artifacts/injected.rs`](../spec-determinism/results-verusage-specgen/opus46_complete_raw191_20260720/slinkedlist__spec_impl_u__impl2__init__set_prev/round_00/det_artifacts/injected.rs)
+- After-feedback artifact:
+  [`round_01/det_artifacts/injected.rs`](../spec-determinism/results-verusage-specgen/opus46_complete_raw191_20260720/slinkedlist__spec_impl_u__impl2__init__set_prev/round_01/det_artifacts/injected.rs)
+
+Before determinism feedback, the generated candidate spec only constrained
+`arr_seq` elementwise and did not pin the concrete array field `ar`:
+
+```rust
+pub open spec fn specgen_candidate_post<T: Copy, const N: usize>(
+    pre_self: StaticLinkedList<T, N>,
+    post_self: StaticLinkedList<T, N>,
+    index: SLLIndex,
+    v: SLLIndex,
+    result: ()
+) -> bool {
+    &&& post_self.array_wf()
+    &&& forall|i: int|
+        #![trigger post_self.arr_seq@[i]]
+        #![trigger pre_self.arr_seq@[i]]
+        0 <= i < post_self.arr_seq@.len() && i != index ==> post_self.arr_seq@[i] =~= pre_self.arr_seq@[i]
+    &&& post_self.arr_seq@[index as int].next == pre_self.arr_seq@[index as int].next
+    &&& post_self.arr_seq@[index as int].value == pre_self.arr_seq@[index as int].value
+    &&& post_self.arr_seq@[index as int].prev == v
+    &&& post_self.spec_seq@ == pre_self.spec_seq@
+    &&& post_self.value_list@ == pre_self.value_list@
+    &&& post_self.free_list@ == pre_self.free_list@
+    &&& post_self.value_list_head == pre_self.value_list_head
+    &&& post_self.value_list_tail == pre_self.value_list_tail
+    &&& post_self.value_list_len == pre_self.value_list_len
+    &&& post_self.free_list_head == pre_self.free_list_head
+    &&& post_self.free_list_tail == pre_self.free_list_tail
+    &&& post_self.free_list_len == pre_self.free_list_len
+}
+```
+
+After one feedback round, the model strengthened the generated postcondition by
+making the updated linked-list state explicit.  In particular, it constrained
+the array field with `vstd::array::spec_array_update`, constrained `arr_seq@`
+with a direct `Seq::update`, and preserved `size`.  The next checker run became:
+
+```text
+status_label = deterministic
+r0_z3 = unsat
+```
+
+After determinism feedback:
+
+```rust
+pub open spec fn specgen_candidate_post<T: Copy, const N: usize>(
+    pre_self: StaticLinkedList<T, N>,
+    post_self: StaticLinkedList<T, N>,
+    index: SLLIndex,
+    v: SLLIndex,
+    result: ()
+) -> bool {
+    let new_node = Node {
+        prev: v,
+        next: pre_self.arr_seq@[index as int].next,
+        value: pre_self.arr_seq@[index as int].value,
+    };
+    &&& post_self.array_wf()
+    &&& post_self.size == pre_self.size
+    &&& post_self.arr_seq@ == pre_self.arr_seq@.update(index as int, new_node)
+    &&& post_self.ar == vstd::array::spec_array_update(pre_self.ar, index as int, new_node)
+    &&& post_self.spec_seq@ == pre_self.spec_seq@
+    &&& post_self.value_list@ == pre_self.value_list@
+    &&& post_self.free_list@ == pre_self.free_list@
+    &&& post_self.value_list_head == pre_self.value_list_head
+    &&& post_self.value_list_tail == pre_self.value_list_tail
+    &&& post_self.value_list_len == pre_self.value_list_len
+    &&& post_self.free_list_head == pre_self.free_list_head
+    &&& post_self.free_list_tail == pre_self.free_list_tail
+    &&& post_self.free_list_len == pre_self.free_list_len
+}
+```
+
+- This is a example of the determinism checker identifying a missing
+post-state constraint that the model could repair from feedback.
+
+- However, this repair directly mentions `post_self.ar`, which is not included in its view (its view structure uses `arr_seq` instead)
+
+
+## 2. Full source-native complete-set experiment (552 cases)
+
+The raw-file subset covers only 191 complete functions.  The full source-native
+complete universe has 552 complete functions out of all 848 functions.
+
+The new 552-case experiment uses:
+
+```text
+spec-determinism/scripts/source_native_specgen_det_feedback.py
+```
+
+Current progress at ~13:25 UTC:
+
+| model | progress | current labels | initial det | basic repair -> det | det-feedback candidates | det-feedback -> det |
+|---|---:|---|---:|---:|---:|---:|
+| `gpt-5.5` | 143/552 | 135 deterministic, 4 no_smt2, 3 runner_crash, 1 verus_error | 105 | 30 | 0 | 0 |
+| `claude-opus-4.8` | 51/552 | 49 deterministic, 2 runner_crash | 44 | 5 | 0 | 0 |
+| `claude-opus-4.7` | 74/552 | 68 deterministic, 6 runner_crash | 58 | 10 | 0 | 0 |
+| `claude-opus-4.6` | 225/552 | 212 deterministic, 5 no_smt2, 2 feedback_candidate, 6 runner_crash | 159 | 52 | 2 | 1 |
+
+Estimated runtime:
+
+```text
+48-72 hours from launch; remaining roughly 47-71 hours as of this note.
+```
+
+## 3. vstd specification completeness and missing-spec generation
+
+We also started a separate vstd-focused experiment with two goals:
+
+1. check the determinism/completeness of existing vstd exec-function
+   postconditions;
+2. generate postconditions for exec definitions that appear to have no local
+   postcondition, using determinism as feedback/reward.
+
+### 3.1 Existing-spec completeness experiment
+
+The determinism experiment covers 107 public exec definitions with explicit
+postconditions.
+
+After View/equal-fn fixes and a strict-pointer rerun:
+
+| result | count |
+|---|---:|
+| complete (`R0 = unsat`) | 87 |
+| remaining `R0 = unknown` | 16 |
+| unsupported mutable-reference returns | 4 |
+| SMT-confirmed `R0 = sat` | 0 |
+| **TOTAL** | **111** |
+
+This includes a strict-pointer rerun for six functions whose default equal-fn
+ignored pointer identity.
+
+### 3.2 Semantic audit of the unknowns
+
+The remaining 20 unknowns were manually classified:
+
+| category | count |
+|---|---:|
+| imcompleteness | 7 |
+| intentional/permitted nondeterminism | 9 |
+
+#### Example: deprecated `InvCell::replace`
+
+Source:
+
+```text
+/home/chentianyu/nanvix/toolchain/verus/vstd/cell.rs:359-373
+```
+
+Existing contract:
+
+```rust
+pub fn replace(&self, val: T) -> (old_val: T)
+    requires
+        self.inv(val),
+    ensures
+        self.inv(old_val),
+```
+
+`inv(v)` only says that `v` belongs to the cell's allowed-value predicate; it
+does not expose the exact current value. For example:
+
+```rust
+InvCell::new(0, Ghost(|v| v == 0 || v == 1))
+```
+
+The implementation of `replace(1)` deterministically returns `0`, but the
+specification permits both `old_val = 0` and `old_val = 1`.
+
+### 3.3 Why the remaining no-post methods are poor spec-generation targets
+
+- **Linear resources:** `deallocate`, `free`, and lock release are specified by
+  consuming permissions or handles.
+- **Hidden state:** methods such as `InvCell::set` return `()` and expose no
+  exact post-state accessor.
+- **Intentional nondeterminism:** `Prophecy::new` must leave its future value
+  unconstrained.
+- **Compiler/runtime only:** invariant encoding, stdout, and `Debug` formatting
+  have no ordinary logical post-state.
+- **Mode mismatch:** `IsThread::clone` combines a tracked value with an
+  exec-mode trait method.
+
+These methods are not useful targets for adding ordinary `ensures` clauses.
