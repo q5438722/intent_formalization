@@ -29,7 +29,7 @@ Snapshot: **2026-10-13 11:43 UTC**.
   auxiliary sequences as consumption-time invariants without a proof.
   Unconstrained answer-selecting helpers and new unapproved axioms are not
   repairs; any task-specific zero-UF requirement remains in force.
-- **Write guarantees directly in `ensures`, following Jay's feedback.** Do
+- **Write guarantees directly in `ensures`.** Do
   not hide the entire contract behind `ensures some_post(...)`. Expand the
   actual return, content, branch, and writeback relations. A single explicit
   equation such as `result@ == input@` is fine; this is not a physical
