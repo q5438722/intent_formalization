@@ -2,12 +2,6 @@
 
 Snapshot: **2026-10-13 11:43 UTC**.
 
-This report covers the current progress and acceptance criteria of the Slice
-and Vec campaigns, together with the collected specification artifacts. It
-distinguishes historically supported scopes, usable API bindings, and ongoing
-implementation and completeness work. A completed report or successful client
-check does not mean that an entire module has been verified.
-
 ## 1. Current specification-generation criteria and added rules
 
 ### 1.1 Basic requirements: correctness and completeness
