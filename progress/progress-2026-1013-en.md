@@ -8,8 +8,8 @@ Snapshot: **2026-10-13 11:43 UTC**.
 
 | Track | Required evidence |
 |---|---|
-| Correctness | The actual source body, or an authorized faithfully corresponding proof copy, establishes the current contract under the original calling domain. |
-| Completeness | Real specdet analysis of the same contract, views, and calling domain, retaining the actual comparison, selected observations, query, and saved-input `replay --reexecute`. |
+| Correctness | The actual source body, or an authorized faithfully corresponding proof copy, establishes the current specification under the original calling domain. |
+| Completeness | Real specdet analysis of the same specification, views, and calling domain, retaining the actual comparison, selected observations, query, and saved-input `replay --reexecute`. |
 
 ### 1.2 Added and clarified rules
 
@@ -30,7 +30,7 @@ Snapshot: **2026-10-13 11:43 UTC**.
   Unconstrained answer-selecting helpers and new unapproved axioms are not
   repairs; any task-specific zero-UF requirement remains in force.
 - **Write guarantees directly in `ensures`.** Do
-  not hide the entire contract behind `ensures some_post(...)`. Expand the
+  not hide the entire specification behind `ensures some_post(...)`. Expand the
   actual return, content, branch, and writeback relations. A single explicit
   equation such as `result@ == input@` is fine; this is not a physical
   line-count rule. Meaningful shared views, sequence operations, and existing
@@ -52,7 +52,7 @@ Snapshot: **2026-10-13 11:43 UTC**.
 
 An independent frozen collection currently contains **98 actual API
 declarations**, with direct `ensures` clauses. Another **17 represented API
-identities** reuse existing vstd contracts without duplicate declarations.
+identities** reuse existing vstd specifications without duplicate declarations.
 
 | Module | From root `mod.rs` | From other source files | Collected declarations | Upstream-reused entries | Supported identities represented |
 |---|---:|---:|---:|---:|---:|
@@ -64,7 +64,7 @@ The source-file split follows the original Rust implementation/origin location,
 not the `Self` type or the trait declaration. For example,
 `&[T] != Vec<U,A>` belongs to the Vec non-`mod.rs` file because its
 implementation is in `partial_eq.rs`. Common Slice views and types are stored
-once and are not counted as API contracts.
+once and are not counted as API specifications.
 
 ### 2.2 Remaining work
 
