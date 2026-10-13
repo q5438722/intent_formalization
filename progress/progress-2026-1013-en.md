@@ -108,3 +108,8 @@ The main collected specification files have been pushed to the
 - [Slice specifications from other source files (`slice_non_mod.rs`)](https://github.com/q5438722/rust-std-spec/blob/argus-run/slice_non_mod.rs)
 - [Vec root-module specifications (`vec_mod.rs`)](https://github.com/q5438722/rust-std-spec/blob/argus-run/vec_mod.rs)
 - [Vec specifications from other source files (`vec_non_mod.rs`)](https://github.com/q5438722/rust-std-spec/blob/argus-run/vec_non_mod.rs)
+
+## Next Week's Plan
+- **Rust stdlib spec generation:** Continue specification generation and review; waiting for review comments.
+- **Provability & Readability:** Explore the coherence and differences between the two metrics, especially for semantically equivalent specifications.
+- **VeruSyn Submission:** Submission deadline is 10.15.
