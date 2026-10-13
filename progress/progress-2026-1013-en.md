@@ -71,7 +71,7 @@ once and are not counted as API specifications.
 Within the initial 380-item queue, the collected evidence includes 36 newly
 supported Slice scopes and 25 Vec scopes:
 
-| Module | Initial active queue | Previously reviewed support within that queue | Not closed under the earlier scoped accounting |
+| Module | Total functions | reviewed passed | still ongoing |
 |---|---:|---:|---:|
 | Slice | 276 | 36 | 240 |
 | Vec | 104 | 25 | 79 |
