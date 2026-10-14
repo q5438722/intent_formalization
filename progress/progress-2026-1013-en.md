@@ -66,31 +66,7 @@ not the `Self` type or the trait declaration. For example,
 implementation is in `partial_eq.rs`. Common Slice views and types are stored
 once and are not counted as API specifications.
 
-### 2.2 Remaining work
-
-Within the initial 380-item queue, the collected evidence includes 36 newly
-supported Slice scopes and 25 Vec scopes:
-
-| Module | Total functions | reviewed passed | still ongoing |
-|---|---:|---:|---:|
-| Slice | 276 | 36 | 240 |
-| Vec | 104 | 25 | 79 |
-| Total | 380 | 61 | 319 |
-
-**319 is a reconciliation reference, not a remaining count freshly audited
-under the October 13 criteria.** The 98 collected declarations also include
-37 earlier project results that were already excluded from the initial queue;
-subtracting 98 from 380 would therefore be incorrect.
-
-The aggregate tables currently lag the actual work: Slice's
-`inventory/coverage.tsv` still dates from October 12 09:58 UTC, and Vec's
-`coverage/INDEX.tsv` from October 12 23:34 UTC. Their old `not_started`,
-`pending`, and unbound-candidate labels must be interpreted using the newer
-family records, code, and review conclusions. A precise current total of APIs
-that are both verified and complete has **not yet been re-established** for
-the entire updated queue.
-
-### 2.3 Current bottlenecks
+### 2.2 Current bottlenecks
 
 | Bottleneck | Simple example | Response |
 |---|---|---|
@@ -99,7 +75,7 @@ the entire updated queue.
 | Completeness extraction and solving | For a method returning `&mut T`, the checker must compare not only the returned value but also the writeback to the original container after the borrow ends. The current extractor sometimes cannot generate that observation, and the query returns `unknown (incomplete quantifiers)`. | `UNKNOWN` must not be classified directly as complete or incomplete. If the result remains `UNKNOWN` after checking the inputs, observations, and solver configuration, the case should be handed to an LLM for semantic analysis, with the original query, reason for the unresolved result, LLM analysis, and final disposition recorded. |
 
 
-### 2.4 Artifact and evidence locations
+### 2.3 Artifact and evidence locations
 
 The main collected specification files have been pushed to the
 [`argus-run` branch](https://github.com/q5438722/rust-std-spec/tree/argus-run):
