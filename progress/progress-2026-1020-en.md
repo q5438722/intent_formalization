@@ -4,8 +4,8 @@ Snapshot: **2026-10-20 11:06 UTC**.
 
 ## Takeaway Messages
 
-1. **Spec generation: cleaned up the artifacts, ported them to the latest Verus, and submitted two reviewable cases.** After freezing the Slice and Vec results, we ported complete semantic API families to `upstream/main@775e2d403`, integrating 54 Slice bindings and 45 Vec bindings. The Slice case (54 bindings) and Vec PartialEq case (22 new bindings) have been pushed to the [`slice-vec-1020` branch](https://github.com/q5438722/verus/tree/slice-vec-1020), at commit [`318e45c56`](https://github.com/q5438722/verus/commit/318e45c56afbd37559361d946a2839499bf3dc46). 
-2. **Spec generation: added 151 specification bindings this week, increasing the total from 92 to 243.** Slice added 98 (78 to 176), and Vec added 53 (14 to 67).
+1. **Spec generation: cleaned up the artifacts, ported them to the latest Verus, and submitted two reviewable cases.** After freezing the Slice and Vec results, we ported complete semantic API families to `upstream/main@775e2d403`, integrating 54 Slice APIs and 45 Vec APIs. The Slice case (54 specifications) and Vec PartialEq case (22 new specifications) have been pushed to the [`slice-vec-1020` branch](https://github.com/q5438722/verus/tree/slice-vec-1020), at commit [`318e45c56`](https://github.com/q5438722/verus/commit/318e45c56afbd37559361d946a2839499bf3dc46). 
+2. **Spec generation: added 151 specifications this week, increasing the total from 92 to 243.** Slice added 98 (78 to 176), and Vec added 53 (14 to 67).
 3. **Wrapping up for spec generation** Noticing that waiting for all generated results to receive human review is consuming, we would like to discuss whether this would be sufficient to wrap up the current phase.
 4. **Spec provability: preliminary results** The first rule-based experiment completed 783 proof sessions. Paired comparisons include both variant-only and original-only successes, but no individual rule shows a significant improvement after multiple-comparison correction, and time/token statistics show no consistent advantage.
 5. **Spec provability: exploring more rules and LLM-generated equivalent variants.** We are exploring 10 additional rule-based rewrites and LLM-written variants.
@@ -14,7 +14,7 @@ Snapshot: **2026-10-20 11:06 UTC**.
 
 ### Current Spec-Generation Progress
 
-| Module | Total APIs | Canonical bindings, Oct. 13 | Canonical bindings, Oct. 20 | Added this week | Pushed in this submission |
+| Module | Total APIs | Accepted by myself, Oct. 13 | Accepted by myself, Oct. 20 | Added this week | Pushed in this submission |
 |---|---:|---:|---:|---:|---:|
 | Slice | 276 | 78 | 176 | +98 | 54 |
 | Vec | 104 | 14 | 67 | +53 | 22 |
@@ -22,10 +22,10 @@ Snapshot: **2026-10-20 11:06 UTC**.
 
 ### The Two Submitted Cases
 
-| Case | Submitted content | New bindings | Current scope |
+| Case | Submitted content | New specifications | Current scope |
 |---|---|---:|---|
-| [Slice](https://github.com/q5438722/verus/tree/slice-vec-1020/source/vstd/std_specs/slice) | `arrays`: 27; `ascii`: 7; `chunk_by`: 11; `windows`: 9 | 54 | Four complete semantic families; each binding has a corresponding client test |
-| [Vec](https://github.com/q5438722/verus/tree/slice-vec-1020/source/vstd/std_specs/vec) | `partial_eq` | 22 | `eq`/`ne` for 11 heterogeneous type combinations; reuses two existing upstream Vec-to-Vec bindings, giving family coverage of 24/24 |
+| [Slice](https://github.com/q5438722/verus/tree/slice-vec-1020/source/vstd/std_specs/slice) | `arrays`: 27; `ascii`: 7; `chunk_by`: 11; `windows`: 9 | 54 | Four complete semantic families; each specification has a corresponding client test |
+| [Vec](https://github.com/q5438722/verus/tree/slice-vec-1020/source/vstd/std_specs/vec) | `partial_eq` | 22 | `eq`/`ne` for 11 heterogeneous type combinations; reuses two existing upstream Vec-to-Vec specifications, giving family coverage of 24/24 |
 
 ### Current Bottlenecks
 
@@ -33,7 +33,7 @@ After fixing or working around the previous blockers, the following two categori
 
 | Bottleneck | Representative case | Current handling |
 |---|---|---|
-| The latest Verus trait-impl external-spec constraints conflict with the existing iterator abstraction | The Slice `Chunks` family had 69 bindings under the previous model. The latest Verus requires overridden methods from the same impl to be registered together, but adding `next`/`next_back` creates a circular dependency with `IteratorSpec::remaining`. | Do not submit a partial family; omit `Chunks` as a whole for now, retaining the issue and evidence. |
+| The latest Verus trait-impl external-spec constraints conflict with the existing iterator abstraction | The Slice `Chunks` family had 69 specifications under the previous model. The latest Verus requires overridden methods from the same impl to be registered together, but adding `next`/`next_back` creates a circular dependency with `IteratorSpec::remaining`. | Do not submit a partial family; omit `Chunks` as a whole for now, retaining the issue and evidence. |
 | Rust 1.99 API/impl identities do not match the current external-specification mechanism | The impl identity for `Vec::push_mut` does not match; `[T; N]::try_from(Vec<T, A>)` has become a const impl. | Do not work around these issues by weakening contracts or changing the calling domain; omit the affected families for now. |
 
 ### Key Discussion: What Is Sufficient to Wrap Up?
