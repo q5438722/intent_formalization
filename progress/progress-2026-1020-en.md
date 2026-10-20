@@ -85,13 +85,13 @@ The experiment ran 666 original conditions and 117 equivalent transformed condit
 
 The original conditions achieved an overall first-attempt verified success rate of **182/666 = 27.33%**. `Variant-only` means that only the rewritten version succeeded; `Original-only` means that only the original version succeeded.
 
-| Rule | Paired tasks | Original success | Variant success | Variant-only | Original-only | Holm-adjusted p-value |
-|---|---:|---:|---:|---:|---:|---:|
-| `reorder_ensures` | 27 | 9/27 = 33.33% | 6/27 = 22.22% | 3 | 6 | 1.0 |
-| `commute_boolean` | 2 | 1/2 = 50.00% | 1/2 = 50.00% | 0 | 0 | 1.0 |
-| `implication_to_disjunction` | 14 | 4/14 = 28.57% | 4/14 = 28.57% | 0 | 0 | 1.0 |
-| `orient_symmetric_relation` | 48 | 14/48 = 29.17% | 14/48 = 29.17% | 4 | 4 | 1.0 |
-| `combined` | 26 | 8/26 = 30.77% | 9/26 = 34.62% | 3 | 2 | NA |
+| Rule | Original success | Variant success | Variant-only | Original-only | Holm-adjusted p-value |
+|---|---:|---:|---:|---:|---:|
+| `reorder_ensures` | 9/27 = 33.33% | 6/27 = 22.22% | 3 | 6 | 1.0 |
+| `commute_boolean` | 1/2 = 50.00% | 1/2 = 50.00% | 0 | 0 | 1.0 |
+| `implication_to_disjunction` | 4/14 = 28.57% | 4/14 = 28.57% | 0 | 0 | 1.0 |
+| `orient_symmetric_relation` | 14/48 = 29.17% | 14/48 = 29.17% | 4 | 4 | 1.0 |
+| `combined` | 8/26 = 30.77% | 9/26 = 34.62% | 3 | 2 | NA |
 
 **We have not found an individual rule that consistently improves overall success rates.** No individual rule shows a significant improvement after multiple-comparison correction. The success-rate point estimate decreases by 11.11 percentage points for `reorder_ensures` and increases by 3.85 percentage points for `combined`; however, the latter is a secondary analysis with a wide confidence interval, so it does not establish a consistent benefit.
 
