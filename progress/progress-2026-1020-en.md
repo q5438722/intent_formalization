@@ -12,13 +12,6 @@ Snapshot: **2026-10-20 11:06 UTC**.
 
 ## 1. Spec Generation for the Verus Standard Library
 
-### This Week's Progress
-
-After fixing or explicitly skipping the issues discussed last week, we continued generating specifications for Rust standard-library APIs, still focusing primarily on **Slice and Vec**.
-
-- **Addressed the previous blockers.** For issues such as callback functions, we continue generating specs where faithful modeling is possible with existing support. Unsupported cases are recorded and skipped so that a few difficult APIs do not block the rest. Skipping a case does not mean the issue is solved, and skipped cases do not count toward completed coverage.
-- **Generated additional specifications.** Based on a mechanical count of the active campaign's canonical bindings, Slice increased from 78 to 176, and Vec from 14 to 67, adding **151 bindings this week**. This measures the specification bindings currently collected by the generation pipeline, not the number of APIs that have passed correctness checks, completeness checks, and human review.
-
 ### Current Spec-Generation Progress
 
 | Module | Total APIs | Canonical bindings, Oct. 13 | Canonical bindings, Oct. 20 | Added this week | Pushed in this submission |
