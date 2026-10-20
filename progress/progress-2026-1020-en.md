@@ -33,7 +33,7 @@ After fixing or working around the previous blockers, the following two categori
 
 | Bottleneck | Representative case | Current handling |
 |---|---|---|
-| The latest Verus trait-impl external-spec constraints conflict with the existing iterator abstraction | The Slice `Chunks` family had 69 specifications under the previous model. The latest Verus requires overridden methods from the same impl to be registered together, but adding `next`/`next_back` creates a circular dependency with `IteratorSpec::remaining`. | Do not submit a partial family; omit `Chunks` as a whole for now, retaining the issue and evidence. |
+| The latest Verus trait-impl external-spec constraints conflict with the existing iterator abstraction | The Slice `Chunks` family had 69 specifications under the previous model. The latest Verus requires overridden methods from the same impl to be registered together, but adding `next`/`next_back` creates a circular dependency with `IteratorSpec::remaining`. | Override `IteratorSpec::remaining` for `Chunks`. |
 | Rust 1.99 API/impl identities do not match the current external-specification mechanism | The impl identity for `Vec::push_mut` does not match; `[T; N]::try_from(Vec<T, A>)` has become a const impl. | Do not work around these issues by weakening contracts or changing the calling domain; omit the affected families for now. |
 
 ### Key Discussion: What Is Sufficient to Wrap Up?
