@@ -6,9 +6,9 @@ This week, we integrated the existing specification-testing tools into a unified
 
 - **Completeness checking:** Check whether a specification sufficiently constrains an API's observable behavior and identify potential under-specification.
 - **Equivalence checking:** Check whether two formulations of a specification accept exactly the same input-output pairs over the same calling domain, ensuring that a rewrite does not change the original semantics.
-- **Test-case migration:** Convert existing test cases into compatibility checks for specifications. Specifically, we ask whether an input-output pair rejected by a test case can still satisfy the specification. If so, the specification is more permissive than the expected behavior expressed by the test and is therefore incompatible with it.
+- **Test-case compatibility:** Convert existing test cases into compatibility checks for specifications. Specifically, we ask whether an input-output pair rejected by a test case can still satisfy the specification. If so, the specification is more permissive than the expected behavior expressed by the test and is therefore incompatible with it.
 
-### Test-Case Migration
+### Test-Case compatibility
 
 Official tests, specifications, and the true semantics can be viewed as a region of input-output pairs. Ideally, the ground truth of the API intent is contained within both the region accepted by the official tests and the region accepted by the specification. However, both official tests and specifications are generally incomplete approximations of the ground truth.
 
