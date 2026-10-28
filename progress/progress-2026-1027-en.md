@@ -54,8 +54,6 @@ More specifically, we built a controllable and convergent fuzzing pipeline for R
    3. Use the templates to guide OSS-Fuzz-Gen toward more targeted fuzz targets and test inputs.
    4. Execute the generated targets with OSS-Fuzz and check whether they reproduce historical bugs or discover similar new defects.
 
-This pipeline turns historical defect information into prior knowledge for fuzzing, focusing exploration on program paths that have been error-prone in the past rather than relying entirely on general-purpose input generation. The next step is to compare general fuzzing with history-guided fuzzing in terms of historical-bug reproduction, coverage, and new-bug discovery.
-
 One important result is that **even though Ruize had fully verified this system, our fuzzing still found a real bug**. In [`servo/uluru#29`](https://github.com/servo/uluru/pull/29), `LRUCache::<T, 0>::new()` and `default()` successfully construct a cache because the constructor rules out only excessively large capacities and does not reject `N == 0`. Inserting the first element into this zero-capacity cache then attempts to evict from an empty array and immediately panics with an out-of-bounds error.
 
 ``` rust
